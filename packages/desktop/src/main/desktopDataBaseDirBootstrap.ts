@@ -1,10 +1,19 @@
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { homedir } from "node:os";
 import { setDataBaseDir } from "@zcode/services/node";
 
+/**
+ * Polaris fork：数据根目录名（原 `.zcode` → `.polaris`）。
+ *
+ * 只改目录名，**不携带任何 `.zcode` → `.polaris` 的自动迁移**：本 fork 的数据
+ * 目录要干净起步，用户自己在应用里配置。上游原有的「用户改 dataBaseDir 时搬运
+ * 数据」能力（services/paths.ts 的 copyDataDirectory）与本文件无关，保持原样。
+ */
+const DATA_ROOT_DIR_NAME = ".polaris";
+
 function resolveBootstrapSettingsFile(homePath: string = homedir()): string {
-  return join(homePath, ".zcode", "v2", "setting.json");
+  return join(homePath, DATA_ROOT_DIR_NAME, "v2", "setting.json");
 }
 
 function extractBootstrapDataBaseDir(rawValue: unknown): string | null {
