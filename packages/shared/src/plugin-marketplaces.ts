@@ -31,12 +31,13 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
 
 export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
   {
-    // ZCode 官方唯一市场：本地 seed 分片与 CDN 分片在 Agent storage 内合并。
-    // CDN manifest 的 name 必须与该 canonical id 一致。
+    // Polaris：插件市场能力保留，源改指自有 CDN（原为 ZCode 官方 cdn-zcode.z.ai）。
+    // 本地 seed 分片仍在 Agent storage 内合并；CDN manifest 的 name 必须与该 canonical id 一致。
+    // 自有市场尚未部署时该源不可达，只会让市场列表为空，不影响本地已安装插件。
     id: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
-    source: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
+    source: "https://polaris.bitlesu.com/plugins/marketplace.json",
     name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
-    description: "Official ZCode plugins marketplace: built-in and community plugins for ZCode.",
+    description: "Polaris plugins marketplace: built-in and community plugins for Polaris.",
     pluginCount: 0,
   },
 ];

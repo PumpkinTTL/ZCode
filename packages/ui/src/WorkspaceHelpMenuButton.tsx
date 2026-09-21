@@ -28,6 +28,7 @@ import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import { useDesktopUpdateMenu } from "@/hooks/useDesktopUpdateMenu.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { COMMUNITY_ENTRY_ENABLED } from "@/lib/communityEntry.js";
 import { createHelpMenuActionHandlers } from "@/lib/helpMenuActions.js";
 
 export function WorkspaceHelpMenuButton({
@@ -92,10 +93,14 @@ export function WorkspaceHelpMenuButton({
           <BookOpenIcon className="size-4" />
           {intl.formatMessage({ id: "workspaceHeader.help.docs" })}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={handleOpenCommunity}>
-          <UsersIcon className="size-4" />
-          {intl.formatMessage({ id: "workspaceHeader.help.community" })}
-        </DropdownMenuItem>
+        {/* Polaris：官方社群地址不可达，总开关关闭时整项不渲染，而不是留一个点不通的入口。
+            接入自有社群后打开 COMMUNITY_ENTRY_ENABLED 即可恢复。 */}
+        {COMMUNITY_ENTRY_ENABLED ? (
+          <DropdownMenuItem onSelect={handleOpenCommunity}>
+            <UsersIcon className="size-4" />
+            {intl.formatMessage({ id: "workspaceHeader.help.community" })}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem onSelect={helpMenuActions.openIssueReport}>
           <MessageSquareIcon className="size-4" />
           {intl.formatMessage({ id: "workspaceHeader.help.issueReport" })}

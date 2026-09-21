@@ -1,9 +1,13 @@
 import type { ZCodeEnv } from "./env.js";
 
-export const DEFAULT_ZCODE_ENDPOINT_ORIGIN = "https://zcode.z.ai";
-export const DEFAULT_BIGMODEL_API_ORIGIN = "https://bigmodel.cn";
-export const DEFAULT_ZAI_OAUTH_ORIGIN = "https://chat.z.ai";
-export const DEFAULT_ZAI_BUSINESS_BASE_URL = "https://api.z.ai";
+// Polaris：默认端点指向自有域名（原值为 ZCode 官方 z.ai / bigmodel）。
+// 运行时可由 ZCODE_BASE_URL / BIGMODEL_API_BASE_URL / ZAI_* 等环境变量覆盖，
+// 因此接自有后端无需改代码；OAuth 相关常量保留是因为类型与配置结构仍被引用
+// （Polaris 不提供官方登录，这些端点不会被请求）。
+export const DEFAULT_ZCODE_ENDPOINT_ORIGIN = "https://polaris.bitlesu.com";
+export const DEFAULT_BIGMODEL_API_ORIGIN = "https://polaris.bitlesu.com";
+export const DEFAULT_ZAI_OAUTH_ORIGIN = "https://polaris.bitlesu.com";
+export const DEFAULT_ZAI_BUSINESS_BASE_URL = "https://polaris.bitlesu.com";
 export const DEFAULT_ZAI_OAUTH_CLIENT_ID = "client_P8X5CMWmlaRO9gyO-KSqtg";
 
 // 构建仅注入公开链接；Node 调用方仍可显式传 env，避免读取另一进程的配置。

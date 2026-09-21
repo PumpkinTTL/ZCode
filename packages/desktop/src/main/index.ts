@@ -2150,33 +2150,45 @@ app.whenReady().then(async () => {
       armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
     });
   }
-  configureDesktopMcpTelemetry({
-    deviceMid,
-    appVersion: ZCODE_VERSION,
-    armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
-  });
+  // Polaris：MCP 遥测同样跟随埋点总开关（默认关闭）。
+  if (ZCODE_TELEMETRY_ENABLED) {
+    configureDesktopMcpTelemetry({
+      deviceMid,
+      appVersion: ZCODE_VERSION,
+      armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+    });
+  }
   registerDesktopStabilityMonitors(logger, crashCapturePaths);
-  registerDesktopResourceTelemetry(logger);
+  // Polaris：资源/网络等周期遥测跟随埋点总开关（默认关闭）。
+  // 关闭时不做任何周期采样与上报；代码与调用结构保留，接自有统计时改开关即可。
+  if (ZCODE_TELEMETRY_ENABLED) {
+    registerDesktopResourceTelemetry(logger);
+  }
   // 主窗口 renderer 的 60 秒 heap 样本入口；随 App 生命周期常驻，只注册一次。
   registerRendererHeapSampleIpc();
   const defaultDataBaseDir = process.env.HOME?.trim() || homedir();
-  registerDesktopZCodeDataSizeTelemetry({
-    context: {
-      appVersion: ZCODE_VERSION,
-      armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
-      dataRootKind:
-        resolve(getDataBaseDir()) === resolve(defaultDataBaseDir) ? "default" : "custom",
-      deviceMid,
-      platform: process.platform,
-    },
-    getSystemIdleTimeSeconds: () => powerMonitor.getSystemIdleTime(),
-    isAppBackground: () => resolveResourceUsageScene() === "background",
-    isZCodeBusy: () => getRunningAgentSessionCount() > 0,
-    logger,
-    rootPath: getZCodeDataRootDir(),
-    stateFile: join(app.getPath("userData"), "zcode-data-size-telemetry.json"),
-  });
-  registerDesktopNetworkTelemetry(logger);
+  // Polaris：数据体积遥测同样跟随埋点总开关（默认关闭）——它把数据目录统计发往 ARMS。
+  if (ZCODE_TELEMETRY_ENABLED) {
+    registerDesktopZCodeDataSizeTelemetry({
+      context: {
+        appVersion: ZCODE_VERSION,
+        armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+        dataRootKind:
+          resolve(getDataBaseDir()) === resolve(defaultDataBaseDir) ? "default" : "custom",
+        deviceMid,
+        platform: process.platform,
+      },
+      getSystemIdleTimeSeconds: () => powerMonitor.getSystemIdleTime(),
+      isAppBackground: () => resolveResourceUsageScene() === "background",
+      isZCodeBusy: () => getRunningAgentSessionCount() > 0,
+      logger,
+      rootPath: getZCodeDataRootDir(),
+      stateFile: join(app.getPath("userData"), "zcode-data-size-telemetry.json"),
+    });
+  }
+  if (ZCODE_TELEMETRY_ENABLED) {
+    registerDesktopNetworkTelemetry(logger);
+  }
 
   // 本地未打包 dev 构建（app.isPackaged === false）必须跳过远端强制升级 gate。
   // 原因：force-update gate 只看 ZCODE_ENV === "production"，但 dev 构建（如 dev:desktop:cua

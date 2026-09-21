@@ -1,6 +1,7 @@
 import type { WebZaiOAuthProviderConfig } from "./zaiWebOAuthProvider.js";
 import {
   buildZCodeEndpointUrls,
+  DEFAULT_ZAI_OAUTH_ORIGIN,
   DEFAULT_ZCODE_ENDPOINT_ORIGIN,
   resolveBigModelApiOrigin,
 } from "@zcode/shared";
@@ -27,15 +28,18 @@ function normalizeZaiOAuthOrigin(value: string): string {
 }
 
 function buildZaiOAuthAuthorizeUrl(origin: string | undefined): string {
-  return `${normalizeZaiOAuthOrigin(origin?.trim() || "https://chat.z.ai")}/api/oauth/authorize`;
+  // Polaris：兜底 origin 改为自有域名（原值为官方 https://chat.z.ai）。
+  // 正常路径由 vite.config 注入 VITE_ZAI_OAUTH_ORIGIN，这里只在未注入时兜底，
+  // 避免任何情况下把用户送到官方授权页。
+  return `${normalizeZaiOAuthOrigin(origin?.trim() || DEFAULT_ZAI_OAUTH_ORIGIN)}/api/oauth/authorize`;
 }
 
 /**
  * BigModel 的授权入口。
  *
- * 必须跟随环境：测试环境写死 bigmodel.cn 会把测试账号带到生产授权页。构建期由
+ * 必须跟随环境：测试环境写死自有域名会把测试账号带到另一个部署的授权页。构建期由
  * vite.config 用 resolveBigModelApiOrigin 注入 VITE_BIGMODEL_OAUTH_ORIGIN；这里的
- * resolveBigModelApiOrigin({}) 只是最后兜底（等价于生产 origin）。
+ * resolveBigModelApiOrigin({}) 只是最后兜底（等价于当前产品 origin）。
  */
 function buildBigModelAuthorizeUrl(origin: string | undefined): string {
   const trimmed = origin?.trim();

@@ -25,6 +25,9 @@ export interface ModelProviderFamilySpec {
 
 export const MODEL_PROVIDER_FAMILY_SPECS = [
   {
+    // Polaris：官方账号族（zai/bigmodel）已无 UI 入口、OAuth 适配器与计费实现
+    // （均已移除或空壳化）。此表作为类型与配置结构保留，供将来接自有账号体系复用；
+    // 管理 URL 一律指向自有域名，不再跳官方站点。
     id: "zai",
     label: "Z.ai",
     rootDomain: "z.ai",
@@ -32,7 +35,7 @@ export const MODEL_PROVIDER_FAMILY_SPECS = [
     startPlanProviderId: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
     individualCodingPlanProviderId: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
     teamCodingPlanProviderId: BUILTIN_MODEL_PROVIDER_IDS.zaiTeamCodingPlan,
-    teamCodingPlanManageUrl: "https://z.ai/manage-apikey/subscription",
+    teamCodingPlanManageUrl: "https://polaris.bitlesu.com/account/subscription",
   },
   {
     id: "bigmodel",

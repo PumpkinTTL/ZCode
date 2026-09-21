@@ -88,7 +88,8 @@ interface Copy {
 }
 
 // 站点首页本身就是下载入口，没有 /download 这个 path（单独的下载链接会 404）。
-const ZCODE_DOWNLOAD_URL = "https://zcode.z.ai";
+// Polaris：下载页指向自有域名（待部署），不再跳 ZCode 官方站点。
+const ZCODE_DOWNLOAD_URL = "https://polaris.bitlesu.com";
 
 const COPY: Record<ConversationShareLandingLocale, Copy> = {
   "zh-CN": {

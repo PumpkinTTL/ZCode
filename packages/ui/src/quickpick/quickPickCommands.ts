@@ -1,3 +1,5 @@
+import { COMMUNITY_ENTRY_ENABLED } from "@/lib/communityEntry.js";
+
 export type QuickPickCommandIcon =
   | "book"
   | "browser"
@@ -248,7 +250,10 @@ export function createQuickPickCommands({
     run: handlers.openFeedback,
   });
 
-  if (canOpenCommunity) {
+  // Polaris：官方社群（飞书 / Discord）对用户不可达，总开关恒为 false 时不注册该命令，
+  // 避免入口点开坏链接。canOpenCommunity 仍作为「平台是否会解析出可用社群地址」的条件保留，
+  // 将来接入自有社群时只需打开 COMMUNITY_ENTRY_ENABLED，不必恢复此处的结构。
+  if (COMMUNITY_ENTRY_ENABLED && canOpenCommunity) {
     commands.push({
       id: "community",
       sectionId: "app",

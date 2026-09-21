@@ -18,6 +18,7 @@ import { ClientSceneLucideIcon } from "@/components/ClientSceneLucideIcon.js";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover.js";
+import githubPromptIcon from "@/assets/feature-prompt-icons/github.png";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
   resolveDraftSuggestedPromptText,
@@ -31,6 +32,11 @@ const PLUGIN_SUCCESS_ROLL_TRANSITION = {
   duration: 0.2,
   ease: [0.4, 0, 0.2, 1],
 } as const;
+
+// GitHub 素材自带白色方形底，需要比其余图标再缩小一圈才能露出与其他图标一致的外层留白。
+// 图标已本地化，Vite 产物名带 hash，不能再用原来基于远端路径的 includes 判断；
+// 直接与同一导入的 URL 做恒等比较，既精确又不随打包命名漂移。
+const GITHUB_PROMPT_ICON_URL = githubPromptIcon;
 
 function DraftSuggestedPromptIcon({ name }: { name?: string }) {
   return (
@@ -264,8 +270,7 @@ export function ConversationDraftSuggestedPrompts({
                         draggable={false}
                         className={cn(
                           "shrink-0 rounded-sm object-contain",
-                          // GitHub 素材自带白色方形底，再缩小一圈以露出与其他图标一致的外层留白。
-                          item.iconUrl?.includes("/github/icon.png") ? "size-4.5" : "size-full",
+                          item.iconUrl === GITHUB_PROMPT_ICON_URL ? "size-4.5" : "size-full",
                         )}
                       />
                     </span>

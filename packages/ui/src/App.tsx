@@ -47,6 +47,7 @@ import {
 } from "@/lib/settingsNavigation.js";
 import { runWorkspaceVisibleCommand } from "@/lib/workspaceVisibleCommand.js";
 import { ZCODE_PRODUCT_DOCS_URL } from "@/lib/productDocs.js";
+import { COMMUNITY_ENTRY_ENABLED } from "@/lib/communityEntry.js";
 import appLogoUrl from "@/assets/provider-icons/logo-zai.svg";
 import { resolveTheme } from "@/useTheme.js";
 import { WorkspaceShellLayout } from "@/app-shell/WorkspaceShellLayout.js";
@@ -971,6 +972,12 @@ export function App({
   });
 
   useEffect(() => {
+    // Polaris：社群入口总开关关闭时不做探测，canOpenCommunity 恒为 false（入口整体消失）。
+    // 探测逻辑与 command 结构都保留，接入自有社群后打开 COMMUNITY_ENTRY_ENABLED 即恢复。
+    if (!COMMUNITY_ENTRY_ENABLED) {
+      setCanOpenCommunityFromQuickPick(false);
+      return;
+    }
     let disposed = false;
 
     void platform.canOpenCommunity(locale).then(
