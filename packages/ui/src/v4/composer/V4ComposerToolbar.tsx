@@ -44,10 +44,6 @@ import {
   hasChatCodingPlanUsageRemaining,
   type ChatCodingPlanUsageRemainingConfig,
 } from "@/chat-input-toolbar/CodingPlanContextUsage.js";
-import {
-  hasChatStartPlanBalance,
-  type ChatStartPlanBalanceConfig,
-} from "@/chat-input-toolbar/StartPlanContextBalance.js";
 import { ThoughtLevelCycleControl } from "@/chat-input-toolbar/ThoughtLevelCycleControl.js";
 import { getNextThoughtLevelValue } from "@/chat-input-toolbar/thoughtLevelOptions.js";
 import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js";
@@ -72,10 +68,6 @@ import {
 } from "@/hooks/useUsageEntitlement.js";
 import { useToolbarConfigOptions } from "@/hooks/useZCodeConfig.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import {
-  createCodingPlanFunnelContext,
-  resolveCodingPlanEntryPlanState,
-} from "@/lib/codingPlanFunnelTelemetry.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { logger } from "@/logger.js";
 import { useCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
@@ -382,7 +374,6 @@ function V4ComposerModelControlsImpl({
   onRecoverCustomModelSelection,
 }: V4ComposerToolbarProps) {
   const { intl, locale } = useZCodeIntl();
-  const { openCodingPlanUpgrade } = useCodingPlanUpgradeDialog();
   const displayProvider = provider ?? ZCODE_AGENT_PROVIDER;
   // 配置面读取：workspace 缺省目录（taskId=null），不读旧会话态。
   const { error: configOptionsError } = useToolbarConfigOptions(
@@ -445,25 +436,6 @@ function V4ComposerModelControlsImpl({
     return resolveDraftDisplayedConfig(draftConfig ?? {});
   }, [draftConfig]);
 
-  const handleOpenStartPlanUpgrade = useCallback(
-    (providerId: string) => {
-      openCodingPlanUpgrade({
-        providerId,
-        funnelContext: createCodingPlanFunnelContext({
-          providerId,
-          upgradeSource: "session_token_usage",
-          eventRegion: "app.session",
-          eventText: intl.formatMessage({ id: "chat.quota.action.upgrade" }),
-          entryPlanState: resolveCodingPlanEntryPlanState({
-            providerId,
-            displayStatus: "purchased",
-            planLevel: "start",
-          }),
-        }),
-      });
-    },
-    [intl, openCodingPlanUpgrade],
-  );
   const handleOpenUsageDetails = useCallback(
     (sourceId?: SidebarUsageCodingPlanSourceId) => {
       if (sourceId) {
@@ -495,43 +467,6 @@ function V4ComposerModelControlsImpl({
         : null,
     [contextPlanConnection, providerSettingsView],
   );
-  const contextStartPlanBalanceConfig = useMemo<ChatStartPlanBalanceConfig | undefined>(() => {
-    if (contextPlanConnection.kind !== "start") {
-      return undefined;
-    }
-    const entitlement = entitlements[contextPlanConnection.providerId];
-    // Start Plan 只有具备独立 Account Access 时才挂载 hover 查询入口。
-    const startPlanEntitlementEnabled = enabledStartPlanProviderIds.includes(
-      contextPlanConnection.providerId,
-    );
-    return {
-      loading: entitlement?.loading ?? providerSourcesLoading,
-      // hover access 刷新入口不能只在 Coding Plan 配置上（onAccess）：
-      // start plan 用户 hover context 面板从不主动刷新今日余额，只能等设置页/侧栏
-      // 刷新后被动同步。接入与 Coding Plan 相同的静默 access 刷新；60s access 窗口
-      // 与 in-flight 合并由刷新策略层自动生效，不会因反复 hover 放大 billing/balance 请求。
-      ...(startPlanEntitlementEnabled
-        ? {
-            onAccess: () => refreshCodingPlanEntitlements({ silent: true, reason: "access" }),
-          }
-        : {}),
-      onUpgradeClick: () => handleOpenStartPlanUpgrade(contextPlanConnection.providerId),
-      snapshot:
-        entitlement?.snapshot?.provider?.id === contextPlanConnection.providerId
-          ? entitlement.snapshot
-          : null,
-    };
-  }, [
-    contextPlanConnection,
-    enabledStartPlanProviderIds,
-    entitlements,
-    handleOpenStartPlanUpgrade,
-    providerSourcesLoading,
-    refreshCodingPlanEntitlements,
-  ]);
-  const contextStartPlanBalance = hasChatStartPlanBalance(contextStartPlanBalanceConfig)
-    ? contextStartPlanBalanceConfig
-    : undefined;
 
   // 原 hook 不传 family，默认只拉 bigmodel 企业 pricing，
   // zai team plan 拿不到订阅产品，模型选择器里的 team 模型组建不出来。
@@ -1013,7 +948,6 @@ function V4ComposerModelControlsImpl({
       <ChatContextUsage
         codingPlanUsageRemaining={codingPlanUsageRemaining}
         taskUsage={taskUsage}
-        startPlanBalance={contextStartPlanBalance}
         selectedProvider={displayProvider}
         intl={intl}
         locale={locale}

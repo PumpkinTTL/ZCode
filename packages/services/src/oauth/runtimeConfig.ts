@@ -1,6 +1,4 @@
 import type { OAuthProviderId } from "@zcode/shared";
-import { createBigModelProviderRuntimeConfig } from "./providers/bigmodelProviderConfig.js";
-import { createZaiProviderRuntimeConfig } from "./providers/zaiProviderConfig.js";
 
 /** Provider 运行时配置（仅 host process 可见） */
 export interface OAuthProviderRuntimeConfig {
@@ -26,9 +24,10 @@ export interface OAuthRuntimeConfig {
  * 从运行时环境变量生成 OAuth 配置。
  *
  * 注意：这里只能在 host process 使用，避免把敏感配置暴露给 renderer。
+ *
+ * Polaris：官方账号（Z.ai / BigModel）的 provider 运行时配置已剥离，这里保留装配点并返回空列表。
+ * 接入自有 OAuth provider 时在此构造配置，无需改动调用方。
  */
-export function createOAuthRuntimeConfig(env: NodeJS.ProcessEnv = process.env): OAuthRuntimeConfig {
-  return {
-    providers: [createBigModelProviderRuntimeConfig(env), createZaiProviderRuntimeConfig(env)],
-  };
+export function createOAuthRuntimeConfig(_env: NodeJS.ProcessEnv = process.env): OAuthRuntimeConfig {
+  return { providers: [] };
 }

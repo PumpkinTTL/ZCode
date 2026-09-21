@@ -3,10 +3,32 @@ import {
   ZAI_PROVIDER_ID,
   buildBigModelApiUrl,
   buildRuntimeZaiBusinessUrl,
+  buildRuntimeZaiOAuthUrl,
 } from "@zcode/shared";
 import type { ICredentialService } from "#src/credential/credential.js";
-import { resolveBigModelUserinfoUrl } from "#src/oauth/providers/bigmodelProviderConfig.js";
-import { resolveZaiUserinfoUrl } from "#src/oauth/providers/zaiProviderConfig.js";
+
+const BIGMODEL_USERINFO_PATH = "/api/biz/customer/getCustomerInfo";
+const ZAI_USERINFO_PATH = "/api/oauth/userinfo";
+
+function readEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
+  const value = env[key];
+  if (!value) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : trimmed;
+}
+
+// Polaris：官方账号 adapter 目录已剥离，userinfo 地址（原先取自 bigmodel/zaiProviderConfig）
+// 就地内联为常量解析，401 归因逻辑本身是通用流程，必须保留。
+function resolveBigModelUserinfoUrl(env: NodeJS.ProcessEnv): string {
+  return readEnv(env, "BIGMODEL_OAUTH_USERINFO_URL") ?? buildBigModelApiUrl(env, BIGMODEL_USERINFO_PATH);
+}
+
+function resolveZaiUserinfoUrl(env: NodeJS.ProcessEnv): string {
+  return readEnv(env, "ZAI_OAUTH_USERINFO_URL") ?? buildRuntimeZaiOAuthUrl(env, ZAI_USERINFO_PATH);
+}
 
 function tryResolveHttpUrl(resolve: () => string | URL): URL | null {
   try {

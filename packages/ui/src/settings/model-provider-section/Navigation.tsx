@@ -387,7 +387,9 @@ export function ModelProviderSectionNavigation({
     <aside className="px-1.5 py-3 md:py-2 md:px-2">
       <div className="flex min-h-0 flex-col gap-3 max-md:gap-1">
         {navigationGroups
-          .filter((group) => group.id !== "custom" || group.items.length > 0)
+          // 官方账号预置组（preset）随官方账号业务砍除后通常为空；
+          // 空组必须整组隐藏，否则会留下一个只有标题没有入口的「智谱」分组。
+          .filter((group) => group.items.length > 0)
           .map((group) => (
             <div key={group.id} className="flex flex-col gap-2 max-md:gap-1">
               <div className="flex h-7 items-center justify-between px-2 py-1 max-md:hidden">

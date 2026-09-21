@@ -7,6 +7,14 @@ import type {
   OAuthUserProfile,
 } from "@zcode/shared";
 
+/**
+ * OAuth provider 适配器契约（纯类型，不含任何官方 provider 实现）。
+ *
+ * Polaris 已剥离 Z.ai / BigModel 的 adapter 实现，但 accessor.ts、node.ts、
+ * feedbackService 仍引用 IOAuthService，且 profile schema / 401 归因等通用流程
+ * 依赖本契约，因此类型必须保留：接入自有 OAuth provider 时实现本接口即可。
+ */
+
 /** Provider 执行上下文 */
 export interface OAuthProviderContext {
   providerId: OAuthProviderId;

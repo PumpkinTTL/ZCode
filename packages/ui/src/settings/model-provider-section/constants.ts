@@ -1,12 +1,9 @@
 import {
-  BIGMODEL_PROVIDER_ID,
   buildBigModelApiUrl,
-  buildBigModelCodingPlanPersonalManageUrl,
   BUILTIN_MODEL_PROVIDER_IDS,
   createUuid,
   type OAuthProviderId,
   ZCODE_ENV,
-  ZAI_PROVIDER_ID,
   type BuiltinModelProviderId,
   type UsageQuotaLimit,
   type UsageEntitlementSubscriptionDetail,
@@ -21,9 +18,6 @@ export function generateId(): string {
 
 export const PRESET_SUBSCRIPTION_TIMEOUT_MS = 2 * 60 * 1000;
 export const BIGMODEL_REGISTRATION_URL = buildBigModelApiUrl({ ZCODE_ENV }, "/login");
-const BIGMODEL_CODING_PLAN_PERSONAL_MANAGE_URL = buildBigModelCodingPlanPersonalManageUrl({
-  ZCODE_ENV,
-});
 
 export interface PresetProviderSpec {
   id: BuiltinModelProviderId;
@@ -31,18 +25,15 @@ export interface PresetProviderSpec {
   oauthProviderId?: OAuthProviderId;
 }
 
-export const PRESET_PROVIDER_SPECS: PresetProviderSpec[] = [
-  {
-    id: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
-    displayName: "Z.ai",
-    oauthProviderId: ZAI_PROVIDER_ID,
-  },
-  {
-    id: BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan,
-    displayName: "BigModel",
-    oauthProviderId: BIGMODEL_PROVIDER_ID,
-  },
-];
+/**
+ * 官方账号预置入口（Z.ai / BigModel Start Plan）。
+ *
+ * 这两个预置项的配置来源是官方 OAuth 账号体系（`oauthProviderId` 指向官方渠道），
+ * 已随官方账号业务整体砍除：保留空数组是刻意的——消费方（设置页导航、连接方式
+ * 选择、权益卡片）都按"没有官方预置入口"正常降级，而不是走特判分支。
+ * 第三方模型仍通过「自定义供应商 + API Key」接入，不受此处影响。
+ */
+export const PRESET_PROVIDER_SPECS: PresetProviderSpec[] = [];
 
 export const PRESET_PROVIDER_SPEC_BY_ID = new Map<BuiltinModelProviderId, PresetProviderSpec>(
   PRESET_PROVIDER_SPECS.map((item) => [item.id, item]),
@@ -74,36 +65,15 @@ interface CodingPlanProviderSpec {
   purchaseUrl?: string;
 }
 
-export const CODING_PLAN_PROVIDER_SPECS: CodingPlanProviderSpec[] = [
-  {
-    id: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
-    oauthProviderId: ZAI_PROVIDER_ID,
-    label: "Z.ai - Coding Plan",
-    providerName: "Z.ai",
-    purchaseUrl: "https://z.ai/manage-apikey/subscription",
-  },
-  {
-    id: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
-    oauthProviderId: ZAI_PROVIDER_ID,
-    label: "Z.ai - Coding Plan",
-    providerName: "Z.ai",
-    purchaseUrl: "https://z.ai/manage-apikey/subscription",
-  },
-  {
-    id: BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
-    oauthProviderId: BIGMODEL_PROVIDER_ID,
-    label: "BigModel - Coding Plan",
-    providerName: "BigModel",
-    purchaseUrl: BIGMODEL_CODING_PLAN_PERSONAL_MANAGE_URL,
-  },
-  {
-    id: BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan,
-    oauthProviderId: BIGMODEL_PROVIDER_ID,
-    label: "BigModel- Coding Plan",
-    providerName: "BigModel",
-    purchaseUrl: BIGMODEL_CODING_PLAN_PERSONAL_MANAGE_URL,
-  },
-];
+/**
+ * 官方账号套餐入口（Z.ai / BigModel Coding Plan 与 Start Plan）。
+ *
+ * 这些条目全部由官方 OAuth 账号体系驱动（`oauthProviderId` 指向官方渠道），
+ * 已随官方账号业务整体砍除。保留空数组是刻意的：消费方（设置页导航、
+ * 连接方式选择、权益卡片）按"没有官方套餐入口"正常降级，而不是走特判分支。
+ * 第三方模型仍通过「自定义供应商 + API Key」接入，不受此处影响。
+ */
+export const CODING_PLAN_PROVIDER_SPECS: CodingPlanProviderSpec[] = [];
 
 export interface CodingPlanEntitlementState {
   snapshot: UsageEntitlementSnapshot | null;

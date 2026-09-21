@@ -34,7 +34,6 @@ import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import type { ICredentialService } from "../../credential/credential.js";
 import type { IAccountRequestAuthService } from "../../model-provider/accountRequestAuthService.js";
 import { readApiJson } from "../../providers/api/apiJson.js";
-import { readEnv } from "../../oauth/providers/configUtils.js";
 import {
   buildZaiStartPlanBalanceUrl,
   fetchZaiStartPlanBalanceEnvelope,
@@ -1440,6 +1439,18 @@ function pickZaiStartPlanBillingCycle(plan: ZaiStartPlanPlan): string | null {
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+// 原先复用于 oauth/providers/configUtils.ts。Polaris 剥离官方账号 adapter 目录后，
+// 本文件只用到这一个纯函数，故就地保留，不再为一个 helper 保留整个目录。
+function readEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
+  const value = env[key];
+  if (!value) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : trimmed;
 }
 
 function formatUnixSecondsAsIso(value: number | string | null | undefined): string | null {

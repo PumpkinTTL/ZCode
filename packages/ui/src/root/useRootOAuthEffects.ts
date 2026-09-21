@@ -25,7 +25,6 @@ import {
 import { applyCachedOAuthSessionRestoreResult } from "@/root/oauthCachedSessionRestore.js";
 import { markZcodeJwtInvalidRestart } from "@/root/zcodeJwtInvalidRestartMarker.js";
 import { shouldApplyOAuthPollingFailure } from "@/root/oauthLoginAttemptGuard.js";
-import { useAccountConnectionLossNotification } from "@/root/useAccountConnectionLossNotification.js";
 
 export { refreshRestoredOAuthProviderFamilyAfterStartup } from "@/root/oauthProviderFamilySelectionRefresh.js";
 
@@ -118,7 +117,9 @@ export function useRootOAuthEffects({
   markOAuthSuccess: (provider?: OAuthProviderId) => void;
   onReauthenticationRequired: () => void;
 }) {
-  useAccountConnectionLossNotification(services, accountIntentKey, refreshAppSettings);
+  // 官方账号连接丢失提示已随账号业务砍除移除；accountIntentKey 仍保留在签名中，
+  // 供调用方表达"账号意图变化"这一事实，不再由本 hook 消费。
+  void accountIntentKey;
   const requestAlert = useAlertDialog();
   const { intl } = useZCodeIntl();
   const oauthLoginSucceededRef = useRef(false);

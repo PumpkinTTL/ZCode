@@ -12,7 +12,6 @@ import {
   copyBigModelTeamPlanProjectApiKeySecret,
   ensureBigModelTeamPlanProjectApiKey,
 } from "#src/bigmodel/teamPlanApiKey.js";
-import { createZaiLoginAuthHeaders } from "#src/coding-plan-subscription/bigmodelCodingPlanSubscriptionProvider.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { readApiJson } from "#src/providers/api/apiJson.js";
 import type { RemoteCustomerInfo } from "./accountProviderApiTypes.js";
@@ -25,6 +24,19 @@ interface TeamPlanRequestKeyDependencies {
   readonly apiClient: ApiClient;
   readonly credentialService?: Pick<ICredentialService, "load">;
   readonly access: Extract<ZCodeAccountAccess, { planKind: "team-coding-plan" }>;
+}
+
+/**
+ * Polaris fork：官方 Coding Plan 订阅 provider 已移除，这里就地保留 z.ai 业务接口所需的最小鉴权头。
+ * Z.ai 的 provider connection 把 access_token 持久化为业务 JWT，业务接口要求
+ * Authorization 直接传 token（不加 Bearer，也不能用模型 API key），与 bigmodel
+ * 的 createBigModelBizHeaders 同形。接自有套餐后如鉴权方式变化，改这里即可。
+ */
+function createZaiLoginAuthHeaders(token: string): Record<string, string> {
+  return {
+    Authorization: token,
+    "Content-Type": "application/json",
+  };
 }
 
 export async function resolveAccountTeamPlanRuntimeApiKey(

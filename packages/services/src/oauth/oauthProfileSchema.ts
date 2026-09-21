@@ -4,7 +4,7 @@ import {
   type OAuthTokenSet,
   type OAuthUserProfile,
 } from "@zcode/shared";
-import type { OAuthProviderAdapter } from "./providers/index.js";
+import type { OAuthProviderAdapter } from "./providerAdapter.js";
 
 const BIGMODEL_PROFILE_SCHEMA_VERSION = 2;
 const BIGMODEL_PROFILE_MIGRATION_RETRY_DELAY_MS = 60 * 60 * 1000;

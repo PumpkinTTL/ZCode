@@ -1,6 +1,6 @@
 import type { UsageEntitlementSnapshot, UsageQuotaLimit } from "@zcode/shared";
 
-type CodingPlanQuotaResetFormat = "date" | "dateTime" | "adaptive";
+type QuotaResetTimeFormat = "date" | "dateTime" | "adaptive";
 
 /**
  * Token / Credit 类配额的等价 type 集合。
@@ -114,7 +114,7 @@ export function formatStartPlanBucketResetTime(
 export function formatQuotaResetTime(params: {
   locale: string;
   value: number | null | undefined;
-  format: CodingPlanQuotaResetFormat;
+  format: QuotaResetTimeFormat;
   compactToday?: boolean;
 }): string | undefined {
   if (!params.value) {

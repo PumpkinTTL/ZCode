@@ -15,6 +15,9 @@ import {
   type OAuthUserProfile,
   type UserInfo,
   resolveJwtExpiration,
+  ZCODE_VERSION,
+  buildRuntimeZCodeApiUrl,
+  buildRuntimeZCodeEndpointUrls,
 } from "@zcode/shared";
 import type { ICredentialService } from "../credential/credential.js";
 import { createServiceLogger } from "../logger/serviceLogger.js";
@@ -26,18 +29,45 @@ import {
   refreshLegacyBigModelCachedProfile,
   withProviderProfileSchema,
 } from "./oauthProfileSchema.js";
-import { createOAuthProviderAdapters, type OAuthProviderAdapter } from "./providers/index.js";
+import type { OAuthProviderAdapter } from "./providerAdapter.js";
 import { OAuthCredentialRepo } from "./repo/oauthCredentialRepo.js";
-import { createOAuthRuntimeConfig } from "./runtimeConfig.js";
-import {
-  buildDesktopOAuthRedirectUriFromEnv,
-  buildZCodeApiUrlFromEnv,
-} from "./providers/configUtils.js";
+import { createOAuthRuntimeConfig, type OAuthRuntimeConfig } from "./runtimeConfig.js";
 
 /** OAuth 超时时间（5 分钟） */
 const OAUTH_TIMEOUT_MS = 5 * 60 * 1000;
 const COMPLETED_POLLING_STATE_GRACE_MS = 30 * 1000;
 const ZCODE_JWT_TOKEN_KEY = "zcodejwttoken";
+const DESKTOP_OAUTH_CALLBACK_URI = "zcode://oauth/callback";
+
+// 以下两个 URL 构造 helper 原先放在 oauth/providers/configUtils.ts。
+// Polaris 剥离官方 provider 目录后，其仅剩调用方是本文件的 polling 流程，故就地保留。
+// OAuth provider 是运行时配置，必须跟随传入 env.ZCODE_ENV；地址来自 .env 的通用变量，默认线上。
+function buildZCodeApiUrlFromEnv(env: NodeJS.ProcessEnv, path: string): string {
+  return buildRuntimeZCodeApiUrl(env, path);
+}
+
+function buildDesktopOAuthRedirectUriFromEnv(env: NodeJS.ProcessEnv): string {
+  const url = new URL("/app/oauth/login", buildRuntimeZCodeEndpointUrls(env).origin);
+  url.searchParams.set("redirect", DESKTOP_OAUTH_CALLBACK_URI);
+  // Website 需要按 App 版本决定是否关闭自动 deep link；缺少版本时必须兼容旧客户端行为。
+  url.searchParams.set("app_version", ZCODE_VERSION);
+  return url.toString();
+}
+
+/**
+ * Polaris：官方账号适配器（Z.ai / BigModel）已剥离，这里恒定返回空列表。
+ * 服务主体（state 生命周期、凭据仓储、登出、401 归因）保持可用，
+ * 接入自有 OAuth provider 时在此返回适配器实现即可。
+ *
+ * 入参沿用原契约，使运行时配置装配点（createOAuthRuntimeConfig）继续有效。
+ */
+function createOAuthProviderAdapters(
+  _config: OAuthRuntimeConfig,
+  _options: { apiClient?: ApiClient } = {},
+): OAuthProviderAdapter[] {
+  return [];
+}
+
 const log = (...args: unknown[]) =>
   console.log(formatLogPrefix("oauthService", process.pid), ...args);
 const serviceLog = createServiceLogger("oauthService");

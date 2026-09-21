@@ -622,10 +622,6 @@ export function ModelProviderSectionDetail({
           teamPlanAvailabilityReason={
             selectedNavItem.type === "teamPlan" ? selectedNavItem.availabilityReason : undefined
           }
-          quotaResetSourceKey={
-            selectedNavItem.type === "teamPlan" ? selectedNavItem.key : selectedNavItem.presetId
-          }
-          quotaResetAccountAccess={selectedPlanAccess}
           onQuotaResetEntitlementRefresh={
             selectedNavItem.type === "teamPlan"
               ? () =>
@@ -739,10 +735,6 @@ export function ModelProviderSectionDetail({
             teamPlanAvailabilityReason={
               selectedNavItem.type === "teamPlan" ? selectedNavItem.availabilityReason : undefined
             }
-            quotaResetSourceKey={
-              selectedNavItem.type === "teamPlan" ? selectedNavItem.key : selectedNavItem.presetId
-            }
-            quotaResetAccountAccess={selectedPlanAccess}
             onQuotaResetEntitlementRefresh={
               selectedNavItem.type === "teamPlan"
                 ? () =>
