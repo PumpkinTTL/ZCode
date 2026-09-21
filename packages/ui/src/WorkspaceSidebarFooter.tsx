@@ -64,7 +64,7 @@ function getSidebarProfileName(user?: UserInfo | null): string {
     return username;
   }
 
-  return "ZCode";
+  return "Polaris";
 }
 
 function getSidebarProfileBadge(
@@ -90,7 +90,6 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   onThemeChange,
   onSettingsButtonClick,
   onUsageClick,
-  onUpgradeClick,
   onLogin,
   onLogout,
   settingsButtonMode = "settings",
@@ -108,9 +107,6 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   onThemeChange: (value: string) => void;
   onSettingsButtonClick?: () => void;
   onUsageClick?: () => void;
-  onUpgradeClick?: Parameters<
-    typeof WorkspaceSidebarFooterUsageSummaryContent
-  >[0]["onUpgradeClick"];
   onLogin?: () => void;
   onLogout?: () => void;
   settingsButtonMode?: "settings" | "back";
@@ -343,11 +339,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               </DropdownMenuSub>
             ) : null}
             {/* 升级入口状态不再以菜单开关为生命周期边界。*/}
-            <WorkspaceSidebarFooterUsageSummaryContent
-              state={usageSummaryState}
-              onUsageClick={usageButtonClick}
-              onUpgradeClick={onUpgradeClick}
-            />
+            <WorkspaceSidebarFooterUsageSummaryContent onUsageClick={usageButtonClick} />
             {onLogin && !user ? (
               <>
                 <DropdownMenuSeparator />

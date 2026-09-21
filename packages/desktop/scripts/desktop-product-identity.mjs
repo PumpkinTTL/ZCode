@@ -7,19 +7,19 @@ export const ZCODE_PREVIEW_IDENTITY_ENV = "ZCODE_PREVIEW_IDENTITY";
 
 const PRODUCTION_IDENTITY = Object.freeze({
   flavor: "production",
-  appId: "dev.zcode.app",
-  productName: "ZCode",
-  linuxExecutableName: "zcode",
-  linuxPackageName: "zcode",
+  appId: "com.bitlesu.polaris",
+  productName: "Polaris",
+  linuxExecutableName: "polaris",
+  linuxPackageName: "polaris",
   cuaHelperInstallVariant: null,
 });
 
 const PREVIEW_IDENTITY = Object.freeze({
   flavor: "preview",
-  appId: "dev.zcode.app.preview",
-  productName: "ZCode Preview",
-  linuxExecutableName: "zcode-preview",
-  linuxPackageName: "zcode-preview",
+  appId: "com.bitlesu.polaris.preview",
+  productName: "Polaris Preview",
+  linuxExecutableName: "polaris-preview",
+  linuxPackageName: "polaris-preview",
   cuaHelperInstallVariant: "preview",
 });
 
