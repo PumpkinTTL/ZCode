@@ -299,8 +299,10 @@ export const DefaultRuntimeConfig: RuntimeConfig = {
     allowMediumRiskInAuto: false,
   },
   storage: {
-    dir: "~/.zcode",
-    sessionDbPath: "~/.zcode/cli/db/db.sqlite",
+    // Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+    // 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+    dir: "~/.polaris",
+    sessionDbPath: "~/.polaris/cli/db/db.sqlite",
   },
   network: {
     timeout: 180000,

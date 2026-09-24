@@ -102,6 +102,8 @@ export const modelOptionSpecsDataSchema = z
 export const completeModelConfigDataSchema = z
   .object({
     enabled: z.boolean(),
+    // 纯展示名。真实请求仍然只用模型 ID，因此它可以缺席，也可以和 ID 完全不同。
+    displayName: z.string().min(1).optional(),
     properties: completeModelPropertiesDataSchema,
     optionSpecs: completeModelOptionSpecsDataSchema,
   })

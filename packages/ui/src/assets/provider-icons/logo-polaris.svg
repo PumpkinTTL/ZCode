@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Polaris 占位应用标识（北极星）。
+  与 packages/ui/src/components/ui/PolarisAboutLogo.tsx 同一枚星形，但这里必须是自带着色的
+  独立文件：它通过 <img src> 渲染，无法继承 currentColor。
+  品牌色在两个主题下都能读，所以不带主题分支。拿到正式设计稿后整体替换本文件即可。
+-->
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="256" height="256" rx="56" fill="#1B1E27"/>
+  <!-- 四角星主体：北极星 -->
+  <path
+    fill="#6E8BFF"
+    d="M128 36 L143 113 L220 128 L143 143 L128 220 L113 143 L36 128 L113 113 Z"
+  />
+  <!-- 环绕轨道弧，象征定位/指引 -->
+  <path
+    fill="#6E8BFF"
+    fill-opacity="0.55"
+    d="M64 158 C96 190 160 190 192 158 C196 154 201 158 198 163 C164 199 92 199 58 163 C55 158 60 154 64 158 Z"
+  />
+</svg>

@@ -4,10 +4,15 @@ type SkillSourceType = "glm" | "unknown";
 
 function resolveSkillSourceType(skillPath: string): SkillSourceType {
   const normalized = skillPath.replaceAll("\\", "/").toLowerCase();
-  if (normalized.includes("/.zcode/skills/")) {
+  // 用户级技能根跟数据根走（Polaris fork：`.polaris/skills`）；workspace 级仍是既定的
+  // `.zcode/skills` 点文件契约。两种形态都是原生来源，必须同时判到。
+  if (normalized.includes("/.polaris/skills/") || normalized.includes("/.zcode/skills/")) {
     return "glm";
   }
-  if (normalized.includes("/.zcode/cli/plugins/cache/")) {
+  if (
+    normalized.includes("/.polaris/cli/plugins/cache/") ||
+    normalized.includes("/.zcode/cli/plugins/cache/")
+  ) {
     return "glm";
   }
   return "unknown";
@@ -17,7 +22,7 @@ const SKILL_ID_PROVIDER_RE = /^glm:/;
 
 function isZcodeSkill(skill: { id?: string; path: string; scope?: string }): boolean {
   return (
-    // plugin skill 的真实路径在 CLI plugin cache 下，不在 `.zcode/skills`。
+    // plugin skill 的真实路径在 CLI plugin cache 下，不在 `.polaris/skills`。
     // 服务层已用 scope 标记来源，前端过滤时要放行，否则 `/` 和 `$` 面板会漏掉插件技能。
     skill.scope === "plugin" ||
     (typeof skill.id === "string" && SKILL_ID_PROVIDER_RE.test(skill.id)) ||

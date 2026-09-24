@@ -7,6 +7,9 @@ import { createZCodeCredentialCipher, type ZCodeCredentialCipher } from "./crede
 
 const ZCODE_DATA_BASE_DIR_ENV_KEY = "ZCODE_DATA_BASE_DIR";
 const ZAI_PROVIDER_ID = "zai";
+// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+const DATA_ROOT_DIR_NAME = ".polaris";
 const credentialChangeListeners = new Map<
   string,
   Set<() => void | Promise<void>>
@@ -286,7 +289,7 @@ export function resolveSharedZCodeCredentialsPath(
 
   const env = options.env ?? process.env;
   const baseDir = options.baseDir ?? env[ZCODE_DATA_BASE_DIR_ENV_KEY] ?? homedir();
-  return join(resolveUserPath(baseDir), ".zcode", "v2", "credentials.json");
+  return join(resolveUserPath(baseDir), DATA_ROOT_DIR_NAME, "v2", "credentials.json");
 }
 
 async function readRawCredentialRecord(filePath: string): Promise<Record<string, string>> {

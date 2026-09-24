@@ -24,6 +24,10 @@ import {
 } from "./serialize.js";
 import { maybeThrowStorageFsFault } from "../storage/fs-fault-injection.js";
 
+// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+const DATA_ROOT_DIR_NAME = ".polaris";
+
 export {
   LOG_CLEANUP_STARTUP_DELAY_MS,
   LOG_RETENTION_DAYS,
@@ -220,7 +224,7 @@ export function createNodeLoggerFactory(options: NodeLoggerFactoryOptions = {}):
 }
 
 export function getDefaultLogDir(): string {
-  return join(homedir(), ".zcode", "cli", "log");
+  return join(homedir(), DATA_ROOT_DIR_NAME, "cli", "log");
 }
 
 function getDefaultMinLevel(env: NodeJS.ProcessEnv | undefined): LogLevel {

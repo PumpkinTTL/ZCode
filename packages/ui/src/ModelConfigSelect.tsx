@@ -33,7 +33,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip.js";
-import { AlertCircle, CheckIcon, ChevronDownIcon, LoaderIcon, PackageIcon } from "lucide-react";
+import { AlertCircle, CheckIcon, ChevronDownIcon, LoaderIcon } from "lucide-react";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -46,11 +46,16 @@ import {
 } from "@/lib/pickerFocus.js";
 import { RollingToolbarLabel } from "@/chat-input-toolbar/RollingToolbarLabel.js";
 import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadge.js";
+import { ModelBrandIcon } from "@/components/ModelBrandIcon.js";
+import { decodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
 
 export interface ModelSelectGroupItem {
   key: string;
   value: string;
   name: string;
+  /** 品牌标解析素材：只描述模型身份，不参与 value、name 或任何请求字段。 */
+  iconModelId?: string;
+  iconProviderId?: string;
   badgeLabel?: string;
   supportsVisionInput?: boolean;
 }
@@ -136,9 +141,6 @@ interface ModelConfigSelectProps {
   modelGroups: readonly ModelSelectGroup[];
   normalizedValue: string;
   triggerLabel: string;
-  triggerLabelPrefix?: string;
-  triggerLabelValue?: string;
-  triggerLabelPrefixClassName?: string;
   showManageModelsAction: boolean;
   lockReasonMessage: string;
   isItemLocked: (candidateValue: string) => boolean;
@@ -187,9 +189,6 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
   modelGroups,
   normalizedValue,
   triggerLabel,
-  triggerLabelPrefix,
-  triggerLabelValue,
-  triggerLabelPrefixClassName,
   showManageModelsAction,
   lockReasonMessage,
   isItemLocked,
@@ -283,6 +282,20 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
     return pending && pendingLabel ? pendingLabel : (tooltipTitle ?? currentTriggerTitle);
   }, [currentTriggerTitle, pending, pendingLabel, tooltipTitle]);
 
+  // 触发器左侧的品牌标。命中选项就用选项自带的身份；选项已不可用（如被下线的自定义模型）
+  // 时退回解析 value 本身，避免品牌标突然消失。
+  const triggerIconIdentity = useMemo(() => {
+    const candidates = [...(leadingItems ?? []), ...modelGroups.flatMap((group) => group.items)];
+    const matched = candidates.find((item) => item.value === normalizedValue);
+    if (matched) {
+      return { modelId: matched.iconModelId ?? matched.value, providerId: matched.iconProviderId };
+    }
+    const decoded = decodeCustomModelValue(normalizedValue);
+    return decoded?.modelName
+      ? { modelId: decoded.modelName, providerId: decoded.providerId }
+      : { modelId: normalizedValue, providerId: undefined };
+  }, [leadingItems, modelGroups, normalizedValue]);
+
   const renderModelItem = useCallback(
     (item: ModelSelectGroupItem) => {
       const itemLocked = isItemLocked(item.value);
@@ -297,6 +310,11 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
       } as const;
       const content = (
         <>
+          <ModelBrandIcon
+            modelId={item.iconModelId ?? item.value}
+            providerId={item.iconProviderId}
+            className="pointer-events-none size-4 text-foreground-subtle"
+          />
           <span className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
             <span className="min-w-0 truncate" title={item.name}>
               {item.name}
@@ -496,17 +514,13 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
           triggerClassName,
         )}
       >
-        <PackageIcon
-          className={cn("pointer-events-none size-4 shrink-0 text-current", triggerIconClassName)}
-          aria-hidden="true"
+        <ModelBrandIcon
+          modelId={triggerIconIdentity.modelId}
+          providerId={triggerIconIdentity.providerId}
+          className={cn("pointer-events-none size-4 shrink-0", triggerIconClassName)}
         />
         <span className={triggerLabelClassName} title={currentTriggerTitle}>
-          <RollingToolbarLabel
-            label={currentTriggerLabel}
-            prefix={pending ? undefined : triggerLabelPrefix}
-            prefixClassName={triggerLabelPrefixClassName}
-            value={pending ? undefined : triggerLabelValue}
-          />
+          <RollingToolbarLabel label={currentTriggerLabel} />
         </span>
         {triggerBadge}
         {pending ? (

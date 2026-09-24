@@ -1947,7 +1947,7 @@ const enUS: Record<string, string> = {
   "settings.taskAutoArchiveDays.option.30": "Archive after 30 days",
   "settings.dataBaseDir": "Data storage path",
   "settings.dataBaseDirDescription":
-    "Root directory for app data (defaults to user home directory). Existing data will be copied to the new location. The .zcode/v2 suffix cannot be changed.",
+    "Root directory for app data (defaults to user home directory). Existing data will be copied to the new location. The .polaris/v2 suffix cannot be changed.",
   "settings.dataBaseDirPlaceholder": "Default: user home directory",
   "settings.dataBaseDirBrowse": "Choose folder",
   "settings.dataBaseDirSave": "Save",
@@ -3026,6 +3026,8 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.fieldHelp": "About {field}",
   "settings.modelProvider.help.contextWindow":
     "The context capacity the model can process at once, in tokens. Polaris uses this to manage context.\nDo not exceed the model's actual limit.",
+  "settings.modelProvider.help.modelDisplayName":
+    "A nickname used only for display: the model menu and model picker show this instead of the raw ID.\n**Requests always use the Model ID**, so renaming never affects API calls.\nLeave it empty to show the model ID as-is.",
   "settings.modelProvider.help.maxOutputTokens":
     "The maximum number of tokens a single model request may generate.\nDo not exceed the model's actual limit.",
   "settings.modelProvider.help.inputModalities":

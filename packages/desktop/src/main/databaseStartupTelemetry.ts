@@ -1,4 +1,4 @@
-import armsRum from "@arms/rum-electron";
+import telemetrySink from "./telemetrySink.js";
 import {
   ZCODE_VERSION,
   type DatabaseStartupState,
@@ -39,11 +39,11 @@ function send(
         deviceMid,
         platform: process.platform,
         appVersion: ZCODE_VERSION,
-        armsEnv: armsRum.getConfig().env === "prod" ? "prod" : "local",
+        armsEnv: telemetrySink.getConfig().env === "prod" ? "prod" : "local",
         rendererId: 0,
       },
     });
-    armsRum.sendCustom(payload as Parameters<typeof armsRum.sendCustom>[0]);
+    telemetrySink.sendCustom(payload as Parameters<typeof telemetrySink.sendCustom>[0]);
   } catch {
     /* 上报入口失败不能阻断启动或失败提示。 */
   }

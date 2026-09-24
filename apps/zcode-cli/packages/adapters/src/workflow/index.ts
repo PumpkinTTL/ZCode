@@ -19,6 +19,10 @@ import {
   WorkflowRunSnapshotSchema,
 } from "@zcode/contracts";
 
+// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+const DATA_ROOT_DIR_NAME = ".polaris";
+
 export interface NodeWorkflowStoreOptions {
   rootDir?: string;
 }
@@ -32,7 +36,7 @@ interface WorkflowIndexFile {
   runs: WorkflowRunListItem[];
 }
 
-const DEFAULT_WORKFLOW_ROOT = join(homedir(), ".zcode", "cli", "workflows");
+const DEFAULT_WORKFLOW_ROOT = join(homedir(), DATA_ROOT_DIR_NAME, "cli", "workflows");
 const WORKFLOW_DEFINITION_FILE_EXTENSION = ".json";
 
 export class NodeWorkflowStore implements WorkflowStorePort {

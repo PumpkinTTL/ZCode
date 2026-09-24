@@ -1836,7 +1836,7 @@ const zhCN: Record<string, string> = {
   "settings.taskAutoArchiveDays.option.30": "30 天后归档",
   "settings.dataBaseDir": "数据存储路径",
   "settings.dataBaseDirDescription":
-    "应用数据的根目录（默认为用户主目录），修改后会将现有数据复制到新位置。路径后缀 .zcode/v2 不可更改。",
+    "应用数据的根目录（默认为用户主目录），修改后会将现有数据复制到新位置。路径后缀 .polaris/v2 不可更改。",
   "settings.dataBaseDirPlaceholder": "默认：用户主目录",
   "settings.dataBaseDirBrowse": "选择文件夹",
   "settings.dataBaseDirSave": "保存",
@@ -2833,6 +2833,8 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.fieldHelp": "{field}说明",
   "settings.modelProvider.help.contextWindow":
     "模型一次可处理的上下文容量，单位为 Token。Polaris 会据此管理上下文。\n请勿超过模型的实际上限。",
+  "settings.modelProvider.help.modelDisplayName":
+    "只用于界面展示的昵称：模型菜单、模型选择器里显示的就是它。\n**真实请求始终使用「模型 ID」**，改昵称不会影响接口调用。\n留空时直接显示模型 ID。",
   "settings.modelProvider.help.maxOutputTokens":
     "单次模型请求允许生成的最大 Token 数。\n请勿超过模型的实际上限。",
   "settings.modelProvider.help.inputModalities":

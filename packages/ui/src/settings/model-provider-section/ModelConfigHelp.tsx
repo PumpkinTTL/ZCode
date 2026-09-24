@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 type ModelConfigHelpField =
+  | "modelDisplayName"
   | "contextWindow"
   | "maxOutputTokens"
   | "inputModalities"

@@ -3,12 +3,11 @@ import {
   resolveModelProviderFamilyIdByProviderId,
 } from "@zcode/shared";
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
-import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
+import type { ModelSelectGroup, ModelSelectGroupItem } from "@/ModelConfigSelect.js";
 
 interface V4ModelTriggerDisplay {
   fullLabel: string;
   modelLabel: string;
-  providerPrefix?: string;
 }
 
 export function formatModelChangeLabel(
@@ -53,28 +52,33 @@ export function formatProviderModelLabel(
   return normalizedProviderName ? `${normalizedProviderName}/${modelName}` : modelName;
 }
 
+function findSelectedModelItem(
+  modelGroups: readonly ModelSelectGroup[],
+  normalizedValue: string,
+): ModelSelectGroupItem | undefined {
+  const selectedGroup = modelGroups.find((group) =>
+    group.items.some((item) => item.value === normalizedValue),
+  );
+  return selectedGroup?.items.find((item) => item.value === normalizedValue);
+}
+
+/**
+ * 触发器**可见**文案：只有模型名。
+ *
+ * Provider 层已经从模型菜单里移除，品牌身份改由模型前的图标承担；把
+ * `Provider/模型` 再拼进触发器，等于把刚删掉的那一层又写回界面上。
+ * 需要完整身份（含 Provider）的地方走 `formatProviderModelLabel` 或下面的 `fullLabel`。
+ */
 export function resolveV4ModelTriggerLabel({
   modelGroups,
   normalizedValue,
   fallbackLabel,
-  providerId,
-  providerName,
 }: {
   modelGroups: readonly ModelSelectGroup[];
   normalizedValue: string;
   fallbackLabel: string;
-  providerId: string | undefined;
-  providerName?: string;
 }): string {
-  const selectedGroup = modelGroups.find((group) =>
-    group.items.some((item) => item.value === normalizedValue),
-  );
-  const selectedItem = selectedGroup?.items.find((item) => item.value === normalizedValue);
-  if (!selectedGroup || !selectedItem) {
-    return fallbackLabel;
-  }
-
-  return formatProviderModelLabel(providerId, providerName, selectedItem.name);
+  return findSelectedModelItem(modelGroups, normalizedValue)?.name ?? fallbackLabel;
 }
 
 export function resolveV4ModelTriggerDisplay({
@@ -90,35 +94,14 @@ export function resolveV4ModelTriggerDisplay({
   providerId: string | undefined;
   providerName?: string;
 }): V4ModelTriggerDisplay {
-  // 把 provider/model 预先拼成单一字符串后，响应式布局只能整段隐藏或依赖
-  // 平台 JS 分支裁剪；这里保留结构化前缀，让 composer 容器断点统一决定可见密度。
-  const fullLabel = resolveV4ModelTriggerLabel({
-    modelGroups,
-    normalizedValue,
-    fallbackLabel,
-    providerId,
-    providerName,
-  });
-  const selectedGroup = modelGroups.find((group) =>
-    group.items.some((item) => item.value === normalizedValue),
-  );
-  const selectedItem = selectedGroup?.items.find((item) => item.value === normalizedValue);
-  if (!selectedGroup || !selectedItem) {
-    return { fullLabel, modelLabel: fallbackLabel };
-  }
-
-  const modelLabel = selectedItem.name;
-  const normalizedProviderName = providerName?.trim();
-  if (
-    !normalizedProviderName ||
-    (providerId && resolveModelProviderFamilyIdByProviderId(providerId))
-  ) {
-    return { fullLabel, modelLabel };
+  const selectedItem = findSelectedModelItem(modelGroups, normalizedValue);
+  if (!selectedItem) {
+    return { fullLabel: fallbackLabel, modelLabel: fallbackLabel };
   }
 
   return {
-    fullLabel,
-    providerPrefix: `${normalizedProviderName}/`,
-    modelLabel,
+    // 完整身份只给 tooltip 与 aria-label，不参与可见文案。
+    fullLabel: formatProviderModelLabel(providerId, providerName, selectedItem.name),
+    modelLabel: selectedItem.name,
   };
 }

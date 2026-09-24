@@ -47,9 +47,14 @@ export function formatZCodeHostProcessName(label?: string): string {
   return joinZCodeProcessName("host", label);
 }
 
+// 主窗口标题（改名前后都认）：否则窗口标题一变，进程名就退化成标题本身。
+const MAIN_RENDERER_WINDOW_TITLES = new Set(["ZCode", "Polaris"]);
+// 远端窗口标题前缀，同样同时认改名前后两种写法。
+const REMOTE_RENDERER_WINDOW_PREFIXES = ["ZCode - ", "Polaris - "];
+
 export function formatZCodeRendererProcessName(windowTitle?: string): string {
   const normalizedTitle = windowTitle?.trim();
-  if (!normalizedTitle || normalizedTitle === "ZCode") {
+  if (!normalizedTitle || MAIN_RENDERER_WINDOW_TITLES.has(normalizedTitle)) {
     return joinZCodeProcessName("renderer", "main");
   }
 
@@ -57,13 +62,10 @@ export function formatZCodeRendererProcessName(windowTitle?: string): string {
     return joinZCodeProcessName("renderer", "resource-manager");
   }
 
-  const remoteWindowPrefix = "ZCode - ";
-  if (normalizedTitle.startsWith(remoteWindowPrefix)) {
-    return joinZCodeProcessName(
-      "renderer",
-      "remote",
-      normalizedTitle.slice(remoteWindowPrefix.length),
-    );
+  for (const prefix of REMOTE_RENDERER_WINDOW_PREFIXES) {
+    if (normalizedTitle.startsWith(prefix)) {
+      return joinZCodeProcessName("renderer", "remote", normalizedTitle.slice(prefix.length));
+    }
   }
 
   return joinZCodeProcessName("renderer", normalizedTitle);

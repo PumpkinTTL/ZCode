@@ -192,15 +192,23 @@ function WorkflowRunSettingsForm({
           host.sessionModel.modelId,
         );
   const sessionBadge = format("chat.toolCall.workflow.run.settings.model.session");
+  // 会话模型项的 value 是哨兵值、不是 provider/model，所以品牌标身份单独带上。
+  const sessionModelIdentity = host.sessionModel;
   // 两个字段都是字符串，所以这一项只在文案真变了时换引用；下游的模型选择器是 memo 组件。
   const sessionModelItem = useMemo(
     () => ({
       key: "workflow-settings:session-model",
       value: SESSION_MODEL_VALUE,
       name: sessionModelName,
+      ...(sessionModelIdentity === undefined
+        ? {}
+        : {
+            iconModelId: sessionModelIdentity.modelId,
+            iconProviderId: sessionModelIdentity.providerId,
+          }),
       badgeLabel: sessionBadge,
     }),
-    [sessionModelName, sessionBadge],
+    [sessionModelName, sessionBadge, sessionModelIdentity],
   );
   const draftModel = draft.model;
   const modelValue =

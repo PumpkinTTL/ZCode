@@ -17,6 +17,9 @@ type EnvRecord = Record<string, string | undefined>;
 
 const TELEMETRY_STATE_LOCK_STALE_MS = 5 * 60_000;
 const TELEMETRY_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/u;
+// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+const DATA_ROOT_DIR_NAME = ".polaris";
 const BUILD_COMMIT_PATTERN = /^[0-9a-f]{7,64}$/iu;
 const pendingStandaloneDeviceMidByStateFile = new Map<string, Promise<string | undefined>>();
 let preparedOwner: AgentTelemetryRuntimeOwner | undefined;
@@ -225,7 +228,7 @@ async function resolveStandaloneDeviceMid(
 ): Promise<string | undefined> {
   const stateFile = zcodeHome
     ? join(zcodeHome, "v2", "telemetry-state.json")
-    : join(homedir(), ".zcode", "v2", "telemetry-state.json");
+    : join(homedir(), DATA_ROOT_DIR_NAME, "v2", "telemetry-state.json");
   const pending = pendingStandaloneDeviceMidByStateFile.get(stateFile);
   if (pending) return pending;
   const resolution = resolveStandaloneDeviceMidFromFile(stateFile);

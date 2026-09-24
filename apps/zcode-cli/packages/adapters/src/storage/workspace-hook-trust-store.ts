@@ -19,6 +19,9 @@ const LOCK_RETRY_MS = 10;
 const DEFAULT_RENAME_RETRY_DELAYS_MS = [50, 100, 200, 400, 800] as const;
 const SECURITY_DIRECTORY = "security";
 const TRUST_STORE_FILE = "workspace-hook-trust-v1.json";
+// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+const DATA_ROOT_DIR_NAME = ".polaris";
 // 进程启动时间的比较容差：ps/proc 的秒级精度 + 调度延迟，2s 足以覆盖且不放过复用。
 const LOCK_START_TIME_TOLERANCE_MS = 2_000;
 const PROC_CLOCK_TICKS_PER_SECOND = 100;
@@ -132,12 +135,14 @@ export async function resolveWorkspaceHookTrustStorePath(
 ): Promise<string> {
   const home = resolve(options.homeDir ?? homedir());
   const userConfigPath = resolve(
-    options.userConfigPath ?? join(home, ".zcode", "cli", "config.json"),
+    options.userConfigPath ?? join(home, DATA_ROOT_DIR_NAME, "cli", "config.json"),
   );
   const config = await readUserConfig(userConfigPath);
   const storage = isRecord(config.storage) ? config.storage : {};
   const configured = typeof storage.dir === "string" ? storage.dir.trim() : "";
-  const storageRoot = configured ? resolveTrustedUserPath(configured, home) : join(home, ".zcode");
+  const storageRoot = configured
+    ? resolveTrustedUserPath(configured, home)
+    : join(home, DATA_ROOT_DIR_NAME);
   return join(storageRoot, SECURITY_DIRECTORY, TRUST_STORE_FILE);
 }
 

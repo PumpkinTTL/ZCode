@@ -17,6 +17,14 @@ import type { CliEnv } from "./env.js";
 
 export const SEA_ZCODE_BUILTIN_PROVIDER_CONFIG_ASSET_KEY = "zcode-provider/zcode-builtin.json";
 
+/**
+ * Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+ * 因此这里保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME`
+ * （以及桌面端 `getAppConfigDir()` = `<dataBaseDir>/.polaris/v2`）保持一致，
+ * 否则 CLI 与桌面/Agent 会读写两份 provider 配置。
+ */
+const DATA_ROOT_DIR_NAME = ".polaris";
+
 export function createCliProviderRefreshReporter(
   stderr: Pick<NodeJS.WriteStream, "write"> = process.stderr,
 ) {
@@ -73,12 +81,13 @@ export async function prepareCliProviderRuntimeEnv(
       sea: options.sea ?? getSeaProviderConfigAssets(),
     }));
   const personalFilePath =
-    explicitPersonal ?? join(dataBaseDir, ".zcode", "v2", PERSONAL_PROVIDER_CONFIG_FILE_NAME);
+    explicitPersonal ??
+    join(dataBaseDir, DATA_ROOT_DIR_NAME, "v2", PERSONAL_PROVIDER_CONFIG_FILE_NAME);
   const appVersion = options.appVersion ?? ZCODE_VERSION;
   const platform = options.platform ?? resolveZCodeBuiltinClientPlatform();
   const zcodeEndpointOrigin = resolveRuntimeZCodeEndpointOrigin(options.env);
   const cachePaths = resolveZCodeBuiltinCachePaths({
-    environmentConfigRoot: join(dataBaseDir, ".zcode", "v2"),
+    environmentConfigRoot: join(dataBaseDir, DATA_ROOT_DIR_NAME, "v2"),
     platform,
     appVersion,
     zcodeEndpointOrigin,
@@ -137,7 +146,7 @@ async function resolveBundledZCodeBuiltinProviderConfig(input: {
   if (input.sea?.isSea()) {
     const content = input.sea.getAsset(SEA_ZCODE_BUILTIN_PROVIDER_CONFIG_ASSET_KEY, "utf8");
     return materializeZCodeBuiltinProviderConfig({
-      environmentConfigRoot: join(input.dataBaseDir, ".zcode", "v2"),
+      environmentConfigRoot: join(input.dataBaseDir, DATA_ROOT_DIR_NAME, "v2"),
       content,
     });
   }

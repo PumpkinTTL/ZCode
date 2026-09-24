@@ -1,7 +1,7 @@
 import { createUuid } from "@zcode/shared";
 import { mkdir, open, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { getAppConfigDir } from "../paths.js";
+import { getAppConfigDir, DATA_ROOT_DIR_NAME } from "../paths.js";
 
 const LOCK_RETRY_DELAY_MS = 10;
 const LOCK_RETRY_COUNT = 200;
@@ -22,14 +22,14 @@ const deviceMidCacheByStateFile = new Map<string, Promise<string>>();
 // 路径与字段，改名等于重置用户的设备身份，因此文件名保持不变。
 function resolveDeviceStateFile(homeDir?: string): string {
   if (homeDir) {
-    return join(homeDir, ".zcode", "v2", "telemetry-state.json");
+    return join(homeDir, DATA_ROOT_DIR_NAME, "v2", "telemetry-state.json");
   }
   return join(getAppConfigDir(), "telemetry-state.json");
 }
 
 function resolveDeviceStateLockFile(homeDir?: string): string {
   if (homeDir) {
-    return join(homeDir, ".zcode", "v2", "telemetry-state.lock");
+    return join(homeDir, DATA_ROOT_DIR_NAME, "v2", "telemetry-state.lock");
   }
   return join(getAppConfigDir(), "telemetry-state.lock");
 }

@@ -27,6 +27,7 @@ import {
 } from "@zcode/shared";
 import { resolvePlatformKeyForPackagedApp } from "../../scripts/target-platform.mjs";
 import {
+  DATA_ROOT_DIR_NAME,
   getAppConfigDir,
   getDataBaseDir,
   ZCODE_CUA_BUNDLED_HELPER_APP_PATH_ENV,
@@ -58,9 +59,16 @@ function isTruthyRuntimeEnvOverride(name: string): boolean {
 // e2e 运行的是生产构建，默认会和本机正式版 ZCode 共用 app name / userData，
 // 触发 Electron 单实例锁后只激活已有窗口，Chromedriver 无法接管测试进程。
 // 这里允许测试显式隔离运行时身份，正常桌面/远控路径保持原来的默认值。
+// Polaris fork：产品改名。这个名字同时决定 app.setName()（macOS 应用菜单）、process.title
+// 和 Electron userData 目录名（见下方 runtimeUserDataPath），所以它必须是我们自己的名字，
+// 否则会与官方 ZCode 的 %APPDATA%/ZCode 目录互相覆盖。
 export const runtimeApplicationName =
   readRuntimeEnvOverride("ZCODE_DESKTOP_APPLICATION_NAME") ??
-  (isLocalDevelopmentRuntime ? "ZCode Dev" : isPreviewPackagedRuntime ? "ZCode Preview" : "ZCode");
+  (isLocalDevelopmentRuntime
+    ? "Polaris Dev"
+    : isPreviewPackagedRuntime
+      ? "Polaris Preview"
+      : "Polaris");
 // Electron 的 app.getPath("home") 不一定跟随测试进程里的 HOME 覆盖。
 // e2e 默认工作区依赖 home 路径，因此提供显式覆盖，避免测试写到开发者真实 ~/PolarisProject。
 export const runtimeHomePath = readRuntimeEnvOverride("ZCODE_DESKTOP_HOME_DIR");
@@ -495,7 +503,7 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
             )
           ? rawInheritedEnv.ZCODE_CUA_BUNDLED_HELPER_APP_PATH?.trim() ||
             join(
-              rawInheritedEnv.ZCODE_HOME?.trim() || join(homedir(), ".zcode"),
+              rawInheritedEnv.ZCODE_HOME?.trim() || join(homedir(), DATA_ROOT_DIR_NAME),
               "computer-use",
               "dev",
               DEV_HELPER_APP_NAME,

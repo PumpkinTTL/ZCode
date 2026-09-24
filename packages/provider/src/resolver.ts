@@ -78,6 +78,8 @@ export function serializeRegistryModelConfig(
 ): RegistryModelConfigObject {
   return {
     enabled: config.enabled,
+    // 展示名必须过线，否则 Renderer 只能拿到 ID，昵称在模型菜单里不可见。
+    ...(config.displayName === undefined ? {} : { displayName: config.displayName }),
     properties: {
       requiresMfjsToolSchema: config.properties.requiresMfjsToolSchema,
       contextWindow: config.properties.contextWindow,

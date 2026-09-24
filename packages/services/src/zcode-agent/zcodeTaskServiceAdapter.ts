@@ -149,6 +149,7 @@ import {
 import { claudeNativeSessionImportRepo } from "#src/session/claude-native/claudeNativeSessionImportRepo.js";
 import { importClaudeNativeSessions } from "#src/session/claude-native/claudeNativeSessionImportService.js";
 import { buildImportedClaudeTaskId } from "#src/session/claude-native/buildImportedClaudeTaskFile.js";
+import { DATA_ROOT_DIR_NAME } from "#src/paths.js";
 import {
   readLegacyImportedClaudeHistory,
   repairImportedClaudeSessionSnapshot,
@@ -243,7 +244,8 @@ function formatZCodeAgentLogDate(now: Date): string {
 
 function resolveZCodeAgentCurrentLogFilePath(now = new Date()): string {
   const configuredLogDir = process.env.ZCODE_LOG_DIR?.trim();
-  const logDir = configuredLogDir || join(homedir(), ".zcode", "cli", "log");
+  // 与 CLI 侧 logging/index.ts 的 getDefaultLogDir() 同根（都取家目录数据根）。
+  const logDir = configuredLogDir || join(homedir(), DATA_ROOT_DIR_NAME, "cli", "log");
   return join(logDir, `zcode-${formatZCodeAgentLogDate(now)}.jsonl`);
 }
 

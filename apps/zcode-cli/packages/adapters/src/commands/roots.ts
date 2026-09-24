@@ -8,6 +8,10 @@ const GIT_MARKER = ".git";
 const HOME_PREFIX = "~/";
 const PRIORITY_STEP = 10;
 const ZCODE_DIR = ".zcode";
+// Polaris fork：用户级数据根目录名（`.zcode` → `.polaris`）。CLI 不依赖 @zcode/services，
+// 无法直接 import DATA_ROOT_DIR_NAME，因此保留字面量，指向 packages/services/src/paths.ts 的同名常量。
+// 只用于用户级；workspace 级仍是既定的 `.zcode` 点文件契约，不跟着改。
+const ZCODE_USER_DIR = ".polaris";
 const AGENTS_DIR = ".agents";
 
 export interface CustomCommandRootResolutionOptions {
@@ -97,9 +101,11 @@ function commandRootsForBase(
   nextPriority: () => number,
 ): CustomCommandRoot[] {
   // 合并而不是 fallback：兼容 `.agents` 命令和原生 `.zcode` 命令需要同时可见。
-  // 同一级别 `.zcode` 先扫描，命令同名时仍按“先到先赢”处理。
+  // 同一级别原生目录先扫描，命令同名时仍按“先到先赢”处理。
+  // 用户级目录名跟数据根走（`.polaris`），workspace 级仍是 `.zcode`。
+  const zcodeDir = scope === "user" ? ZCODE_USER_DIR : ZCODE_DIR;
   return [
-    root(join(baseDirectory, ZCODE_DIR, COMMANDS_DIR), scope, "zcode", nextPriority()),
+    root(join(baseDirectory, zcodeDir, COMMANDS_DIR), scope, "zcode", nextPriority()),
     root(join(baseDirectory, AGENTS_DIR, COMMANDS_DIR), scope, "agents", nextPriority()),
   ];
 }

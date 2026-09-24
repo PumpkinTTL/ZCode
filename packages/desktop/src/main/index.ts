@@ -4,12 +4,12 @@ import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
 import { powerMonitor, powerSaveBlocker } from "electron";
 import { crashCapturePaths } from "./appCrashCaptureBootstrap.js";
-import { armsInitPromise } from "./appARMSBootstrap.js";
+import { telemetryInitPromise } from "./appARMSBootstrap.js";
 import {
   onLocalDatabaseStartupReady,
   configureDatabaseStartupQuit,
 } from "./databaseStartupRelay.js";
-import armsRum from "@arms/rum-electron";
+import telemetrySink from "./telemetrySink.js";
 import { createArmsUserIdentitySync } from "./armsUserIdentity.js";
 import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
 import {
@@ -56,6 +56,7 @@ import {
   createTelemetryAuthorizationLoader,
   buildRuntimeProcessEnvPatch,
   captureLoginShellEnvSnapshot,
+  DATA_ROOT_DIR_NAME,
   getConversationWorkspaceDir,
   getDataBaseDir,
   getZCodeDataRootDir,
@@ -529,7 +530,8 @@ async function runBrowserCommandOnView(params: {
 let currentDesktopZoomLevel = 0;
 let currentDesktopWindowSize: DesktopWindowSize | undefined;
 const preloadPath = join(import.meta.dirname, "../preload/index.cjs");
-const settingsFile = join(homedir(), ".zcode", "v2", "setting.json");
+// 启动引导配置固定在家目录数据根（dataBaseDir 只影响业务数据，setting.json 不随其迁移）。
+const settingsFile = join(homedir(), DATA_ROOT_DIR_NAME, "v2", "setting.json");
 let activeAppShutdownPolicy = resolveAppShutdownPolicy("normal", process.platform);
 let activeAppShutdownKind: AppShutdownKind | null = null;
 const WINDOWS_AGENT_FORCE_KILL_TIMEOUT_MS = 2_000;
@@ -831,7 +833,7 @@ const armsUserIdentitySync = createArmsUserIdentitySync({
   // 采集停用时 SDK 未初始化，setConfig 会抛错。
   setUser:
     ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT
-      ? (user) => armsRum.setConfig("user", user)
+      ? (user) => telemetrySink.setConfig("user", user)
       : () => {},
 });
 
@@ -2123,8 +2125,8 @@ app.whenReady().then(async () => {
     listSSHConfigAliases,
   });
 
-  // 等待 ARMS 完成 init（含渲染进程注入监听），避免首窗 dom-ready 早于 SDK 注册导致无上报
-  await armsInitPromise;
+  // 等待遥测出口完成 init（含渲染进程注入监听），避免首窗 dom-ready 早于注册导致无上报
+  await telemetryInitPromise;
 
   // ARMS init 完成后首次写入 user.name（落 device_mid）
   void armsUserIdentitySync.refresh();

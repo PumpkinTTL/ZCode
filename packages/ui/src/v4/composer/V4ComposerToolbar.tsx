@@ -977,10 +977,9 @@ function V4ComposerModelControlsImpl({
         <ModelConfigSelect
           modelGroups={modelSelectGroups}
           normalizedValue={normalizedModelValue}
-          triggerLabel={modelTriggerDisplay.fullLabel}
-          triggerLabelPrefix={modelTriggerDisplay.providerPrefix}
-          triggerLabelValue={modelTriggerDisplay.modelLabel}
-          triggerLabelPrefixClassName="composer-provider-prefix hidden @2xl/composer:inline group-data-[composer-provider-compact=true]/toolbar:hidden"
+          // 触发器只显示模型名：Provider 层已从模型菜单移除，品牌信息由模型前的图标承担。
+          // 完整身份（Provider/模型）仍通过 tooltipTitle 与 aria-label 暴露给悬停与读屏。
+          triggerLabel={modelTriggerDisplay.modelLabel}
           showManageModelsAction={showManageModelsAction}
           manageModelsLabel={manageModelsLabel}
           onManageModels={handleOpenModelProviderSettings}
@@ -1000,7 +999,7 @@ function V4ComposerModelControlsImpl({
           indicatorClassName="hidden @sm/composer:block group-data-[composer-model-icon=true]/toolbar:hidden"
           triggerLabelClassName="hidden min-w-0 text-left @sm/composer:block group-data-[composer-model-icon=true]/toolbar:hidden [&>span]:max-w-full [&>span>span]:block [&>span>span]:truncate"
           triggerClassName="composer-model-trigger max-w-[var(--composer-model-max-width,16rem)] group-data-[composer-model-icon=true]/toolbar:size-7 group-data-[composer-model-icon=true]/toolbar:p-0 group-data-[composer-model-icon=true]/toolbar:gap-0 group-data-[composer-model-icon=true]/toolbar:justify-center @max-sm/composer:size-7 @max-sm/composer:justify-center @max-sm/composer:gap-0 @max-sm/composer:p-0"
-          triggerIconClassName="inline-flex @sm/composer:hidden group-data-[composer-model-icon=true]/toolbar:inline-flex"
+          triggerIconClassName="inline-flex"
           focusSelectorOnClose={V4_COMPOSER_INPUT_SELECTOR}
           providerSubmenuClassName={providerSubmenuClassName}
         />

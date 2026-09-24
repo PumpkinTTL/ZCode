@@ -7,6 +7,8 @@ export const manualModelConfigSchema = completeModelConfigDataSchema
   .pick({ enabled: true })
   .extend({
     enabled: modelConfigDataSchema.shape.enabled,
+    // 纯展示名由用户拥有：它和 ID 一起构成一条手动规则的完整表述。
+    displayName: complete.displayName,
     properties: complete.properties
       .pick({
         contextWindow: true,

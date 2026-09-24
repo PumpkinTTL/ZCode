@@ -31,6 +31,11 @@ import type {
   ResolvedAiSdkModel,
 } from "./runner-runtime.js";
 
+// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+// 读取侧在同根的 services/zcode-agent/modelTrajectoryFileTail.ts。
+const DATA_ROOT_DIR_NAME = ".polaris";
+
 // 生产环境 rollout 目录最多保留的 model-io 会话文件数。超出删最旧。
 const MAX_ROLLOUT_FILES = 3;
 // 生产环境单个 session 的 model-io 文件硬上限。诊断日志不能因为无限增长影响 agent 主流程。
@@ -585,9 +590,9 @@ function sanitizeFileSegment(value?: string): string {
 }
 
 // storage profile 回滚删除了自定义 CLI 根模块，遗留 import 会让 adapters 无法构建。
-// 这里保持历史语义：开发态写 ~/.zcode/cli/debug，生产态写 ~/.zcode/cli/rollout。
+// 这里保持历史语义：开发态写 ~/.polaris/cli/debug，生产态写 ~/.polaris/cli/rollout。
 function getModelIOBaseDir(isDev: boolean): string {
-  return join(homedir(), ".zcode", "cli", isDev ? "debug" : "rollout");
+  return join(homedir(), DATA_ROOT_DIR_NAME, "cli", isDev ? "debug" : "rollout");
 }
 
 function stringifyDebugRecord(record: Record<string, unknown>): string {

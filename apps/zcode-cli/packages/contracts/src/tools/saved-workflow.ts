@@ -25,10 +25,12 @@ export const SAVED_WORKFLOW_PROJECT_DIR = ".zcode/workflows";
 export const WORKFLOW_DRAFTS_DIR = ".zcode/workflow-drafts";
 
 /**
- * 全局作用域的存放目录（相对 agent 进程的家目录）。落点 `~/.zcode/workflows/<name>.dwf.ts`
+ * 全局作用域的存放目录（相对 agent 进程的家目录）。落点 `~/.polaris/workflows/<name>.dwf.ts`
  * ——与 legacy Workflow 工具的用户根同一处，对所有项目可见。
+ * Polaris fork：这一级是家目录数据根（`.zcode` → `.polaris`），与 packages/services/src/paths.ts
+ * 的 `DATA_ROOT_DIR_NAME` 保持一致；项目档仍是既定的 `.zcode/workflows/` 点文件契约。
  */
-export const SAVED_WORKFLOW_GLOBAL_DIR = ".zcode/workflows";
+export const SAVED_WORKFLOW_GLOBAL_DIR = ".polaris/workflows";
 
 /**
  * 名字的合法形状。与旧 `Workflow` 工具的解析器同一条模式（script-workflow-tool-port.ts）——
@@ -42,7 +44,7 @@ export const SAVED_WORKFLOW_MAX_NAME_CHARS = 64;
 
 /**
  * 作用域。两档：`project` 落在项目的 `.zcode/workflows/`，只在那个项目里可见；`global`
- * 落在 `~/.zcode/workflows/`（agent 进程的家目录），对所有项目可见。一个文件的作用域由它所在的目录推得，frontmatter 不存。
+ * 落在 `~/.polaris/workflows/`（agent 进程的家目录），对所有项目可见。一个文件的作用域由它所在的目录推得，frontmatter 不存。
  */
 export const SAVED_WORKFLOW_SCOPES = ["project", "global"] as const;
 

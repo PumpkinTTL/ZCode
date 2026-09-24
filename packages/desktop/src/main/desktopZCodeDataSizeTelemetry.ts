@@ -1,4 +1,4 @@
-import armsRum from "@arms/rum-electron";
+import telemetrySink from "./telemetrySink.js";
 import type { ArmsRumEnv, FinalArmsCustomEventPayload } from "@zcode/shared";
 
 import type { ZCodeDataSizeScanResult } from "./zcodeDataSizeScanner.js";
@@ -411,7 +411,7 @@ export function registerDesktopZCodeDataSizeTelemetry(options: {
     readState: () => readZCodeDataSizeTelemetryState(options.stateFile),
     report: (result) => {
       const payload = buildZCodeDataSizeArmsPayload({ context: options.context, result });
-      armsRum.sendCustom({
+      telemetrySink.sendCustom({
         group: payload.group,
         name: payload.name,
         properties: payload.properties,

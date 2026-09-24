@@ -1,7 +1,7 @@
 import { open } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { getDataBaseDir } from "#src/paths.js";
+import { DATA_ROOT_DIR_NAME, getDataBaseDir } from "#src/paths.js";
 
 // 32 MiB 足以覆盖常规最近调用，同时避免 64/256 MiB 诊断文件造成 Host 内存峰值。
 const MAX_TRAJECTORY_READ_BYTES = 32 * 1024 * 1024;
@@ -13,10 +13,11 @@ export interface TrajectoryFileTail {
 }
 
 // debug（开发态）与 rollout（生产态）都尝试，避免数据目录环境变量差异导致读不到。
+// 写入侧（apps/zcode-cli 的 runner-debug.ts）与这里同根：`<home 或 dataBaseDir>/.polaris/cli/{debug,rollout}`。
 export function resolveModelIODirs(): string[] {
   const roots = new Set<string>([
-    join(homedir(), ".zcode", "cli"),
-    join(getDataBaseDir(), ".zcode", "cli"),
+    join(homedir(), DATA_ROOT_DIR_NAME, "cli"),
+    join(getDataBaseDir(), DATA_ROOT_DIR_NAME, "cli"),
   ]);
   return [...roots].flatMap((root) => [join(root, "debug"), join(root, "rollout")]);
 }

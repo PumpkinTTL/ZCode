@@ -1,4 +1,4 @@
-import armsRum from "@arms/rum-electron";
+import telemetrySink from "./telemetrySink.js";
 import {
   bytesToKb,
   createMemorySampleWriteGate,
@@ -154,7 +154,7 @@ function reportResourceCustom(
   }
 
   try {
-    armsRum.sendCustom(payload);
+    telemetrySink.sendCustom(payload);
   } catch (error) {
     console.warn("[resource] sendCustom failed:", name, error);
   }
@@ -421,7 +421,7 @@ export function configureDesktopResourceTelemetry(context: ResourceGlobalContext
   globalContext = context;
   desktopHardware = resolveDesktopHardware(context.platform);
 
-  armsRum.setConfig("properties", {
+  telemetrySink.setConfig("properties", {
     device_mid: context.deviceMid,
     platform: normalizeOsCategory(context.platform),
     app_version: context.appVersion,

@@ -227,13 +227,13 @@ export function getLegacyDeletedTaskSessionSnapshotPath(
 }
 
 /**
- * Copy the .zcode/v2 data directory from one base dir to another.
+ * Copy the .polaris/v2 data directory from one base dir to another.
  * Excludes setting.json and its transient atomic-write siblings — bootstrap
  * state must only live at the default homedir location.
  */
 export async function copyDataDirectory(oldBaseDir: string, newBaseDir: string): Promise<void> {
-  const oldDir = join(oldBaseDir, ".zcode", "v2");
-  const newDir = join(newBaseDir, ".zcode", "v2");
+  const oldDir = join(oldBaseDir, DATA_ROOT_DIR_NAME, "v2");
+  const newDir = join(newBaseDir, DATA_ROOT_DIR_NAME, "v2");
   await cp(oldDir, newDir, {
     recursive: true,
     force: false,

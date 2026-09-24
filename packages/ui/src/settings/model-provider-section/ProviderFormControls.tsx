@@ -3,6 +3,7 @@ import type { ProviderSettingsFormModel } from "@/lib/providerSettingsFormTypes.
 import type { ModelConnectivityResult } from "@zcode/shared";
 import { Loader2Icon, Trash2, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
+import { ModelBrandIcon } from "@/components/ModelBrandIcon.js";
 import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadge.js";
 import { Switch } from "@/components/ui/switch.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -246,12 +247,23 @@ export function ModelRowInput({
     <div className="space-y-2 px-3 py-2">
       <div className="flex items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
+          <ModelBrandIcon
+            modelId={model.modelId}
+            providerId={providerId}
+            className="pointer-events-none size-4 text-foreground-subtle"
+          />
           <span
             data-testid={inputTestId}
             className="min-w-0 truncate font-mono text-ui-base text-foreground"
           >
             {model.modelId}
           </span>
+          {/* 配置行以模型 ID 为主（它就是请求身份），昵称只作补充，避免认不出改的是哪个模型。 */}
+          {model.config.displayName?.trim() ? (
+            <span className="min-w-0 shrink-0 truncate text-ui-sm text-foreground-subtlest">
+              {model.config.displayName.trim()}
+            </span>
+          ) : null}
           <span
             className="inline-flex h-5 max-w-20 shrink-0 items-center truncate rounded-md border border-border bg-surface px-1.5 font-mono text-ui-sm text-foreground-subtle"
             aria-label={contextWindowAccessibleLabel}

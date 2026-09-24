@@ -7,6 +7,9 @@ const LOCK_RETRY_DELAY_MS = 10;
 const LOCK_RETRY_COUNT = 200;
 const LOCK_STALE_MS = 5 * 60 * 1000;
 const ZCODE_DATA_BASE_DIR_ENV_KEY = "ZCODE_DATA_BASE_DIR";
+// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+const DATA_ROOT_DIR_NAME = ".polaris";
 
 interface TelemetryState {
   deviceMid?: unknown;
@@ -57,7 +60,7 @@ function resolveCliTelemetryStateFile(options: EnsureCliDeviceMidOptions): strin
   const configuredBaseDir =
     options.baseDir ?? env[ZCODE_DATA_BASE_DIR_ENV_KEY]?.trim() ?? homedir();
   const baseDir = configuredBaseDir.length > 0 ? configuredBaseDir : homedir();
-  return join(resolveUserPath(baseDir), ".zcode", "v2", "telemetry-state.json");
+  return join(resolveUserPath(baseDir), DATA_ROOT_DIR_NAME, "v2", "telemetry-state.json");
 }
 
 async function ensurePersistedDeviceMid(input: {

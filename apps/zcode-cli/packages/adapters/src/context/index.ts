@@ -21,6 +21,10 @@ import type {
 } from "@zcode/contracts";
 import { resolveGitSnapshot } from "./git-snapshot.js";
 
+// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+const DATA_ROOT_DIR_NAME = ".polaris";
+
 const DEFAULT_PRIORITY_FILES = ["AGENTS.md"];
 const DEFAULT_MAX_BYTES = 100 * 1024;
 
@@ -234,7 +238,7 @@ async function findDefaultUserInstructionFile(
     return undefined;
   }
 
-  const filePath = join(resolveUserHomeDir(env), ".zcode", "AGENTS.md");
+  const filePath = join(resolveUserHomeDir(env), DATA_ROOT_DIR_NAME, "AGENTS.md");
   if (await isFile(filePath)) {
     return { filePath, fileName: "AGENTS.md" };
   }

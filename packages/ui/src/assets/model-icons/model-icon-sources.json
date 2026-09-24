@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "package": "@lobehub/icons-static-svg",
+    "version": "1.95.1",
+    "license": "MIT",
+    "homepage": "https://github.com/lobehub/lobe-icons",
+    "retrievedAt": "2026-09-23",
+    "normalization": "只取 package/icons/<slug>.svg 的 24x24 currentColor 路径几何，丢弃 <title> 与宽高/style 属性；fill-opacity / fill-rule 在源 SVG 显式声明时保留。生成结果落在同目录 modelIconShapes.ts，禁止手改。"
+  },
+  "selection": "选型依据是 config/provider/zcode-builtin.json 内置模板能产出的全部模型族，加上用户自建 Provider 常接的公共模型族。slug 到具体模型的匹配规则见 packages/ui/src/lib/modelIcon.ts。",
+  "icons": [
+    "zhipu", "zai", "chatglm", "codegeex", "anthropic", "claude", "openai", "codex", "deepseek",
+    "kimi", "moonshot", "minimax", "xiaomimimo", "qwen", "alibaba", "grok", "xai", "gemini",
+    "gemma", "google", "deepmind", "meta", "mistral", "cohere", "perplexity", "groq", "nvidia",
+    "microsoft", "huggingface", "ollama", "nousresearch", "ibm", "aws", "azure", "upstage",
+    "liquid", "sakana", "aionlabs", "kwaipilot", "hunyuan", "stepfun", "baidu", "wenxin",
+    "tencent", "doubao", "volcengine", "bytedance", "spark", "bailian", "modelscope",
+    "siliconcloud", "novita", "tencentcloud", "huawei", "baichuan", "internlm", "yi", "zeroone",
+    "sensenova", "baai", "antgroup", "openrouter", "opencode"
+  ],
+  "notCovered": "lobehub 图标集里没有独立品牌标的模型族（例如 OpenCode 自研的 big-pickle、聚合平台的占位模型）走通用兜底图标，不硬套其他品牌标。"
+}

@@ -4,6 +4,10 @@ import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { getRuntimeToolRuntime, type RuntimeToolId } from "@zcode/shared/runtime-tool-runtime";
 
+// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
+// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
+const DATA_ROOT_DIR_NAME = ".polaris";
+
 type CliEnv = Record<string, string | undefined>;
 
 interface SeaRuntimeModule {
@@ -66,7 +70,7 @@ export async function ensureSeaRuntimeTools(
 
   const env = options.env ?? process.env;
   const configuredStorageRoot = options.storageRoot ?? env.ZCODE_STORAGE_DIR?.trim();
-  const storageRoot = configuredStorageRoot || join(homedir(), ".zcode");
+  const storageRoot = configuredStorageRoot || join(homedir(), DATA_ROOT_DIR_NAME);
   const runtimeEnv: CliEnv = {};
 
   for (const tool of manifest.tools) {

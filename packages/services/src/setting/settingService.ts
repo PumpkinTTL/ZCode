@@ -14,7 +14,12 @@ import {
 } from "@zcode/shared";
 import type { ISettingService } from "./setting.js";
 import { normalizeSettingsPatch } from "#src/setting/normalizeSettingsPatch.js";
-import { copyDataDirectory, getDataBaseDir, validateDataBaseDirTarget } from "../paths.js";
+import {
+  copyDataDirectory,
+  DATA_ROOT_DIR_NAME,
+  getDataBaseDir,
+  validateDataBaseDirTarget,
+} from "../paths.js";
 import { isEffectiveDevelopmentNodeEnv } from "../runtime-tools/nodeEnv.js";
 import { maybeThrowInjectedFsFault } from "../fs/fsFaultInjection.js";
 import { atomicWriteText } from "../fs/atomicFileUtils.js";
@@ -53,7 +58,8 @@ function resolveUserHomeDir() {
 }
 
 function getSettingsDir() {
-  return join(resolveUserHomeDir(), ".zcode", "v2");
+  // 数据根目录名统一由 paths.ts 维护（Polaris fork：`.polaris`）。
+  return join(resolveUserHomeDir(), DATA_ROOT_DIR_NAME, "v2");
 }
 
 function getSettingsFile() {
@@ -341,7 +347,7 @@ export function createSettingServiceWithMigrations(): {
       const targetBaseDir = newDir?.trim() || homedir();
       const validation = validateDataBaseDirTarget(targetBaseDir);
       if (!validation.ok) {
-        // Windows 安装目录由安装器/自动更新管理，把 .zcode/v2 放进去可能在升级时被覆盖。
+        // Windows 安装目录由安装器/自动更新管理，把 .polaris/v2 放进去可能在升级时被覆盖。
         // 迁移前在 service 层拦截，避免 UI 入口变化或 RPC 调用绕过前端判断。
         const error = new Error(`${validation.code}: ${validation.forbiddenDir}`);
         (error as Error & { code: string }).code = validation.code;

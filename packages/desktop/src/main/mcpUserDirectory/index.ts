@@ -15,6 +15,7 @@ import type {
   NativeMcpServerRecord,
   SaveCliMcpToUserDirectoryRequest,
 } from "@zcode/shared";
+import { DATA_ROOT_DIR_NAME } from "@zcode/services/node";
 import type { McpConfigKeyName } from "./types.js";
 import { isRecord, readJsonObject, writeTextAtomic } from "./utils.js";
 import { migrateLegacyCommonMcp } from "./legacy.js";
@@ -37,7 +38,8 @@ interface DirectoryMcpDescriptor {
 const ZCODE_MCP_DESCRIPTOR: DirectoryMcpDescriptor = {
   source: "zcodeagentmcp",
   directorySource: "zcode",
-  userConfigDirSegments: [".zcode", "cli"],
+  // 用户级跟数据根走（Polaris fork：`.polaris`）；workspace 级仍是既定的 `.zcode` 点文件契约。
+  userConfigDirSegments: [DATA_ROOT_DIR_NAME, "cli"],
   workspaceConfigDirSegments: [".zcode"],
   fileName: "config.json",
   format: "json",

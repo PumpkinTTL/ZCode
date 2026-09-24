@@ -19,6 +19,7 @@ import type {
   SettingsDirectorySource,
 } from "@zcode/shared";
 import type { IMcpSyncService } from "./mcpSync.js";
+import { DATA_ROOT_DIR_NAME } from "../paths.js";
 import { checkRemoteSyncDirectoryWriteAccess } from "../remote-sync/remoteSyncWriteAccess.js";
 
 type McpConfigKeyName = "mcp.servers" | "mcpServers";
@@ -43,7 +44,8 @@ interface UserMcpRecord {
 const ZCODE_MCP_DESCRIPTOR: DirectoryMcpDescriptor = {
   source: "zcode",
   directorySource: "zcode",
-  userConfigDirSegments: [".zcode", "cli"],
+  // 用户级跟数据根走（Polaris fork：`.polaris`）；workspace 级仍是既定的 `.zcode` 点文件契约。
+  userConfigDirSegments: [DATA_ROOT_DIR_NAME, "cli"],
   workspaceConfigDirSegments: [".zcode"],
   fileName: "config.json",
   configKeyName: "mcp.servers",
