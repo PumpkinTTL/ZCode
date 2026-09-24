@@ -43,14 +43,6 @@ function normalizeThoughtLevelText(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/**
- * 档位值 → 词条 id；表里没有的值返回 undefined（调用方原样显示 provider 自己的档位名）。
- * 工具条之外也有人要说这个词（工作流的子代理模型），两处必须查同一张表。
- */
-export function thoughtLevelLabelId(value: string): string | undefined {
-  return THOUGHT_LEVEL_LABEL_IDS[normalizeThoughtLevelText(value)];
-}
-
 export function isNoThoughtLevel(entry: ThoughtLevelEntry): boolean {
   return NO_THOUGHT_LEVEL_VALUES.has(normalizeThoughtLevelText(entry.value));
 }
@@ -71,6 +63,41 @@ export function getNextThoughtLevelValue(
   return entries[nextIndex]?.value ?? null;
 }
 
+/**
+ * 开关型档位值：表达「思考开/关」的机器标志，不是一个被设定的档位名。
+ *
+ * 它们在配置里叫 `disabled` / `enabled`，但界面上说「关闭」「开启」更清楚，
+ * 所以这一类继续走本地化词表；分级的档位（low / high / max / xhigh …）才用配置名。
+ */
+const THOUGHT_LEVEL_FLAG_VALUES = new Set([
+  ...NO_THOUGHT_LEVEL_VALUES,
+  "enable",
+  "enabled",
+  "on",
+  "true",
+]);
+
+type FormatMessage = (
+  descriptor: { id: string },
+  values?: Record<string, string | number>,
+) => string;
+
+/**
+ * 只有裸档位值可用时的标签（工具输出、运行记录、历史会话这类拿不到模型配置的场景）。
+ *
+ * 与 `getThoughtLevelLabel` 是同一条规则，只是少了「配置名」这一路输入：
+ * 分级档位原样显示（配置名就是它，工具栏也这么显示），开关型档位才用本地化词。
+ * 三处必须一致，否则同一个档位在工具栏和工具卡里会显示成两个词。
+ */
+export function resolveThoughtLevelValueLabel(value: string, formatMessage: FormatMessage): string {
+  const normalized = normalizeThoughtLevelText(value);
+  if (!THOUGHT_LEVEL_FLAG_VALUES.has(normalized)) {
+    return value;
+  }
+  const labelId = THOUGHT_LEVEL_LABEL_IDS[normalized];
+  return labelId ? formatMessage({ id: labelId }) : value;
+}
+
 export function getThoughtLevelLabel(
   intl: ReturnType<typeof useZCodeIntl>["intl"],
   provider: ZCodeProvider | undefined,
@@ -78,12 +105,15 @@ export function getThoughtLevelLabel(
   entry: ThoughtLevelEntry,
 ): string {
   const value = normalizeThoughtLevelText(entry.value);
-  const labelId = Object.hasOwn(THOUGHT_LEVEL_LABEL_IDS, value)
-    ? THOUGHT_LEVEL_LABEL_IDS[value]
-    : undefined;
-  if (labelId) {
-    return intl.formatMessage({ id: labelId });
+  const configuredLabel = getConfigOptionEntryLabel(intl, provider, option, entry).trim();
+
+  // 分级档位用配置名：它就是用户在「编辑模型 → 推理档位」里设定的那一份，
+  // 界面必须与之一致（曾把 max 硬翻成「最高」，与配置不符）。
+  if (configuredLabel && !THOUGHT_LEVEL_FLAG_VALUES.has(value)) {
+    return configuredLabel;
   }
 
-  return getConfigOptionEntryLabel(intl, provider, option, entry);
+  // 开关型档位与缺名场景回落到本地化词表；都没有才用裸 value。
+  const fallback = resolveThoughtLevelValueLabel(entry.value, intl.formatMessage);
+  return fallback === entry.value ? (configuredLabel || entry.value) : fallback;
 }

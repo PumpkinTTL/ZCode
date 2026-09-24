@@ -1,4 +1,4 @@
-import { thoughtLevelLabelId } from "@/chat-input-toolbar/thoughtLevelOptions.js";
+import { resolveThoughtLevelValueLabel } from "@/chat-input-toolbar/thoughtLevelOptions.js";
 import { parseModelPickerValue } from "@/lib/zcodeSessionProjection.js";
 import { formatProviderModelLabel } from "@/v4/composer/modelTriggerDisplay.js";
 
@@ -75,11 +75,10 @@ export function describeWorkflowSubagentModel(
   if (rawLevel === undefined) {
     return { canonical: trimmed, name };
   }
-  // 档位词与思考控件同一张表；表里没有的值原样显示（provider 自定义的档位名）。
-  const labelId = thoughtLevelLabelId(rawLevel);
+  // 档位词复用思考控件同一条规则：分级档位显示配置名（就是 value 本身），开关型用本地化词。
   return {
     canonical: trimmed,
-    level: labelId === undefined ? rawLevel : deps.formatMessage({ id: labelId }),
+    level: resolveThoughtLevelValueLabel(rawLevel, deps.formatMessage),
     name,
   };
 }

@@ -6,7 +6,7 @@ import {
   type ZCodeConfigOption,
   type ZCodeProvider,
 } from "@zcode/shared";
-import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, GaugeIcon } from "lucide-react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
@@ -189,12 +189,9 @@ export function ThoughtLevelCycleControl({
 
   const triggerContent = (
     <>
-      <BrainIcon
-        className={cn(
-          "pointer-events-none size-4 text-current",
-          // "inline-flex @lg/composer:hidden",
-        )}
-      />
+      {/* 档位标识用 Gauge 而非脑子：右侧竖条已经在表达"当前第几档"，
+          图标只负责说明"这是推理档位"，不必重复生物学隐喻。 */}
+      <GaugeIcon className="pointer-events-none size-4 text-current" />
       <span
         className={cn(
           "relative w-1 self-stretch overflow-hidden rounded-full bg-current/10",

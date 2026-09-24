@@ -4,7 +4,7 @@ import {
   getModelProviderFamilySpec,
   resolveModelProviderFamilyIdByProviderId,
 } from "@zcode/shared";
-import { thoughtLevelLabelId } from "@/chat-input-toolbar/thoughtLevelOptions.js";
+import { resolveThoughtLevelValueLabel } from "@/chat-input-toolbar/thoughtLevelOptions.js";
 import { useWorkflowSubagentModelProviderName } from "@/hooks/useWorkflowSubagentModelProviderName.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { ToolSnapshotFieldNotice } from "@/ToolCallBlocks/ToolSnapshotFieldNotice.js";
@@ -191,9 +191,8 @@ function formatContextWindow(contextWindow: number): string {
 }
 
 function levelWord(level: string, formatMessage: FormatMessage): string {
-  // 档位词与思考控件同一张表；表里没有的值原样显示（provider 自定义的档位名）。
-  const labelId = thoughtLevelLabelId(level);
-  return labelId === undefined ? level : formatMessage({ id: labelId });
+  // 档位词复用思考控件同一条规则：分级档位原样显示（配置名就是它），开关型用本地化词。
+  return resolveThoughtLevelValueLabel(level, formatMessage);
 }
 
 /**
