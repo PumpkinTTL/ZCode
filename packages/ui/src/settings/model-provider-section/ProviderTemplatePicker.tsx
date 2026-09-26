@@ -34,7 +34,8 @@ export function ProviderTemplatePicker({
   const { intl, locale } = useZCodeIntl();
   const { dismissFeedback, showFeedback } = useProviderDetailFeedback();
   const customLabel = intl.formatMessage({ id: "settings.modelProvider.newProviderName" });
-  const zhipuIds = ["bigmodel-api", "zai-api", "bigmodel-standard-api", "zai-standard-api"];
+  // Polaris：官方计费套餐模板（zai-api / bigmodel-api）已移除，本组只剩自带 API Key 的标准通道。
+  const zhipuIds = ["bigmodel-standard-api", "zai-standard-api"];
   const groups = [
     {
       id: "zhipu",

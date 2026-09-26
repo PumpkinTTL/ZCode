@@ -192,4 +192,45 @@
 | 项 | 决定 |
 |---|---|
 | 左侧「内置供应商」栏位（`PRESET_PROVIDER_SPECS` 被清空） | **等 owner 提供中转站 baseUrl 再做**：届时把智谱系 4 条模板改写成 Polaris 自有模板（方案 B）。在此之前维持现状——内置模板走「添加供应商 → 选模板」 |
+| 智谱系内置模板（2026-09-26 更新） | 已按**「砍官方计费套餐、留自带 key 通道」**执行：删 `zai-api` / `bigmodel-api` 与 8 条 `account:*` provider；保留 `zai-standard-api` / `bigmodel-standard-api`。详见 §7 |
 | 阿里云 ARMS RUM SDK（4.8MB） | **已移除** |
+
+---
+
+## 7. 本轮：官方计费套餐与出网路径砍除（2026-09-26）
+
+> 决策前提：**自有 AI 服务端尚未就绪**，因此不做「改指自有」的占位接入，能砍的直接砍；
+> 等自有服务上线后再按「方案 B」接回。
+
+### 7a. 内置 provider 配置（`config/provider/zcode-builtin.json`，revision 30 → 31）
+
+| 处置 | 内容 |
+|---|---|
+| **删除** | 2 条官方计费模板：`zai-api`（Z.ai Coding Plan）、`bigmodel-api`（BigModel Coding Plan）。二者 access type 为 `zhipu-coding-plan-api-key`，绑定官方账号与计费 |
+| **删除** | 8 条官方账号 provider，`providerRules` 清空：`account:{zai,bigmodel}-{individual,team}-coding-plan`、`account:{zai,bigmodel}-start-plan`、`account:{zai,bigmodel}-offpeak-idle-plan` |
+| **删除** | 上述 6 条对应 `templateModelRules` |
+| **保留** | 剩余 18 条模板：16 条第三方（moonshot / minimax / deepseek / qwen×2 / xiaomi / openai / anthropic / xai / openrouter / opencode×6）+ 2 条**自带 API Key 的标准通道** `zai-standard-api` / `bigmodel-standard-api` |
+| **保留** | `access.type` 枚举与 `account:*` 常量全部留在代码里（`provider/src/config/*`、`shared/src/model-provider-types.ts`、`provider-selection-v2` 迁移别名、`official-glm-selection-v3` SQL）——接口契约不动 |
+
+红线遵守：第三方 API Key 通道（含 GLM 自带 key）一条未动；`model-provider/` 抽象层文件未改。
+
+### 7b. 官方出网路径收口
+
+| 位置 | 处置 |
+|---|---|
+| `apps/zcode-cli/packages/adapters/src/auth/cli-oauth.ts` | **关闭**。删除硬编码 `https://zcode.z.ai/api/v1` 与 `/oauth/cli/*` 全部请求实现；工厂被调用即抛 `CliOAuthError`，类型/错误类保留 |
+| `apps/zcode-cli/packages/adapters/src/auth/coding-plan-api-key.ts` | **关闭**。删除 `ZAI_API_HOST = "https://api.z.ai"` 与 `/api/biz/...` 实现；工厂即抛 `CodingPlanApiKeyError` |
+| `packages/services/src/model-provider/legacyZCodeConfigProviderReader.ts` | 删除生产分支兜底。旧 config 里保存的官方域名一律改指 `resolveBigModelApiOrigin()`；原常量降级为**匹配键**（不再作为请求地址） |
+| `packages/desktop/src/main/desktopMainIpcRemote.ts`、`desktopWindowChrome.ts` | webview 白名单里的 `"https://api.z.ai"` 已删，只放行自有网关的 PayPal 中转地址 |
+| `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts` | `cdn-zcode.z.ai` 图标全部移除（8 处），插件 author 由 `Z.ai` 改为 `Polaris`。图标改由 `ui/src/lib/pluginIconSource.ts` 的打包素材按插件 id 命中，未命中时降级为中性占位图标 |
+| `apps/zcode-cli/packages/adapters/src/model/official-coding-plan-gateway.ts` | **保留**。官方 baseUrl 只作路由匹配键，出网地址在 `:59-63` 改写为自有 origin |
+
+### 7c. 文案
+
+- `ui/i18n`：`presetTitle`「智谱」→「内置供应商」/「Built-in providers」；`presetDescription` 去掉「内置 Z.ai 与 BigModel 供应商，支持通过 OAuth 辅助完成配置」；`presetEmpty` 去掉 OAuth 提示；`namePlaceholder`「如：智谱 GLM」→「如：GLM-5.3」。
+- **有意保留**：`templateGroup.zhipu`（「智谱」/「Zhipu」）、`login.apiKey.provider.zai`（「Z.ai」）等**第三方厂商名**——它们是这些 API 的真实提供方，改成 Polaris 会造成名实不符。
+- `ProviderTemplatePicker` 的 zhipu 分组由 4 条收敛为 2 条自带 key 模板。
+
+### 7d. 验证
+
+`pnpm typecheck` ✅ 0 错误；CLI `turbo run typecheck` ✅ 27/27；`pnpm lint` ✅ 0 errors（79 warnings 均为既有）；CLI lint 侧报错为**既有**（core / contracts / telemetry 等，本轮改动文件 0 命中）。

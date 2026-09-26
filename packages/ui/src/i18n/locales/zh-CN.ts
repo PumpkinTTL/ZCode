@@ -2269,7 +2269,7 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.modelSaveFailure": "{provider} / {model} 保存失败：{error}",
   "settings.modelProvider.cancel": "取消",
   "settings.modelProvider.name": "名称",
-  "settings.modelProvider.namePlaceholder": "如：智谱 GLM",
+  "settings.modelProvider.namePlaceholder": "如：GLM-5.3",
   "settings.modelProvider.addProviderTitle": "添加模型供应商",
   "settings.modelProvider.addProviderDescription": "配置一个完全自定义的 API 端点和初始模型。",
   "settings.modelProvider.addFromCatalog": "供应商目录",
@@ -2898,10 +2898,10 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.newProviderName": "新供应商",
   "settings.modelProvider.modelsPlaceholder": "每行一个模型名称",
   "settings.modelProvider.modelsCount": "{count} 个模型",
-  "settings.modelProvider.presetTitle": "智谱",
-  "settings.modelProvider.presetDescription":
-    "内置 Z.ai 与 BigModel 供应商，支持通过 OAuth 辅助完成配置。",
-  "settings.modelProvider.presetEmpty": "尚未同步，请先完成 OAuth 登录。",
+  // Polaris：官方账号预置已移除，这里描述的是客户端自带供应商模板。
+  "settings.modelProvider.presetTitle": "内置供应商",
+  "settings.modelProvider.presetDescription": "Polaris 自带的供应商模板，添加后填入自己的 API Key 即可使用。",
+  "settings.modelProvider.presetEmpty": "暂无内置供应商。",
   "settings.modelProvider.customTitle": "自定义供应商",
   "settings.modelProvider.refresh": "刷新",
   "settings.modelProvider.reorderProvider": "拖拽调整供应商顺序",
