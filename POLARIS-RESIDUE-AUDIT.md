@@ -300,3 +300,40 @@
 `pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings 均为既有）；
 CLI `@zcode/i18n` 单独 `tsc --noEmit` ✅ 通过（`turbo run typecheck` 里 i18n 报 `EEXIST`/`EBUSY`
 为 Windows 下 pnpm tool 目录软链竞态，属环境问题，非代码错误）。
+
+---
+
+## 9. 本轮：OAuth 服务空壳化（2026-09-26 第四刀）
+
+> 前置事实：官方 provider 适配器此前已恒为 `[]`（`runtimeConfig` 返回 `providers: []`），
+> 因此 `restoreCachedSessionState` 在运行态**已经恒定返回 `signed-out`**，provider 授权码/polling/token
+> 刷新等分支全部不可达。本刀删掉这些不可达实现，保留接口与装配签名。
+
+### 9a. 处置
+
+| 文件 | 处置 |
+|---|---|
+| `packages/services/src/oauth/oauthService.ts` | 1223 行 → 空壳实现：接口 `IOAuthService` 与工厂 `createOAuthService(credentialService, deps)` 签名不变；`getProviders/getActiveProvider/restoreCachedSession/restoreSession/pollPendingOAuth/handleCallback` 返回空，`restoreCachedSessionState` 恒返回 `signed-out`，`startOAuth/startOAuthWithPolling` 抛可读错误，`logout/logoutAll/refreshToken/cancelPending` 无操作；保留非接口方法 `logoutIfCurrentCredentialRequest`（恒返回 false，不触发 JWT 失效广播） |
+| `oauth/oauthProfileSchema.ts`（148 行） | **删除**（仅被 oauthService 引用） |
+| `oauth/callbackAttribution.ts`（22 行） | **删除**（仅被 oauthService 引用；desktop 侧另有同名局部函数，不受影响） |
+| `oauth/providerAdapter.ts`（47 行） | **删除**（仅为已移除适配器的类型契约，无引用方） |
+| `oauth/runtimeConfig.ts`（33 行） | **删除**（原为官方 provider 运行时配置构造，无引用方） |
+
+**保留（接自有账号时的 seam）**：`oauth/oauth.ts`（`IOAuthService` 接口）、
+`oauth/repo/oauthCredentialRepo.ts`（通用凭据仓库，node.ts 仍在用于 onboarding userId / 账号身份）、
+`oauth/oauthUnauthorizedRequest.ts`（401 分类，apiClient 引用）、
+`oauth/oauthProviderLogout.ts`（派生 provider key 清理）。
+
+净变更：约 **-1413 行**。`node.ts` / `remoteWorkspaceServiceCollection.ts` 装配点零改动（签名兼容）。
+
+### 9b. 验证
+
+`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings 均为既有）。
+
+### 9c. 下一刀：`accountProvider*` 集群（待办）
+
+`model-provider/accountProvider*`、`accountRequestAuthService`、`codingPlanProviderAvailability`、
+`legacyTeamOrganizationResolver` 仍由 `node.ts` 装配（约 1000+ 行）。该集群与 **agent 侧**
+（`zcodeAgentService` 的可选 `accountRequestAuthService`）、**provider provisioning**（`providerProvisioningTarget`）
+以及 `oauthProviderLogout` 均有耦合，需谨慎分步处理：先空壳化 `accountRequestAuthService` 并简化 node.ts 装配，
+再删已无引用方的 resolver / credential / apiKey 文件。
