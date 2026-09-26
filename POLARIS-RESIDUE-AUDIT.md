@@ -350,3 +350,21 @@ CLI `@zcode/i18n` 单独 `tsc --noEmit` ✅ 通过（`turbo run typecheck` 里 i
 `createOAuthProviderLogoutHandler` 扩展点、`providerProvisioning*`（含 `isProviderProvisioningAccountCredentialKey` 常量）。
 
 净变更：约 **-1429 行**。验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings 既有）。
+
+---
+
+## 10. 本轮：CLI 官方登录编排空壳化（2026-09-26 第六刀）
+
+| 位置 | 处置 |
+|---|---|
+| `apps/zcode-cli/packages/bootstrap/src/auth-login.ts` | 410 行 → 空壳（约 36 行）：保留全部导出类型与函数签名（`loginZCodeCli` / `loginBigmodelCodingPlan` / `configureCodingPlanApiKey` / `logoutZCodeCli` / `hasConfiguredStandaloneCodingPlan` / `ZCodeCliLoginError`），登录类入口一律抛可读 `ZCodeCliLoginError`；`logoutZCodeCli` 仍清共享凭据文件（纯本地操作） |
+| `auth-login-polling.ts` / `auth-login-abort.ts` | **删除**（仅被 auth-login 使用） |
+
+CLI 命令/TUI 接线（`login-command.ts` / `tui-auth.ts` / `cli-types.ts` / `command-center/*`）未改，只把错误在用户面前变成可读提示。
+
+保留的 seam：`@zcode/adapters` 的 `CliOAuthClient` 类型与错误类、`createCodingPlanApiKeyResolver` 类型（工厂仍为可读错误）。
+
+**仍未清**（下一刀候选）：`command-center/login-flow.ts`（仍构造 4 个现已必失败的登录选项）与 CLI i18n 的 `/login` `/logout` `callouts.*` 官方文案；
+`standalone-account-provider-runtime.ts` 仍被 `process-provider-registry-runtime.ts` 使用，**不能**当登录专用件删。
+
+验证：CLI `turbo run typecheck` ✅ 27/27；根 `pnpm typecheck` ✅ 0 错误。
