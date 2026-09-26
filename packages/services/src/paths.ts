@@ -104,6 +104,10 @@ function isWindowsPathEqualOrInside(pathValue: string, rootValue: string): boole
   return normalizedPath === normalizedRoot || normalizedPath.startsWith(`${normalizedRoot}\\`);
 }
 
+// 安装目录候选名需同时覆盖改名前后的产品名：新版应用装在 Polaris/ 下，旧版 ZCode/ 仍可能存在，
+// 两者都必须视为「禁止写入的安装目录」，否则数据目录会被错误地放进程序安装目录。
+const WINDOWS_APP_INSTALL_DIR_NAMES = ["Polaris", "ZCode"] as const;
+
 function collectWindowsForbiddenAppInstallDirs(
   options: Required<Pick<DataBaseDirTargetValidationOptions, "env">> &
     Pick<DataBaseDirTargetValidationOptions, "appInstallDir">,
@@ -116,10 +120,18 @@ function collectWindowsForbiddenAppInstallDirs(
   const candidates = [
     options.appInstallDir,
     readEnvValue(env, ZCODE_WINDOWS_APP_INSTALL_DIR_ENV),
-    programFiles ? win32.join(programFiles, "ZCode") : null,
-    programFilesX86 ? win32.join(programFilesX86, "ZCode") : null,
-    programW6432 ? win32.join(programW6432, "ZCode") : null,
-    localAppData ? win32.join(localAppData, "Programs", "ZCode") : null,
+    ...(programFiles
+      ? WINDOWS_APP_INSTALL_DIR_NAMES.map((name) => win32.join(programFiles, name))
+      : []),
+    ...(programFilesX86
+      ? WINDOWS_APP_INSTALL_DIR_NAMES.map((name) => win32.join(programFilesX86, name))
+      : []),
+    ...(programW6432
+      ? WINDOWS_APP_INSTALL_DIR_NAMES.map((name) => win32.join(programW6432, name))
+      : []),
+    ...(localAppData
+      ? WINDOWS_APP_INSTALL_DIR_NAMES.map((name) => win32.join(localAppData, "Programs", name))
+      : []),
   ];
   const seen = new Set<string>();
   const result: string[] = [];
