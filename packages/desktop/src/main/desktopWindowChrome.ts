@@ -287,10 +287,11 @@ function isCodingPlanPaypalNavigationUrl(url: string): boolean {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;
     if (isPaypalHostname(parsed.hostname)) return true;
-    // 后端下发的 PayPal approveUrl 可能先指向 Z.AI 支付 API 中转地址，
+    // 后端下发的 PayPal approveUrl 可能先指向支付 API 中转地址，
     // 由该地址再 302 到 PayPal。中转 URL 也必须留在当前 webview，否则会被系统浏览器接管。
+    // Polaris：官方计费已移除，只放行自有网关，不再放行官方 api.z.ai。
     return (
-      ["https://api.z.ai", resolveZaiBusinessBaseUrl()].includes(parsed.origin) &&
+      parsed.origin === resolveZaiBusinessBaseUrl() &&
       parsed.pathname.startsWith("/api/pay/paypal/")
     );
   } catch {

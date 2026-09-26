@@ -1,12 +1,16 @@
-import type { HttpClientPort, HttpClientRunOptions, TraceContext } from "@zcode/contracts";
-import { resolveBigModelApiOrigin } from "@zcode/shared";
+import type { HttpClientRunOptions, TraceContext } from "@zcode/contracts";
+import type { HttpClientPort } from "@zcode/contracts";
 
-const ZAI_API_HOST = "https://api.z.ai";
-const JSON_CONTENT_TYPE = "application/json";
-const ZCODE_API_KEY_NAME = "zcode-api-key";
-const DEFAULT_ORG_NAME = "默认机构";
-const DEFAULT_PROJECT_NAME = "默认项目";
-
+/**
+ * Polaris fork：官方账号业务已整体移除。
+ *
+ * 这里原先用 OAuth access token 去官方 `https://api.z.ai` 换 biz token，
+ * 再走 `/api/biz/...` 取回 Coding Plan 的 API Key（bigmodel 分支同样会打官方网关）。
+ * 自有账号服务尚未就绪，因此不再指向官方地址、也不再发出任何请求：
+ * 解析器被调用即失败，`zcode login` 会得到一条明确的可读错误。
+ *
+ * 类型与错误类保留，等自有账号服务上线后在此处接回实现。
+ */
 export type CodingPlanFamily = "bigmodel" | "zai";
 
 export interface CodingPlanApiKeyResolverOptions {
@@ -30,237 +34,11 @@ export class CodingPlanApiKeyError extends Error {
   }
 }
 
-interface RemoteEnvelope<T> {
-  code?: number | string;
-  data?: T;
-  msg?: string;
-}
-
-interface RemoteProjectInfo {
-  projectId?: string;
-  projectName?: string;
-}
-
-interface RemoteOrganizationInfo {
-  organizationId?: string;
-  organizationName?: string;
-  projects?: RemoteProjectInfo[];
-}
-
-interface RemoteCustomerInfo {
-  organizations?: RemoteOrganizationInfo[];
-}
-
-interface RemoteApiKeySummary {
-  apiKey?: string;
-  name?: string;
-}
-
-interface RemoteApiKeySecret {
-  secretKey?: string;
-}
-
-interface RemoteZaiBizToken {
-  access_token?: string;
-  accessToken?: string;
-}
+export const CODING_PLAN_API_KEY_DISABLED_MESSAGE =
+  "Official Coding Plan is not available in Polaris. Configure a model provider with an API key instead.";
 
 export function createCodingPlanApiKeyResolver(
-  options: CodingPlanApiKeyResolverOptions,
+  _options: CodingPlanApiKeyResolverOptions,
 ): CodingPlanApiKeyResolver {
-  return {
-    async resolve(
-      input: ResolveCodingPlanApiKeyInput,
-      runOptions?: HttpClientRunOptions,
-    ): Promise<string> {
-      const accessToken = input.accessToken.trim();
-      if (!accessToken) {
-        throw new CodingPlanApiKeyError("OAuth access token is required.");
-      }
-
-      if (input.family === "bigmodel") {
-        return resolveBizApiKey(
-          {
-            authorization: accessToken,
-            host: resolveBigModelApiOrigin(process.env),
-            httpClient: options.httpClient,
-            trace: options.trace,
-          },
-          runOptions,
-        );
-      }
-
-      const bizToken = await resolveZaiBizToken(options, accessToken, runOptions);
-      return resolveBizApiKey(
-        {
-          authorization: `Bearer ${bizToken}`,
-          host: ZAI_API_HOST,
-          httpClient: options.httpClient,
-          requireSecretKey: true,
-          trace: options.trace,
-        },
-        runOptions,
-      );
-    },
-  };
-}
-
-async function resolveZaiBizToken(
-  options: CodingPlanApiKeyResolverOptions,
-  oauthAccessToken: string,
-  runOptions?: HttpClientRunOptions,
-): Promise<string> {
-  const payload = await requestRemoteData<RemoteZaiBizToken>(
-    options.httpClient,
-    {
-      body: new TextEncoder().encode(JSON.stringify({ token: oauthAccessToken })),
-      headers: {
-        "Content-Type": JSON_CONTENT_TYPE,
-      },
-      method: "POST",
-      trace: options.trace,
-      url: `${ZAI_API_HOST}/api/auth/z/login`,
-    },
-    runOptions,
-  );
-  const token = payload?.access_token?.trim() ?? payload?.accessToken?.trim() ?? "";
-  if (!token) {
-    throw new CodingPlanApiKeyError("Z.AI biz token response is missing access_token.");
-  }
-  return token;
-}
-
-async function resolveBizApiKey(
-  input: {
-    authorization: string;
-    host: string;
-    httpClient: HttpClientPort;
-    requireSecretKey?: boolean;
-    trace?: TraceContext;
-  },
-  runOptions?: HttpClientRunOptions,
-): Promise<string> {
-  const customerInfo = await requestRemoteData<RemoteCustomerInfo>(
-    input.httpClient,
-    {
-      headers: createBizAuthHeaders(input.authorization),
-      method: "GET",
-      trace: input.trace,
-      url: `${input.host}/api/biz/customer/getCustomerInfo`,
-    },
-    runOptions,
-  );
-  const location = pickOrgAndProject(customerInfo);
-  if (!location) {
-    throw new CodingPlanApiKeyError("Unable to resolve organization and project.");
-  }
-
-  const listUrl =
-    `${input.host}/api/biz/v1/organization/${location.organizationId}` +
-    `/projects/${location.projectId}/api_keys`;
-  const keys =
-    (await requestRemoteData<RemoteApiKeySummary[]>(
-      input.httpClient,
-      {
-        headers: createBizAuthHeaders(input.authorization),
-        method: "GET",
-        trace: input.trace,
-        url: listUrl,
-      },
-      runOptions,
-    )) ?? [];
-  const keyEntry =
-    keys.find((item) => item.name === ZCODE_API_KEY_NAME) ??
-    (await requestRemoteData<RemoteApiKeySummary>(
-      input.httpClient,
-      {
-        body: new TextEncoder().encode(JSON.stringify({ name: ZCODE_API_KEY_NAME })),
-        headers: createBizAuthHeaders(input.authorization),
-        method: "POST",
-        trace: input.trace,
-        url: listUrl,
-      },
-      runOptions,
-    ));
-  const apiKey = keyEntry?.apiKey?.trim() ?? "";
-  if (!apiKey) {
-    throw new CodingPlanApiKeyError("API key response is missing apiKey.");
-  }
-
-  const secret = await requestRemoteData<RemoteApiKeySecret>(
-    input.httpClient,
-    {
-      headers: createBizAuthHeaders(input.authorization),
-      method: "GET",
-      trace: input.trace,
-      url: `${listUrl}/copy/${encodeURIComponent(apiKey)}`,
-    },
-    runOptions,
-  );
-  const secretKey = secret?.secretKey?.trim() ?? "";
-  if (!secretKey) {
-    if (input.requireSecretKey) {
-      throw new CodingPlanApiKeyError("API key copy response is missing secretKey.");
-    }
-    return apiKey;
-  }
-
-  return `${apiKey}.${secretKey}`;
-}
-
-async function requestRemoteData<T>(
-  httpClient: HttpClientPort,
-  request: Parameters<HttpClientPort["request"]>[0],
-  options?: HttpClientRunOptions,
-): Promise<T | null> {
-  const response = await httpClient.request(
-    {
-      maxResponseBytes: 64 * 1024,
-      ...request,
-    },
-    options,
-  );
-  const parsed = JSON.parse(new TextDecoder().decode(response.body)) as RemoteEnvelope<T>;
-  if (!isSuccessfulRemoteCode(parsed.code)) {
-    throw new CodingPlanApiKeyError(parsed.msg ?? `Remote business error ${parsed.code}`);
-  }
-  return parsed.data ?? null;
-}
-
-function createBizAuthHeaders(authorization: string): Record<string, string> {
-  return {
-    Authorization: authorization,
-    "Content-Type": JSON_CONTENT_TYPE,
-  };
-}
-
-function pickOrgAndProject(customerInfo: RemoteCustomerInfo | null): {
-  organizationId: string;
-  projectId: string;
-} | null {
-  const organizations = customerInfo?.organizations ?? [];
-  const org =
-    organizations.find((item) => item.organizationName?.includes(DEFAULT_ORG_NAME)) ??
-    organizations[0];
-  const projects = org?.projects ?? [];
-  const project =
-    projects.find((item) => item.projectName?.includes(DEFAULT_PROJECT_NAME)) ?? projects[0];
-  if (!org?.organizationId || !project?.projectId) {
-    return null;
-  }
-  return {
-    organizationId: org.organizationId,
-    projectId: project.projectId,
-  };
-}
-
-function isSuccessfulRemoteCode(code: unknown): boolean {
-  return (
-    code === undefined ||
-    code === null ||
-    code === 0 ||
-    code === 200 ||
-    code === "0" ||
-    code === "200"
-  );
+  throw new CodingPlanApiKeyError(CODING_PLAN_API_KEY_DISABLED_MESSAGE);
 }

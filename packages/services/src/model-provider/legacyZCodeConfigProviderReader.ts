@@ -5,7 +5,6 @@ import { z } from "zod";
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
   resolveBigModelApiOrigin,
-  resolveRuntimeZCodeEnv,
 } from "@zcode/shared";
 import {
   createModelProviderModelConfig,
@@ -61,29 +60,27 @@ function isLegacyPresetGlmProviderId(providerId: string): boolean {
   return LEGACY_PRESET_GLM_PROVIDER_IDS.has(providerId);
 }
 
-const BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL = "https://open.bigmodel.cn/api/anthropic";
+// Polaris：官方 Coding Plan 已移除。该常量只作为"旧配置里可能残留的官方域名"
+// 的匹配键，不再作为任何请求地址，永远不会被直接使用。
+const OFFICIAL_BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL =
+  "https://open.bigmodel.cn/api/anthropic";
 
 function normalizeBigModelCodingPlanAnthropicBaseUrlForEnv(
   baseUrl: string | undefined,
   env: Record<string, string | undefined> = process.env,
 ): string {
-  const fallbackBaseUrl =
-    resolveRuntimeZCodeEnv(env) === "production"
-      ? BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL
-      : `${resolveBigModelApiOrigin(env)}/api/anthropic`;
+  // 兜底一律走自有网关，不再按 ZCODE_ENV 分支回退官方生产域名。
+  const fallbackBaseUrl = `${resolveBigModelApiOrigin(env)}/api/anthropic`;
   const normalizedBaseUrl = normalizeModelProviderBaseUrlForKind(
     baseUrl ?? fallbackBaseUrl,
     "anthropic",
   );
-  if (resolveRuntimeZCodeEnv(env) === "production") {
-    return normalizedBaseUrl || fallbackBaseUrl;
-  }
 
   try {
     const parsed = new URL(normalizedBaseUrl || fallbackBaseUrl);
-    const productionParsed = new URL(BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL);
-    // 旧配置可能保存生产域名；测试环境的 Team Plan Key 无法调用生产网关。
-    return parsed.origin === productionParsed.origin
+    const officialParsed = new URL(OFFICIAL_BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL);
+    // 旧配置可能保存官方生产域名；一律改指自有网关，避免导入旧配置后真出网官方。
+    return parsed.origin === officialParsed.origin
       ? fallbackBaseUrl
       : normalizedBaseUrl || fallbackBaseUrl;
   } catch {

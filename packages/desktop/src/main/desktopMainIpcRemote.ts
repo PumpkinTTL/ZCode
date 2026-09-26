@@ -76,7 +76,8 @@ function isCodingPlanPaypalNavigationUrl(url: string): boolean {
     if (parsed.protocol !== "https:") return false;
     if (isPaypalHostname(parsed.hostname)) return true;
     return (
-      ["https://api.z.ai", resolveZaiBusinessBaseUrl()].includes(parsed.origin) &&
+      // Polaris：官方计费已移除，只放行自有网关的 PayPal 中转地址。
+      parsed.origin === resolveZaiBusinessBaseUrl() &&
       parsed.pathname.startsWith("/api/pay/paypal/")
     );
   } catch {
