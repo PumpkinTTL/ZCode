@@ -415,3 +415,38 @@ OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / J
 **为什么不一刀切**：清除 B 需要改 `StatusCards.tsx`（987 行）、`Detail.tsx`（1231 行）、
 `ModelProviderSection.tsx`、`SettingsPage.tsx`、`V4ComposerToolbar.tsx` 等中心文件，
 属大重构；建议单独一刀、逐子块 typecheck 完成。
+
+---
+
+## 13. 打包元数据与 CLI 官方网关改写层
+
+### 13.1 打包元数据品牌残留（纯标识，零 agent 能力）
+
+| 位置 | 处置 |
+|---|---|
+| `packages/desktop/electron-builder.config.js` `extraMetadata.homepage` | `https://zcode.z.ai` → `https://polaris.bitlesu.com` |
+| 同处 `author.name` / `email` | `ZCode` / `dev@zcode.z.ai` → `Polaris` / `dev@polaris.bitlesu.com` |
+| Linux `maintainer` | `ZCode <dev@zcode.z.ai>` → `Polaris <dev@polaris.bitlesu.com>` |
+| `resolveAppAsarPath` / `resolvePackagedResourcesDir` 的 `?? "ZCode"` 兜底名 | → `?? "Polaris"` |
+
+注：`appId` 早已是 `com.bitlesu.polaris`（见 `scripts/desktop-product-identity.mjs`）；
+邮箱沿用自有域名，如后续有正式对外邮箱可再替换。
+
+### 13.2 CLI 官方 Coding Plan 网关改写层（已不可达，删除）
+
+`apps/zcode-cli/packages/adapters/src/model/official-coding-plan-gateway.ts` 只在模型请求 URL 精确命中
+`open.bigmodel.cn/api/anthropic/v1/messages` 或 `api.z.ai/api/anthropic/v1/messages` 时，把请求改写为
+经 ZCode 平台网关发送（做官方套餐权益校验）。官方 provider 已全部移除，这两个端点不再被任何模板引用，
+该改写层成为死代码。
+
+| 位置 | 处置 |
+|---|---|
+| `model/official-coding-plan-gateway.ts` | **删除**（含 `OFFICIAL_CODING_PLAN_GATEWAY_ROUTES`） |
+| `model/adapters/index.ts` | 移除对应 `export *` |
+| `model/model-execution.ts` | 移除 import 与 `createProviderTransportFetch` 包装；模型出口直接走
+  `createProviderProxyFetch`（非官方 provider 行为 100% 不变） |
+
+**为什么安全**：`createOfficialCodingPlanGatewayFetch` 对非官方端点一直是直通；删除后第三方/自建
+provider 的请求路径与请求头完全一致，不触碰 agent 能力。
+
+验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors；CLI `turbo run typecheck` ✅ 27/27。
