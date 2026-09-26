@@ -1,5 +1,4 @@
 import type {
-  ApiClient,
   AppUsageRequest,
   AppUsageSnapshot,
   CodingPlanUsageRequest,
@@ -15,114 +14,83 @@ import type {
   UsageStatsRequest,
   UsageStatsSnapshot,
 } from "@zcode/shared";
-import { isCodingPlanModelProviderId } from "@zcode/shared";
-import type { ICredentialService } from "../credential/credential.js";
-import type { IAccountRequestAuthService } from "../model-provider/accountRequestAuthService.js";
 import type { IZCodeAgentService } from "../zcode-agent/zcodeAgent.js";
 import type { IUsageStatsService } from "./usageStats.js";
-import {
-  BigModelUsageQuotaProvider,
-  type UsageApiAuthorizationRequest,
-  type UsageApiAuthorization,
-} from "./providers/bigmodelUsageQuotaProvider.js";
-import type { OfficialMcpCredentialSource } from "./providers/zcodeMcpQuotaProvider.js";
+
+/**
+ * Polaris fork：官方 Coding Plan（z.ai / bigmodel）的配额、用量监控与重置链路已整体移除。
+ *
+ * 原先这里由 `BigModelUsageQuotaProvider`（含 monitor 拉取、mapper、订阅查询、Start Plan
+ * 计费与重置机会）实现，会按 zai / bigmodel 账号发起真实业务请求。自有账号服务尚未就绪，
+ * 这些实现连同其 3000 余行代码一并删除；接口（`IUsageStatsService`）保持不变，等自有服务
+ * 上线后在此处接回。
+ *
+ * 唯一保留真实实现的是 `getAppUsageSnapshot`：它读的是本机 agent 数据库，与官方无关。
+ */
+export const CODING_PLAN_REMOVED_CODE = "coding_plan_removed";
 
 interface UsageStatsServiceDependencies {
-  apiClient: ApiClient;
-  accountRequestAuthService: Pick<
-    IAccountRequestAuthService,
-    "resolveAccessCurrent" | "resolveCurrent" | "assertCurrent"
-  >;
-  resolveApiAuthorization?: (
-    request: UsageApiAuthorizationRequest,
-  ) => Promise<UsageApiAuthorization | null>;
-  credentialService?: Pick<ICredentialService, "load">;
-  env?: NodeJS.ProcessEnv;
   /** App Usage 经 ZCode Protocol 读取 agent 数据库真实统计。 */
   zcodeAgentService: Pick<IZCodeAgentService, "getAppUsageStats">;
-  /**
-   * 官方 Server MCP 额度的凭证来源（与 server MCP 调用同一套 5 个身份头）。
-   * 缺省时 entitlement 快照不含 MCP 额度。
-   */
-  officialMcpCredentialSource?: OfficialMcpCredentialSource;
 }
 
-function isCodingPlanProviderId(providerId: string | undefined): boolean {
-  return Boolean(providerId && isCodingPlanModelProviderId(providerId));
+/** 统一的「该能力已移除」错误；UI 侧按错误码识别并显示空态。 */
+function codingPlanRemoved(): Error {
+  return new Error(CODING_PLAN_REMOVED_CODE);
 }
 
 export function createUsageStatsService(
   dependencies: UsageStatsServiceDependencies,
 ): IUsageStatsService {
-  const quotaProvider = new BigModelUsageQuotaProvider({
-    apiClient: dependencies.apiClient,
-    accountRequestAuthService: dependencies.accountRequestAuthService,
-    resolveApiAuthorization: dependencies.resolveApiAuthorization,
-    credentialService: dependencies.credentialService,
-    env: dependencies.env,
-    ...(dependencies.officialMcpCredentialSource
-      ? { officialMcpCredentialSource: dependencies.officialMcpCredentialSource }
-      : {}),
-  });
-
   return {
     async getAppUsageSnapshot(request: AppUsageRequest): Promise<AppUsageSnapshot> {
-      // App Usage 现读取 agent 数据库真实统计（model_usage/turn_usage/tool_usage），
-      // 经 ZCode Protocol usage/stats 取回。不再读本地 session JSON 估算。
+      // App Usage 读取 agent 数据库真实统计（model_usage/turn_usage/tool_usage），
+      // 经 ZCode Protocol usage/stats 取回，不依赖任何官方端点。
       return dependencies.zcodeAgentService.getAppUsageStats({
         range: request.range,
         timeZone: request.timeZone,
       });
     },
     async getCodingPlanUsageSnapshot(
-      request: CodingPlanUsageRequest,
+      _request: CodingPlanUsageRequest,
     ): Promise<CodingPlanUsageSnapshot> {
-      if (!isCodingPlanProviderId(request.preferredProviderId)) {
-        // Coding Plan 页面只允许预置的 Z.AI/BigModel Coding Plan 账号。
-        // 普通 provider id 不能进入 monitor 链路，避免误读 API Key 或环境变量。
-        throw new Error("no_bigmodel_api_key");
-      }
-      return quotaProvider.getCodingPlanUsageSnapshot(request);
+      throw codingPlanRemoved();
     },
     async getCodingPlanResetStatus(
-      request: CodingPlanResetScopeRequest,
+      _request: CodingPlanResetScopeRequest,
     ): Promise<CodingPlanResetStatusSnapshot> {
-      if (!isCodingPlanProviderId(request.preferredProviderId)) {
-        throw new Error("no_bigmodel_api_key");
-      }
-      return quotaProvider.getCodingPlanResetStatus(request);
+      throw codingPlanRemoved();
     },
     async requestCodingPlanResetOpportunity(
-      request: CodingPlanResetOpportunityRequest,
+      _request: CodingPlanResetOpportunityRequest,
     ): Promise<CodingPlanResetOpportunityResult> {
-      if (!isCodingPlanProviderId(request.preferredProviderId)) {
-        throw new Error("no_bigmodel_api_key");
-      }
-      return quotaProvider.requestCodingPlanResetOpportunity(request);
+      throw codingPlanRemoved();
     },
     async useCodingPlanReset(
-      request: CodingPlanResetUseRequest,
+      _request: CodingPlanResetUseRequest,
     ): Promise<CodingPlanResetUseResult> {
-      if (!isCodingPlanProviderId(request.preferredProviderId)) {
-        throw new Error("no_bigmodel_api_key");
-      }
-      return quotaProvider.useCodingPlanReset(request);
+      throw codingPlanRemoved();
     },
-    async markCodingPlanResetHistoryRead(request: CodingPlanResetScopeRequest): Promise<void> {
-      if (!isCodingPlanProviderId(request.preferredProviderId)) {
-        throw new Error("no_bigmodel_api_key");
-      }
-      await quotaProvider.markCodingPlanResetHistoryRead(request);
+    async markCodingPlanResetHistoryRead(_request: CodingPlanResetScopeRequest): Promise<void> {
+      throw codingPlanRemoved();
     },
-    async getSnapshot(request: UsageStatsRequest): Promise<UsageStatsSnapshot> {
-      // App Usage 已迁移到 getAppUsageSnapshot（agent 数据库）。getSnapshot 仅服务 Coding Plan monitor 链路。
-      // 任何 monitor 失败都不能回退本地数据，保持数据源隔离。
-      return quotaProvider.getUsageStatsSnapshot(request);
+    async getSnapshot(_request: UsageStatsRequest): Promise<UsageStatsSnapshot> {
+      throw codingPlanRemoved();
     },
     async getEntitlementSnapshot(
-      request: UsageEntitlementRequest = {},
+      _request: UsageEntitlementRequest = {},
     ): Promise<UsageEntitlementSnapshot> {
-      return quotaProvider.getSnapshotForRequest(request);
+      // 不抛错：额度查询是界面常驻请求，返回明确的「未配置」空态，
+      // 让侧栏与设置页自然降级，而不是每次渲染都冒一条错误。
+      return {
+        generatedAt: Date.now(),
+        authenticated: false,
+        unavailableReason: "not_configured",
+        provider: null,
+        remaining: null,
+        subscription: null,
+        quota: null,
+      };
     },
   };
 }

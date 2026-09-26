@@ -34,20 +34,9 @@ export function ProviderTemplatePicker({
   const { intl, locale } = useZCodeIntl();
   const { dismissFeedback, showFeedback } = useProviderDetailFeedback();
   const customLabel = intl.formatMessage({ id: "settings.modelProvider.newProviderName" });
-  // Polaris：官方计费套餐模板（zai-api / bigmodel-api）已移除，本组只剩自带 API Key 的标准通道。
-  const zhipuIds = ["bigmodel-standard-api", "zai-standard-api"];
-  const groups = [
-    {
-      id: "zhipu",
-      templates: zhipuIds.flatMap((id) =>
-        templates.filter((template) => template.templateId === id),
-      ),
-    },
-    {
-      id: "other",
-      templates: templates.filter((template) => !zhipuIds.includes(template.templateId)),
-    },
-  ] as const;
+  // Polaris：智谱系内置模板（官方计费套餐 + 自带 Key 的两条标准通道）已全部移除，
+  // 内置组只剩第三方模板；用户仍可用下方「自定义供应商」指向任意网关（含 GLM）。
+  const groups = [{ id: "other", templates }] as const;
   const createWithFeedback = async (create: () => Promise<void>) => {
     const feedbackKey = "provider-template-create";
     dismissFeedback(feedbackKey);
