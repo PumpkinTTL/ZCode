@@ -368,3 +368,50 @@ CLI 命令/TUI 接线（`login-command.ts` / `tui-auth.ts` / `cli-types.ts` / `c
 `standalone-account-provider-runtime.ts` 仍被 `process-provider-registry-runtime.ts` 使用，**不能**当登录专用件删。
 
 验证：CLI `turbo run typecheck` ✅ 27/27；根 `pnpm typecheck` ✅ 0 错误。
+
+---
+
+## 11. 本轮：UI 层 OAuth 死链路收口（2026-09-26 第七刀）
+
+OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / JWT 失效广播 / 登录后 family 校正
+全部**不可达**，一并删除：
+
+| 位置 | 处置 |
+|---|---|
+| `ui/root/useRootOAuthEffects.ts` | 411 行 → 最小实现（约 80 行）：只保留「启动恢复登录态（恒未登录）」与「通知主进程渲染就绪」，对外 props 签名不变，`Root.tsx` 零改动 |
+| `ui/root/oauthCachedSessionRestore.ts` | **删除**（只被该 hook 使用） |
+| `ui/root/oauthLoginAttemptGuard.ts` | **删除**（只被该 hook 使用） |
+| `ui/root/oauthProviderFamilySelectionRefresh.ts` | **删除**（只被该 hook 使用） |
+| `ui/root/oauthTeamPricing.ts` | **删除**（只被上者使用） |
+
+**保留**：`zcodeJwtInvalidRestartMarker.ts`（`Root.tsx` 仍 `consume`）、`providerFamilyDomainSettings.ts`
+（`useRootWorkspaceActions` / `ModelProviderSection` 仍用）。
+
+验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings 既有）。
+
+---
+
+## 12. 决策待定：Coding Plan UI 的保留/清除边界
+
+用户提出关键问题：**若 Polaris 自己也推出套餐，UI 要不要留？**
+
+分析结论（建议按「两层」处理）：
+
+**A. 必须保留（自建套餐的 seam）**
+- 服务接口：`ICodingPlanSubscriptionService`、`IUsageStatsService`（已完成空壳化，接口不变）。
+- 与厂商无关的用量展示：`CodingPlanUsagePanel` + 用量图表、`chat-input-toolbar/*`（上下文/额度显示）、
+  `WorkspaceSidebarFooterUsageSummary`、`useUsageStats` / `usePlanIdentitySnapshot`。
+- 购买弹窗的**壳**：`CodingPlanUpgradeDialog(Provider)` 的上下文/开关机制。
+
+**B. 建议清除（官方专属，自建套餐时必重写）**
+- 企业/团队定价：`oauthTeamPricing`（已删）、`enterpriseCodingPlanProducts`、
+  `useEnterpriseCodingPlanProducts`、`codingPlanEnterpriseTiers`。
+- 官方免费档：`StartPlanBalanceCard` / `StartPlanQuotaStatusCard` / `useStartPlanPreview`。
+- 官方购买 webview：`CodingPlanEmbeddedWebviewDialog` / `codingPlanEmbeddedWebview` /
+  `codingPlanPurchaseAuth` / `codingPlanUpgradeLoginRecovery` / `codingPlanPricingCards`。
+- 官方漏斗埋点：`codingPlanFunnelTelemetry`。
+- 官方品牌残留：`BigModelRegistrationHint`。
+
+**为什么不一刀切**：清除 B 需要改 `StatusCards.tsx`（987 行）、`Detail.tsx`（1231 行）、
+`ModelProviderSection.tsx`、`SettingsPage.tsx`、`V4ComposerToolbar.tsx` 等中心文件，
+属大重构；建议单独一刀、逐子块 typecheck 完成。
