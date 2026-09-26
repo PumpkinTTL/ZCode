@@ -47,7 +47,6 @@ import {
   registerHostApiNetworkTransportForDispose,
   createOAuthService,
   createOAuthProviderLogoutHandler,
-  createAccountProviderCredentialStore,
   createSettingsSyncService,
   createUsageStatsService,
   createMediaPreviewService,
@@ -89,9 +88,6 @@ export function createRemoteWorkspaceServiceCollection(params: {
   assertLegacyRemoteWorkspaceRpcContract(params.connectionServices);
   const localSettingService = createSettingService();
   const localCredentialService = createCredentialService();
-  const localAccountProviderCredentialStore = createAccountProviderCredentialStore({
-    credentialService: localCredentialService,
-  });
   const hostApiNetworkTransport = createHostApiNetworkTransport(async () => {
     const settings = await localSettingService.get();
     return {
@@ -111,9 +107,8 @@ export function createRemoteWorkspaceServiceCollection(params: {
     apiClient: localApiClient,
     credentialService: localCredentialService,
   });
-  handleOAuthProviderLogout = createOAuthProviderLogoutHandler({
-    accountProviderCredentialStore: localAccountProviderCredentialStore,
-  });
+  // Polaris：官方账号凭据仓库已移除，登出不再需要清理派生 provider key。
+  handleOAuthProviderLogout = createOAuthProviderLogoutHandler();
   const conversationShareClient = new ConversationShareHttpClient({
     // 远端 workspace 的分享也必须使用真实 API；本地 Mock 仅用于单测，不生成无法跨进程访问的链接。
     apiClient: localApiClient,

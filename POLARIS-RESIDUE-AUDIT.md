@@ -330,22 +330,23 @@ CLI `@zcode/i18n` 单独 `tsc --noEmit` ✅ 通过（`turbo run typecheck` 里 i
 
 `pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings 均为既有）。
 
-### 9c. 下一刀：`accountProvider*` 集群（评估后：**不宜一把砍**）
+### 9c. `accountProvider*` 集群（2026-09-26 第五刀，已按分步方案完成）
 
-侦察结论：该集群（`accountProvider*`、`accountRequestAuthService`、`codingPlanProviderAvailability`、
-`legacyTeamOrganizationResolver`，约 1000+ 行）虽然现在都是「空转」状态，但它插入的是**红线**链路：
+> 处理原则：**空壳化插在红线链路里的服务，不动红线本身的构造签名。**
 
-| 耦合点 | 为什么不能盲砍 |
+| 位置 | 处置 |
 |---|---|
-| `accountProviderConfigSource` → `createProviderRuntimeFromConfigRuntime({ accountSource })` | provider runtime 是**第三方 provider 通道**（红线）：删 `accountSource` 意味着改 provider runtime 构造签名 |
-| `accountRequestAuthService` → `zcodeAgentService` / `offPeakRuntimeModel` / `officialMcpCredentials` | agent 侧（红线）：agent service 把它作为请求期账号鉴权边界 |
-| `handleOAuthProviderLogout` + `accountProviderCredentialStore` | desktop remote Host 也在装配，登出时要清派生 provider key |
-| `providerProvisioningTarget` / `providerProvisioningSource` | provider 配置注入链路 |
+| `model-provider/accountRequestAuthService.ts` | 改为**空壳**：`resolveAccessCurrent→null`、`resolveCurrent/assertCurrent→throw AccountRequestCredentialUnavailableError`。类型（含 `AccountRequestAuthResolver` / 错误类）与导出名全部保留，工厂改为无参 |
+| `model-provider/accountProviderConnectionResolver.ts` | 344 行 → 空 overlay：`createAccountProviderConfigSource` 用 `createAccountProviderConfigResolver(async () => [])` 返回**零账号连接**，签名（`configSource`）不变。**保留它的原因**：Provider Runtime / Agent / Provider Provisioning 依赖这个第三层 Source，直接摘掉 `accountSource` 会改 Provider 抽象层构造签名（红线） |
+| `oauth/oauthProviderLogout.ts` | 改为空壳：不再依赖 `accountProviderCredentialStore`，只保留 `refreshAccountProviders` 扩展点 |
+| `node.ts` | 删除整条账号链装配（`accountProviderCredentialStore` / `AccountProviderApiClient` / `AccountProviderApiKeyResolver` / `accountProviderCredentialService` / `legacyTeamOrganizationResolver` / `readAccountProviderSettings` / `loadAccountIdentity` / `bindAccountProviderInvalidation` / `createCodingPlanFamilyAvailabilityResolver`），约 -149 行 |
+| `desktop/remoteWorkspaceServiceCollection.ts` | 去掉 `createAccountProviderCredentialStore` 装配 |
+| **删除** | `accountProviderRequestAuthService`、`accountProviderApiClient`、`accountProviderApiKeyResolver`、`accountProviderApiTypes`、`accountProviderCredentialService`、`accountProviderCredentialStore`、`accountProviderCredentialKey`、`accountProviderTeamPlanRequestKey`、`accountProviderInvalidation`、`codingPlanProviderAvailability`、`legacyTeamOrganizationResolver`（11 个文件） |
 
-建议分步（每步单独 typecheck）：
-1. 把 `accountRequestAuthService.ts` 改为**空壳**（`resolveAccessCurrent→null`、
-   `resolveCurrent/assertCurrent→throw AccountRequestCredentialUnavailableError`），`IAccountRequestAuthService`
-   接口与工厂签名不变；删除 `accountProviderRequestAuthService.ts` 的重实现。
-2. 简化 `node.ts`：不再构造 resolver / credential / apiKey 链，但**保留** `accountProviderConfigSource`
-   作为空 overlay（不改 provider runtime 签名）。
-3. 确认第三步（删文件）前先 `grep` 确认零引用（包含 `desktop/remoteWorkspaceServiceCollection.ts`）。
+**行为等价性**：移除前因无任何 `zhipu-account` provider，`resolveAccessCurrent` 已恒定返回 null、
+`resolveCurrent/assertCurrent` 已恒定抛 `AccountRequestCredentialUnavailableError`；空壳保持同一行为。
+
+**保留的 seam**：`IAccountRequestAuthService` + 类型、`AccountProviderService` 第三层 Source 装配点、
+`createOAuthProviderLogoutHandler` 扩展点、`providerProvisioning*`（含 `isProviderProvisioningAccountCredentialKey` 常量）。
+
+净变更：约 **-1429 行**。验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings 既有）。

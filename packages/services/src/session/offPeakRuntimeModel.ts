@@ -11,7 +11,7 @@ import {
 } from "@zcode/shared";
 import { isOffPeakMockEnabled, startOffPeakMockGateway } from "./offPeakMockGateway.js";
 import type { ServiceLogger } from "../logger/serviceLogger.js";
-import { AccountRequestCredentialUnavailableError } from "../model-provider/accountProviderRequestAuthService.js";
+import { AccountRequestCredentialUnavailableError } from "../model-provider/accountRequestAuthService.js";
 import type { IAccountRequestAuthService } from "../model-provider/accountRequestAuthService.js";
 
 /** 仅用于确定性配置错误；host 据类型输出 permanent，禁止依赖错误文本分流。 */
