@@ -251,3 +251,52 @@
 ### 7d. 验证
 
 `pnpm typecheck` ✅ 0 错误；CLI `turbo run typecheck` ✅ 27/27；`pnpm lint` ✅ 0 errors（79 warnings 均为既有）；CLI lint 侧报错为**既有**（core / contracts / telemetry 等，本轮改动文件 0 命中）。
+
+---
+
+## 8. 本轮：启动残留链路收口（2026-09-26 第三刀）
+
+> 目标：把「启动时必定打一次失败远端请求」的残留链路改为**空实现**（保留接口与装配签名），
+> 顺手清掉混在错误串里的品牌残留。自有 AI 服务端未就绪期间，这些接口的真实实现应在接自有后端时补回。
+
+### 8a. 客户端场景（首页推荐词 / Automations 模板目录）
+
+| 位置 | 处置 |
+|---|---|
+| `packages/services/src/client-scenes/clientScenesService.ts` | 由「请求官方 `/api/v1/client/scenes`」改为**空实现**：`list()` 直接返回 `{ code: 0, msg: "", data: [] }`，不发网络、不抛错。接口 `IClientScenesService` 与工厂签名（依赖对象 `apiClient`）保持不变 |
+
+效果：启动不再出现 `[v4-suggested-prompts] Client scenes 请求失败，推荐列表保持为空`；
+首页推荐词与 Automations 模板目录稳定收敛为空态（自有后端上线后在这里实现 `list()` 即可）。
+
+### 8b. 品牌残留
+
+| 位置 | 原 | 改为 |
+|---|---|---|
+| `packages/provider-node/src/zcode-builtin-download.ts` | 错误串 `ZCode Built-in client-config: invalid response` | `Polaris Built-in …`（会经 `provider-settings.refresh` 冒到 UI 日志） |
+| `apps/zcode-cli/packages/i18n/src/locales/{zh-CN,en-US}.ts` | CLI 启动横幅 `正在启动 ZCode…` / `Starting ZCode...` | `正在启动 Polaris…` / `Starting Polaris...` |
+
+### 8c. 死代码 / 无用日志
+
+| 位置 | 处置 |
+|---|---|
+| `packages/desktop/src/main/desktopHostProcess.ts` | 删除 `[spawnHostProcess] BIGMODEL_OAUTH_APP_SECRET source: …` 日志行——该 secret 在仓库中已无任何消费点，仅此一行引用，且不该在日志里点名 secret |
+| `packages/shared/src/model-provider-family.ts` | 删除死代码 `resolveModelProviderFamilyIdByBaseURL` 与 `ModelProviderFamilySpec.rootDomain`（`rootDomain: "z.ai" / "bigmodel.cn"`）——审计确认零调用方 |
+
+### 8d. 仍然存在（下一刀目标，按优先级）
+
+1. **Built-in Config 远端刷新**（`node.ts:1534`）—— 自有后端未就绪，仍会每次失败一次。属**既定行为**；
+   接自有后端后自动恢复。相关装配 `providerConfigRuntime` / `zcodeBuiltinRemoteConfig` 属抽象层，本轮未动。
+2. **Coding Plan 业务 UI**（约 60 文件：`CodingPlanUpgradeDialog*`、`useCodingPlanProducts`、
+   `useEnterpriseCodingPlanProducts`、`useStartPlanPreview`、`oauthTeamPricing`、`CodingPlanUsage*Panel`、
+   `StartPlanBalanceCard` 等）——服务端实现已空壳化，这些组件现为纯死重；整块删除属较大重构，单独一刀处理。
+3. **OAuth / `accountProvider*` 装配**（`node.ts` 仍装配约 3300 行）——启动会跑 `restoreOAuthSession`
+   与 `shouldOpenLoginEntry`；拟按「保留接口 + 空壳实现」处理。
+4. **CLI 官方登录**（`login-command.ts` / `bootstrap/auth-login.ts` 410 行 / `tui-auth.ts` / `command-center/login-flow.ts`）
+   —— 目前仅关闭为可读错误，尚未删除；`i18n` 里 `/login` `/logout` `callouts.*` 的同源文案一并待清。
+5. **`.env.example`** 仍写官方域名参考（改指 `polaris.bitlesu.com`）；编辑工具对 `.env*` 有写保护，需手工替换。
+
+### 8e. 验证
+
+`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings 均为既有）；
+CLI `@zcode/i18n` 单独 `tsc --noEmit` ✅ 通过（`turbo run typecheck` 里 i18n 报 `EEXIST`/`EBUSY`
+为 Windows 下 pnpm tool 目录软链竞态，属环境问题，非代码错误）。
