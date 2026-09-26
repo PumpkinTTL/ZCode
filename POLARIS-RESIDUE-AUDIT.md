@@ -479,3 +479,14 @@ provider 的请求路径与请求头完全一致，不触碰 agent 能力。
 `/login` 引导、provider 配置能力均不受影响，不触碰 agent 能力。
 
 验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors；CLI `turbo run typecheck` ✅ 27/27。
+
+---
+
+## 15. 零散用户可见品牌文案
+
+| 位置 | 处置 |
+|---|---|
+| `desktop/src/main/index.ts` 退出确认弹窗 | `确认退出 Z Code?` / `Quit Z Code?` → `Polaris` |
+| `web/src/auth/webAuthLocale.ts` Web 登录页文案 | `使用……Z.AI 账号身份` / `用 Z.AI 登录` → 去 Z.AI 化 |
+
+均为纯展示文案，不涉及任何能力。验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors。
