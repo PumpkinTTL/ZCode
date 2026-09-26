@@ -450,3 +450,32 @@ OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / J
 provider 的请求路径与请求头完全一致，不触碰 agent 能力。
 
 验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors；CLI `turbo run typecheck` ✅ 27/27。
+
+---
+
+## 14. CLI 官方登录选项 UI 与官方文案
+
+`/login` 原先构建 4 个官方登录选项（Z.AI / BigModel 各一套 OAuth + API Key），但这些入口背后的
+登录编排早已空壳化（调用恒抛可读错误），UI 只是给用户展示一串必然失败的官方选项，属于官方残留。
+
+| 位置 | 处置 |
+|---|---|
+| `command-center/login-flow.ts` | 159 → 13 行：删除 `buildLoginSelection` / `formatLoginResult` /
+  `formatProviderSetupResult` / `emitLoginAuthorizeMessage` / `parseApiKeyLoginArgs`，只保留 `loginSetupResponse` |
+| `command-center/create.ts` | `/login` 分支简化为返回一条稳定提示（不再构建选项 UI）；导入收窄；`/logout` 文案去官方化 |
+| `command-center/types.ts` | 删除 `CommandCenterLoginResult` / `CommandCenterLoginAuthorizeData` /
+  `CommandCenterLoginOptions` / `CommandCenterBigmodelLoginOptions(Result)` / `CommandCenterApiKeyOptions(Result)`
+  及 `CommandCenterDeps` 上对应的 `login` / `loginBigmodel` / `configureApiKey` 字段 |
+| `tui-auth.ts` | 删除 `loginForTui` / `loginBigmodelForTui` / `configureApiKeyForTui`，仅保留 `logoutForTui`（纯本地凭据清理） |
+| `tui-prompt-handler.ts` | 移除三个登录 deps 接线 |
+| `login-command.ts` | `zcode logout` 文案去官方化 |
+| i18n `types.ts` + `zh-CN.ts` + `en-US.ts` | `loginSetup` 只保留 `response`；`loginRequired` 文案去官方化；帮助文本里 `login/logout` 去 Z.AI 化 |
+
+**保留 seam**：`bootstrap/src/auth-login.ts` 的 `loginZCodeCli` / `logoutZCodeCli` 空壳（`zcode login` /
+`zcode logout` 命令仍接），自有账号服务上线后可在此接回。`loginZCodeCli` 调用仍会抛可读的
+“Official account sign-in is not available in Polaris…” 错误。
+
+**为什么安全**：删除的只是官方选项列表与官方文案；模型可用性检查（`createTuiModelAvailabilityChecker`）、
+`/login` 引导、provider 配置能力均不受影响，不触碰 agent 能力。
+
+验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors；CLI `turbo run typecheck` ✅ 27/27。

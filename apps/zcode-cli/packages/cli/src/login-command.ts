@@ -117,7 +117,7 @@ export async function runLogoutCommand(
     }
 
     ctx.stdout.write(
-      `Logged out from Coding Plan accounts. Credentials: ${result.credentialsPath}\n`,
+      `Logged out. Credentials: ${result.credentialsPath}\n`,
     );
     return 0;
   } catch (error) {
