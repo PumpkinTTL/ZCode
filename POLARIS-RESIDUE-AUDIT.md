@@ -330,10 +330,22 @@ CLI `@zcode/i18n` 单独 `tsc --noEmit` ✅ 通过（`turbo run typecheck` 里 i
 
 `pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings 均为既有）。
 
-### 9c. 下一刀：`accountProvider*` 集群（待办）
+### 9c. 下一刀：`accountProvider*` 集群（评估后：**不宜一把砍**）
 
-`model-provider/accountProvider*`、`accountRequestAuthService`、`codingPlanProviderAvailability`、
-`legacyTeamOrganizationResolver` 仍由 `node.ts` 装配（约 1000+ 行）。该集群与 **agent 侧**
-（`zcodeAgentService` 的可选 `accountRequestAuthService`）、**provider provisioning**（`providerProvisioningTarget`）
-以及 `oauthProviderLogout` 均有耦合，需谨慎分步处理：先空壳化 `accountRequestAuthService` 并简化 node.ts 装配，
-再删已无引用方的 resolver / credential / apiKey 文件。
+侦察结论：该集群（`accountProvider*`、`accountRequestAuthService`、`codingPlanProviderAvailability`、
+`legacyTeamOrganizationResolver`，约 1000+ 行）虽然现在都是「空转」状态，但它插入的是**红线**链路：
+
+| 耦合点 | 为什么不能盲砍 |
+|---|---|
+| `accountProviderConfigSource` → `createProviderRuntimeFromConfigRuntime({ accountSource })` | provider runtime 是**第三方 provider 通道**（红线）：删 `accountSource` 意味着改 provider runtime 构造签名 |
+| `accountRequestAuthService` → `zcodeAgentService` / `offPeakRuntimeModel` / `officialMcpCredentials` | agent 侧（红线）：agent service 把它作为请求期账号鉴权边界 |
+| `handleOAuthProviderLogout` + `accountProviderCredentialStore` | desktop remote Host 也在装配，登出时要清派生 provider key |
+| `providerProvisioningTarget` / `providerProvisioningSource` | provider 配置注入链路 |
+
+建议分步（每步单独 typecheck）：
+1. 把 `accountRequestAuthService.ts` 改为**空壳**（`resolveAccessCurrent→null`、
+   `resolveCurrent/assertCurrent→throw AccountRequestCredentialUnavailableError`），`IAccountRequestAuthService`
+   接口与工厂签名不变；删除 `accountProviderRequestAuthService.ts` 的重实现。
+2. 简化 `node.ts`：不再构造 resolver / credential / apiKey 链，但**保留** `accountProviderConfigSource`
+   作为空 overlay（不改 provider runtime 签名）。
+3. 确认第三步（删文件）前先 `grep` 确认零引用（包含 `desktop/remoteWorkspaceServiceCollection.ts`）。
