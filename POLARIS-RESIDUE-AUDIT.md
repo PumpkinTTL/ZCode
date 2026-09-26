@@ -231,6 +231,23 @@
 - **有意保留**：`templateGroup.zhipu`（「智谱」/「Zhipu」）、`login.apiKey.provider.zai`（「Z.ai」）等**第三方厂商名**——它们是这些 API 的真实提供方，改成 Polaris 会造成名实不符。
 - `ProviderTemplatePicker` 的 zhipu 分组由 4 条收敛为 2 条自带 key 模板。
 
+### 7c-2. 智谱系彻底清除（2026-09-26 第二刀，约 4000 行）
+
+用户在运行态看到「内置两个：BigModel 与 Z.ai」后决定**全砍**（推翻 7a 的「留自带 key 通道」）：
+
+| 处置 | 内容 |
+|---|---|
+| **删除** | 最后两条智谱系模板 `zai-standard-api` / `bigmodel-standard-api` + 48 条模板模型规则；内置模板只剩 16 条第三方（revision 32） |
+| **删除** | `usage-stats/providers/` 全部 6 个文件（含 1606 行的 `BigModelUsageQuotaProvider`）、`model-provider/zaiStartPlanBilling.ts`、dead code `bigmodelStartPlanZcodeJwt.ts` |
+| **改写为不使用官方链路** | `usageStatsService`：只保留 `getAppUsageSnapshot`（读本机 agent 数据库）；Coding Plan 四个方法抛 `coding_plan_removed`，`getEntitlementSnapshot` 返回 `not_configured` 空态（避免常驻请求报错），接口 `IUsageStatsService` 不变 |
+| **连带清理** | desktop host 侧已无人使用的 `AccountRequestAuthService` / `AccountProviderCredentialService` / `OAuthCredentialRepo` 装配 |
+| **保留** | `modelRules` 里以 `api.z.ai` / `open.bigmodel.cn` 为 `baseUrlMatch` 的条目 —— 它们是**静态匹配键**而非请求，且用户自建 provider 指向同一网关时仍需它们 |
+
+**仍然存在（下一刀目标）**：`oauth/`（1841 行）与 `model-provider/accountProvider*`（约 1500 行）仍由 `node.ts` 装配，
+`oauthService` 被 10 处 UI 引用（`useCredentials` / `useTokenRefresh` /
+`providerFamilyDomainMigration` / `useRootOAuthEffects` / `useRootWorkspaceActions` / `ModelProviderSection`），
+启动时仍会跑 `restoreOAuthSession` 与 `shouldOpenLoginEntry`。需按「保留接口、改空壳」接续处理。
+
 ### 7d. 验证
 
 `pnpm typecheck` ✅ 0 错误；CLI `turbo run typecheck` ✅ 27/27；`pnpm lint` ✅ 0 errors（79 warnings 均为既有）；CLI lint 侧报错为**既有**（core / contracts / telemetry 等，本轮改动文件 0 命中）。
