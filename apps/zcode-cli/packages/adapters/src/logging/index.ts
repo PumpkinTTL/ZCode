@@ -249,5 +249,6 @@ function ensureLogDir(logDir: string): void {
 }
 
 function getLogFileName(): string {
-  return `zcode-${formatLocalLogDate(new Date())}.jsonl`;
+  // Polaris：日志文件名跟随品牌（原为 `zcode-<date>.jsonl`），与 retention 的解析规则必须一致。
+  return `polaris-${formatLocalLogDate(new Date())}.jsonl`;
 }

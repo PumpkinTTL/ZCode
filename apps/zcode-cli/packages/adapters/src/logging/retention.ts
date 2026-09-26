@@ -6,7 +6,9 @@ import type { Logger } from "@zcode/contracts";
 export const LOG_RETENTION_DAYS = 7;
 export const LOG_CLEANUP_STARTUP_DELAY_MS = 60_000;
 
-const LOG_FILE_NAME_PATTERN = /^zcode-(\d{4})-(\d{2})-(\d{2})\.jsonl$/;
+// Polaris：日志文件名已改为 `polaris-<date>.jsonl`。`zcode-` 前缀保留在规则里，
+// 只为了继续识别并清理改名之前已经落在数据目录里的旧日志。
+const LOG_FILE_NAME_PATTERN = /^(?:zcode|polaris)-(\d{4})-(\d{2})-(\d{2})\.jsonl$/;
 const MIN_RETENTION_DAYS = 1;
 
 export interface LogRetentionCleanupOptions {

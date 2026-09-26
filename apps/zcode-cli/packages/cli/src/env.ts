@@ -135,5 +135,6 @@ function applyBetaStorageDefault(env: CliEnv, argv: readonly string[]): void {
   const explicitBeta = env.ZCODE_BETA === "1" || env.ZCODE_ENV === "beta";
   const invokedAsBeta = argv.some((arg) => /(^|[/\\])zcode-beta(?:$|\.)/u.test(arg));
   if (!explicitBeta && !invokedAsBeta) return;
-  env.ZCODE_STORAGE_DIR = join(homedir(), ".zcode-beta");
+  // Polaris：beta 通道的数据根跟随品牌（原为 `~/.zcode-beta`），避免与官方 ZCode 互相污染。
+  env.ZCODE_STORAGE_DIR = join(homedir(), ".polaris-beta");
 }

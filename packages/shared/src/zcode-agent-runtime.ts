@@ -29,7 +29,8 @@ export const ZCODE_AGENT_RUNTIME: ZCodeAgentRuntimeDescriptor = {
   bundledResourceDir: "glm",
   version: "0.13.3",
   spawnArgs: ["app-server", "--stdio"],
-  nativeConfigDir: ".zcode/cli",
+  // 用户级数据根（Polaris fork：`.polaris`）；workspace 级仍是 `.zcode` 点文件契约。
+  nativeConfigDir: ".polaris/cli",
   nativeConfigFileName: "config.json",
   missingBinaryMessage:
     "[Polaris Agent] glm binary 未找到，请设置 GLM_BINARY_PATH 或先准备 GLM 运行时资源",

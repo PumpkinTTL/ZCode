@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve as resolvePath } from "node:path";
 import { ZCODE_AGENT_RUNTIME } from "@zcode/shared";
+import { DATA_ROOT_DIR_NAME } from "../paths.js";
 
 const packagedResourcesPath =
   typeof (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath === "string"
@@ -59,6 +60,8 @@ export function findZCodeAgentRuntimeBinary(): string | null {
 
   const candidates = [
     packagedResourcesPath ? resolvePath(packagedResourcesPath, ...resourceSegments) : null,
+    // 用户级数据根跟品牌走；`.zcode/server` 作为历史遗留候选保留（已部署过的旧目录）。
+    resolvePath(homedir(), DATA_ROOT_DIR_NAME, "server", "agents", ...resourceSegments),
     resolvePath(homedir(), ".zcode", "server", "agents", ...resourceSegments),
     ...platformScopedRoots.map((root) =>
       root ? resolvePath(root, runtime.bundledResourceDir, ...entrySegments) : null,
@@ -87,6 +90,8 @@ export function findZCodeAgentRuntimeNodeBundle(): string | null {
 
   const candidates = [
     packagedResourcesPath ? resolvePath(packagedResourcesPath, ...resourceSegments) : null,
+    // 用户级数据根跟品牌走；`.zcode/server` 作为历史遗留候选保留（已部署过的旧目录）。
+    resolvePath(homedir(), DATA_ROOT_DIR_NAME, "server", "agents", ...resourceSegments),
     resolvePath(homedir(), ".zcode", "server", "agents", ...resourceSegments),
     ...platformScopedRoots.map((root) =>
       root ? resolvePath(root, runtime.bundledResourceDir, ...entrySegments) : null,
