@@ -790,6 +790,7 @@ const zhCN: Record<string, string> = {
   "login.apiKey.placeholder": "输入 API key",
   "login.apiKey.providerLabel": "API key 提供方",
   "login.apiKey.provider.deepseek": "DeepSeek",
+  "login.backToNimbus": "返回 Nimbus 登录",
   "login.apiKey.provider.moonshotkimi": "Kimi",
   "login.apiKey.getApiKey": "获取 API Key",
   "login.apiKey.cancel": "取消",

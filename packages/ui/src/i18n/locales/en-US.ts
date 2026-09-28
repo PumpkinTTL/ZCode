@@ -867,6 +867,7 @@ const enUS: Record<string, string> = {
   "login.apiKey.placeholder": "Enter API key",
   "login.apiKey.providerLabel": "API key provider",
   "login.apiKey.provider.deepseek": "DeepSeek",
+  "login.backToNimbus": "Back to Nimbus sign-in",
   "login.apiKey.provider.moonshotkimi": "Kimi",
   "login.apiKey.getApiKey": "Get API Key",
   "login.apiKey.cancel": "Cancel",
