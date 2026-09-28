@@ -2,7 +2,6 @@ import { useState } from "react";
 import { isApiKeyAccess } from "@zcode/provider";
 import { Loader2Icon, TriangleAlertIcon } from "lucide-react";
 import {
-  BIGMODEL_PROVIDER_ID,
   TID_LOGIN_API_KEY_CANCEL_BUTTON,
   TID_LOGIN_API_KEY_CONTINUE_BUTTON,
   TID_LOGIN_API_KEY_ERROR,
@@ -10,7 +9,6 @@ import {
   TID_LOGIN_API_KEY_PROVIDER_ITEM,
   TID_LOGIN_API_KEY_PROVIDER_TRIGGER,
   TID_LOGIN_API_KEY_SKIP_BUTTON,
-  ZAI_PROVIDER_ID,
   testId,
 } from "@zcode/shared";
 import { Alert, AlertDescription } from "@/components/ui/alert.js";
@@ -23,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.js";
-import { renderOAuthProviderIcon } from "@/lib/oauthProviderIcon.js";
+import { ModelBrandIcon } from "@/components/ModelBrandIcon.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
 import { useServices } from "@/hooks/useServices.js";
@@ -50,16 +48,16 @@ interface ApiKeySetupFormProps {
  * 第三方 API Key 接入表单。
  *
  * 这是「自定义供应商 + API Key」通道的首启入口：官方账号 OAuth 已随账号业务砍除，
- * 本表单写入的是本地 personal provider 凭据（zai-api / bigmodel-api 模板），
+ * 本表单写入的是本地 personal provider 凭据（内置第三方模板），
  * 与官方账号登录态无关，因此必须保留。
  */
 export function ApiKeySetupForm({ onCancel, onSaved, onSkipped }: ApiKeySetupFormProps) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl } = useZCodeIntl();
   const platform = usePlatform();
   const { modelSelectionService, providerSettingsService, settingService } = useServices();
   const markApiKeyLoginSuccess = useZCodeStore((state) => state.markApiKeyLoginSuccess);
   const [providerChoice, setProviderChoice] = useState<ApiKeyProviderChoice>(() =>
-    resolveApiKeySetupDefaultProvider(locale),
+    resolveApiKeySetupDefaultProvider(),
   );
   const [apiKeyValue, setApiKeyValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -183,22 +181,20 @@ export function ApiKeySetupForm({ onCancel, onSaved, onSkipped }: ApiKeySetupFor
               </SelectTrigger>
               <SelectContent align="end" className="rounded-lg">
                 <SelectItem
-                  value="zai"
+                  value="deepseek"
                   className="rounded-md"
-                  data-testid={testId(TID_LOGIN_API_KEY_PROVIDER_ITEM, "zai")}
+                  data-testid={testId(TID_LOGIN_API_KEY_PROVIDER_ITEM, "deepseek")}
                 >
-                  {renderOAuthProviderIcon(ZAI_PROVIDER_ID, "size-4")}
-                  {intl.formatMessage({ id: "login.apiKey.provider.zai" })}
+                  <ModelBrandIcon modelId="deepseek" className="size-4" />
+                  {intl.formatMessage({ id: "login.apiKey.provider.deepseek" })}
                 </SelectItem>
                 <SelectItem
-                  value="bigmodel"
+                  value="moonshot-kimi"
                   className="rounded-md"
-                  data-testid={testId(TID_LOGIN_API_KEY_PROVIDER_ITEM, "bigmodel")}
+                  data-testid={testId(TID_LOGIN_API_KEY_PROVIDER_ITEM, "moonshot-kimi")}
                 >
-                  {renderOAuthProviderIcon(BIGMODEL_PROVIDER_ID, "size-4")}
-                  {intl.formatMessage({
-                    id: "login.apiKey.provider.bigmodel",
-                  })}
+                  <ModelBrandIcon modelId="moonshot-kimi" className="size-4" />
+                  {intl.formatMessage({ id: "login.apiKey.provider.moonshotkimi" })}
                 </SelectItem>
               </SelectContent>
             </Select>

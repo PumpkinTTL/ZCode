@@ -1,46 +1,38 @@
-import {
-  BUILTIN_PROVIDER_TEMPLATE_IDS,
-  type AppSettings,
-  type Locale,
-  type ProviderFamilyDomain,
-} from "@zcode/shared";
+import type { AppSettings } from "@zcode/shared";
 import type { ModelSelectionView } from "@zcode/services";
 import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
 
-export type ApiKeyProviderChoice = "zai" | "bigmodel";
+// Polaris：首启推荐的两家第三方模板。智谱系模板（zai-api / bigmodel-api）已随官方业务
+// 移除，不能再作为首启选择（模板不存在会导致创建失败）。候选只放现存的内置模板；
+// 接自有套餐后在这里换成自有模板即可。
+export type ApiKeyProviderChoice = "deepseek" | "moonshot-kimi";
 
-export function resolveApiKeySetupDefaultProvider(locale: Locale): ApiKeyProviderChoice {
-  return locale === "zh-CN" ? "bigmodel" : "zai";
+const API_KEY_PROVIDER_TEMPLATE_IDS = {
+  deepseek: "deepseek",
+  "moonshot-kimi": "moonshot-kimi",
+} as const;
+
+export function resolveApiKeySetupDefaultProvider(): ApiKeyProviderChoice {
+  return "deepseek";
 }
 
 export function resolveApiKeySetupTemplateId(
   choice: ApiKeyProviderChoice,
-): "zai-api" | "bigmodel-api" {
-  return choice === "zai"
-    ? BUILTIN_PROVIDER_TEMPLATE_IDS.zai
-    : BUILTIN_PROVIDER_TEMPLATE_IDS.bigmodel;
+): (typeof API_KEY_PROVIDER_TEMPLATE_IDS)[ApiKeyProviderChoice] {
+  return API_KEY_PROVIDER_TEMPLATE_IDS[choice];
 }
 
 export function resolveApiKeySetupProviderLabel(choice: ApiKeyProviderChoice): string {
-  // API Key 错误提示需要使用 BigModel 品牌固定写法。
-  return choice === "zai" ? "Z.ai" : "BigModel";
-}
-
-function resolveApiKeySetupProviderFamilyDomain(
-  choice: ApiKeyProviderChoice,
-): ProviderFamilyDomain {
-  return choice;
+  return choice === "moonshot-kimi" ? "Kimi" : "DeepSeek";
 }
 
 export function buildApiKeySetupSkipSettings(
   choice: ApiKeyProviderChoice,
   now: number,
-): Pick<
-  AppSettings,
-  "providerFamilyDomain" | "providerFamilyDomainUpdatedAt" | "providerFamilyDomainMigrated"
-> {
+): Pick<AppSettings, "providerFamilyDomainUpdatedAt" | "providerFamilyDomainMigrated"> {
+  // 第三方模板不属于 zai/bigmodel 家族，不能写 providerFamilyDomain
+  //（schema 只接受这两个值，非法值会让整份 settings 校验失败）。
   return {
-    providerFamilyDomain: resolveApiKeySetupProviderFamilyDomain(choice),
     providerFamilyDomainUpdatedAt: now,
     providerFamilyDomainMigrated: true,
   };
