@@ -13,6 +13,7 @@ export type SettingsSectionId =
   | "skill"
   | "plugins"
   | "usage"
+  | "providerQuota"
   | "subagents"
   | "commands"
   | "hooks"

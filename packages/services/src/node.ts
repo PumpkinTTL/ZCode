@@ -307,6 +307,8 @@ import { IHooksService } from "./hooks/hooks.js";
 import { IMemoryService } from "./memory/memory.js";
 import { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 import { IFeedbackService } from "./feedback/feedback.js";
+import { IProviderQuotaService } from "./business/quota/quota.js";
+import { createQuotaService, DEFAULT_QUOTA_BASE_URL } from "./business/quota/quotaService.js";
 import { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 import { createFileService } from "./file/fileService.js";
 import { createMediaPreviewService } from "./media-preview/mediaPreview.js";
@@ -2448,6 +2450,13 @@ export function createLocalServices(options: {
         apiClient,
         credentialService,
         oauthService,
+      }),
+    )
+    .register(
+      IProviderQuotaService,
+      createQuotaService({
+        credentialService,
+        baseUrl: process.env["QUOTA_BASE_URL"]?.trim() || DEFAULT_QUOTA_BASE_URL,
       }),
     )
     .register(IPromptAttachmentTransferService, createLocalPromptAttachmentTransferService());

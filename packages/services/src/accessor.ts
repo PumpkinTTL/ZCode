@@ -35,6 +35,7 @@ import type { IHooksService } from "./hooks/hooks.js";
 import type { IMemoryService } from "./memory/memory.js";
 import type { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 import type { IFeedbackService } from "./feedback/feedback.js";
+import type { IProviderQuotaService } from "./business/quota/quota.js";
 import type { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 import type { IWindowControllerService } from "./window-controller/windowController.js";
 import type { IOnboardingRecordService } from "./onboarding/onboardingRecord.js";
@@ -87,5 +88,6 @@ export interface IServiceAccessor {
   readonly memoryService: IMemoryService;
   readonly settingsSyncService: ISettingsSyncService;
   readonly feedbackService: IFeedbackService;
+  readonly providerQuotaService: IProviderQuotaService;
   readonly promptAttachmentTransferService: IPromptAttachmentTransferService;
 }

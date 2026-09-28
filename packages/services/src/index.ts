@@ -283,6 +283,24 @@ export { ICommandsService } from "./commands/commands.js";
 export { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 
 export { IFeedbackService } from "./feedback/feedback.js";
+export {
+  IProviderQuotaService,
+  QUOTA_TOKEN_CREDENTIAL_KEY,
+  QUOTA_USERNAME_CREDENTIAL_KEY,
+} from "./business/quota/quota.js";
+export type {
+  QuotaStatusResult,
+  QuotaStatus,
+  QuotaAccount,
+  QuotaWalletInfo,
+  QuotaSubscription,
+  QuotaCreditsSubscription,
+  QuotaPerCallSubscription,
+  QuotaViewKind,
+  QuotaUsageDay,
+} from "./business/quota/quotaTypes.js";
+export { createQuotaService, DEFAULT_QUOTA_BASE_URL } from "./business/quota/quotaService.js";
+export { QuotaApiError } from "./business/quota/quotaClient.js";
 export type { FeedbackUploadProgress } from "./feedback/feedback.js";
 export { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 export type {

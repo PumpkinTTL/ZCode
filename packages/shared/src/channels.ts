@@ -143,6 +143,8 @@ export const ServiceChannels = {
   Bots: "bots",
   /** 用户反馈工单服务 */
   Feedback: "feedback",
+  /** Polaris 自有业务：供应商账号与额度（余额/套餐/用量，供应商可替换） */
+  ProviderQuota: "provider-quota",
   /** Composer 附件在 host-local 与 remote runtime 之间的预传服务 */
   PromptAttachmentTransfer: "prompt-attachment-transfer",
   /** 闲时任务管理服务（与 automation 服务面独立） */
