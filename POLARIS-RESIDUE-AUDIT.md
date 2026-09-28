@@ -1038,3 +1038,46 @@ npx tsx --test（4 个插件测试文件）               ✅ 16 pass / 0 fail
 coding-plan 相关测试                             0 个（不存在，故无测试破坏面）
 已删符号残留引用扫描                              ✅ 0 悬空
 ```
+
+---
+
+## 7. 第二轮瘦身（2026-09-28 收尾）
+
+### 7.1 已完成
+
+| 批次 | 内容 | 收益 |
+|---|---|---|
+| A 死重清理 | ai-elements 30 个零引用组件、devDeps 2 个、死资源 11 类 | 渲染包 43.1MB → 28MB |
+| A shiki 去重 | 双版本（4.0.2 / 3.23.0）合并为单版本 | 语言 chunk 900+ 对合一 |
+| B 官方品牌 | 内置插件 author/图标、CLI 上下文、webfetch UA、zcode-server-cli 管道名等 | — |
+| B CLI 登录链 | 官方登录编排空壳化 + 选项 UI 下掉 | ~1,700 行 |
+| C 官方套餐线 | 购买漏斗/配额链/智谱系内置模板/服务端 quota provider | ~4,000 行 |
+| D preload 去重 | 值导入改走 shared 细粒度子路径 | **3.3MB → 533KB** |
+| D 生产 sourcemap | 默认不生成（`ZCODE_UPLOAD_MAPS=1` 可开） | 渲染产物 139MB → 43MB |
+| D **端点闸门** | 阻止 shell 里的官方端点变量烤进产物 | 见 7.2 |
+
+### 7.2 新发现的真问题：构建环境把官方端点烤进产物
+
+`loadEnvFiles()` 会合并**整个 process.env**，而 `pickProductEndpointEnv()` 恰好挑
+`ZCODE_BASE_URL` / `ZAI_OAUTH_ORIGIN` / `ZAI_BUSINESS_BASE_URL` / `ZAI_OAUTH_CLIENT_ID`。
+只要构建在一个带这些变量的 shell 里跑（例如从 ZCode 宿主派生的终端），产物的
+`__ZCODE_ENDPOINT_ENV__` 就是 `zcode.z.ai` / `chat.z.ai` / `api.z.ai`，
+**把源码里的 Polaris 默认值整片盖掉**——这是"改了品牌却仍请求官方接口"的真正原因，
+也解释了几次实测里看到的官方域名请求。
+
+已加构建期闸门 `packages/desktop/scripts/polaris-endpoint-guard.mjs`：摘掉上游域名并告警，
+之后回落到源码默认；需要对照官方验证迁移时设 `POLARIS_ALLOW_UPSTREAM_ENDPOINTS=1`。
+
+> **发布前必查**：构建日志里不应出现 `[polaris] 已从构建端点环境中摘除上游域名`，
+> 或确认产物 `main/preload/host` 里官方域名为 0 个文件（当前实测为 0）。
+
+### 7.3 有意保留（不在删除范围）
+
+| 项 | 原因 |
+|---|---|
+| 套餐线剩余 UI（45 个文件 / 7,554 行） | 运行时已中和（规格数组为空、无官方 provider、产物里 0 处标识），但被 **26 个非套餐文件（31,231 行）** 静态引用（设置页/会话面板/DI 容器/窗口 chrome）。删干净需专门一轮外科改造，收益只是整洁——留给独立一轮做，不在收尾里动刀 |
+| `bigmodel.cn` 匹配键（`legacyZCodeConfigProviderReader`） | 只用于识别旧配置里残留的官方域名并改指自有网关，不发起请求 |
+| marketplace 的 Z.ai 兼容镜像 | 你设计的过渡降级：自有地址优先，官方作镜像，可用 `POLARIS_PLUGIN_MARKETPLACE_MIRRORS` 覆盖 |
+| `@babel/runtime` | bundle 校验脚本把它当主进程启动依赖兜底，1MB 不值得冒险 |
+| `packages/zcode-server-cli` | 产品决策：保留（无头服务端 CLI） |
+| `services/session/claude-native` | 产品决策：保留（Claude 历史导入） |
