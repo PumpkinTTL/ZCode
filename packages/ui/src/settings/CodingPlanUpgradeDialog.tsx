@@ -1,21 +1,16 @@
-import { useEffect } from "react";
-import type { PurchaseAudience } from "@/settings/model-provider-section/codingPlanEnterpriseTiers.js";
-
 /**
- * Polaris fork：官方套餐购买流程已整体移除。
+ * Polaris：官方套餐购买流程已整体移除，这个弹窗位由**自有业务**接管。
  *
- * 原先这里渲染 `CodingPlanEmbeddedWebviewDialog`——一个打开 Z.ai 官网 `/coding-plan`、
- * 把官方 OAuth 凭据注入页面 localStorage、并监听官网购买完成信号的内嵌 webview；配套还有
- * 官方 OAuth 登录恢复（`codingPlanUpgradeLoginRecovery`）与购买鉴权判定（`codingPlanPurchaseAuth`）。
- * 这些都与官方账号体系强绑定，自有套餐必然重写，故连同 `codingPlanEmbeddedWebview` 一并删除。
- *
- * 保留的是购买入口的**契约 seam**：`CodingPlanUpgradeDialogTarget` 与组件签名不变，
- * `CodingPlanUpgradeDialogProvider` / `useCodingPlanUpgradeDialog` 等调用方无需改动。
- * 接自有套餐购买流程时，在此渲染自有界面即可。
+ * 保留了原契约 seam（target / onClose / onOpenResult / onReopen 与调用方不变），
+ * 但渲染的是我们自己的「Nimbus 账号（登录 + 额度）」弹窗——
+ * 接自有套餐购买流程时，同样在这一层扩展，调用方依旧无需改动。
  */
+import { useEffect } from "react";
+import { NimbusAccountDialog } from "@/business/quota/NimbusAccountDialog.js";
+
 export interface CodingPlanUpgradeDialogTarget {
   providerId: string;
-  initialAudience?: PurchaseAudience;
+  initialAudience?: string;
   initialTeamPlanKey?: string;
 }
 
@@ -27,10 +22,15 @@ interface CodingPlanUpgradeDialogProps {
   onReopen?: (target: CodingPlanUpgradeDialogTarget) => void;
 }
 
-export function CodingPlanUpgradeDialog({ target, onOpenResult }: CodingPlanUpgradeDialogProps) {
-  // 当前没有可打开的购买界面：向调用方回报“未打开”，避免观察型调用方一直等待。
+export function CodingPlanUpgradeDialog({
+  target,
+  onClose,
+  onOpenResult,
+}: CodingPlanUpgradeDialogProps) {
+  // 弹窗位已被自有业务接管：能打开就向观察方回报 true，避免调用方一直等待。
   useEffect(() => {
-    if (target) onOpenResult?.(false);
+    if (target) onOpenResult?.(true);
   }, [target, onOpenResult]);
-  return null;
+
+  return <NimbusAccountDialog open={target !== undefined} onClose={onClose} />;
 }

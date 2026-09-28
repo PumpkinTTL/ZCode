@@ -2351,6 +2351,13 @@ const enUS: Record<string, string> = {
   "business.quota.hoursLeft": "{hours}h left",
   "business.quota.notActivated": "Starts on first use",
   "business.quota.rateHint": "Converted at the live rate",
+  "business.quota.title": "My quota",
+  "business.quota.loading": "Loading…",
+  "business.quota.retry": "Retry",
+  "business.quota.connect": "Connect",
+  "business.quota.manage": "Manage",
+  "business.quota.summaryLoggedIn": "Connected as {username} · {left} credits left",
+  "business.quota.summaryLoggedOut": "Not connected — sign in to view balance and plans",
   "business.quota.provisionFailed": "Provider provisioning failed, retry in Settings: ",
   "settings.providerQuotaTitle": "Quota",
   "settings.usageDescription":
