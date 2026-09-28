@@ -90,6 +90,12 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
     return token?.trim() || null;
   }
 
+  async function requireToken(): Promise<string> {
+    const token = await readToken();
+    if (!token) throw new QuotaApiError(401, "请先登录供应商账号");
+    return token;
+  }
+
   async function clearCredentials(): Promise<void> {
     await credentialService.delete(QUOTA_TOKEN_CREDENTIAL_KEY);
     await credentialService.delete(QUOTA_USERNAME_CREDENTIAL_KEY);
@@ -181,6 +187,23 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
       const token = await readToken();
       if (token) await client.logout(token);
       await clearCredentials();
+    },
+
+    /** 确保存在一个可用的 sk- 调用密钥：已有则复用第一个，没有则自动创建。 */
+    async ensureApiKey(): Promise<string> {
+      const token = await requireToken();
+      const keys = await client.listApiKeys(token);
+      const existing = keys
+        .map((k) => (typeof k.key === "string" ? k.key.trim() : ""))
+        .find((key) => key.startsWith("sk-"));
+      if (existing) return existing;
+      return client.createApiKey(token, "Polaris");
+    },
+
+    /** 用 sk- 密钥拉模型目录（OpenAI 兼容 /v1/models），返回去重后的模型 id。 */
+    async getModelIds(apiKey: string): Promise<string[]> {
+      const ids = await client.listModelIds(apiKey);
+      return [...new Set(ids)];
     },
 
     async getUsageDaily(days: number): Promise<readonly QuotaUsageDay[]> {

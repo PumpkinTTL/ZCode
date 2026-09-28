@@ -2216,6 +2216,7 @@ const zhCN: Record<string, string> = {
   "business.quota.hoursLeft": "剩余 {hours} 小时",
   "business.quota.notActivated": "首次使用后开始计时",
   "business.quota.rateHint": "按后台实时汇率换算",
+  "business.quota.provisionFailed": "供应商开通失败，可稍后在设置里重试：",
   "settings.usageDescription": "查看会话活跃度与模型用量的粗略统计。",
   "resourceManager.storage.summaryTotal": "Polaris 总占用",
   "resourceManager.storage.scanning": "正在计算…",

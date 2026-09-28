@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { Label } from "@/components/ui/label.js";
 import { useServices } from "@/hooks/useServices.js";
+import { provisionNimbusProvider } from "./provisionNimbusProvider.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 type Intl = ReturnType<typeof useZCodeIntl>["intl"];
@@ -214,7 +215,7 @@ function LoginCard({
 
 export function ProviderQuotaSection() {
   const { intl } = useZCodeIntl();
-  const { providerQuotaService } = useServices();
+  const { providerQuotaService, providerSettingsService } = useServices();
   const [status, setStatus] = useState<QuotaStatusResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -241,7 +242,27 @@ export function ProviderQuotaSection() {
       setBusy(true);
       setError(null);
       try {
-        setStatus(await providerQuotaService.login({ username, password }));
+        const result = await providerQuotaService.login({ username, password });
+
+        // 登录成功后自动开通：sk- 密钥 → 建/更新 Nimbus 供应商 → 置顶。
+        // 供应商列表是全局状态，这里完成后模型菜单全应用立即可见。
+        if (result.loggedIn) {
+          try {
+            await provisionNimbusProvider({
+              quota: providerQuotaService,
+              providerSettings: providerSettingsService,
+            });
+          } catch (provisionError) {
+            // 开通失败不回滚登录：额度面板照常显示，供应商可稍后重试或手动添加。
+            const message =
+              provisionError instanceof Error ? provisionError.message : String(provisionError);
+            setError(
+              `${intl.formatMessage({ id: "business.quota.provisionFailed" })} ${message}`,
+            );
+          }
+        }
+
+        setStatus(result);
       } catch (loginError) {
         // NimbusApiError 的 detail 是服务端中文文案，直接展示。
         setError(loginError instanceof Error ? loginError.message : String(loginError));
@@ -249,7 +270,7 @@ export function ProviderQuotaSection() {
         setBusy(false);
       }
     },
-    [providerQuotaService],
+    [providerQuotaService, providerSettingsService, intl],
   );
 
   const handleLogout = useCallback(async () => {

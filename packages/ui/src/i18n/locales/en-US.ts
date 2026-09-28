@@ -2351,6 +2351,7 @@ const enUS: Record<string, string> = {
   "business.quota.hoursLeft": "{hours}h left",
   "business.quota.notActivated": "Starts on first use",
   "business.quota.rateHint": "Converted at the live rate",
+  "business.quota.provisionFailed": "Provider provisioning failed, retry in Settings: ",
   "settings.providerQuotaTitle": "Quota",
   "settings.usageDescription":
     "Review rough activity and model usage aggregated from local sessions.",

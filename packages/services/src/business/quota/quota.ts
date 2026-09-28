@@ -34,6 +34,13 @@ export interface IProviderQuotaService {
   logout(): Promise<void>;
   /** 按天用量（N=1..90，钳位）；未登录返回空数组。 */
   getUsageDaily(days: number): Promise<readonly QuotaUsageDay[]>;
+  /**
+   * 确保存在一个可用的 sk- 调用密钥（聊天用；与登录 token 是两回事）。
+   * 已有则复用第一个，没有则自动创建。未登录抛 QuotaApiError(401)。
+   */
+  ensureApiKey(): Promise<string>;
+  /** 用 sk- 密钥拉模型目录（OpenAI 兼容 /v1/models），返回模型 id 列表。 */
+  getModelIds(apiKey: string): Promise<readonly string[]>;
 }
 
 export const IProviderQuotaService = createServiceDescriptor<IProviderQuotaService>(

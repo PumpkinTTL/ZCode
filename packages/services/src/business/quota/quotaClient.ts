@@ -13,6 +13,8 @@ const LOGOUT_PATH = "/api/v1/user/logout";
 const ME_PATH = "/api/v1/user/me";
 const PLANS_PATH = "/api/v1/user/plans";
 const USAGE_DAILY_PATH = "/api/v1/user/usage/daily";
+const KEYS_PATH = "/api/v1/user/keys";
+const MODELS_PATH = "/v1/models";
 
 /** 非 2xx 时抛出；message 为可直接展示的中文文案。 */
 export class QuotaApiError extends Error {
@@ -102,6 +104,53 @@ export class QuotaApiClient {
     } catch {
       /* 忽略：本地凭证一定会被清除，服务端拉黑失败只影响该 token 的可用性 */
     }
+  }
+
+  async listApiKeys(token: string, signal?: AbortSignal): Promise<Array<Record<string, unknown>>> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${KEYS_PATH}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as unknown;
+    // 容错：不同部署可能返回数组或 {keys: [...]} / {data: [...]}
+    if (Array.isArray(body)) return body;
+    if (Array.isArray((body as { keys?: unknown })?.keys)) {
+      return (body as { keys: unknown[] }).keys as Array<Record<string, unknown>>;
+    }
+    if (Array.isArray((body as { data?: unknown })?.data)) {
+      return (body as { data: unknown[] }).data as Array<Record<string, unknown>>;
+    }
+    return [];
+  }
+
+  async createApiKey(token: string, name: string, signal?: AbortSignal): Promise<string> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${KEYS_PATH}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name }),
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as Record<string, unknown>;
+    // 容错：密钥可能落在 key / token / data.key 等字段
+    for (const candidate of [body?.key, body?.token, (body?.data as { key?: unknown })?.key]) {
+      if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+    }
+    throw new QuotaApiError(response.status, "创建密钥成功但响应缺少密钥值");
+  }
+
+  async listModelIds(apiKey: string, signal?: AbortSignal): Promise<string[]> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${MODELS_PATH}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as { data?: unknown } | null;
+    const items = Array.isArray(body?.data) ? (body.data as Array<Record<string, unknown>>) : [];
+    return items
+      .map((item) => (typeof item.id === "string" ? item.id : ""))
+      .filter((id) => id.length > 0);
   }
 
   async getMe(token: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
