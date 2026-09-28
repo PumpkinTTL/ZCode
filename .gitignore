@@ -34,6 +34,7 @@ openclaw/
 .worktrees/
 packages/stream-animate/dist-server/
 packages/stream-animate/.stream-animate-data/
+.freebuff/
 .codegraph
 .mimosa/
 # 集成分支曾混入 node-gyp 构建产物与 .playwright-mcp 临时快照；
