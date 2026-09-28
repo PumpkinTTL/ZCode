@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { PlatformChannels, formatZCodeRendererProcessName } from "@zcode/shared";
+import { PlatformChannels } from "@zcode/shared/channels";
+import { formatZCodeRendererProcessName } from "@zcode/shared/process-names";
 import type {
   ResourceUsageSnapshot,
   StorageCleanRequest,

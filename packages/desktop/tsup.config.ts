@@ -5,6 +5,10 @@ import { pathToFileURL } from "node:url";
 import { defineConfig } from "tsup";
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { resolveDesktopProductFlavor } from "./scripts/desktop-product-identity.mjs";
+import {
+  ALLOW_UPSTREAM_ENDPOINTS_ENV,
+  rejectUpstreamEndpoints,
+} from "./scripts/polaris-endpoint-guard.mjs";
 // tsup 会先打包配置文件；动态加载构建工具，避免其 import.meta.dirname 被重定位到 desktop。
 const { loadBuiltinProviderConfig } = await import(
   pathToFileURL(resolve(import.meta.dirname, "../../scripts/builtin-provider-config.mjs")).href
@@ -100,7 +104,12 @@ function createSharedDefines() {
     __ZCODE_COMMIT__: JSON.stringify(buildMetadata.buildCommitId),
     __ZCODE_BUILD_TIME__: JSON.stringify(buildMetadata.buildTime),
     __ZCODE_ENV__: JSON.stringify(zcodeEnv),
-    __ZCODE_ENDPOINT_ENV__: JSON.stringify(pickProductEndpointEnv(env)),
+    // 闸门：shell 里的官方端点变量不得烤进产物（见 polaris-endpoint-guard.mjs）。
+    __ZCODE_ENDPOINT_ENV__: JSON.stringify(
+      rejectUpstreamEndpoints(pickProductEndpointEnv(env), {
+        allowUpstream: process.env[ALLOW_UPSTREAM_ENDPOINTS_ENV] === "1",
+      }),
+    ),
     __ZCODE_PRODUCT_FLAVOR__: JSON.stringify(zcodeProductFlavor),
     // Computer Use Helper build identity — helperInstaller 读它决定下载哪个 Helper bundle。
     // 缺失时 installer 抛 "Packaged ZCode is missing its embedded Computer Use Helper build identity"。

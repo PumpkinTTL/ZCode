@@ -2,7 +2,7 @@ import {
   databaseStartupControlSchema,
   databaseStartupStateSchema,
   databaseStartupPortPayloadSchema,
-} from "@zcode/shared";
+} from "@zcode/shared/database-startup";
 /* eslint-disable max-lines -- preload bridge 集中暴露桌面平台 IPC，拆散会让 contextBridge 权限边界更难审计。 */
 import { contextBridge, ipcRenderer, webFrame, webUtils } from "electron";
 import {
@@ -77,12 +77,9 @@ import type {
   ConfigureFinalArmsCustomEventE2ERequest,
   FinalArmsCustomEventE2EEntry,
 } from "@zcode/shared";
-import {
-  InternalChannels,
-  PlatformChannels,
-  formatZCodeRendererProcessName,
-  shouldEnableE2ETestBridge,
-} from "@zcode/shared";
+import { InternalChannels, PlatformChannels } from "@zcode/shared/channels";
+import { formatZCodeRendererProcessName } from "@zcode/shared/process-names";
+import { shouldEnableE2ETestBridge } from "@zcode/shared/e2e-test-bridge";
 import { createOAuthCallbackHandler } from "./oauthCallbackBridge.js";
 
 if (shouldEnableE2ETestBridge(process.env)) {

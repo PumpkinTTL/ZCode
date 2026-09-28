@@ -5,6 +5,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./runtime-env": "./src/runtimeEnv.ts",
+    "./channels": "./src/channels.ts",
+    "./process-names": "./src/process-names.ts",
+    "./database-startup": "./src/database-startup.ts",
+    "./e2e-test-bridge": "./src/e2e-test-bridge.ts",
     "./mcp": "./src/mcp.ts",
     "./runtime-tool-runtime": "./src/runtime-tool-runtime.ts",
     "./node-repl-browser-broker": "./src/browser-use/nodeReplBroker.ts",

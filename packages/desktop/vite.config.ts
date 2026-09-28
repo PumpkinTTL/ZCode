@@ -8,6 +8,10 @@ import { resolveZCodeEndpointOrigin, pickProductEndpointEnv } from "@zcode/share
 import { pdfJsCMapsPlugin } from "../ui/vite/pdfJsCMapsPlugin.js";
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { resolveDesktopProductFlavor } from "./scripts/desktop-product-identity.mjs";
+import {
+  ALLOW_UPSTREAM_ENDPOINTS_ENV,
+  rejectUpstreamEndpoints,
+} from "./scripts/polaris-endpoint-guard.mjs";
 
 const buildMetadata = getBuildMetadata();
 const desktopRequire = createRequire(import.meta.url);
@@ -188,7 +192,12 @@ export default defineConfig(({ mode }) => {
     },
     server: { port: 5174, strictPort: true },
     define: {
-      __ZCODE_ENDPOINT_ENV__: JSON.stringify(pickProductEndpointEnv(env)),
+      // 闸门：shell 里的官方端点变量不得烤进产物（见 polaris-endpoint-guard.mjs）。
+      __ZCODE_ENDPOINT_ENV__: JSON.stringify(
+        rejectUpstreamEndpoints(pickProductEndpointEnv(env), {
+          allowUpstream: process.env[ALLOW_UPSTREAM_ENDPOINTS_ENV] === "1",
+        }),
+      ),
       __ZCODE_VERSION__: JSON.stringify(buildMetadata.appVersion),
       __ZCODE_COMMIT__: JSON.stringify(buildMetadata.buildCommitId),
       __ZCODE_BUILD_TIME__: JSON.stringify(buildMetadata.buildTime),
@@ -221,8 +230,12 @@ export default defineConfig(({ mode }) => {
       outDir: "../../out/renderer",
       emptyOutDir: true,
       // 生产包若直接暴露 sourceMappingURL，攻击者可在客户端侧还原业务源码。
-      // 生产使用 hidden sourcemap：本地/发布流程保留 .map，不在产物里暴露映射入口。
-      sourcemap: mode === "production" ? "hidden" : true,
+      // 打包侧已经排除 .map（electron-builder 的 !**/*.map + afterPack 清理脚本），
+      // 而仓库里没有任何消费 .map 的流程（无符号表上传/崩溃还原），所以生产构建默认**不生成**
+      // sourcemap：省下约 79MB 中间产物与对应的 asar extract/pack 时间。
+      // 需要还原线上栈时用 ZCODE_UPLOAD_MAPS=1 重新构建，bundler 会产出 hidden map。
+      sourcemap:
+        mode === "production" ? (process.env.ZCODE_UPLOAD_MAPS === "1" ? "hidden" : false) : true,
       rollupOptions: {
         // 多入口：主窗口 + 进程监控 + CUA 权限拖拽浮窗
         input: {

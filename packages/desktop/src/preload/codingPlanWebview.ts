@@ -1,9 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
-import {
-  CodingPlanWebviewChannels,
-  isTrustedCodingPlanWebviewOrigin,
-  PlatformChannels,
-} from "@zcode/shared";
+import { CodingPlanWebviewChannels, PlatformChannels } from "@zcode/shared/channels";
+import { isTrustedCodingPlanWebviewOrigin } from "@zcode/shared/zcodeEndpoint";
 
 // Coding Plan 官网页 preload：
 // - 在官网页主世界挂 window.zcodeBridge，暴露三个能力：

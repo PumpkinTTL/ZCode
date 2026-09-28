@@ -1,7 +1,5 @@
-import {
-  EmbeddedBrowserWebviewChannels,
-  type EmbeddedBrowserWheelBoundaryPayload,
-} from "@zcode/shared";
+import { EmbeddedBrowserWebviewChannels } from "@zcode/shared/channels";
+import type { EmbeddedBrowserWheelBoundaryPayload } from "@zcode/shared";
 
 const DELTA_EPSILON = 0.01;
 const SCROLL_BOUNDARY_EPSILON = 1;
