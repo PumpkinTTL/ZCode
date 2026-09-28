@@ -34,7 +34,10 @@ import {
   resolvePluginDisplayName,
   type StorePluginItem,
 } from "@/settings/pluginStoreListing.js";
-import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
+import {
+  ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  resolvePresetPluginMarketplaces,
+} from "@zcode/shared";
 import { PluginUninstallConfirmDialog } from "@/settings/PluginUninstallConfirmDialog.js";
 import { usePluginUninstall } from "@/settings/usePluginUninstall.js";
 import { claimMarketplaceAutoRefresh } from "@/settings/officialMarketplaceAutoRefresh.js";
@@ -91,6 +94,10 @@ export function PluginStorePage({
   const describePlugin = usePluginManagementStore((state) => state.describePlugin);
   const updatePlugin = usePluginManagementStore((state) => state.updatePlugin);
   const restoreBuiltin = usePluginManagementStore((state) => state.restoreBuiltin);
+
+  // 预置公开市场源（含外部工具经 POLARIS_PLUGIN_MARKETPLACE_SOURCES 注入的源）：静态清单，
+  // 随 app 版本走，不参与联网，只在「添加市场源」里作为可一键添加的建议出现。
+  const presetMarketplaces = useMemo(() => resolvePresetPluginMarketplaces(), []);
 
   const [view, setView] = useState<PluginStoreView>("store");
   const [detailPluginId, setDetailPluginId] = useState<string | null>(null);
@@ -586,6 +593,8 @@ export function PluginStorePage({
         onAddMarketplace={handleAddMarketplace}
         operationId={operationId}
         error={addMarketplaceError}
+        presets={presetMarketplaces}
+        marketplaces={marketplaces}
       />
     </div>
   );

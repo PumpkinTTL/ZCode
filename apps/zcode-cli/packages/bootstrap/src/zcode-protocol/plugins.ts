@@ -522,6 +522,7 @@ function toMarketplaceSummary(input: {
   pluginCount: number;
   isOfficial?: boolean;
   featured?: string[];
+  degraded?: boolean;
   refreshFailure?: ZCodePluginMarketplaceSummary["refreshFailure"];
 }): ZCodePluginMarketplaceSummary {
   return {
@@ -532,6 +533,7 @@ function toMarketplaceSummary(input: {
     ...(input.lastUpdated ? { lastUpdated: input.lastUpdated } : {}),
     pluginCount: input.pluginCount,
     ...(input.isOfficial !== undefined ? { isOfficial: input.isOfficial } : {}),
+    ...(input.degraded ? { degraded: true } : {}),
     ...(input.featured ? { featured: input.featured } : {}),
     ...(input.refreshFailure ? { refreshFailure: input.refreshFailure } : {}),
   };

@@ -10,6 +10,7 @@ import {
   PlatformChannels,
 } from "@zcode/shared";
 import {
+  DEEP_LINK_SCHEMES,
   extractWorkspaceOpenPath,
   extractShareImportCode,
   isOAuthCallbackUrl,
@@ -402,32 +403,35 @@ export function registerDeepLinkProtocol(
   },
   options: { iconPath?: string } = {},
 ) {
-  const scheme = "zcode";
-
+  // 对外发布的是 `polaris://`；`zcode://` 作为历史链接兼容一并注册（解析白名单同为 DEEP_LINK_SCHEMES）。
   if (process.defaultApp && process.argv.length >= 2) {
     const entry = resolve(process.argv[1]!);
-    const ok = app.setAsDefaultProtocolClient(scheme, process.execPath, [entry]);
-    if (!ok) {
-      logger.warn("[deep-link] 注册协议失败（defaultApp）", {
-        scheme,
-        execPath: process.execPath,
-        entry: process.argv[1],
-      });
-    } else {
-      logger.info("[deep-link] 注册协议成功（defaultApp）", {
-        scheme,
-        execPath: process.execPath,
-        entry: process.argv[1],
-      });
+    for (const scheme of DEEP_LINK_SCHEMES) {
+      const ok = app.setAsDefaultProtocolClient(scheme, process.execPath, [entry]);
+      if (!ok) {
+        logger.warn("[deep-link] 注册协议失败（defaultApp）", {
+          scheme,
+          execPath: process.execPath,
+          entry: process.argv[1],
+        });
+      } else {
+        logger.info("[deep-link] 注册协议成功（defaultApp）", {
+          scheme,
+          execPath: process.execPath,
+          entry: process.argv[1],
+        });
+      }
     }
     return;
   }
 
-  const ok = app.setAsDefaultProtocolClient(scheme);
-  if (!ok) {
-    logger.warn("[deep-link] 注册协议失败", { scheme });
-  } else {
-    logger.info("[deep-link] 注册协议成功", { scheme });
+  for (const scheme of DEEP_LINK_SCHEMES) {
+    const ok = app.setAsDefaultProtocolClient(scheme);
+    if (!ok) {
+      logger.warn("[deep-link] 注册协议失败", { scheme });
+    } else {
+      logger.info("[deep-link] 注册协议成功", { scheme });
+    }
   }
 
   if (process.platform === "linux" && app.isPackaged) {

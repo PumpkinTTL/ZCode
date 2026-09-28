@@ -1,12 +1,16 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { PluginDiagnostic, PluginManifest, PluginStoreListing } from "@zcode/contracts";
 import { isOfficialMarketplaceId, ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
-import { DEFAULT_PLUGIN_MARKETPLACES, sanitizeZCodeRuntimeEnv } from "@zcode/shared";
+import {
+  DEFAULT_PLUGIN_MARKETPLACES,
+  resolveOfficialPluginMarketplaceMirrors,
+  sanitizeZCodeRuntimeEnv,
+} from "@zcode/shared";
 import { loadPluginMcpServerDefinitions, resolvePluginMcpServers } from "./mcp.js";
 import {
   appendPluginSourceCleanupError,
@@ -61,6 +65,7 @@ const GIT_CLONE_RETRY_DELAY_MS = 1_000;
 const MARKETPLACE_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 const PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 const SOURCE_SHA256_PATTERN = /^[a-f0-9]{64}$/u;
+const GITHUB_RAW_BASE_URL = "https://raw.githubusercontent.com";
 const UNSUPPORTED_MANIFEST_FIELDS = ["channels", "lspServers", "outputStyles", "settings"] as const;
 
 export type MarketplaceSource =
@@ -319,12 +324,47 @@ export async function ensureMarketplaceManifestAvailable(input: {
   if (!record) return null;
   // 受信任的内部懒加载：用 known record 的规范 source 拉取，并以 record.id 作为 trustedId，
   // 使官方 id 只能由本来就是该官方 id 的记录刷新得到。
-  return await addMarketplace({
-    signal: input.signal,
-    source: record.source,
-    storageRoot: input.storageRoot,
-    trustedId: record.id,
-  });
+  // 官方目录按镜像优先级逐个尝试，前一个不可达就降级到下一个；全部失败才抛最后一个错误。
+  let lastError: unknown;
+  for (const source of resolveMarketplaceRefreshSources(record)) {
+    throwIfPluginOperationAborted(input.signal);
+    try {
+      return await addMarketplace({
+        signal: input.signal,
+        source,
+        storageRoot: input.storageRoot,
+        trustedId: record.id,
+      });
+    } catch (error) {
+      if (input.signal?.aborted) throw error;
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error(`Marketplace refresh failed: ${record.id}`);
+}
+
+/**
+ * 一个 known record 的刷新源候选，按优先级排序。
+ *
+ * 普通市场源只有一个候选（record.source）；官方目录（`zcode-plugins-official`）则以
+ * {@link resolveOfficialPluginMarketplaceMirrors} 的镜像顺序为准，并把 record 自己的 source
+ * 作为最后一个兼容候选补上（用户显式改指过的源不会丢）。
+ */
+function resolveMarketplaceRefreshSources(record: KnownMarketplaceRecord): MarketplaceSource[] {
+  if (!isOfficialMarketplaceId(record.id)) return [record.source];
+  const candidates: MarketplaceSource[] = [];
+  const seen = new Set<string>();
+  const push = (source: MarketplaceSource): void => {
+    const key = JSON.stringify(source);
+    if (seen.has(key)) return;
+    seen.add(key);
+    candidates.push(source);
+  };
+  for (const url of resolveOfficialPluginMarketplaceMirrors()) {
+    push(defaultMarketplaceSourceFromString(url));
+  }
+  push(record.source);
+  return candidates;
 }
 
 export async function addMarketplace(input: {
@@ -348,8 +388,7 @@ export async function addMarketplace(input: {
   let knownMarketplaceActivation: KnownMarketplaceActivation | undefined;
   let marketplaceActivation: AtomicDirectoryActivation | undefined;
   try {
-    loaded = await loadMarketplaceFromSource(input.source, input.storageRoot, {
-      persist: false,
+    loaded = await loadMarketplaceFromSource(input.source, {
       signal: operationSignal,
     });
     throwIfPluginOperationAborted(operationSignal);
@@ -382,15 +421,10 @@ export async function addMarketplace(input: {
         : loaded.manifest;
     // 旧流程先删 marketplace target 再复制 source，刷新失败会丢失最后成功快照。
     // source tree 与规范 manifest 在同一 staging 目录准备完毕后一次 rename 激活。
-    if (loaded.sourceRoot) {
-      marketplaceActivation = await stageMarketplaceDirectoryPlugins(
-        loaded.sourceRoot,
-        input.storageRoot,
-        loaded.manifest.name,
-        persistedManifest.raw,
-        operationSignal,
-      );
-    } else if (loaded.manifest.name !== ZCODE_OFFICIAL_PLUGIN_MARKETPLACE) {
+    // 市场目录只落 marketplace.json：源树一律改为按需物化（见 resolveMarketplaceSourceTree）。
+    // 添加一个 300+ 插件的公开目录不再复制整仓；旧版本遗留的整棵树会在本次刷新时被
+    // 原子替换掉（activateDirectoryAtomically 无 sourcePath 即整目录重建），自动回收空间。
+    if (loaded.manifest.name !== ZCODE_OFFICIAL_PLUGIN_MARKETPLACE) {
       marketplaceActivation = await stageMarketplaceManifest(
         input.storageRoot,
         loaded.manifest.name,
@@ -404,7 +438,10 @@ export async function addMarketplace(input: {
       id: loaded.manifest.name,
       source: input.source,
       name: loaded.manifest.name,
-      ...(loaded.manifest.description ? { description: loaded.manifest.description } : {}),
+      // 描述取自"激活后"的规范 manifest 而不是原始远端 manifest：官方目录要合并内置分片，
+      // 若用远端原文，镜像的厂商文案（如 Z.ai 的 "Official ZCode plugins marketplace"）
+      // 会被写成官方目录的描述。
+      ...(persistedManifest.description ? { description: persistedManifest.description } : {}),
       addedAt: now,
       lastUpdated: now,
       pluginCount: persistedManifest.plugins.length,
@@ -512,26 +549,36 @@ export async function updateMarketplace(input: {
 
     // 受信任的刷新会重新拉取已知 marketplace 自带的 source；record.id 作为 trustedId，
     // 使官方 id 只能由原本就是该 id 的记录刷新得到。
-    try {
-      updated.push(
-        await addMarketplace({
+    // 候选按优先级排列（官方目录 = 镜像列表）：前一个失败就降级到下一个，全部失败才记账。
+    let refreshed: KnownMarketplaceRecord | undefined;
+    let lastError: unknown;
+    for (const source of resolveMarketplaceRefreshSources(record)) {
+      throwIfPluginOperationAborted(input.signal);
+      try {
+        refreshed = await addMarketplace({
           signal: input.signal,
-          source: record.source,
+          source,
           storageRoot: input.storageRoot,
           trustedId: record.id,
-        }),
-      );
-    } catch (error) {
-      // 取消是当前 operation 的控制流，不是 Marketplace 健康状态；不得把 AbortError
-      // 持久化成 refresh failure，避免后续普通商店页面误报官方源故障。
-      if (input.signal?.aborted) throw error;
-      const diagnostic = toValidationDiagnostic(error, record.id);
-      await persistMarketplaceRefreshFailure(input.storageRoot, record.id, {
-        code: diagnostic.code,
-        failedAt: new Date().toISOString(),
-        message: diagnostic.message,
-      });
+        });
+        break;
+      } catch (error) {
+        // 取消是当前 operation 的控制流，不是 Marketplace 健康状态；不得把 AbortError
+        // 持久化成 refresh failure，避免后续普通商店页面误报官方源故障。
+        if (input.signal?.aborted) throw error;
+        lastError = error;
+      }
     }
+    if (refreshed) {
+      updated.push(refreshed);
+      continue;
+    }
+    const diagnostic = toValidationDiagnostic(lastError, record.id);
+    await persistMarketplaceRefreshFailure(input.storageRoot, record.id, {
+      code: diagnostic.code,
+      failedAt: new Date().toISOString(),
+      message: diagnostic.message,
+    });
   }
   return updated;
 }
@@ -610,6 +657,31 @@ export async function installMarketplacePlugin(input: {
   const state = loadInstalledPluginsSync(input.storageRoot);
   const installed: InstalledPluginRecord[] = [];
   const activations: AtomicDirectoryActivation[] = [];
+  // 相对路径条目按住的市场源树：每个市场最多取一次，整个安装结束后统一清理。
+  const sourceTrees = new Map<string, ResolvedPluginSourceRoot | undefined>();
+  const sourceTreeCleanups: Array<() => Promise<void>> = [];
+  const resolveTreeFor = async (marketplace: string) => {
+    if (!sourceTrees.has(marketplace)) {
+      // 本次安装在该市场里真正需要的相对目录：交给 sparse checkout，避免下载整仓。
+      const sparsePaths = closure.flatMap((pluginId) => {
+        const parsed = parsePluginId(pluginId);
+        if (parsed.marketplace !== marketplace) return [];
+        const manifest = loadMarketplaceManifestSync(input.storageRoot, marketplace);
+        const entry = manifest?.plugins.find((plugin) => plugin.name === parsed.name);
+        const relative = entry ? readRelativeSourcePath(entry) : undefined;
+        return relative ? [relative] : [];
+      });
+      const tree = await resolveMarketplaceSourceTree({
+        marketplace,
+        signal: input.signal,
+        ...(sparsePaths.length > 0 ? { sparsePaths } : {}),
+        storageRoot: input.storageRoot,
+      });
+      if (tree?.cleanup) sourceTreeCleanups.push(tree.cleanup);
+      sourceTrees.set(marketplace, tree);
+    }
+    return sourceTrees.get(marketplace);
+  };
   try {
     for (const pluginId of closure) {
       const { marketplace, name } = parsePluginId(pluginId);
@@ -617,11 +689,13 @@ export async function installMarketplacePlugin(input: {
       if (!manifest) throw new Error(`Marketplace not found: ${marketplace}`);
       const entry = manifest.plugins.find((plugin) => plugin.name === name);
       if (!entry) throw new Error(`Plugin not found: ${pluginId}`);
+      const sourceTree = await resolveTreeFor(marketplace);
       const cached = await cacheMarketplacePlugin({
         entry,
         marketplace,
         signal: input.signal,
         scope: input.scope ?? "user",
+        ...(sourceTree ? { sourceRoot: sourceTree.path } : {}),
         state,
         storageRoot: input.storageRoot,
       });
@@ -640,6 +714,10 @@ export async function installMarketplacePlugin(input: {
       }
     }
     throw appendPluginSourceCleanupError(error, rollbackError);
+  } finally {
+    for (const cleanup of sourceTreeCleanups) {
+      await cleanupPluginSourceBestEffort(cleanup);
+    }
   }
   for (const activation of activations) await activation.finalize();
   return { closure, installed };
@@ -804,10 +882,19 @@ export async function describeMarketplacePlugin(input: {
   }
 
   let resolved: ResolvedPluginSourceRoot | null = null;
+  let sourceTree: ResolvedPluginSourceRoot | undefined;
   try {
+    // 只有相对路径条目才需要市场源树；自带 url/git/npm/zip 的条目直接解析，不必取仓。
+    if (readRelativeSourcePath(entry) !== undefined || manifest.pluginRoot) {
+      sourceTree = await resolveMarketplaceSourceTree({
+        marketplace: input.marketplace,
+        storageRoot: input.storageRoot,
+      });
+    }
     resolved = await resolvePluginSourceRoot({
       entry,
       marketplace: input.marketplace,
+      ...(sourceTree ? { sourceRoot: sourceTree.path } : {}),
       storageRoot: input.storageRoot,
     });
     const read = readComponentsAtRoot({
@@ -826,6 +913,7 @@ export async function describeMarketplacePlugin(input: {
     return { components: [], diagnostics };
   } finally {
     await cleanupPluginSourceBestEffort(resolved?.cleanup);
+    await cleanupPluginSourceBestEffort(sourceTree?.cleanup);
   }
 }
 
@@ -892,8 +980,7 @@ export async function validateMarketplaceSource(input: {
   const diagnostics: PluginValidationDiagnostic[] = [];
   let loaded: LoadMarketplaceResult | null = null;
   try {
-    loaded = await loadMarketplaceFromSource(input.source, input.storageRoot, {
-      persist: false,
+    loaded = await loadMarketplaceFromSource(input.source, {
       signal: input.signal,
     });
     if (input.expectedId && loaded.manifest.name !== input.expectedId) {
@@ -1108,6 +1195,8 @@ async function cacheMarketplacePlugin(input: {
   marketplace: string;
   signal?: AbortSignal;
   scope: "user" | "workspace";
+  // 仅相对路径来源需要：按需取到的市场源树。
+  sourceRoot?: string;
   state: InstalledPluginsState;
   storageRoot: string;
 }): Promise<CachedMarketplacePluginResult> {
@@ -1116,6 +1205,7 @@ async function cacheMarketplacePlugin(input: {
     entry: input.entry,
     marketplace: input.marketplace,
     signal: input.signal,
+    ...(input.sourceRoot ? { sourceRoot: input.sourceRoot } : {}),
     storageRoot: input.storageRoot,
   });
   let version: string;
@@ -1505,10 +1595,158 @@ function createManifestFromMarketplaceEntry(
   };
 }
 
+/**
+ * 条目来源里的“相对路径”（相对市场仓库/目录）。只有这类条目才需要“本地源树”
+ * （已落盘的市场目录或按需取到的仓库副本）才能解析。
+ *
+ * url / github / git / git-subdir / npm / zip 来源自带完整定位信息，不需要源树。
+ */
+function readRelativeSourcePath(entry: PluginMarketplaceEntry): string | undefined {
+  const source = entry.source;
+  if (typeof source === "string") {
+    const trimmed = source.replace(/^\.\//u, "");
+    return trimmed.length > 0 && !isAbsolute(trimmed) ? trimmed : undefined;
+  }
+  if (isRecord(source) && (source.source === "directory" || source.source === "file")) {
+    const path = typeof source.path === "string" ? source.path : "";
+    return path.length > 0 && !isAbsolute(path) ? path : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * 该目录清单是否有条目需要“本地源树”才能解析。
+ *
+ * 用途：添加/刷新市场时只在确实需要时才把源树复制进市场目录；否则只落 marketplace.json。
+ * 例如公开的 Claude 插件目录里，314 个条目只有 52 个是相对路径来源，其余都自带 url/git，
+ * 复制整棵树对它们毫无意义。
+ */
+function marketplaceRequiresLocalSourceTree(manifest: PluginMarketplaceManifest): boolean {
+  if (typeof manifest.pluginRoot === "string" && manifest.pluginRoot.length > 0) return true;
+  return manifest.plugins.some((entry) => readRelativeSourcePath(entry) !== undefined);
+}
+
+/** 已落盘的市场目录里是否已经含有可用的源树（而不是只有 marketplace.json）。 */
+function stagedMarketplaceHasSourceTree(
+  stagedRoot: string,
+  manifest: PluginMarketplaceManifest,
+): boolean {
+  const relativeEntries = manifest.plugins
+    .map((entry) => readRelativeSourcePath(entry))
+    .filter((value): value is string => value !== undefined);
+  const required = [
+    ...(manifest.pluginRoot ? [manifest.pluginRoot] : []),
+    ...relativeEntries,
+  ];
+  if (required.length === 0) return true;
+  return required.every((relativePath) => {
+    const inside = resolveInside(stagedRoot, relativePath);
+    return Boolean(inside && directoryExists(inside));
+  });
+}
+
+/**
+ * 按需取到市场源树。
+ *
+ * 清单里确有相对路径条目、且本地没有现成源树时，才去取一次仓库副本；调用方负责 cleanup。
+ * 返回 undefined 表示条目都不需要源树（或市场源无法物化）。
+ */
+async function resolveMarketplaceSourceTree(input: {
+  marketplace: string;
+  signal?: AbortSignal;
+  // 只取这些相对路径（git sparse checkout）；省略则取整仓。
+  sparsePaths?: string[];
+  storageRoot: string;
+}): Promise<ResolvedPluginSourceRoot | undefined> {
+  const manifest = loadMarketplaceManifestSync(input.storageRoot, input.marketplace);
+  if (!manifest) return undefined;
+  if (!marketplaceRequiresLocalSourceTree(manifest)) return undefined;
+  const stagedRoot = dirname(getMarketplaceManifestPath(input.storageRoot, input.marketplace));
+  // 本地已落盘的源树（本地目录源，或添加时确实需要而复制过的）直接用，不再联网。
+  if (directoryExists(stagedRoot) && stagedMarketplaceHasSourceTree(stagedRoot, manifest)) {
+    return { path: stagedRoot };
+  }
+  const record = loadKnownMarketplacesSync(input.storageRoot).find(
+    (item) => item.id === input.marketplace,
+  );
+  if (!record) return undefined;
+  const source = record.source;
+  // 调用方给了具体需要的目录时优先用它（sparse checkout），避免为了装一个插件而下载整仓；
+  // 否则沿用市场源自己的 sparsePaths 配置。
+  const sparsePaths =
+    input.sparsePaths && input.sparsePaths.length > 0
+      ? input.sparsePaths
+      : source.source === "github" || source.source === "git"
+        ? source.sparsePaths
+        : undefined;
+  if (source.source === "github") {
+    return await resolveRepositoryMarketplaceSource(
+      `https://github.com/${source.repo}.git`,
+      source.ref,
+      sparsePaths,
+      input.signal,
+    );
+  }
+  if (source.source === "git") {
+    return await resolveRepositoryMarketplaceSource(
+      source.url,
+      source.ref,
+      sparsePaths,
+      input.signal,
+    );
+  }
+  if (source.source === "directory") {
+    const path = resolve(source.path);
+    if (directoryExists(path)) return { path };
+  }
+  if (source.source === "file") {
+    // 清单文件的同级目录就是相对路径条目的基准（与 loadMarketplaceFromSource 一致）。
+    const path = dirname(resolve(source.path));
+    if (directoryExists(path)) return { path };
+  }
+  return undefined;
+}
+
+/**
+ * github 源：直接按 ref 取清单文件，**不 clone 仓库**。
+ *
+ * clone 一个 300+ 插件的大仓库只为读一个 JSON，再把它整棵树复制进插件目录，
+ * 是添加市场又慢又占盘的根因。取不到（路径非默认/仓库不支持 raw）时返回 undefined，
+ * 由调用方回落到原有 clone 路径，保持全兼容。
+ */
+async function tryLoadGitHubMarketplaceManifest(
+  source: { path?: string; ref?: string; repo: string },
+  signal?: AbortSignal,
+): Promise<LoadMarketplaceResult | undefined> {
+  const ref = source.ref && source.ref.length > 0 ? source.ref : "HEAD";
+  const prefix = source.path ? `${source.path.replace(/^[/\\]+|[/\\]+$/gu, "")}/` : "";
+  const candidates = [
+    `${prefix}.claude-plugin/marketplace.json`,
+    `${prefix}marketplace.json`,
+  ];
+  for (const candidate of candidates) {
+    const url = `${GITHUB_RAW_BASE_URL}/${source.repo}/${ref}/${candidate}`;
+    try {
+      const parsed = await requestMarketplaceJson(url, undefined, signal);
+      return { manifest: parseRequiredMarketplaceManifest(parsed) };
+    } catch {
+      // 候选不存在或不可达：试下一个；全部失败则由调用方回落到 clone。
+    }
+  }
+  return undefined;
+}
+
+/**
+ * 读取市场清单。
+ *
+ * 只读清单，**绝不把市场源树复制进插件目录**：添加一个 300+ 插件的公开目录以前会
+ * 先 clone 整仓、再把整棵树复制一份，这是又慢又占盘的根因。相对路径条目改为安装时
+ * 按需 sparse checkout（见 resolveMarketplaceSourceTree）。
+ * 落盘由 addMarketplace 通过 stageMarketplaceManifest 完成（只落 marketplace.json）。
+ */
 async function loadMarketplaceFromSource(
   source: MarketplaceSource,
-  storageRoot: string,
-  options: { persist: boolean; signal?: AbortSignal },
+  options: { signal?: AbortSignal },
 ): Promise<LoadMarketplaceResult> {
   throwIfPluginOperationAborted(options.signal);
   switch (source.source) {
@@ -1526,16 +1764,6 @@ async function loadMarketplaceFromSource(
       if (!file) throw new Error(`Marketplace manifest not found in directory: ${source.path}`);
       const parsed = JSON.parse(await readFile(file, "utf8")) as unknown;
       const manifest = parseRequiredMarketplaceManifest(parsed);
-      if (options.persist) {
-        const activation = await stageMarketplaceDirectoryPlugins(
-          source.path,
-          storageRoot,
-          manifest.name,
-          manifest.raw,
-          options.signal,
-        );
-        await activation.finalize();
-      }
       return { manifest, sourceRoot: source.path };
     }
     case "url": {
@@ -1543,6 +1771,9 @@ async function loadMarketplaceFromSource(
       return { manifest: parseRequiredMarketplaceManifest(parsed) };
     }
     case "github": {
+      // 快路径：只取清单，不 clone、不复制源树。取不到再走原有 clone 路径。
+      const manifestOnly = await tryLoadGitHubMarketplaceManifest(source, options.signal);
+      if (manifestOnly) return manifestOnly;
       const resolved = await resolveRepositoryMarketplaceSource(
         `https://github.com/${source.repo}.git`,
         source.ref,
@@ -1555,16 +1786,6 @@ async function loadMarketplaceFromSource(
         if (!file) throw new Error(`Marketplace manifest not found in GitHub repo: ${source.repo}`);
         const parsed = JSON.parse(await readFile(file, "utf8")) as unknown;
         const manifest = parseRequiredMarketplaceManifest(parsed);
-        if (options.persist) {
-          const activation = await stageMarketplaceDirectoryPlugins(
-            resolved.path,
-            storageRoot,
-            manifest.name,
-            manifest.raw,
-            options.signal,
-          );
-          await activation.finalize();
-        }
         return { cleanup, manifest, sourceRoot: resolved.path };
       } catch (error) {
         const cleanupError = await cleanupPluginSourceBestEffort(cleanup);
@@ -1584,16 +1805,6 @@ async function loadMarketplaceFromSource(
         if (!file) throw new Error(`Marketplace manifest not found in git repo: ${source.url}`);
         const parsed = JSON.parse(await readFile(file, "utf8")) as unknown;
         const manifest = parseRequiredMarketplaceManifest(parsed);
-        if (options.persist) {
-          const activation = await stageMarketplaceDirectoryPlugins(
-            resolved.path,
-            storageRoot,
-            manifest.name,
-            manifest.raw,
-            options.signal,
-          );
-          await activation.finalize();
-        }
         return { cleanup, manifest, sourceRoot: resolved.path };
       } catch (error) {
         const cleanupError = await cleanupPluginSourceBestEffort(cleanup);
@@ -1754,26 +1965,6 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
       resolveDelay();
     }, ms);
     signal?.addEventListener("abort", handleAbort, { once: true });
-  });
-}
-
-async function stageMarketplaceDirectoryPlugins(
-  sourceDir: string,
-  storageRoot: string,
-  marketplace: string,
-  manifest: Record<string, unknown>,
-  signal?: AbortSignal,
-): Promise<AtomicDirectoryActivation> {
-  throwIfPluginOperationAborted(signal);
-  const targetDir = dirname(getMarketplaceManifestPath(storageRoot, marketplace));
-  return activateDirectoryAtomically({
-    authorityPath: join(storageRoot, KNOWN_MARKETPLACES_FILE),
-    prepare: async (stagedPath) => {
-      await writeJsonFile(join(stagedPath, MARKETPLACE_FILE), manifest);
-    },
-    signal,
-    sourcePath: sourceDir,
-    targetPath: targetDir,
   });
 }
 

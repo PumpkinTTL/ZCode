@@ -20,6 +20,18 @@ export async function unregisterInstalledService(layout: ServerLayout): Promise<
   await unregisterLegacyServiceForRoot(layout);
 }
 
+/**
+ * 安装/升级前收口“同一 server-root、不同服务名”的历史注册：
+ * 服务标识改名（如 launchd label / task 名）后，旧名字的注册会在登录时继续拉起
+ * 第二个 daemon 抢同一个 data root，必须在注册新服务前按 root 扫掉。
+ */
+export async function unregisterRenamedRootScopedServices(
+  layout: ServerLayout,
+  currentDescriptorPath: string,
+): Promise<void> {
+  await unregisterRootScopedAliasServices(layout, currentServicePlatform(), currentDescriptorPath);
+}
+
 export async function hasLegacyServiceRegistration(layout: ServerLayout): Promise<boolean> {
   return (await resolveLegacyServiceRegistration(layout)) !== null;
 }
@@ -42,11 +54,18 @@ async function resolveLegacyServiceRegistration(layout: ServerLayout): Promise<{
   const descriptorPath = join(layout.serviceDir, `${kind}.service`);
   if (!(await legacyDescriptorBelongsToRoot(descriptorPath, platform, layout.serverRoot)))
     return null;
+  // 旧描述符里的名字必须按**磁盘上的内容**取，不能沿用当前默认名：Windows 的
+  // schtasks 删除是按 task name，用新名去删旧任务会既删不掉又留下孤儿任务。
+  const legacyEntryName = `${kind}.service`;
+  const content = await readFile(descriptorPath, "utf8").catch(() => null);
+  const onDiskName = content ? descriptorNameFromContent(content, platform, legacyEntryName) : null;
   return {
     descriptor: createServiceDescriptor({
       platform,
+      // 旧 launcher 名（zcode）保留：这些注册本来就指向旧路径，卸载只需要正确的名字与路径。
       command: join(layout.stableBinDir, platform === "win32" ? "zcode.cmd" : "zcode"),
       args: ["serve", "--supervisor", "--server-root", layout.serverRoot],
+      ...(onDiskName ? { name: onDiskName } : {}),
     }),
     descriptorPath,
   };

@@ -1,11 +1,16 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import type { Locale } from "@zcode/shared";
 
-const WORKFLOW_NAME = "Open in ZCode.workflow";
-const WORKFLOW_BUNDLE_ID = "dev.zcode.app.finder-open-workflow";
+// Polaris：Finder 快捷操作的目录名与 bundle id 改为自有身份。
+// 旧版本（上游/改名前）写下的 `Open in ZCode.workflow` 会在 ~/Library/Services 里表现成
+// 一个**重复的**服务项（展示名相同），所以安装时按 legacy bundle id 确认归属后删掉它。
+const WORKFLOW_NAME = "Open in Polaris.workflow";
+const WORKFLOW_BUNDLE_ID = "app.polaris.finder-open-workflow";
+const LEGACY_WORKFLOW_NAME = "Open in ZCode.workflow";
+const LEGACY_WORKFLOW_BUNDLE_ID = "dev.zcode.app.finder-open-workflow";
 const WORKFLOW_VERSION = "5";
 const SERVICES_MENU_LABELS: Record<Locale, string> = {
   "zh-CN": "在 Polaris 中打开",
@@ -22,7 +27,7 @@ done
 
 if [ -n "$first" ]; then
   encoded=$(/usr/bin/osascript -l JavaScript -e 'function run(argv) { return encodeURIComponent(argv[0]); }' "$first")
-  /usr/bin/open "zcode://workspace/open?path=\${encoded}"
+  /usr/bin/open "polaris://workspace/open?path=\${encoded}"
 fi
 `;
 
@@ -231,6 +236,29 @@ function writeFileIfChanged(path: string, content: string): boolean {
   return true;
 }
 
+/**
+ * 删除改名前留下的 Finder 服务项。
+ *
+ * 只删**确认由本应用写入**的那一份：读它以旧 bundle id 写入的 Info.plist，命中才删，
+ * 避免误删用户自己同名的手写 workflow。
+ */
+function removeLegacyFinderWorkflow(servicesDir: string, logger: { info: (...args: unknown[]) => void }): void {
+  const legacyDir = join(servicesDir, LEGACY_WORKFLOW_NAME);
+  const legacyInfoPlistPath = join(legacyDir, "Contents", "Info.plist");
+  if (!existsSync(legacyInfoPlistPath)) {
+    return;
+  }
+  try {
+    if (!readFileSync(legacyInfoPlistPath, "utf8").includes(LEGACY_WORKFLOW_BUNDLE_ID)) {
+      return;
+    }
+    rmSync(legacyDir, { recursive: true, force: true });
+    logger.info("[finder-open-folder] 已清理改名前的 Finder 服务项", { workflowPath: legacyDir });
+  } catch {
+    // 清理失败只影响是否多出一个菜单项，不能影响新服务项安装。
+  }
+}
+
 function refreshMacServicesIndex(): void {
   const pbsPath = "/System/Library/CoreServices/pbs";
   if (!existsSync(pbsPath)) {
@@ -265,6 +293,7 @@ export function installFinderOpenFolderWorkflow(options: {
   const resourcesDocumentWorkflowPath = join(resourcesDir, "document.wflow");
 
   try {
+    removeLegacyFinderWorkflow(servicesDir, options.logger);
     mkdirSync(resourcesDir, { recursive: true });
 
     const infoChanged = writeFileIfChanged(infoPlistPath, buildInfoPlist(options.locale));

@@ -98,6 +98,12 @@ export interface ZCodeMarketplaceSummaryData {
     failedAt: string;
     message: string;
   };
+  /**
+   * 降级标志：最近一次刷新失败，但本地仍保有上一次成功目录（或内置 seed）。
+   * 此时商店照常展示该目录的旧快照，仅提示「离线目录」，不报 fetch error。
+   * 只有既刷新失败、又无任何可用目录时才是硬错误。
+   */
+  degraded?: boolean;
   // 目录顶层 featured 策展名单（商店「公开」分段 Featured 区），随 manifest 下发。
   featured?: string[];
 }
@@ -304,10 +310,14 @@ export function getZCodePluginsOverview(
       ? loadMarketplaceManifestSync(pluginStorageRoot, record.id)
       : null;
     catalogs.push({
+      // 三级降级：remote（刷新成功）→ snapshot（刷新失败但保有上次成功目录）→
+      // bundled（官方内置 seed 始终在本地）。只有 manifest 存在时才算可降级；
+      // 否则维持硬失败语义，让用户看到确实是空的目录。
       summary: toMarketplaceSummaryData(
         record,
         manifest?.featured,
         countVisibleMarketplacePlugins(record.id, manifest?.plugins),
+        Boolean(manifest) && Boolean(record.lastRefreshFailure),
       ),
       entries: manifest?.plugins ?? [],
     });
@@ -386,20 +396,40 @@ export function getZCodePluginsOverview(
     diagnostics: [
       ...outcome.diagnostics,
       ...marketplaceDeclarationDiagnostics,
-      ...known.flatMap((record): PluginLoadOutcome["diagnostics"] =>
-        record.lastRefreshFailure
-          ? [
-              {
-                code: record.lastRefreshFailure.code,
-                message: record.lastRefreshFailure.message,
-                pluginId: record.id,
-                severity: "error",
-              },
-            ]
-          : [],
-      ),
+      ...toMarketplaceRefreshFailureDiagnostics(known, pluginStorageRoot),
     ],
   };
+}
+
+/**
+ * 刷新失败的诊断投影（降级判定在这里，两个入口共用）。
+ *
+ * 刷新失败但本地仍保有上一次成功目录时降级为 `warning`——商店照常可浏览、可安装，
+ * UI 只显示「离线目录」提示；只有「失败且无任何可用目录」才是 `error`。
+ *
+ * overview 与 refresh 两条路径必须共用这一份：否则一处降级、另一处仍把 fetch error
+ * 当硬错误抛给 UI，商店一进页面就报错。
+ */
+function toMarketplaceRefreshFailureDiagnostics(
+  records: readonly KnownMarketplaceRecord[],
+  pluginStorageRoot: string,
+  filter?: { marketplace?: string },
+): PluginLoadOutcome["diagnostics"] {
+  return records.flatMap((record): PluginLoadOutcome["diagnostics"] => {
+    if (filter?.marketplace && record.id !== filter.marketplace) return [];
+    if (!record.lastRefreshFailure) return [];
+    const hasLocalCatalog = loadMarketplaceManifestSync(pluginStorageRoot, record.id) !== null;
+    return [
+      {
+        code: record.lastRefreshFailure.code,
+        message: hasLocalCatalog
+          ? `Marketplace "${record.id}" refresh failed; keeping the last successful catalog. ${record.lastRefreshFailure.message}`
+          : record.lastRefreshFailure.message,
+        pluginId: record.id,
+        severity: hasLocalCatalog ? "warning" : "error",
+      },
+    ];
+  });
 }
 
 export function listZCodePlugins(options: ListZCodePluginsOptions = {}): PluginLoadOutcome {
@@ -569,18 +599,11 @@ export async function updateZCodePluginMarketplace(
 
   // map 回调只吃第一个参数：toMarketplaceSummaryData 的第二参是 featured，不能接 map 的 index。
   const records = loadKnownMarketplacesSync(pluginStorageRoot);
-  const selectedFailures = records.flatMap((record): PluginLoadOutcome["diagnostics"] => {
-    if (options.marketplace && record.id !== options.marketplace) return [];
-    if (!record.lastRefreshFailure) return [];
-    return [
-      {
-        code: record.lastRefreshFailure.code,
-        message: record.lastRefreshFailure.message,
-        pluginId: record.id,
-        severity: "error",
-      },
-    ];
-  });
+  const selectedFailures = toMarketplaceRefreshFailureDiagnostics(
+    records,
+    pluginStorageRoot,
+    options.marketplace ? { marketplace: options.marketplace } : undefined,
+  );
   return {
     marketplaces: updated.map((record) => toMarketplaceSummaryData(record)),
     diagnostics: [...declarationDiagnostics, ...selectedFailures],
@@ -1173,6 +1196,7 @@ function toMarketplaceSummaryData(
   record: KnownMarketplaceRecord,
   featured?: string[],
   pluginCount?: number,
+  degraded?: boolean,
 ): ZCodeMarketplaceSummaryData {
   return {
     id: record.id,
@@ -1191,6 +1215,7 @@ function toMarketplaceSummaryData(
           },
         }
       : {}),
+    ...(degraded ? { degraded: true } : {}),
     ...(featured && featured.length > 0 ? { featured } : {}),
   };
 }

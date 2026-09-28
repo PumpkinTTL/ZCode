@@ -214,7 +214,7 @@ if (
   !macSigningIdentity
 ) {
   throw new Error(
-    "ZCode Preview macOS packaging requires APPLE_SIGNING_IDENTITY or CSC_NAME when ZCODE_ENABLE_MAC_SIGN=1",
+    "Polaris Preview macOS packaging requires APPLE_SIGNING_IDENTITY or CSC_NAME when ZCODE_ENABLE_MAC_SIGN=1",
   );
 }
 
@@ -585,7 +585,7 @@ export default {
       to: "config/default.json",
     },
     {
-      // Provider Registry 的 ZCode Built-in Config 是静态 Provider/Model 事实的唯一内置来源。
+      // Provider Registry 的 Polaris Built-in Config 是静态 Provider/Model 事实的唯一内置来源。
       // 显式随包发布，避免正式 Host 回退到旧 Catalog/Preset hardcode。
       from: builtinProviderConfig.sourcePath,
       to: "config/provider/zcode-builtin.json",
@@ -649,9 +649,11 @@ export default {
   protocols: [
     {
       // 协议处理器的展示名之前使用小写 scheme，打包产物里的协议描述无法体现产品名。
-      // 展示名跟随安装包身份；scheme 仍保持 zcode，因此两个应用中最后注册者会成为默认 handler。
+      // 展示名与 scheme 都跟随自有身份：`polaris://` 是本产品对外发布的 scheme。
+      // 仍同时注册 `zcode`（上游/旧版链接兼容）——谁最后注册谁成为 handler，因此自己发的链接
+      // 一律用 polaris://（见 buildShareImportDeepLink 与 Finder/Linux 注册）。
       name: desktopProductIdentity.productName,
-      schemes: ["zcode"],
+      schemes: ["polaris", "zcode"],
     },
   ],
   mac: {

@@ -11,7 +11,11 @@ import {
 import { dirname, join, resolve, sep } from "node:path";
 import { writeBundledOfficialMarketplacePartitionSync } from "@zcode/adapters";
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE, type Logger } from "@zcode/contracts";
-import { isZCodeCuaInternalFeatureEnabled, ZCODE_CUA_OFFICIAL_PLUGIN_ID } from "@zcode/shared";
+import {
+  isZCodeCuaInternalFeatureEnabled,
+  POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_DESCRIPTION,
+  ZCODE_CUA_OFFICIAL_PLUGIN_ID,
+} from "@zcode/shared";
 import {
   createOfficialPluginCacheRetryBudget,
   getOfficialPluginCacheRetryAttempts,
@@ -410,6 +414,9 @@ function writeOfficialMarketplace(storageRoot: string, source: OfficialPluginSee
   writeBundledOfficialMarketplacePartitionSync({
     manifest: {
       name: OFFICIAL_PLUGIN_MARKETPLACE,
+      // 内置分片带着官方目录自己的描述：合并时它优先于远端镜像，避免镜像的厂商文案
+      // 变成官方目录的展示描述。
+      description: POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_DESCRIPTION,
       plugins: source.plugins.map((plugin) => {
         // 商店信息（listing）与描述随目录条目下发：键名与 CDN 目录 schema 一致，
         // 由 adapter 的同一套 parseEntryStoreListing 解析，UI 才能给内置插件渲染

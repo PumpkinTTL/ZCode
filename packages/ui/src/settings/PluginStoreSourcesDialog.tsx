@@ -14,6 +14,32 @@ function isRemovableMarketplace(marketplace: ZCodePluginMarketplaceSummary): boo
   return !isPublicStoreMarketplaceId(marketplace.id);
 }
 
+/**
+ * 降级提示：刷新失败但本地仍保有上次成功目录。用中性的提示色（而非报错色），
+ * 因为此时商店照常可浏览/安装，不是故障。
+ */
+function PluginStoreSourceDegradedNotice({
+  failure,
+}: {
+  failure: NonNullable<ZCodePluginMarketplaceSummary["refreshFailure"]>;
+}) {
+  const { intl } = useZCodeIntl();
+  return (
+    <div
+      className="mt-1 flex min-w-0 items-start gap-1 text-ui-base text-foreground-subtle"
+      data-testid="plugin-store-source-degraded"
+    >
+      <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+      <span className="min-w-0 break-words">
+        {intl.formatMessage(
+          { id: "settings.plugins.store.sources.degraded" },
+          { time: formatSourceTime(failure.failedAt) },
+        )}
+      </span>
+    </div>
+  );
+}
+
 function PluginStoreSourceRefreshFailure({
   failure,
 }: {
@@ -99,7 +125,11 @@ export function PluginStoreSourcesDialog({
                         : ""}
                     </div>
                     {marketplace.refreshFailure ? (
-                      <PluginStoreSourceRefreshFailure failure={marketplace.refreshFailure} />
+                      marketplace.degraded ? (
+                        <PluginStoreSourceDegradedNotice failure={marketplace.refreshFailure} />
+                      ) : (
+                        <PluginStoreSourceRefreshFailure failure={marketplace.refreshFailure} />
+                      )
                     ) : null}
                   </div>
                   <Button

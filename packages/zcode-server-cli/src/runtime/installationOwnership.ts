@@ -4,12 +4,18 @@ import { join } from "node:path";
 import { z } from "zod";
 import type { ServerLayout } from "./paths.js";
 
-const SERVER_INSTALL_OWNERSHIP_PRODUCT = "zcode-server";
+const SERVER_INSTALL_OWNERSHIP_PRODUCT = "polaris-server";
+// 已装机标记的兼容值：老版本装出来的 install.json 写的是 "zcode-server"，
+// 读侧必须继续接受，否则升级会把用户已有安装判成“标记损坏”而拒绝接管。
+const LEGACY_SERVER_INSTALL_OWNERSHIP_PRODUCT = "zcode-server";
 const SERVER_INSTALL_OWNERSHIP_SCHEMA_VERSION = 1;
 
 const serverInstallOwnershipSchema = z
   .object({
-    product: z.literal(SERVER_INSTALL_OWNERSHIP_PRODUCT),
+    product: z.enum([
+      SERVER_INSTALL_OWNERSHIP_PRODUCT,
+      LEGACY_SERVER_INSTALL_OWNERSHIP_PRODUCT,
+    ]),
     schemaVersion: z.literal(SERVER_INSTALL_OWNERSHIP_SCHEMA_VERSION),
     canonicalServerRoot: z.string().min(1),
     installationId: z.string().uuid(),
@@ -22,14 +28,14 @@ type ServerInstallOwnership = z.infer<typeof serverInstallOwnershipSchema>;
 async function readOwnership(layout: ServerLayout): Promise<ServerInstallOwnership> {
   const markerStat = await lstat(layout.installFile).catch(() => null);
   if (!markerStat?.isFile()) {
-    throw new Error(`ZCode Server ownership marker is missing or invalid: ${layout.installFile}`);
+    throw new Error(`Polaris Server ownership marker is missing or invalid: ${layout.installFile}`);
   }
   try {
     return serverInstallOwnershipSchema.parse(
       JSON.parse(await readFile(layout.installFile, "utf8")),
     );
   } catch (error) {
-    throw new Error(`ZCode Server ownership marker is invalid: ${layout.installFile}`, {
+    throw new Error(`Polaris Server ownership marker is invalid: ${layout.installFile}`, {
       cause: error,
     });
   }
@@ -75,14 +81,14 @@ export async function validateServerInstallOwnership(
   const [ownership, canonicalServerRoot] = await Promise.all([
     readOwnership(layout),
     realpath(layout.serverRoot).catch((error: unknown) => {
-      throw new Error(`ZCode Server ownership root cannot be resolved: ${layout.serverRoot}`, {
+      throw new Error(`Polaris Server ownership root cannot be resolved: ${layout.serverRoot}`, {
         cause: error,
       });
     }),
   ]);
   if (ownership.canonicalServerRoot !== canonicalServerRoot) {
     throw new Error(
-      `ZCode Server ownership root mismatch: expected ${ownership.canonicalServerRoot}, received ${canonicalServerRoot}`,
+      `Polaris Server ownership root mismatch: expected ${ownership.canonicalServerRoot}, received ${canonicalServerRoot}`,
     );
   }
   return ownership;

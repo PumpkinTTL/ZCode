@@ -1,5 +1,10 @@
 import { useRef, useState, type DragEvent } from "react";
 import { FolderOpen, Loader2, Plus } from "lucide-react";
+import {
+  isPresetMarketplaceAdded,
+  type PresetPluginMarketplace,
+  type ZCodePluginMarketplaceSummary,
+} from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog.js";
 import { Input } from "@/components/ui/input.js";
@@ -18,12 +23,18 @@ export function AddMarketplaceSourceDialog({
   onAddMarketplace,
   operationId,
   error,
+  presets = [],
+  marketplaces = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddMarketplace: (source: string) => Promise<boolean>;
   operationId: string | null;
   error?: string | null;
+  /** 可一键添加的公开市场源（已添加的会被过滤掉）。 */
+  presets?: readonly PresetPluginMarketplace[];
+  /** 当前已登记市场，用于判断哪些预置源已添加。 */
+  marketplaces?: readonly ZCodePluginMarketplaceSummary[];
 }) {
   const { intl } = useZCodeIntl();
   const platform = useOptionalPlatform();
@@ -52,6 +63,22 @@ export function AddMarketplaceSourceDialog({
       pendingRef.current = false;
     }
   };
+
+  // 预置源一键添加：与手动输入共用同一防重提交闸门，成功即关闭弹层。
+  const handleAddPreset = async (preset: PresetPluginMarketplace) => {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    try {
+      const added = await onAddMarketplace(preset.source);
+      if (added) onOpenChange(false);
+    } finally {
+      pendingRef.current = false;
+    }
+  };
+
+  const availablePresets = presets.filter(
+    (preset) => !isPresetMarketplaceAdded(preset, marketplaces),
+  );
 
   const handleChooseDirectory = async () => {
     if (!platform) return;
@@ -109,6 +136,58 @@ export function AddMarketplaceSourceDialog({
             role="alert"
           >
             {error}
+          </div>
+        ) : null}
+        {availablePresets.length > 0 ? (
+          // min-w-0 是关键：DialogContent 是 grid，列是 auto 轨道。
+          // 不加的话，本区块的最小内容宽度（truncate 的 nowrap 文案）会把整条轨道顶宽，
+          // 连输入框和页脚按钮一起溢出到面板右侧。
+          <div className="min-w-0 space-y-1">
+            <div className="px-1 text-ui-xs font-medium text-foreground-subtle">
+              {intl.formatMessage({ id: "settings.plugins.marketplaces.presets.title" })}
+            </div>
+            <div className="max-h-[min(220px,32vh)] min-w-0 space-y-1 overflow-x-hidden overflow-y-auto">
+              {availablePresets.map((preset) => {
+                const adding = operationId === `marketplace:add:${preset.source}`;
+                return (
+                  <div
+                    key={preset.id}
+                    data-testid="plugin-store-preset-source"
+                    data-preset-id={preset.id}
+                    className="flex min-w-0 items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-hover"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-ui-base font-medium text-foreground">
+                        {preset.name}
+                      </div>
+                      <div className="truncate text-ui-xs text-foreground-subtle">
+                        {preset.description}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      data-testid="plugin-store-preset-add"
+                      data-preset-id={preset.id}
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={adding}
+                      onClick={() => void handleAddPreset(preset)}
+                    >
+                      {adding ? (
+                        <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Plus data-icon="inline-start" aria-hidden="true" />
+                      )}
+                      {intl.formatMessage({ id: "settings.plugins.marketplaces.presets.add" })}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="px-1 pt-1 text-ui-xs text-foreground-subtle">
+              {intl.formatMessage({ id: "settings.plugins.marketplaces.presets.customLabel" })}
+            </div>
           </div>
         ) : null}
         <Input

@@ -30,9 +30,11 @@ export function buildHarnessBlock(): string {
 }
 
 function buildIdentityPrompt(outputStyle?: OutputStylePromptConfig): string {
+  // Polaris：Agent Identity 是模型自称的另一个来源（与 sections/cli-prefix.ts 的 CLI Prefix 成对），
+  // 两者必须同时去品牌，否则两段 system prompt 会给出互相矛盾的身份。
   const intro = outputStyle
-    ? "You respond to the user according to the active Output Style below while using ZCode's tools and instructions."
-    : "You are an interactive ZCode agent that helps users with software engineering tasks.";
+    ? "You respond to the user according to the active Output Style below while using Polaris's tools and instructions."
+    : "You are an interactive Polaris agent that helps users with software engineering tasks.";
 
   const identityLines = ["", intro, "", SECURITY_NOTICE].join("\n");
 

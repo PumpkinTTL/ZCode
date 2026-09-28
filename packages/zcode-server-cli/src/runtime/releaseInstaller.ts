@@ -20,11 +20,15 @@ async function flattenArchiveRoot(extractDir: string): Promise<void> {
   const entries = await readdir(extractDir, { withFileTypes: true });
   // macOS tar 可能额外写入 `._*` PAX/resource-fork 条目，不能因为这些旁路文件
   // 让唯一发行根目录识别失败，否则后续会误报 manifest.json 缺失。
+  // 发行根前缀跟随自有身份（polaris-server-）；旧归档用的 zcode-server- 也要认，
+  // 否则升级包在半途发布切换期间会被判成“无发行根”。
   const rootEntries = entries.filter(
-    (entry) => entry.isDirectory() && entry.name.startsWith("zcode-server-"),
+    (entry) =>
+      entry.isDirectory() &&
+      (entry.name.startsWith("polaris-server-") || entry.name.startsWith("zcode-server-")),
   );
   if (rootEntries.length > 1)
-    throw new Error("Release archive contains multiple zcode-server roots");
+    throw new Error("Release archive contains multiple Polaris Server roots");
   const rootEntry = rootEntries[0];
   if (!rootEntry) return;
   const nested = join(extractDir, rootEntry.name);

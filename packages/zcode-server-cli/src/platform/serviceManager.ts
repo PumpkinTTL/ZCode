@@ -27,10 +27,13 @@ export function createDaemonServiceDescriptor(options: {
     platform: options.platform,
     command: join(
       options.layout.stableBinDir,
-      options.platform === "win32" ? "zcode.cmd" : "zcode",
+      options.platform === "win32" ? "polaris.cmd" : "polaris",
     ),
     args: ["serve", "--supervisor", "--service-entry", "--server-root", options.layout.serverRoot],
-    name: `com.zhipu.zcode.server.${stablePathId(options.layout.serverRoot)}`,
+    // Label 是用户在 `launchctl list` / `systemctl --user` / `schtasks` 里看到的产品身份；
+    // 旧值 com.zhipu.zcode.* 同时暴露了另一家厂商名，必须换掉。安装时会按 server-root
+    // 扫掉旧 label 的注册（见 serviceInstallation 的 root-scoped 清理）。
+    name: `com.bitlesu.polaris.server.${stablePathId(options.layout.serverRoot)}`,
   });
 }
 
@@ -46,7 +49,7 @@ export function createServiceDescriptor(options: {
   args?: string[];
   name?: string;
 }): ServiceDescriptor {
-  const name = options.name ?? "com.zhipu.zcode.server";
+  const name = options.name ?? "com.bitlesu.polaris.server";
   const args = options.args ?? ["serve", "--daemon"];
   if (options.platform === "darwin") {
     return {
@@ -61,7 +64,7 @@ export function createServiceDescriptor(options: {
     return {
       kind: "systemd",
       name,
-      content: `[Unit]\nDescription=ZCode Server\n[Service]\nExecStart=${shellQuote(options.command)} ${args.map(shellQuote).join(" ")}\nRestart=on-failure\n[Install]\nWantedBy=default.target\n`,
+      content: `[Unit]\nDescription=Polaris Server\n[Service]\nExecStart=${shellQuote(options.command)} ${args.map(shellQuote).join(" ")}\nRestart=on-failure\n[Install]\nWantedBy=default.target\n`,
     };
   }
   return {

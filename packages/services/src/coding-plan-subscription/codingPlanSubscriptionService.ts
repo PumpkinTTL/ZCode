@@ -51,44 +51,7 @@ const EMPTY_CODING_PLAN_SUBSCRIPTION_SERVICE = {
   // 兼容接口：固定返回 preflight-v1，不读取远端配置或缓存。
   getModelContextBudgetStrategy: async () => DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
   getForceUpdateConfig: async () => null,
-  productInfo: async (request) => ({ productId: request.productId }),
-  preview: async (request) => ({ bizId: "", productId: request.productId }),
-  createSign: async () => ({ sign: "" }),
-  updateSign: async () => ({ sign: "" }),
-  checkPayment: async () => ({ status: "" }),
-  checkPendingOrders: async () => ({ hasPendingOrders: false }),
-  queryStripeCards: async () => [],
-  bindStripeCard: async (request) => ({ paymentMethodId: request.paymentMethodId }),
-  unbindStripeCard: async () => "",
-  payStripe: async () => ({}),
-  checkPaypalSupport: async () => ({ isSupport: false }),
-  createPaypalSetupToken: async () => ({}),
-  subscribePaypal: async () => ({}),
   getEnterprisePricing: async () => ({ productList: [] }),
-  getEnterpriseBalance: async () => ({ giveBalance: 0, cashBalance: 0, totalBalance: 0 }),
-  calculateEnterpriseOrder: async () => ({
-    totalOriginalAmount: 0,
-    totalPayAmount: 0,
-    thirdPayAmount: 0,
-  }),
-  createEnterpriseOrder: async () => ({
-    orderNo: "",
-    totalOriginalAmount: 0,
-    totalPayAmount: 0,
-    thirdPayAmount: 0,
-  }),
-  getEnterprisePendingOrders: async () => [],
-  cancelEnterpriseOrder: async (request) => ({ orderNo: request.orderNo, status: "" }),
-  continueEnterpriseOrderPayment: async (request) => ({
-    orderNo: request.orderNo,
-    totalOriginalAmount: 0,
-    totalPayAmount: 0,
-    thirdPayAmount: 0,
-  }),
-  checkEnterpriseOrderStatus: async (request) => ({
-    orderNo: request.orderNo,
-    paymentStatus: "",
-  }),
 } satisfies ICodingPlanSubscriptionService;
 
 // 冻结：装配层可能多处持有同一实例（Host 装配与 remote workspace 装配），

@@ -8,7 +8,7 @@ export function createManagedCdpDescriptor(
     id: browserId,
     generation,
     type: "cdp",
-    name: "ZCode Headless Chromium",
+    name: "Polaris Headless Chromium",
     capabilities: {
       browser: [],
       tab: [],

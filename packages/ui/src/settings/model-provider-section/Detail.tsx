@@ -54,10 +54,6 @@ import { resolveStartPlanEntitlementSummary } from "./StartPlanCard.js";
 import { useCodingPlanProducts } from "./useCodingPlanProducts.js";
 import { useEnterpriseCodingPlanProducts } from "./useEnterpriseCodingPlanProducts.js";
 import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
-import {
-  createCodingPlanFunnelContext,
-  resolveCodingPlanEntryPlanState,
-} from "@/lib/codingPlanFunnelTelemetry.js";
 import { useCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
 import type { ProviderSettingsView } from "@zcode/services";
@@ -248,7 +244,6 @@ export function ModelProviderSectionDetail({
   onRetryCodingPlan,
   onCodingPlanDisconnect,
   onOpenApiKeyUrl,
-  onOpenBigModelRegistration,
   onCodingPlanPurchaseComplete,
   onSelectNavItem,
   providerSettingsView: providerSettingsViewOverride,
@@ -297,7 +292,6 @@ export function ModelProviderSectionDetail({
     providerName: string,
   ) => void;
   onOpenApiKeyUrl: (url: string) => void;
-  onOpenBigModelRegistration: () => void;
   onCodingPlanPurchaseComplete: () => void | Promise<void>;
   onSelectNavItem?: (item: ModelProviderNavItem) => void;
   providerSettingsView?: ProviderSettingsView | null;
@@ -542,31 +536,10 @@ export function ModelProviderSectionDetail({
         );
         return;
       }
-      const nextFunnelContext = createCodingPlanFunnelContext({
-        providerId: selectedNavItem.presetId,
-        upgradeSource:
-          audience === "team" ? "setting_team_plan_banner" : "setting_personal_plan_banner",
-        eventRegion: "app.setting",
-        eventText:
-          options.eventText ??
-          intl.formatMessage({
-            id:
-              audience === "team"
-                ? "settings.modelProvider.codingPlan.purchaseBanner.teamTitle"
-                : "settings.modelProvider.codingPlan.purchaseBanner.personalTitle",
-          }),
-        entryPlanState: resolveCodingPlanEntryPlanState({
-          displayStatus: statusPanelViewState.displayStatus,
-          providerId: selectedNavItem.presetId,
-          planLevel: selectedNavItem.planLevel,
-        }),
-        purchaseAudience: audience,
-      });
       openCodingPlanUpgrade({
         providerId: selectedNavItem.presetId,
         initialAudience: audience,
         initialTeamPlanKey: options.initialTeamPlanKey,
-        funnelContext: nextFunnelContext,
       });
     };
     const codingPlanFamilyHeader = (
@@ -614,7 +587,6 @@ export function ModelProviderSectionDetail({
           quotaLimits={selectedNavItem.quotaLimits}
           mcpQuotaLimit={selectedNavItem.mcpQuotaLimit ?? null}
           authError={codingPlanAuthError}
-          onOpenRegistration={onOpenBigModelRegistration}
           purchaseUrl={selectedNavItem.purchaseUrl}
           inactivePlanTitle={selectedNavItem.inactivePlanTitle}
           statusLabelId={visibleStatusLabelId}
@@ -679,7 +651,6 @@ export function ModelProviderSectionDetail({
             openCodingPlanUpgrade({
               providerId: selectedNavItem.presetId,
               initialAudience: options.initialAudience,
-              funnelContext: options.funnelContext ?? undefined,
             });
           }}
           upgradePlansVisible={upgradePlansVisible}
@@ -750,7 +721,6 @@ export function ModelProviderSectionDetail({
             quotaLimits={selectedNavItem.quotaLimits}
             mcpQuotaLimit={selectedNavItem.mcpQuotaLimit ?? null}
             authError={codingPlanAuthError}
-            onOpenRegistration={onOpenBigModelRegistration}
             onLogin={(options) => {
               return onCodingPlanLogin(
                 selectedNavItem.presetId,
@@ -795,7 +765,6 @@ export function ModelProviderSectionDetail({
               openCodingPlanUpgrade({
                 providerId: selectedNavItem.presetId,
                 initialAudience: options.initialAudience,
-                funnelContext: options.funnelContext ?? undefined,
               });
             }}
             upgradePlansVisible={upgradePlansVisible}

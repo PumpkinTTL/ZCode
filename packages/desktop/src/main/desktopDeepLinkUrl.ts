@@ -1,5 +1,12 @@
-const DEEP_LINK_SCHEME = "zcode";
-const DEEP_LINK_RE = /\bzcode:(?:\/\/|\/)?[^\s"'<>]+/i;
+// Polaris：深链 scheme 对外是 `polaris://`，但**仍然接受** `zcode://`：
+// 历史分享链接、用户书签、以及仍装着上游版的机器都可能把 zcode:// 送进来，解析层兼容不花钱。
+// 注册层（electron-builder protocols / Finder workflow / Linux xdg-mime）两个都注册。
+export const DEEP_LINK_SCHEMES = ["polaris", "zcode"] as const;
+const DEEP_LINK_RE = /\b(?:polaris|zcode):(?:\/\/|\/)?[^\s"'<>]+/i;
+
+function isDeepLinkProtocol(protocol: string): boolean {
+  return DEEP_LINK_SCHEMES.some((scheme) => protocol === `${scheme}:`);
+}
 const OAUTH_CALLBACK_HOSTS = new Set(["oauth"]);
 const PAYMENT_CALLBACK_HOST = "payment";
 const WORKSPACE_OPEN_HOST = "workspace";
@@ -15,7 +22,7 @@ function normalizeOAuthCallbackPath(pathname: string): string {
 }
 
 export function isOAuthCallbackUrl(parsedUrl: URL): boolean {
-  if (parsedUrl.protocol !== `${DEEP_LINK_SCHEME}:`) {
+  if (!isDeepLinkProtocol(parsedUrl.protocol)) {
     return false;
   }
 
@@ -35,7 +42,7 @@ export function isOAuthCallbackUrl(parsedUrl: URL): boolean {
 }
 
 export function isPaymentCallbackUrl(parsedUrl: URL): boolean {
-  if (parsedUrl.protocol !== `${DEEP_LINK_SCHEME}:`) {
+  if (!isDeepLinkProtocol(parsedUrl.protocol)) {
     return false;
   }
 
@@ -53,7 +60,7 @@ export function isPaymentCallbackUrl(parsedUrl: URL): boolean {
 }
 
 export function isWorkspaceOpenUrl(parsedUrl: URL): boolean {
-  if (parsedUrl.protocol !== `${DEEP_LINK_SCHEME}:`) {
+  if (!isDeepLinkProtocol(parsedUrl.protocol)) {
     return false;
   }
 
@@ -81,7 +88,7 @@ export function extractWorkspaceOpenPath(parsedUrl: URL): string | null {
 
 export function isShareImportUrl(parsedUrl: URL): boolean {
   return (
-    parsedUrl.protocol === `${DEEP_LINK_SCHEME}:` &&
+    isDeepLinkProtocol(parsedUrl.protocol) &&
     parsedUrl.hostname === SHARE_IMPORT_HOST &&
     normalizeOAuthCallbackPath(parsedUrl.pathname) === "/import"
   );

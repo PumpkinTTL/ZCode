@@ -8,10 +8,26 @@ import {
   type LinuxDeepLinkRegistrationLogger,
 } from "./desktopLinuxXdg.js";
 
-const LINUX_DEEP_LINK_DESKTOP_FILE = "zcode.desktop";
-const LINUX_DEEP_LINK_MIME_TYPE = "x-scheme-handler/zcode";
-// 归属标记：用于识别用户级 zcode.desktop 是否由本应用写入（历史所有版本都带这行 Comment）。
-const LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER = "Comment=ZCode Desktop App";
+// Polaris：用户级协议处理器的文件名与 MIME 改为自有身份。旧值仍然注册与识别：
+// - 已分发出去的 `zcode://` 链接（分享、书签）不会失效；
+// - 改名前版本写下的 `zcode.desktop` 能被本版本的归属检查识别并清理，不会变成永久残留。
+const LINUX_DEEP_LINK_DESKTOP_FILE = "polaris.desktop";
+const LINUX_DEEP_LINK_MIME_TYPE = "x-scheme-handler/polaris";
+const LEGACY_LINUX_DEEP_LINK_DESKTOP_FILE = "zcode.desktop";
+const LEGACY_LINUX_DEEP_LINK_MIME_TYPE = "x-scheme-handler/zcode";
+/** desktop entry 上同时声明两种 scheme，新旧链接都归本应用处理。 */
+const LINUX_DEEP_LINK_MIME_TYPES = [
+  LINUX_DEEP_LINK_MIME_TYPE,
+  LEGACY_LINUX_DEEP_LINK_MIME_TYPE,
+] as const;
+// 归属标记：用于识别用户级 desktop 文件是否由本应用写入。
+// 改名前所有版本写的都是 legacy 标记，所以两个都算“我们的”，否则旧文件会被当成用户手写而永久残留。
+const LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER = "Comment=Polaris Desktop App";
+const LEGACY_LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER = "Comment=ZCode Desktop App";
+const LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKERS: readonly string[] = [
+  LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER,
+  LEGACY_LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER,
+];
 
 type LinuxDesktopEnv = {
   APPIMAGE?: string;
@@ -110,7 +126,7 @@ function createLinuxDeepLinkDesktopEntry(params: {
   iconName?: string;
 }): string {
   const productName = params.productName ?? "Polaris";
-  const iconName = params.iconName ?? "zcode";
+  const iconName = params.iconName ?? "polaris";
   const command = {
     executablePath: params.executablePath,
     args: params.args ?? [],
@@ -124,7 +140,7 @@ function createLinuxDeepLinkDesktopEntry(params: {
     "Type=Application",
     `Icon=${iconName}`,
     "Categories=Development;",
-    `MimeType=${LINUX_DEEP_LINK_MIME_TYPE};`,
+    `MimeType=${LINUX_DEEP_LINK_MIME_TYPES.join(";")};`,
     `StartupWMClass=${productName}`,
     "",
   ].join("\n");
@@ -174,7 +190,9 @@ function isOwnedDesktopEntry(path: string): boolean {
     // 避免可清理的遗留条目被误判为用户自定义条目而永久残留。
     return content
       .split("\n")
-      .some((line) => line.replaceAll("\r", "").trim() === LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER);
+      .some((line) =>
+        LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKERS.includes(line.replaceAll("\r", "").trim()),
+      );
   } catch {
     return false;
   }
@@ -207,6 +225,10 @@ function resolveLinuxDeepLinkDesktopFilePath(dataDir: string): string {
   return join(dataDir, "applications", LINUX_DEEP_LINK_DESKTOP_FILE);
 }
 
+function resolveLegacyLinuxDeepLinkDesktopFilePath(dataDir: string): string {
+  return join(dataDir, "applications", LEGACY_LINUX_DEEP_LINK_DESKTOP_FILE);
+}
+
 function writeFileIfChanged(path: string, content: string): boolean {
   if (existsSync(path) && readFileSync(path, "utf8") === content) {
     return false;
@@ -225,6 +247,12 @@ export function registerLinuxDeepLinkProtocol(options: RegisterLinuxDeepLinkProt
   });
   const dataDir = resolveLinuxUserDataDir({ env: options.env, homeDir: options.homeDir });
   const desktopFilePath = resolveLinuxDeepLinkDesktopFilePath(dataDir);
+  // 改名前版本写下的用户级条目：如仍属于本应用，直接删掉，避免它与新的 polaris.desktop
+  // 同时存在于 ~/.local/share/applications 里、或继续遮蔽系统级条目。
+  const legacyDesktopFilePath = resolveLegacyLinuxDeepLinkDesktopFilePath(dataDir);
+  if (legacyDesktopFilePath !== desktopFilePath) {
+    removeOwnedUserDesktopEntry(legacyDesktopFilePath, options.logger);
+  }
   const applicationsDir = dirname(desktopFilePath);
   const desktopEntry = createLinuxDeepLinkDesktopEntry({
     ...command,
@@ -264,6 +292,12 @@ export function registerLinuxDeepLinkProtocol(options: RegisterLinuxDeepLinkProt
       "default",
       LINUX_DEEP_LINK_DESKTOP_FILE,
       LINUX_DEEP_LINK_MIME_TYPE,
+    ]);
+    // 旧 scheme 也指向本应用（best-effort）：决定它的是「谁最后注册」，失败不影响自有 scheme 的注册结论。
+    runCommand("xdg-mime", [
+      "default",
+      LINUX_DEEP_LINK_DESKTOP_FILE,
+      LEGACY_LINUX_DEEP_LINK_MIME_TYPE,
     ]);
 
     if (defaultResult.status === 0) {

@@ -70,7 +70,9 @@ export function buildShareImportDeepLink(shareCode: string): string {
   if (!isSafeConversationShareCode(shareCode)) {
     throw new TypeError("Invalid conversation share code");
   }
-  return `zcode://share/import?code=${encodeURIComponent(shareCode)}`;
+  // Polaris：对外发出的深链用自有 scheme；桌面端两个 scheme 都注册、都解析，
+  // 因此旧链接（zcode://）继续可用，新链接不再带上游品牌。
+  return `polaris://share/import?code=${encodeURIComponent(shareCode)}`;
 }
 
 function mapErrorKind(code: ConversationShareApiErrorCode): ConversationSharePreviewErrorKind {

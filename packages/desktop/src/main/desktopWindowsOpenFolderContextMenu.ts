@@ -2,9 +2,17 @@ import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import type { Locale } from "@zcode/shared";
 
-const MENU_KEY_NAME = "ZCode.OpenInZCode";
+// Polaris：菜单项注册表键名改为自有身份（展示名早已是 Polaris）。
+// 改名前写入的 ZCode.OpenInZCode 在资源管理器右键里会变成一个重复的菜单项，
+// 所以安装时一并把旧键删掉（旧键只可能是本应用写的，不存在误伤用户自定义项的问题）。
+const MENU_KEY_NAME = "Polaris.OpenInPolaris";
 const DIRECTORY_MENU_KEY = `HKCU\\Software\\Classes\\Directory\\shell\\${MENU_KEY_NAME}`;
 const DRIVE_MENU_KEY = `HKCU\\Software\\Classes\\Drive\\shell\\${MENU_KEY_NAME}`;
+const LEGACY_MENU_KEY_NAME = "ZCode.OpenInZCode";
+const LEGACY_MENU_KEYS = [
+  `HKCU\\Software\\Classes\\Directory\\shell\\${LEGACY_MENU_KEY_NAME}`,
+  `HKCU\\Software\\Classes\\Drive\\shell\\${LEGACY_MENU_KEY_NAME}`,
+];
 const MENU_LABELS: Record<Locale, string> = {
   "zh-CN": "在 Polaris 中打开",
   "en-US": "Open in Polaris",
@@ -75,6 +83,18 @@ function runRegAdd(args: readonly string[]): Promise<void> {
   });
 }
 
+/** 删注册表键：失败（键不存在等）不作为错误，只影响是否残留一个重复菜单项。 */
+function runRegDelete(key: string): Promise<void> {
+  return new Promise((resolvePromise) => {
+    const child = spawn("reg.exe", ["delete", key, "/f"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    child.on("error", () => resolvePromise());
+    child.on("exit", () => resolvePromise());
+  });
+}
+
 export async function installWindowsOpenFolderContextMenu(options: {
   platform: NodeJS.Platform;
   executablePath: string;
@@ -99,6 +119,8 @@ export async function installWindowsOpenFolderContextMenu(options: {
 
   try {
     await Promise.all(operations.map((operation) => runRegAdd(operation.args)));
+    // 新键写成功后再清理旧键，避免中途失败时两个都没了。
+    await Promise.all(LEGACY_MENU_KEYS.map((key) => runRegDelete(key)));
 
     options.logger.info("[open-folder] Windows Explorer 右键菜单已安装或更新", {
       executablePath: options.executablePath,

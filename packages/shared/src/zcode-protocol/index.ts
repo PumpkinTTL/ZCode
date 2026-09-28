@@ -69,7 +69,9 @@ export {
   type HookInvocationRow,
 } from "../zcode-protocol-v4/rows.js";
 
-export const ZCODE_PROTOCOL_NAME = "ZCode Protocol" as const;
+// 常量名是内部标识（保留）；值是对外显示的协议名，且**没有任何等值校验**：
+// 它只被写入会话元数据与 "<name>/<version>" 展示串，因此改成自有身份不会破坏握手。
+export const ZCODE_PROTOCOL_NAME = "Polaris Protocol" as const;
 export const ZCODE_PROTOCOL_VERSION = 1 as const;
 // V4 wire 与 legacy 主协议并存；禁止为了 V4 physical framing 改写 legacy 版本。
 export const ZCODE_PROTOCOL_V4_WIRE_VERSION = 3 as const;
@@ -3063,6 +3065,8 @@ export const zcodePluginMarketplaceSummarySchema = z
     isOfficial: z.boolean().optional(),
     // 目录顶层 featured 策展名单（商店「公开」分段 Featured 区）。
     featured: z.array(z.string()).optional(),
+    // 降级：刷新失败但本地仍有上一次成功目录，商店展示旧快照而非报错。
+    degraded: z.boolean().optional(),
     refreshFailure: z
       .object({
         code: z.string(),

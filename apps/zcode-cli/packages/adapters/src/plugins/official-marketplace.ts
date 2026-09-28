@@ -75,14 +75,41 @@ function rebuildOfficialMarketplaceSync(storageRoot: string): Record<string, unk
   // 无 source 的独立市场并在刷新时报 not found。两个分片必须独立持久化后再合并，
   // 否则应用启动时的 seed 会覆盖 CDN 目录，或 CDN 刷新会覆盖内置目录。同名时以
   // 可刷新的 CDN 市场条目为准，但只过滤合并目录，不删除应用内置缓存。
+  //
+  // 身份（name / description / owner）归 Polaris：远端镜像只贡献"内容"字段。
+  // 否则镜像 manifest 里的厂商品牌（如 `owner: {name: "Z.ai"}` 与它的 description）
+  // 会随合并写入本地状态，最后显示成官方目录自己的品牌与文案。
   const merged = {
+    ...readCdnContributedFields(cdnManifest),
     ...(bundledManifest ?? {}),
-    ...(cdnManifest ?? {}),
     name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE,
     plugins: [...cdnPlugins, ...bundledPlugins],
   };
   writeJsonFileSync(partitionPath(storageRoot, MERGED_MARKETPLACE_FILE), merged);
   return merged;
+}
+
+/**
+ * 允许从远端镜像目录带入的"内容"字段白名单。
+ *
+ * `featured` 是策展名单，`allowCrossMarketplaceDependenciesOn` 是跨市场依赖白名单——两者
+ * 都是内容声明。其余字段（name / description / owner / …）属于目录身份，必须由本地决定，
+ * 不能由镜像覆盖。
+ */
+const CDN_CONTRIBUTED_FIELDS = [
+  "featured",
+  "allowCrossMarketplaceDependenciesOn",
+] as const;
+
+function readCdnContributedFields(
+  cdnManifest: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  if (!cdnManifest) return {};
+  const contributed: Record<string, unknown> = {};
+  for (const field of CDN_CONTRIBUTED_FIELDS) {
+    if (field in cdnManifest) contributed[field] = cdnManifest[field];
+  }
+  return contributed;
 }
 
 function readBundledPartition(storageRoot: string): BundledMarketplacePartition | undefined {

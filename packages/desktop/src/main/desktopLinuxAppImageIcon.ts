@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
   runXdgCommand,
@@ -10,18 +10,49 @@ import {
 // 从 desktopLinuxDeepLinkRegistration 拆出的 AppImage 用户级图标安装逻辑：
 // 图标集成是可选的桌面增强，与 deep link 协议注册分属不同关注点，独立成模块便于各自演进。
 
-const LINUX_APP_ICON_NAME = "zcode";
+// 必须与 desktop 打包时的 Linux executable 名成对（electron-builder 用 executableName 生成
+// 系统级 Icon=；见 electron-builder.config.js 的 linux.executableName），否则 AppImage 用户级
+// 图标与 deb 安装的图标名对不上，任务栏会回退成系统齿轮。
+const LINUX_APP_ICON_NAME = "polaris";
+// 上游身份遗留的用户级图标文件名；改名后必须清掉，否则残留文件永远不会被覆盖。
+const LEGACY_LINUX_APP_ICON_NAMES: readonly string[] = ["zcode"];
 const LINUX_APP_ICON_SIZE = "512x512";
 
-function resolveLinuxUserIconFilePath(dataDir: string): string {
+function resolveLinuxUserIconFilePath(
+  dataDir: string,
+  iconName: string = LINUX_APP_ICON_NAME,
+): string {
   return join(
     dataDir,
     "icons",
     "hicolor",
     LINUX_APP_ICON_SIZE,
     "apps",
-    `${LINUX_APP_ICON_NAME}.png`,
+    `${iconName}.png`,
   );
+}
+
+function removeLegacyLinuxUserIcons(params: {
+  dataDir: string;
+  logger: LinuxDeepLinkRegistrationLogger;
+}): void {
+  for (const legacyName of LEGACY_LINUX_APP_ICON_NAMES) {
+    const legacyPath = resolveLinuxUserIconFilePath(params.dataDir, legacyName);
+    try {
+      if (!existsSync(legacyPath)) {
+        continue;
+      }
+      unlinkSync(legacyPath);
+      params.logger.info("[deep-link] 已清理旧版用户级图标", {
+        iconFilePath: legacyPath,
+      });
+    } catch (error) {
+      params.logger.warn("[deep-link] 旧版用户级图标清理失败，已降级", {
+        iconFilePath: legacyPath,
+        error,
+      });
+    }
+  }
 }
 
 function copyFileIfChanged(sourcePath: string, targetPath: string): boolean {
@@ -47,6 +78,7 @@ function installLinuxAppImageDesktopIcon(params: {
   runCommand?: LinuxDesktopCommandRunner;
 }): { iconFilePath: string; installed: boolean; changed: boolean } {
   const iconFilePath = resolveLinuxUserIconFilePath(params.dataDir);
+  removeLegacyLinuxUserIcons({ dataDir: params.dataDir, logger: params.logger });
   if (!existsSync(params.iconSourcePath)) {
     params.logger.warn("[deep-link] Linux AppImage 图标源文件不存在，跳过用户级图标安装", {
       iconSourcePath: params.iconSourcePath,
@@ -57,7 +89,7 @@ function installLinuxAppImageDesktopIcon(params: {
 
   mkdirSync(dirname(iconFilePath), { recursive: true });
   const changed = copyFileIfChanged(params.iconSourcePath, iconFilePath);
-  // AppImage 直跑不会像 deb 安装包一样把 Icon=zcode 写入 hicolor 图标主题。
+  // AppImage 直跑不会像 deb 安装包一样把 Icon=polaris 写入 hicolor 图标主题。
   // 这里在用户级 hicolor 目录补齐同名图标，让任务栏/Dock 有机会按 desktop entry 命中真实图标。
   if (!changed) {
     return { iconFilePath, installed: true, changed };

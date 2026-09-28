@@ -1,4 +1,7 @@
-const ZCODE_PROCESS_PREFIX = "zcode";
+// Polaris：进程名前缀。它决定任务管理器里看到的 `polaris-main` / `polaris-host-*` /
+// `polaris-renderer-*` / `polaris-gpu`。全部消费者都走本文件的 formatter（资源管理器
+// 的进程列表也用它做映射），因此改这一处即整体一致；上游旧前缀 zcode 只出现在历史日志里。
+const ZCODE_PROCESS_PREFIX = "polaris";
 const MAX_PROCESS_NAME_SEGMENT_LENGTH = 24;
 
 function sanitizeProcessNameSegment(value: string | null | undefined): string | null {

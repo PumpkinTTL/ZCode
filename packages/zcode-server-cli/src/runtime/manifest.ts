@@ -13,8 +13,19 @@ export const supportedServerTargets = [
 
 export type ServerTarget = (typeof supportedServerTargets)[number];
 
+// 发行清单的 product 是**已装机契约**：老版本远端服务器写的是 "zcode-server"，
+// 读侧继续接受它，写侧只产出自有身份，避免升级时旧 release 被判成非法清单。
+export const SERVER_RUNTIME_PRODUCT = "polaris-server";
+const LEGACY_SERVER_RUNTIME_PRODUCT = "zcode-server";
+
+/** 清单 engine 已发布的安装可能带旧 product；读取时两者都算合法。 */
+export const serverRuntimeProducts = [
+  SERVER_RUNTIME_PRODUCT,
+  LEGACY_SERVER_RUNTIME_PRODUCT,
+] as const;
+
 export interface ServerRuntimeManifest {
-  product: "zcode-server";
+  product: (typeof serverRuntimeProducts)[number];
   target: ServerTarget;
   appVersion: string;
   nodeVersion: string;
@@ -33,7 +44,7 @@ export interface ServerRuntimeManifest {
 
 export const serverRuntimeManifestSchema = z
   .object({
-    product: z.literal("zcode-server"),
+    product: z.enum(serverRuntimeProducts),
     target: z.enum(supportedServerTargets),
     appVersion: z.string().min(1),
     nodeVersion: z.string().min(1),
@@ -60,7 +71,7 @@ export const serverRuntimeManifestSchema = z
 export function currentServerTarget(): ServerTarget {
   const target = `${platform}-${arch}`;
   if (!supportedServerTargets.includes(target as ServerTarget)) {
-    throw new Error(`Unsupported ZCode Server target: ${target}`);
+    throw new Error(`Unsupported Polaris Server target: ${target}`);
   }
   return target as ServerTarget;
 }
@@ -71,7 +82,7 @@ export function createRuntimeManifest(
   extras: Pick<ServerRuntimeManifest, "tools" | "plugins" | "components"> = {},
 ): ServerRuntimeManifest {
   return {
-    product: "zcode-server",
+    product: SERVER_RUNTIME_PRODUCT,
     target,
     appVersion,
     nodeVersion: SERVER_RUNTIME_NODE_VERSION,

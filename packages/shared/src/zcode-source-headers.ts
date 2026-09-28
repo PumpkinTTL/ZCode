@@ -1,9 +1,11 @@
 import { DEFAULT_ZCODE_ENDPOINT_ORIGIN } from "./zcodeEndpoint.js";
 
+// Polaris：这些是**外部可见**的请求身份（发给自有网关与第三方 provider）。
+// 注意 `X-ZCode-App-Version` 的**头名**属于与后端/网关的契约，改名前必须同步服务端，故此处只改值。
 export const ZCODE_SOURCE_HEADERS = {
-  "User-Agent": "ZCode/unknown",
+  "User-Agent": "Polaris/unknown",
   "HTTP-Referer": DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-  "X-Title": "Z Code@electron",
+  "X-Title": "Polaris@electron",
 } as const;
 
 export interface BuildZCodeSourceHeadersFromContextOptions {
@@ -45,9 +47,9 @@ export function buildZCodeSourceHeadersFromContext(
   return {
     ...ZCODE_SOURCE_HEADERS,
     "HTTP-Referer": endpointOrigin,
-    "User-Agent": `ZCode/${appVersion ?? "unknown"}`,
+    "User-Agent": `Polaris/${appVersion ?? "unknown"}`,
     ...(appVersion ? { "X-ZCode-App-Version": appVersion } : {}),
-    "X-Title": `Z Code@${sourceTitle}`,
+    "X-Title": `Polaris@${sourceTitle}`,
     ...(platform && arch ? { "X-Platform": `${platform}-${arch}` } : {}),
     ...(releaseChannel ? { "X-Release-Channel": releaseChannel } : {}),
     "X-Client-Language": clientLanguage,

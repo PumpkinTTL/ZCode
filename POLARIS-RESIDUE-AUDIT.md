@@ -490,3 +490,551 @@ provider 的请求路径与请求头完全一致，不触碰 agent 能力。
 | `web/src/auth/webAuthLocale.ts` Web 登录页文案 | `使用……Z.AI 账号身份` / `用 Z.AI 登录` → 去 Z.AI 化 |
 
 均为纯展示文案，不涉及任何能力。验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors。
+
+---
+
+## 16. 插件市场：多源 + 三级降级（结论：保留框架，不砍）
+
+**先说结论**：插件市场**不是被本轮砍掉的**，市场框架、商店 UI、安装/启用/缓存业务逻辑全部保留。
+
+- 市场格式是**公开标准**（Claude Code 的 `.claude-plugin/marketplace.json`；插件包识别
+  `.zcode-plugin/` / `.claude-plugin/` / `.codex-plugin/` 三种 manifest）。数据源不独属任何厂商。
+- 此前唯一的默认源被（本线程之前的基线提交 `f3f5d4b`）指向 `polaris.bitlesu.com/plugins/marketplace.json`，
+  该后端尚未部署 → 刷新失败、列表空。**这是源地址问题，不是能力被删**。
+- **内置插件是本地 seed**（SEA 资源 + `<storage>/cache/zcode-plugins-official/…`），离线始终可用，不受市场源可达性影响。
+  ⚠️ 本仓库能真正 seed 的只有 **2 个**（`node-repl-host` / `browser-use`），其余定义指向的插件包
+  目录在本仓库中不存在 —— 详见 §17a.2。
+
+本轮按「只砍必要、能复用就留」的原则做的改动是**增强而非砍除**：
+
+1. **源可选 / 源可添加**：新增公开预置源清单（6 个，实测全部可添加），一键添加；默认安装不向第三方发请求。
+2. **三级降级**：`remote → snapshot → bundled`。刷新失败但本地有上次成功目录时降级为 warning
+   （UI 显示「离线目录」），不再裸报 `fetch error`；只有「失败且无目录」才是 error。
+3. **官方目录镜像 + 可调优先级**：`zcode-plugins-official`（与 Z.ai 原站同名，无法当普通源添加）以
+   镜像形式支持多来源——默认 `[Polaris 自有, Z.ai 原站]`，按优先级逐个尝试，失败自动降级；
+   顺序可用 `POLARIS_PLUGIN_MARKETPLACE_MIRRORS` 手动覆盖。实测主源不可达后回退 Z.ai 成功（26 个插件）。
+4. **外部工具接入点**：`POLARIS_PLUGIN_MARKETPLACE_SOURCES` 环境变量 + 预置源注册表。
+
+完整设计/运维/接入说明见 `POLARIS-PLUGIN-MARKETPLACE.md`。
+
+验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors；CLI `turbo run typecheck` ✅ 27/27；
+新增测试 ✅（`packages/shared/test/pluginMarketplaces.test.ts`、
+`apps/zcode-cli/packages/bootstrap/test/marketplaceDegradation.test.ts`）。
+
+---
+
+## 17. 复盘：市场第二批（物化策略 + UI 修形）
+
+本节的目的是让你能**独立复核**，所以每个结论都带可复现的证据命令。
+
+### 17a. 四个问题的核查结论
+
+#### 17a.1 「dev 为什么还要构建？」
+
+因为 dev 跑的**不是源码**，是把 agent 打包成单文件再交给 Electron：
+
+```
+scripts/dev-desktop-env.mjs
+  run(pnpm --filter @zcode/desktop pre-dev)
+  run(node scripts/build-desktop-agent-cli.mjs)   ← 编译 adapters/bootstrap 并 stage 成 zcode.cjs
+  run(pnpm --filter @zcode/desktop dev:runtime)   ← 再起 Electron
+```
+
+证据（跑着的 agent 用的是磁盘上那份 `zcode.cjs`）：
+
+```bash
+ls -la packages/desktop/bundled-agents/win32-x64/glm/zcode.cjs   # 构建时间
+```
+
+结论：**你不需要手动敲构建命令** —— `pnpm run dev:desktop` 开头自带打包；但**只关掉窗口再打开不够**，
+bundle 文件没变，跑的还是旧代码。纯 UI（渲染层）改动走 Vite 热更新，不需要重启。
+
+#### 17a.2 「那 27/39 个插件是本地自带的吗？你怎么砍的？」
+
+**一个插件都没砍。** 数字拆解（两边都是磁盘实证）：
+
+| 组成 | 上游装机（`~/.zcode/cli/plugins`） | 本 fork（`~/.polaris/cli/plugins`） |
+|---|---|---|
+| 远端目录（Z.ai CDN，26 条） | 26 | 26 |
+| 本地 seed（内置插件包） | 14 | **2** |
+| 合计 | **40** | **28** |
+
+为什么本地 seed 少 12 个：`official-plugin-definitions.ts` 里每个定义都有 `rootCandidates`，
+只有能在磁盘上找到 `.zcode-plugin/plugin.json` 的插件才会进入目录。本仓库里：
+
+```bash
+find . -name ".zcode-plugin" -not -path "*/node_modules/*"
+# → apps/zcode-cli/packages/browser-use-plugin/.zcode-plugin
+# → apps/zcode-cli/packages/node-repl-host/.zcode-plugin      （只有这两个）
+```
+
+缺的定义指向 `packages/android-emulator-plugin`、`packages/image-search-plugin`、
+`packages/ios-simulator-plugin`、`packages/restore-legacy-sessions-plugin`、
+`packages/plugin-creator-plugin`、`packages/skill-creator-plugin`、`packages/zcode-guide-plugin`、
+`packages/zcode-cua-plugin` —— **这些目录在开源仓库里根本不存在**（上游分发版才带）。
+本仓库也没有 `documents` / `pdf` / `presentations` / `spreadsheets` 的定义。
+
+能不能从 CDN 补回来？**不能**，全为 404（实测）：
+
+```bash
+curl -sI https://cdn-zcode.z.ai/zcode/official-plugin/plugins/pdf/0.1.7/plugin.zip          # 404
+curl -sI https://cdn-zcode.z.ai/zcode/official-plugin/plugins/image-search/0.1.1/plugin.zip # 404
+# … 共 12 个，全部 404
+```
+
+可选项（需你拍板，见 §17f）：从你自己那份上游安装里取包（`~/.zcode/cli/plugins/cache/zcode-plugins-official/` 下
+确实有 `pdf` / `documents` / `presentations` / `spreadsheets` / `image-search` / `skill-creator` / …）
+放回仓库对应目录 —— 但那是 Z.ai 的插件内容，**再分发**要看它们的许可，不是 Apache-2.0 自动覆盖的东西。
+
+#### 17a.3 「添加插件源为什么那么久？是不是把插件全拉到本地了？」
+
+**是，而且是两件蠢事叠加**（上游实现）：① 为了读一个 JSON 先 `git clone` 整个仓库；
+② 再把整棵树复制进插件目录。已改为「读清单只发一个请求、装插件时才按需取」：
+
+```
+ADD  anthropics/claude-plugins-official (314)   472ms   磁盘 184K
+ADD  alirezarezvani/claude-skills (99)          253ms   磁盘  92K
+ADD  xiaolai/claude-plugin-marketplace (19)     265ms   磁盘  19K
+INSTALL 相对路径条目                            4053ms  （sparse checkout 只取该目录）
+```
+
+对照旧数据：同样两个目录在盘上分别是 15M、60M。
+**旧款整树会自动回收**：下次刷新该源时 `activateDirectoryAtomically` 整目录重建，实测 60M → 96K。
+
+#### 17a.4 「那个添加弹窗的布局是什么垃圾？」
+
+已复现并定位，且**修在组件层**。根因：`DialogContent` 是单列 grid，列是 `auto` 轨道；
+推荐源列表的 `truncate`（`nowrap`）把轨道顶宽后，**同层所有直接子元素**（标题、输入框、页脚按钮）
+一起被画到面板外面。隔离 harness 实测（同一份内层标记，只改外壳 class）：
+
+```
+修复前：面板右边界 477，输入框/页脚右边界 574 ✗，溢出的直接子元素 4 个（title/section/field/footer）
+修复后：面板右边界 995，输入框/页脚右边界 978 ✓，溢出的直接子元素 0 个
+```
+
+修复：`components/ui/dialog.tsx` 加 `grid-cols-[minmax(0,1fr)]` + `[&>*]:min-w-0`，
+从组件层消除这一类问题，不再依赖每个调用方自觉加 `min-w-0`；
+调用方（含既有 128 处 `DialogContent`）用 `cn()`/`tailwind-merge` 传自己的 `grid-cols-*` 仍可覆盖。
+
+### 17b. 本轮改动文件清单
+
+| 文件 | 一句话 |
+|---|---|
+| `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts` | 只读清单（删掉整树复制路径）；github 免 clone 取清单；安装按需 sparse 物化；旧整树自动回收 |
+| `apps/zcode-cli/packages/adapters/test/marketplaceStagingWeight.test.ts` | 新增 3 条守护测试（只落清单 / 按需物化 / 回收旧树） |
+| `packages/ui/src/components/ui/dialog.tsx` | 组件层修形（§17a.4） |
+| `packages/ui/src/settings/AddMarketplaceSourceDialog.tsx` | 推荐源区块加 `min-w-0` / `overflow-x-hidden` / `shrink-0` 第二道保险 |
+| `POLARIS-PLUGIN-MARKETPLACE.md` | §4.4 改写为最终物化语义 + 实测数据；新增 §4.5.1 对话框溢出复盘；§10.1 变更记录 |
+
+### 17c. 我引入过、并已修掉的问题（不藏）
+
+1. **构建一度是坏的**：上一轮我把 `stageMarketplaceDirectoryPlugins` 的定义删掉后，`loadMarketplaceFromSource`
+   里还有 3 处调用没跟上（`tsc` 会直接报未定义）。本轮把调用点一并清掉并去掉了 `persist` 参数，
+   现在 `turbo run typecheck` 27/27。
+2. **品牌泄漏**（上一轮引入，已修）：Z.ai 镜像 manifest 的 `owner: {name: "Z.ai"}` 与厂商描述
+   会被合并写进本地状态。现在镜像只能贡献插件条目 / `featured`，身份字段一律本地决定；
+   实测 `~/.polaris/.../marketplace.json` 为 `owner=null` + Polaris 描述。
+   守护测试：`apps/zcode-cli/packages/adapters/test/officialMarketplaceBranding.test.ts`。
+3. **弹窗溢出**（本轮引入，已修）：见 §17a.4。
+4. **降级漏了一处**（上一轮引入，已修）：`getZCodePluginsOverview` 里还有一份「刷新失败即 error」
+   的旧逻辑，只修 `updateZCodePluginMarketplace` 不够，红条仍会出现。两处现在收敛到同一个 helper。
+
+### 17d. 没有改、没有删的东西（对照用）
+
+- 商店页面结构与导航（`PluginStorePage` 只多传两个 props）、安装/启用/卸载/更新/恢复内置的全部业务逻辑。
+- 源类型全集：`url | github | git | git-subdir | npm | file | directory` + zip 源（含 sha256）。
+- `describeMarketplacePlugin`（详情页）、依赖闭包解析、`allowCrossMarketplaceDependenciesOn`。
+- 官方目录的保留 id 守卫（同名镜像只能作镜像，不能当普通源添加）。
+- Node Repl Host 的可见性（你确认保留现状，未动）。
+
+### 17e. 存储与残留
+
+| 目录 | 大小 | 归属 | 处置 |
+|---|---|---|---|
+| `~/.polaris/cli/plugins` | 2.7M | **本 fork 在用** | 已无整树，`marketplaces/*` 合计 384K |
+| `~/.zcode` | 11G | 上游 ZCode 的旧数据根（本 fork 不做迁移，`DATA_ROOT_DIR_NAME = ".polaris"`） | 未动；要清理用 `rm -rf ~/.zcode`（会一并删掉旧版已装插件与工作区，不可逆，故留给你决定） |
+| `~/.openclaude` | 7.5M | 6 月的无关残留 | 未动 |
+
+### 17f. 待你拍板的开放项
+
+1. 缺的 12 个内置插件：接受现状（28 条）／从你自己的上游安装里把插件包取回仓库对应目录（许可需确认）。
+2. `~/.zcode` 11G 是否清理。
+3. Node Repl Host 是否在公开列表隐藏（现状保留）。
+
+### 17g. 验证
+
+```
+pnpm typecheck                     ✅ 0 错误
+CLI turbo run typecheck            ✅ 27/27
+pnpm lint                          ✅ 0 errors（80 warnings，全部是既有文件）
+tsx --test（shared + bootstrap + adapters）  ✅ 16/16
+真实源 ADD/INSTALL（临时 storage）  ✅ 见 §17a.3
+```
+
+---
+
+## 18. 全量复核：有没有砍错、还有什么该砍（2026-09-27）
+
+基准是 fork 自己的开源快照 **`872ad96` "feat: open source"**（不是 `77432b6`，那是个空 initial commit，
+拿它做基准会算出「0 删除」的假结论——这点我自己先踩过一次）。
+
+相对该基准的规模：**66 个文件被删，291 个顶层导出被删，53 个 zh-CN 文案键被删，34 005 行删除 / 18 034 行新增**。
+
+### 18a. 你问的 computer-use：它从没在这个仓库里存在过
+
+```bash
+git log --all --oneline -- packages/zcode-cua-plugin      # 空 → 本仓历史中从未存在
+find . -name ".zcode-plugin" -not -path "*/node_modules/*"
+# → 只有 browser-use-plugin、node-repl-host
+git log --oneline -S "电脑控制回退为默认关闭"                 # → 872ad96（开源快照本身，不是我们砍的）
+```
+
+`official-plugin-definitions.ts` 里 computer-use 的候选路径是 `packages/zcode-cua-plugin`、
+`../zcode-cua-plugin` …，而这些目录在本仓不存在（它们在**上游闭源 monorepo** 里；
+`packages/desktop/scripts/koffi-package-assets.mjs:71` 就有 `pluginRelativePath = "packages/zcode-cua-plugin"`，
+说明构建脚本预期一个本仓没有的包）。CDN 也没有它的 zip（`plugins/computer-use/0.6.3/plugin.zip` → 404）。
+
+两个附带事实：
+
+1. **默认关闭是上游产品决策**（baseline 自带）：定义里没标 `defaultEnabled`，
+   `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 也刻意不含它，注释写明「computer-use 携带 MCP server 与系统 Helper
+   依赖，默认开启意味着每个新用户首启即注入整套工具集」。
+2. **能力脚手架在仓里，插件包不在**：`packages/zcode-cua`（runtime）、`cua-permission-broker`、
+   `ComputerUseSection`（设置页入口，`SettingsPage.tsx:1924` 挂载）都在，缺的只有那个插件包。
+   所以你会在设置里看到一个「电脑控制」段，但插件市场里找不到 computer-use —— 这是**内容缺失**，不是被砍。
+
+要恢复只能把 `zcode-cua-plugin` 包内容放回仓库（你自己那份上游安装
+`~/.zcode/cli/plugins/cache/zcode-plugins-official/computer-use/0.6.3` 里确实有）；
+那是 Z.ai 的插件内容，再分发要看它的许可。
+
+### 18b. 「砍错」检查（悬空引用扫描）——结论：没有发现被砍错的能力
+
+方法：把基准以来的删除物分四类，逐个回查仓内是否仍有引用。
+
+| 检查项 | 结果 |
+|---|---|
+| 被删的 53 个文案键是否仍被代码引用 | **0 个悬空**（32 个仍被引用，但它们的键在 zh/en 两侧都还在，删掉的只是同一个键的重复行） |
+| 被删的 66 个文件的模块名是否仍被 import | **0 个真实悬空**（命中项全是**注释**里的历史说明，如 `oauthUnauthorizedRequest.ts:23`、`officialMcpCredentials.ts:39`）；`coding-plan-subscription/` 目录只删了 provider 实现，被 import 的 `codingPlanSubscription*.js` 都还在 |
+| 被删的 8 个支付图标是否仍被引用 | **0 个引用**（纯资源，删对了） |
+| 仍指向官方域名的出网路径 | 只剩三类命中，**均为有意保留**：① 旧配置里官方域名→自有网关的**匹配键**（`legacyZCodeConfigProviderReader.ts:66`，永不直接请求）；② 历史注释；③ 插件市场镜像（本线程新增，可用环境变量关掉）。`zcodeEndpoint.ts` 四个默认 origin 均已指向 `polaris.bitlesu.com` |
+
+也就是说：能力层面**没发现砍错的东西**。
+
+### 18c. 「应该继续砍」清单（按确定性排序）
+
+1. **死模块 3 处**（导出在自身文件之外 0 引用）：
+   - `packages/services/src/bigmodel/codingPlanEntitlement.ts`（`fetchPersonalCodingPlanEntitlement` /
+     `fetchTeamCodingPlanEntitlement` / `isActivePersonalCodingPlan` 均 0 外部引用）
+   - `packages/services/src/bigmodel/teamPlanApiKey.ts`（只被上面那个文件 import）
+   - `packages/services/src/providers/zaiBusinessTokenResolver.ts`（`ZaiBusinessTokenResolver` 仅自引用）
+   合起来 ~5.5K 行附近的官方业务残留，是整个 `bigmodel/` 目录与 `providers/` 里最后一小块。
+2. **陈旧元数据**：`third-party/inventory.json` 仍列着已删除的
+   `patches/@arms__rum-electron@0.0.3.patch` 与 `@arms/rum-electron@0.0.3`（4 处）；
+   依赖与补丁文件都已不在（`patches/` 下只剩两个 ai-sdk 补丁）。
+3. **删掉的官方登录文案键 17 个**：`login.oauth.*`（整个簇）、`login.expired.*`、`welcome.login(.Failed)`；
+   `login.oauth.` 前缀在代码中作为前缀出现 **0 次**，是纯死键。
+4. **死文案键（保守估计 1 035 个，占 18.5%）**：方法学警告——`zh-CN.ts` 共 5 598 键，
+   字面无引用的 2 193 个；排除模板拼接（`occupationOnboarding.${key}` 这类共 237 处）后剩 1 035 个。
+   这个数字只能当**候选**看（一键一改前建议逐簇抽验，`chat` 410、`feedback` 182、`git` 46 是大头）。
+5. **数据残留**：`~/.zcode` 11G（上游旧数据根，Polaris 不读）。
+6. **待你定性的展示项**：Node Repl Host 在公开列表可见（上游一直如此）；
+   `CodingPlanUsageRemainingPanel` / `BigModelRegistrationHint` / `startPlan.*` 一族
+   仍指向已不可达的官方业务（见 §12 的保留/清除边界决策）。
+
+### 18d. 本次复核的局限（别把它当全覆盖）
+
+
+
+- 悬空引用靠**字符串级**扫描，能抓住死键/死模块/死资源，但抓不住「运行时才走到」的问题。
+- 布局类（如 §17a.4 的弹窗溢出）无法用静态检查定性，必须逐页真机 DOM 验证。
+- 截图里的 39/28 差异已在 §17a.2 用磁盘数据拆解清楚，不涉及任何删除。
+
+---
+
+## 19. 模型身份（Identity）去品牌
+
+有人在机器上扫过「模型为何自称 ZCode」，结论方向对、**归属错**：
+
+- 那份报告读的是 `E:\ZCode\resources\glm\zcode.cjs` —— **上游装机**，不是本 fork。
+- 本 fork 的身份源在**源码**：`apps/zcode-cli/packages/core/src/context/sections/{cli-prefix,identity}.ts`，
+  构建后落到 `packages/desktop/bundled-agents/win32-x64/glm/zcode.cjs`（dev）/
+  `apps/zcode-cli/packages/cli/dist/zcode.cjs`。
+- 所以报告里「想改身份只能编辑 cjs」**不成立**：改源码 + `pnpm run dev:desktop`（会自动重新打包）即可。
+- 报告里另一个正硬结论保留：`.polaris\` 里没有身份定义，那里只有运行时数据。
+
+### 19a. 本次改掉的 13 处（全部是字符串字面量，无逻辑，仓库内无任何代码/测试解析它们）
+
+| 类别 | 位置 | 原 → 新 |
+|---|---|---|
+| 身份前缀（模型自称的源头） | `context/sections/cli-prefix.ts` | You are ZCode… → **You are Polaris, an interactive coding agent** |
+| 身份段（同上） | `context/sections/identity.ts` | ZCode's tools… / You are an interactive ZCode agent… → **Polaris** |
+| 段名/标题 | `context/sections/desktop.ts` | ZCode Desktop Context → **Polaris Desktop Context** |
+| 子代理身份 | `subagent/explore.ts`、`subagent/general-purpose.ts` | ZCode Explore / agent for ZCode CLI → **Polaris** |
+| 连通性探测身份 | `runtime/methods/workspace-generate-text.ts` | You are ZCode connectivity probe. → **Polaris** |
+| 注入给模型的文本 | `runtime/helpers/conversation.ts`、`session-context/references.ts`、`system-reminder/incoming-message.ts`、`tool/handlers/read-session-context.ts`、`tool/handlers/read.ts`、`runtime/helpers/attachment-path-reference.ts`、`tool/handlers/agent.ts` | 界面/工具描述里的 ZCode → **Polaris** |
+| 出网 UA / 标题 | `tool/handlers/webfetch-constants.ts`、`plugins/github-archive-source.ts`、`browser/descriptor.ts`、`shared/zcode-source-headers.ts`、`shared/openrouter-attribution.ts` | ZCode-WebFetch（原指向 zcode.ai）/ ZCode-Plugin-Installer / ZCode Headless Chromium / ZCode-unknown / Z Code@electron / X-OpenRouter-Title → **Polaris** |
+
+### 19b. 有意**不改**的（每一类都有理由）
+
+| 项 | 理由 |
+|---|---|
+| `@zcode/*` 包名、`ZCODE_*` 环境变量、文件名、`zcode-agent` 这类**内部标识符** | 沿用历轮约定：改它们会改变磁盘/配置/协议形状，不是用户可见品牌 |
+| `X-ZCode-App-Version` 的**头名** | 与后端/网关的契约字段，改名前必须同步服务端（本次只改了值） |
+| 启动计时标记、错误类名（如 `ZCodeCliLoginError`）、debug 日志 | 用户不可见，改了只是噪声 |
+| `ZCODE_AGENT_PROVIDER_LABEL = "ZCode Agent"` | 已经是**死常量**（全仓 0 引用），改或删都不影响行为 |
+| `.agents/skills/**` 里的 ZCode 文案 | 开发期 agent 技能文档，不进产品提示词 |
+| `zcode-guide` 定义的 `displayName: "ZCode Guide"` 等 listing | 该插件包本仓不存在，装了上游包才能在商店里看到 |
+
+### 19c. 生效方式与验证
+
+```
+node scripts/build-desktop-agent-cli.mjs   → bundle 重建 02:47
+bundle 内：You are Polaris… / Polaris Explore / agent for Polaris CLI / Polaris connectivity probe
+           / Polaris Headless Chromium / Polaris-WebFetch / Polaris-Plugin-Installer  全部 → 1
+bundle 内：You are ZCode… / ZCode Explore / agent for ZCode CLI / ZCode connectivity probe  全部 → 0
+pnpm typecheck ✅ 0 错误 · CLI turbo run typecheck ✅ 27/27 · tsx --test ✅ 16/16
+```
+
+注意：**已经在跑的 agent 进程仍持有旧 bundle**，重启应用（或新开会话）后身份才变。
+
+---
+
+## 20. 产品化第三轮：深链 scheme、shell 集成、进程名、空壳能力盘点
+
+扫了四个面：① 应用元数据/深链；② 操作系统集成（Win 右键菜单 / macOS Finder 服务 / Linux xdg）；
+③ 外部可见标识（进程名、UA）；④ 历轮被空壳化的**公用能力**（你关心的“不该砍的”）。
+
+### 20a. 已经是对的（不需改）
+
+| 项 | 现状 |
+|---|---|
+| 安装包身份 | `productName: Polaris`、`appId: com.bitlesu.polaris`、Linux executable `polaris`、homepage/maintainer 均为 `polaris.bitlesu.com` |
+| 主进程身份 | `app.setName()` / `process.title` = 运行时产品名（Polaris） |
+| 右键菜单/Finder 服务的**展示名** | 已是「在 Polaris 中打开 / Open in Polaris」 |
+| 端点默认值 | `zcodeEndpoint.ts` 四个默认 origin 全部 `polaris.bitlesu.com` |
+| 更新源 | `publish.url` 仍是 `http://localhost:8081` 占位（有意） |
+
+### 20b. 本轮改掉的（全部带旧值清理，不会产生重复菜单/孤儿文件）
+
+| 项 | 位置 | 改法 |
+|---|---|---|
+| 深链 scheme | `desktopDeepLinkUrl.ts` 解析层、`web/share/conversationSharePreviewClient.ts` 发送层、`electron-builder.config.js` `protocols` | 对外发布 `polaris://`；**解析层两 scheme 都收**；注册层两个都注册（polaris 优先声明）。旧分享链接继续可用 |
+| macOS Finder 服务 | `desktopFinderOpenFolderWorkflow.ts` | `Open in Polaris.workflow` + bundle id `app.polaris.finder-open-workflow` + 脚本改用 `polaris://`；按 legacy bundle id 确认归属后删掉旧的 `Open in ZCode.workflow` |
+| Windows 右键菜单 | `desktopWindowsOpenFolderContextMenu.ts` | 注册表键 `Polaris.OpenInPolaris`；新键写成功后删除 `ZCode.OpenInZCode`（Directory/Drive 两处） |
+| Linux 协议处理器 | `desktopLinuxDeepLinkRegistration.ts` | `polaris.desktop` + `x-scheme-handler/polaris`；MimeType 同时声明旧 scheme；归属标记两个都认（新 `Comment=Polaris Desktop App` + 旧 `Comment=ZCode Desktop App`）；旧 `zcode.desktop` 被识别为自己的就清理 |
+| 进程名 | `shared/src/process-names.ts` | 前缀 `zcode` → `polaris`（任务管理器里从 `zcode-*` 变 `polaris-*`）；全部消费者走同一 formatter，资源管理器进程列表自动跟随 |
+| 开发态更新缓存目录 | `packages/desktop/dev-app-update.yml` | `zcode-dev-updater` → `polaris-dev-updater`（仅目录名） |
+| 文案 | `shared/src/platform.ts` 注释 | `zcode://` → `polaris://` |
+
+验证：desktop 构建产物（dev watch 已重建）`polaris-*` 命中 19 处、`zcode-renderer|zcode-host-|zcode-main` 命中 **0**。
+
+### 20c. 有意保留的（契约 / 格式 / 生态兼容）
+
+| 项 | 为什么不改 |
+|---|---|
+| `.zcode-plugin/` 插件清单目录、`.zcodeignore` | 第三方插件包与公开生态按这个名字声明；改名等于与整个插件生态脱钩。若要自有品牌，应做**双支持**（`.polaris-plugin/` 优先、`.zcode-plugin/` 兼容）——需要单独设计 |
+| `~/.zcode/server`（远程会话路径） | 远端机器上的契约路径，改名前必须同步远端 agent |
+| `X-ZCode-App-Version` 头名 | 与自有网关的契约字段（值已改）；改名要前后端同时发 |
+| `@zcode/*` 包名、`ZCODE_*` 环境变量、`zcode-agent` 之类内部标识 | 历轮约定的“内部标识不改” |
+| `mcpUserDirectory/legacy.ts` 里的 `join(appData, "ZCode", ...)` | 这是**读旧版数据做迁移**用的，改了反而丢用户数据 |
+| 模型供应商名 `Z.ai` / `BigModel`（locale 与 web 分享页） | 它们是**真实的第三方 provider**（用户可选接入），不是本产品身份 |
+| Linux 图标名 `Icon=zcode` | 与打包写入的图标文件名成对；改了若不同步会出现“齿轮”图标（需打包侧一起改） |
+| `zcodeProductFlavor` / `.zcode-install-manifest` / `zcode-window-bounds` 等资源名 | 仅内部产物名，用户不可见 |
+
+### 20d. 空壳能力盘点（“不该砍的”答复）
+
+你担心的“公用功能被砍”逐项核过：**接口都还在，只是实现变空壳 + 写明重接点**，调用方无需改。
+
+| 能力 | 现状 | 重接方式 |
+|---|---|---|
+| 账号请求鉴权 | `model-provider/accountRequestAuthService.ts`：读返回 `null`，写抛 `AccountRequestCredentialUnavailableError`（等价于“没连账号”的旧行为） | 实现 `IAccountRequestAuthService` / 接回 `AccountRequestAuthResolver`，调用点不动 |
+| OAuth 服务 | `oauth/oauthService.ts`、`oauthProviderLogout.ts` 空壳；凭证仓库 `oauth/repo` 保留 | 自有 provider 接回即可 |
+| 会话分享 | **未砍**：真实 `ConversationShareService` 在用，`createUnsupportedConversationShareService` 只用于 remote workspace（上游原有行为）；分享站点指向自有 origin | — |
+| 插件市场 / 技能 / 子代理 / 工作流 / 浏览器 / 电脑控制脚手架 | 全部保留 | — |
+
+### 20e. 本轮验证
+
+```
+pnpm typecheck            ✅ 0 错误
+pnpm lint                 ✅ 0 errors（80 warnings，均为既有文件）
+tsx --test（9 个文件）    ✅ 26/27
+  ✖ packages/ui/test/nonCliAcpRetirement.test.ts —— 预先存在的跑法限制：
+    它 import 的 ToolCallBlocks/renderers/agentHelpers.ts 用 `@/lib/*`，而 `@/*` 只定义在
+    packages/ui/tsconfig.json；用仓库根的 tsx 跑就解析不到（与本轮改动无关，未改动这两个文件）
+```
+
+### 20f. 还没动的（等决策）
+
+1. `.zcode-plugin/` → 是否做 `.polaris-plugin/` 双支持（生态兼容 vs 自有品牌）。
+2. Coding Plan / Start Plan 一族 UI（`settings.modelProvider.startPlan.*`、`CodingPlanUsageRemainingPanel`、`BigModelRegistrationHint`）仍指向已不可达的官方业务。
+3. §18 的死模块/死文案键/陈旧 third-party 清单。
+4. `~/.zcode` 11G 旧数据目录。
+5. Node Repl Host 在公开列表的可见性。
+
+---
+
+## 21. 第八刀：死模块 + 死文案键 + 陈旧 third-party 清单（2026-09-27）
+
+先做「核心功能有没有被破坏」复核，再执行 §18c 中确定性最高的三项。
+
+### 21a. 核复（核心功能未破坏）
+
+- 对基准 `872ad96` 起被删的 **66 个文件**逐个回查 import：**0 个真实悬空**（“index”命中全是同名文件误报）。
+- `pnpm typecheck` ✅ 0 错误；`apps/zcode-cli` `turbo run typecheck` ✅ 27/27。
+- 插件市场测试全绿：`shared/pluginMarketplaces`(8)、`adapters/officialMarketplaceBranding`(2)、
+  `adapters/marketplaceStagingWeight`(2)、`bootstrap/marketplaceDegradation`(4)。
+- 结论：**能力层面没有发现被破坏的核心功能**。
+
+### 21b. 本轮砍掉的
+
+| 项 | 内容 | 依据 |
+|---|---|---|
+| 死模块 3 个 | `packages/services/src/bigmodel/codingPlanEntitlement.ts`、`.../bigmodel/teamPlanApiKey.ts`、`.../providers/zaiBusinessTokenResolver.ts`（`bigmodel/` 目录随之消失） | 顶层导出在全仓 0 外部引用（`teamPlanApiKey` 仅被 `codingPlanEntitlement` 引用，后者又 0 引用）；无测试引用 |
+| 死文案键 17 个 | `login.oauth.*`(12)、`login.expired.title|description|restart`(3)、`welcome.login`、`welcome.loginFailed` | `login.oauth.` 前缀在代码中 0 次；`login.expired.action` **被 `StatusCards.tsx:504` 使用而保留** |
+| 陈旧 third-party 元数据 | `third-party/inventory.json` 里 `@arms/rum-*` 全部（hashes 映射 1 处、`patches` 1 条、`packages` 3 条、`exceptions` 3 条）+ 3 个孤儿证据文件 `third-party/upstream/*.txt` | `@arms/rum-{browser,core,electron}` 在 `pnpm-lock.yaml` 中已 **0 引用**（整族随遥测改写层移除） |
+
+### 21c. 本轮验证
+
+```
+pnpm typecheck                         ✅ 0 错误
+JSON.parse(third-party/inventory.json)  ✅ OK
+删除模块的外部引用扫描                    ✅ 0 悬空（含测试）
+```
+
+注：`node scripts/licenses.mjs notices` 在本机 Windows 上因 `pnpm -r ls` 触发 `EMFILE`（文件句柄上限）
+无法重生成 inventory，故本轮为**手工定点删除**陈旧条目并保留 JSON 结构；后续在有足够句柄的机器上应重跑
+`notices` + `check` 以恢复生成式一致性。
+
+### 21e. 第八刀续：官方购买 funnel 与 BigModel 品牌提示（用户决策：能复用的留、不能复用的砍）
+
+先理清「哪些可复用」再动手：
+
+- **seam 层（保留）**：`ICodingPlanSubscriptionService`、`IUsageStatsService`、`CodingPlanUpgradeDialogProvider` /
+  `useCodingPlanUpgradeDialog`（购买入口的上下文与状态机）、通用用量/额度展示。将来接自有套餐只需实现接口。
+- **不可复用、已砍**：
+
+| 文件 | 内容 | 为什么不可复用 |
+|---|---|---|
+| `settings/model-provider-section/BigModelRegistrationHint.tsx` | BigModel 未注册提示 + 官方注册跳转 | 绑死 BigModel 品牌与官方注册页 |
+| `settings/CodingPlanEmbeddedWebviewDialog.tsx` | 打开 Z.ai 官网 `/coding-plan` 的内嵌 webview | 打开官方站点、注入官方 OAuth 凭据 |
+| `settings/model-provider-section/codingPlanEmbeddedWebview.ts` | 官网 URL 构造 + 凭据注入脚本 + 官方上报上下文 | 写死 `oauth:zai:*` / `zcodeBridge` / 官网路径 |
+| `settings/codingPlanUpgradeLoginRecovery.ts` | 官方 OAuth 登录后重开购买弹窗 | 依赖官方 OAuth 登录编排 |
+| `settings/model-provider-section/codingPlanPurchaseAuth.ts` | 官方购买鉴权判定 | 仅服务官方 webview，0 其余引用 |
+
+处置：`CodingPlanUpgradeDialog.tsx` 改写为**无界面 seam**（保留 `CodingPlanUpgradeDialogTarget` 类型与
+组件签名，`useEffect` 里回报 `onOpenResult(false)`，不打开任何官方界面）；Provider 与所有入口调用方零改动。
+同步删除 5 个 webview 文案键 `settings.modelProvider.codingPlan.webview.*`（0 引用）与 2 个 BigModel 注册文案键。
+
+### 21f. 仍未动（等决策 / 下一刀）
+
+- **官方漏斗埋点** `lib/codingPlanFunnelTelemetry.ts`（写死 `Z_AI`/`MaaS` channel + 官方 provider id，
+  被 AutomationsSection / Provider / Detail / StatusCards / SessionPane 5 处接线）：属官方分析，但是纯上报、
+  非用户可见功能，删它要动 5 个文件，建议下一刀单独做。
+- **官方企业/团队定价与 Start Plan**：`enterpriseCodingPlanProducts` / `useEnterpriseCodingPlanProducts` /
+  `codingPlanEnterpriseTiers` / `useStartPlanPreview` / `StartPlanBalanceCard` / `StartPlanQuotaStatusCard`——
+  这些是「可改造复用的 UI 骨架 + 官方数据源」，删与留取决于自有套餐的数据形状，建议接自有套餐时一并定。
+- **`CodingPlanUpgradeDialog` 的复查**：现在点升级会立即回报「未打开」；自有购买界面接回后即可恢复。
+- `.zcode-plugin/` 双支持、`~/.zcode` 11G、Node Repl Host 可见性。
+
+### 21g. 复验
+
+```
+pnpm typecheck   ✅ 0 错误
+pnpm lint        ✅ 0 errors（80 warnings，回到本轮前基线，未新增）
+```
+
+### 21h. 第八刀再续：官方购买漏斗埋点（2026-09-27）
+
+删除了 `packages/ui/src/lib/codingPlanFunnelTelemetry.ts`——它把点击事件按官方漏斗 schema
+（`coding_plan_upgrade_ck`）上报，写死 `channel: Z_AI / MaaS` 与官方 provider id，自有套餐必然重写。
+
+连带把 `CodingPlanUpgradeDialogTarget.funnelContext` 及全部构造点清掉（共 6 个文件）：
+
+| 文件 | 改动 |
+|---|---|
+| `settings/CodingPlanUpgradeDialogProvider.tsx` | 移除 `usePlatform` / `reportCodingPlanUpgradeClick` 与 funnel 合并块 |
+| `settings/model-provider-section/StatusCards.tsx` | 移除 `createSettingPlanCardFunnelContext` 与 `openUpgradePlans` 的 funnel 参数 |
+| `settings/model-provider-section/Detail.tsx` | 移除 `nextFunnelContext` 与两处 `funnelContext: options.funnelContext` |
+| `v4/SessionPane.tsx` | 移除闲时/额度横幅入口的 funnel 构造 |
+| `settings/AutomationsSection.tsx` | 移除闲时入口的 funnel 构造 |
+| `settings/CodingPlanUpgradeDialog.tsx` | target 类型去掉 `funnelContext` |
+
+「可复用」边界不变：`openCodingPlanUpgrade` 入口 API、`inventory` 门禁、弹窗 seam 均保留。
+
+验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings，未新增）。
+
+### 21i. 仍未动（等决策）
+
+- **官方企业/团队定价与 Start Plan**：`enterpriseCodingPlanProducts` / `useEnterpriseCodingPlanProducts` /
+  `codingPlanEnterpriseTiers` / `useStartPlanPreview` / `StartPlanBalanceCard` / `StartPlanQuotaStatusCard`——
+  「可改造复用的 UI 骨架 + 官方数据源」，删与留取决于自有套餐的数据形状，建议接自有套餐时一并定。
+- **官方套餐 i18n 候选**：`settings.modelProvider.codingPlan.*` 下按字面引用扫出 ~370 个未命中键，
+  但**不可据此删除**——购买面板大量用模板/变量拼 id，静态扫描会误报（同 §18d 的方法学警告）。
+- `.zcode-plugin/` 双支持、`~/.zcode` 11G、Node Repl Host 可见性。
+
+---
+
+## 22. 第九刀：官方 OAuth 漏网残留 + 无人调用的下单/支付 seam（2026-09-27）
+
+用户决策「骨架留、官方数据源砍」后，先做**穷举式引用核对**再动手（上一轮曾把 Start Plan 骨架
+误列入可砍，本节是纠正后的结论）。
+
+### 22a. 砍之前先纠正一个误判
+
+Start Plan / 企业套餐 7 个文件**不是死代码，不该砍**。只匹配 `import ... from` 语句的精确统计：
+
+| 文件 | 活跃 importer |
+|---|---|
+| `useEnterpriseCodingPlanProducts` | **5**：SettingsPage、WorkspaceSidebarFooterUsageSummary、ModelProviderSection、Detail、V4ComposerToolbar |
+| `enterpriseCodingPlanProducts` | **5**：codingPlanUsageSources、codingPlanEnterpriseTiers、providerFamilyConnectionVisibility、useEnterpriseCodingPlanProducts、useModelProviderNavigation |
+| `codingPlanEnterpriseTiers` | 3：CodingPlanUpgradeDialog、Detail、StatusCards |
+| `StartPlanCard` / `StartPlanBalanceCard` | 各 2 |
+| `useStartPlanPreview` / `StartPlanQuotaStatusCard` | 各 1 |
+
+**决定性的一点**：`resolveEnterpriseCodingPlanProductFamily` 被 `codingPlanUsageSources.ts` 与
+`providerFamilyConnectionVisibility.ts` 调用，是**用量来源计算 + provider 连接可见性**的核心逻辑，
+与购买 UI 无关。砍掉会直接破坏 provider 连接状态显示。
+
+同时 4 个「数据源」方法有活跃 UI 调用方，**保留即等于「数据源已砍」**（它们返回空值）：
+
+| 方法 | 调用方 |
+|---|---|
+| `getStaticProducts` | `useCodingPlanProducts:438` |
+| `getStaticTeamProducts` | `useEnterpriseCodingPlanProducts:143` |
+| `getStartPlanPreview` | `useCodingPlanProducts:383`、`useStartPlanPreview:95` |
+| `getEnterprisePricing` | `useCodingPlanEntryPlanList:51`、`useEnterpriseCodingPlanProducts:146` |
+
+### 22b. 官方数据源早已在 3af70d7 砍掉
+
+`codingPlanSubscriptionService.ts` 是**完整空实现**：25+ 方法全部返回空值，**零网络请求**。
+骨架文件内**零官方 URL/端点**，只剩 `bigmodel` / `zai` 这种 `ProviderFamilyDomain` 内部家族标识
+（结构而非品牌，保留）。因此「骨架留、官方数据源砍」这条**在服务层已达成**，本轮不需也不应再动骨架。
+
+### 22c. 本轮砍掉的（2 处，互不相干）
+
+| # | 目标 | 判定依据 |
+|---|---|---|
+| 1 | **删除 `adapters/src/auth/bigmodel-oauth.ts`** + `auth/index.ts` 的 barrel 行 | 6 个导出符号全仓引用 **全部 0**（用正确符号名 `createBigmodelOAuthClient` / `createBigmodelOAuthState` / `BigmodelOAuth*` / `BIGMODEL_*` 复核）；barrel 下游只拿 `shared-credentials`；`from "@zcode/adapters"` 通配导入 5 处无一使用；动态调用 0、测试 0、package exports 0。内容是完整可用的官方 OAuth 客户端（`BIGMODEL_APP_ID = "zcode"`、`/login`、`/api/auth/tokenByAuthCode`），同目录 `cli-oauth` / `coding-plan-api-key` 早已改成抛错空壳，**唯它漏网** |
+| 2 | **从 `ICodingPlanSubscriptionService` 与空实现同步删除 19 个下单/支付方法** | `productInfo`、`preview`、`createSign`、`updateSign`、`checkPayment`、`checkPendingOrders`、`queryStripeCards`、`bindStripeCard`、`unbindStripeCard`、`payStripe`、`checkPaypalSupport`、`createPaypalSetupToken`、`subscribePaypal`、`getEnterpriseBalance`、`calculateEnterpriseOrder`、`createEnterpriseOrder`、`getEnterprisePendingOrders`、`cancelEnterpriseOrder`、`continueEnterpriseOrderPayment`、`checkEnterpriseOrderStatus` —— 逐个 `.方法(` 精确查 **20/20 = 0**；动态/字符串调用 0；测试 0；实现方仅空实现 1 个。顺带清理 `@zcode/shared` 中随之失效的类型导入（44 → 10） |
+
+改动面：**4 个文件，-114 行 / +2 行**（1 删 3 改），不碰任何渲染逻辑。
+
+### 22d. 差点砍错的两处（记下来，避免下次重犯）
+
+1. **`batchPreview` 必须保留** —— `useCodingPlanProducts:228` 在用。上一轮把 20 个方法混列，
+   `batchPreview` 是其中唯一的活调用。
+2. **4 个数据源方法必须保留** —— 见 §22a 表格；删了就是连骨架一起砍，直接违反「骨架留」。
+
+另：`packages/shared/src/coding-plan-subscription.ts` 里的官方支付类型（`CodingPlanPaypalSetupToken*` 等）
+现在是**无消费方的导出类型**，不影响 typecheck/lint。属可后续清理的残留，本轮为控制风险未动。
+
+### 22e. 验证
+
+```
+pnpm typecheck                                  ✅ 0 错误
+apps/zcode-cli npx turbo run typecheck          ✅ 27/27
+pnpm lint                                       ✅ 0 errors（80 warnings，与本轮前基线一致，未新增）
+npx tsx --test（4 个插件测试文件）               ✅ 16 pass / 0 fail
+coding-plan 相关测试                             0 个（不存在，故无测试破坏面）
+已删符号残留引用扫描                              ✅ 0 悬空
+```
