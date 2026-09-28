@@ -11,9 +11,9 @@ import type { OAuthStateRegistration } from "./oauth.js";
 import type { AppSettings, Locale } from "./protocol.js";
 import type { StorageCleanRequest, StorageCleanResult, StorageUsageSnapshot } from "./storage.js";
 import type {
-  ArmsCustomEventPayload,
-  ConfigureFinalArmsCustomEventE2ERequest,
-  FinalArmsCustomEventE2EEntry,
+  CustomTelemetryEventPayload,
+  ConfigureFinalCustomTelemetryEventE2ERequest,
+  FinalCustomTelemetryEventE2EEntry,
   RendererTelemetryEventPayload,
   TelemetryRendererContext,
 } from "./telemetry.js";
@@ -320,8 +320,8 @@ export const PlatformChannels = {
   SyncTelemetryContext: "zcode:sync-telemetry-context",
   /** Renderer → Main：通过统一 telemetry 层上报业务事件 */
   ReportTelemetryEvent: "zcode:report-telemetry-event",
-  /** Renderer → Main：上报 ARMS 自定义事件 */
-  ReportArmsCustomEvent: "zcode:report-arms-custom-event",
+  /** Renderer → Main：上报 遥测自定义事件 */
+  ReportCustomTelemetryEvent: "zcode:report-custom-telemetry-event",
   /** Renderer → Main：读取 Renderer 用户操作 Trace 灰度配置。 */
   GetRendererActionTraceConfig: "zcode:get-renderer-action-trace-config",
   /** Main → Renderer：Renderer 用户操作 Trace 灰度配置变化。 */
@@ -332,11 +332,11 @@ export const PlatformChannels = {
   ReportRendererHeapSample: "zcode:report-renderer-heap-sample",
   ReportLocalTtftBatch: "zcode:report-local-ttft-batch",
   /** E2E preload → Main：读取 sendCustom 最终参数的内存 ring。 */
-  ReadFinalArmsCustomEventsE2E: "zcode:e2e:read-final-arms-custom-events",
+  ReadFinalCustomTelemetryEventsE2E: "zcode:e2e:read-final-custom-telemetry-events",
   /** E2E preload → Main：清空 sendCustom 最终参数的内存 ring。 */
-  ClearFinalArmsCustomEventsE2E: "zcode:e2e:clear-final-arms-custom-events",
+  ClearFinalCustomTelemetryEventsE2E: "zcode:e2e:clear-final-custom-telemetry-events",
   /** E2E preload → Main：配置只针对目标 event name 的真实网络抑制。 */
-  ConfigureFinalArmsCustomEventsE2E: "zcode:e2e:configure-final-arms-custom-events",
+  ConfigureFinalCustomTelemetryEventsE2E: "zcode:e2e:configure-final-custom-telemetry-events",
   /** Renderer → Main：触发任务完成/失败的系统通知 */
   ShowTaskNotification: "zcode:show-task-notification",
   /** Main → Preload：通知 renderer 播放任务通知提示音 */
@@ -930,8 +930,8 @@ export interface PlatformChannelMap {
     request: RendererTelemetryEventPayload;
     response: void;
   };
-  [PlatformChannels.ReportArmsCustomEvent]: {
-    request: ArmsCustomEventPayload;
+  [PlatformChannels.ReportCustomTelemetryEvent]: {
+    request: CustomTelemetryEventPayload;
     response: void;
   };
   [PlatformChannels.GetRendererActionTraceConfig]: {
@@ -951,16 +951,16 @@ export interface PlatformChannelMap {
     request: RendererHeapSample;
     response: void;
   };
-  [PlatformChannels.ReadFinalArmsCustomEventsE2E]: {
+  [PlatformChannels.ReadFinalCustomTelemetryEventsE2E]: {
     request: void;
-    response: FinalArmsCustomEventE2EEntry[];
+    response: FinalCustomTelemetryEventE2EEntry[];
   };
-  [PlatformChannels.ClearFinalArmsCustomEventsE2E]: {
+  [PlatformChannels.ClearFinalCustomTelemetryEventsE2E]: {
     request: void;
     response: void;
   };
-  [PlatformChannels.ConfigureFinalArmsCustomEventsE2E]: {
-    request: ConfigureFinalArmsCustomEventE2ERequest;
+  [PlatformChannels.ConfigureFinalCustomTelemetryEventsE2E]: {
+    request: ConfigureFinalCustomTelemetryEventE2ERequest;
     response: void;
   };
   [PlatformChannels.ShowTaskNotification]: {

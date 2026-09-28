@@ -5,14 +5,6 @@ import {
 } from "@zcode/shared/database-startup";
 /* eslint-disable max-lines -- preload bridge 集中暴露桌面平台 IPC，拆散会让 contextBridge 权限边界更难审计。 */
 import { contextBridge, ipcRenderer, webFrame, webUtils } from "electron";
-import {
-  installArmsRumBridgeIpcForward,
-  scheduleArmsEventBridgePatch,
-} from "../shared/armsRumBridgeForward.js";
-
-// ARMS frame preload 闭包内的 send 不会随后序 ipcRenderer.send 补丁生效，须同步包装 Bridge.send
-installArmsRumBridgeIpcForward(ipcRenderer);
-scheduleArmsEventBridgePatch();
 
 /** 从 command-line 参数中解析 --device-id= */
 function parseDeviceIdFromArgs(): string {
@@ -75,8 +67,8 @@ import type {
   WindowControlsOverlayReadyPayload,
   CreateTempTextAttachmentRequest,
   OpenCuaPermissionOnboardingOptions,
-  ConfigureFinalArmsCustomEventE2ERequest,
-  FinalArmsCustomEventE2EEntry,
+  ConfigureFinalCustomTelemetryEventE2ERequest,
+  FinalCustomTelemetryEventE2EEntry,
 } from "@zcode/shared";
 import { InternalChannels, PlatformChannels } from "@zcode/shared/channels";
 import { formatZCodeRendererProcessName } from "@zcode/shared/process-names";
@@ -84,12 +76,12 @@ import { shouldEnableE2ETestBridge } from "@zcode/shared/e2e-test-bridge";
 import { createOAuthCallbackHandler } from "./oauthCallbackBridge.js";
 
 if (shouldEnableE2ETestBridge(process.env)) {
-  contextBridge.exposeInMainWorld("__zcodeFinalArmsCustomEventsE2E", {
-    read: (): Promise<FinalArmsCustomEventE2EEntry[]> =>
-      ipcRenderer.invoke(PlatformChannels.ReadFinalArmsCustomEventsE2E),
-    clear: (): Promise<void> => ipcRenderer.invoke(PlatformChannels.ClearFinalArmsCustomEventsE2E),
-    configure: (request: ConfigureFinalArmsCustomEventE2ERequest): Promise<void> =>
-      ipcRenderer.invoke(PlatformChannels.ConfigureFinalArmsCustomEventsE2E, request),
+  contextBridge.exposeInMainWorld("__zcodeFinalCustomTelemetryEventsE2E", {
+    read: (): Promise<FinalCustomTelemetryEventE2EEntry[]> =>
+      ipcRenderer.invoke(PlatformChannels.ReadFinalCustomTelemetryEventsE2E),
+    clear: (): Promise<void> => ipcRenderer.invoke(PlatformChannels.ClearFinalCustomTelemetryEventsE2E),
+    configure: (request: ConfigureFinalCustomTelemetryEventE2ERequest): Promise<void> =>
+      ipcRenderer.invoke(PlatformChannels.ConfigureFinalCustomTelemetryEventsE2E, request),
   });
 }
 
@@ -640,13 +632,13 @@ contextBridge.exposeInMainWorld("zcode", {
     talkId?: string;
     messageId?: string;
   }) => ipcRenderer.invoke(PlatformChannels.ReportTelemetryEvent, payload),
-  /** 通过 main process 统一上报 ARMS 自定义事件 */
-  reportArmsCustomEvent: (payload: {
+  /** 通过 main process 统一上报 遥测自定义事件 */
+  reportCustomTelemetryEvent: (payload: {
     name: string;
     group: string;
     value?: number;
     properties?: Record<string, string | number | boolean | undefined>;
-  }) => ipcRenderer.invoke(PlatformChannels.ReportArmsCustomEvent, payload),
+  }) => ipcRenderer.invoke(PlatformChannels.ReportCustomTelemetryEvent, payload),
   /** 读取 Renderer 用户操作 Trace 灰度配置。 */
   getRendererActionTraceConfig: (): Promise<RendererActionTraceConfigV1> =>
     ipcRenderer.invoke(PlatformChannels.GetRendererActionTraceConfig),
@@ -905,7 +897,6 @@ ipcRenderer.on(
 );
 
 // dom-ready autoInject 之后 Bridge 若被重置，再尝试一次包装
-scheduleArmsEventBridgePatch();
 
 // 启动控制面先于普通 RPC；reload 从 Main 的通知镜像补齐，不触发新迁移。
 ipcRenderer.on(InternalChannels.DatabaseStartupState, (_event, raw: unknown) => {

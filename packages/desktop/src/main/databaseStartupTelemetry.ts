@@ -2,10 +2,10 @@ import telemetrySink from "./telemetrySink.js";
 import {
   ZCODE_VERSION,
   type DatabaseStartupState,
-  type ArmsCustomEventPayload,
+  type CustomTelemetryEventPayload,
 } from "@zcode/shared";
 import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
-import { buildFinalArmsCustomEventPayload } from "./desktopArmsCustomEvent.js";
+import { buildFinalCustomTelemetryEventPayload } from "./desktopCustomTelemetryEvent.js";
 import { logger } from "./logger.js";
 
 const deviceMid = ensureDesktopDeviceMidSync();
@@ -16,11 +16,11 @@ function send(
   state: DatabaseStartupState,
   name: string,
   value: number,
-  properties: ArmsCustomEventPayload["properties"] = {},
+  properties: CustomTelemetryEventPayload["properties"] = {},
 ) {
   const eventId = `${state.attemptId}:${name}:${properties?.scope_id ?? properties?.database_id ?? state.sequence}`;
   try {
-    const payload = buildFinalArmsCustomEventPayload({
+    const payload = buildFinalCustomTelemetryEventPayload({
       payload: {
         name,
         group: "database_startup",
@@ -39,7 +39,7 @@ function send(
         deviceMid,
         platform: process.platform,
         appVersion: ZCODE_VERSION,
-        armsEnv: telemetrySink.getConfig().env === "prod" ? "prod" : "local",
+        telemetryEnv: telemetrySink.getConfig().env === "prod" ? "prod" : "local",
         rendererId: 0,
       },
     });

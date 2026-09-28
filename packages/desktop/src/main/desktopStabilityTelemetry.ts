@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import telemetrySink from "./telemetrySink.js";
 import { BrowserWindow, type WebContents } from "electron";
 import {
-  mapZCodeEnvToArmsRumEnv,
+  mapZCodeEnvToTelemetryEnvLabel,
   type HostAgentProcessErrorResponse,
   type HostAgentProcessExceptionResponse,
   type HostAgentProcessExitedResponse,
@@ -93,7 +93,7 @@ interface StabilityGlobalContext {
   deviceMid: string;
   platform: NodeJS.Platform;
   appVersion: string;
-  armsEnv: ReturnType<typeof mapZCodeEnvToArmsRumEnv>;
+  telemetryEnv: ReturnType<typeof mapZCodeEnvToTelemetryEnvLabel>;
 }
 
 interface UnresponsiveWatchState {
@@ -436,7 +436,7 @@ function reportStabilityCustom(
     event_name: name,
     platform: normalizeOsCategory(globalContext.platform),
     app_version: globalContext.appVersion,
-    arms_env: globalContext.armsEnv,
+    telemetry_env: globalContext.telemetryEnv,
     device_mid: globalContext.deviceMid,
     telemetry_schema_version: STABILITY_TELEMETRY_SCHEMA_VERSION,
     scene_lifecycle: lifecycleSceneOverride ?? lifecycleScene,
@@ -446,7 +446,7 @@ function reportStabilityCustom(
   });
 
   try {
-    // ARMS 原始日志/控制台按 custom 类型展示；业务分组用 group
+    // 遥测原始日志/控制台按 custom 类型展示；业务分组用 group
     // value 填具体数值：ANR/挂死为 duration_ms，退出为 exit_code，计数类统一为 1
     telemetrySink.sendCustom({
       name,
@@ -461,7 +461,7 @@ function reportStabilityCustom(
   }
 }
 
-export function reportAgentProcessExceptionToArms(
+export function reportAgentProcessExceptionTelemetry(
   event: HostAgentProcessExceptionResponse,
   logger: StabilityLogger,
 ): void {
@@ -501,7 +501,7 @@ export function reportAgentProcessExceptionToArms(
           stack?.split(/\r?\n/).find((line) => line.trim().startsWith("at ")) ?? "",
         ]),
         app_version: globalContext.appVersion,
-        arms_env: globalContext.armsEnv,
+        telemetry_env: globalContext.telemetryEnv,
         device_mid: globalContext.deviceMid,
         platform: normalizeOsCategory(globalContext.platform),
       }),
@@ -516,7 +516,7 @@ export function reportAgentProcessExceptionToArms(
   }
 }
 
-export function reportAgentProcessStartToArms(
+export function reportAgentProcessStartTelemetry(
   event: HostAgentProcessSpawnedResponse,
   logger: StabilityLogger,
 ): void {
@@ -535,7 +535,7 @@ export function reportAgentProcessStartToArms(
   });
 }
 
-export function reportAgentProcessReadyToArms(
+export function reportAgentProcessReadyTelemetry(
   event: HostAgentProcessReadyResponse,
   logger: StabilityLogger,
 ): void {
@@ -556,7 +556,7 @@ export function reportAgentProcessReadyToArms(
   });
 }
 
-export function reportAgentProcessExitToArms(
+export function reportAgentProcessExitTelemetry(
   event: HostAgentProcessExitedResponse,
   logger: StabilityLogger,
 ): void {
@@ -624,7 +624,7 @@ export function reportAgentProcessExitToArms(
   });
 }
 
-export function reportAgentProcessSpawnErrorToArms(
+export function reportAgentProcessSpawnErrorTelemetry(
   event: HostAgentProcessErrorResponse,
   logger: StabilityLogger,
 ): void {
@@ -888,11 +888,11 @@ export function configureDesktopStabilityTelemetry(context: StabilityGlobalConte
     device_mid: context.deviceMid,
     platform: normalizeOsCategory(context.platform),
     app_version: context.appVersion,
-    arms_env: context.armsEnv,
+    telemetry_env: context.telemetryEnv,
   });
 }
 
-/** 与 @arms/rum-electron pv-collector 的 initial_load 窗口对齐，避免早于首屏 PV 单独 flush */
+/** 与 原官方 原官方遥测 SDK pv-collector 的 initial_load 窗口对齐，避免早于首屏 PV 单独 flush */
 const PERF_APP_START_AFTER_VIEW_MS = 3_200;
 
 function reportPerfAppStart(logger: StabilityLogger): void {
@@ -909,7 +909,7 @@ function reportPerfAppStart(logger: StabilityLogger): void {
 /**
  * 在主窗口首屏加载完成后再上报 perf_app_start。
  * 原因：过早 sendCustom 时 view 仍为 __default__，且可能与 renderer PV 分属不同上报批次；
- * ARMS 原始日志里常见只有 PV、看不到同 session 的 custom。
+ * 遥测原始日志里常见只有 PV、看不到同 session 的 custom。
  */
 export function scheduleReportPerfAppStartAfterMainViewReady(
   webContents: WebContents,
@@ -999,7 +999,7 @@ function reportPerfProcessExit(
 ): void {
   reportStabilityCustom("perf_process_exit", properties, resolveWindowScene(win));
   // Bug 原因：perf_process_exit 同时承载受控退出和可恢复的 helper 异常退出。
-  // 旧实现统一使用 error，导致正常生命周期被 ARMS console collector 误计为异常。
+  // 旧实现统一使用 error，导致正常生命周期被遥测 console collector 误计为异常。
   const logLevel = properties.exit_kind === "normal" ? "info" : "warn";
   logger[logLevel]("[stability] perf_process_exit reported", properties);
 }

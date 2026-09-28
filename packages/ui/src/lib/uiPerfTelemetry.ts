@@ -1,6 +1,6 @@
 import {
   sanitizeTelemetryModelValue,
-  type ArmsCustomEventPayload,
+  type CustomTelemetryEventPayload,
   type IPlatformService,
   type LaunchMarks,
 } from "@zcode/shared";
@@ -30,12 +30,12 @@ const UI_PERF_EVENT_STREAM_STALL = "perf_ui_stream_stall";
 // 工具后第一个正文 chunk 视为首个,不与工具前的 chunk 比较,避免把工具执行误判为停顿。
 const STREAM_STALL_REPORT_THRESHOLD_MS = 3000;
 
-type ArmsReporter = Pick<IPlatformService, "reportArmsCustomEvent">;
+type TelemetryReporter = Pick<IPlatformService, "reportCustomTelemetryEvent">;
 
-let armsReporter: ArmsReporter | null = null;
+let telemetryReporter: TelemetryReporter | null = null;
 
-export function setUiPerfArmsReporter(reporter: ArmsReporter | null): void {
-  armsReporter = reporter;
+export function setUiPerfTelemetryReporter(reporter: TelemetryReporter | null): void {
+  telemetryReporter = reporter;
 }
 
 /**
@@ -44,8 +44,8 @@ export function setUiPerfArmsReporter(reporter: ArmsReporter | null): void {
  * 不改变调用方拿到的模型选择和本地日志。
  */
 function sanitizeModelProperty(
-  properties: ArmsCustomEventPayload["properties"],
-): ArmsCustomEventPayload["properties"] {
+  properties: CustomTelemetryEventPayload["properties"],
+): CustomTelemetryEventPayload["properties"] {
   if (!properties || typeof properties.model !== "string") {
     return properties;
   }
@@ -54,16 +54,16 @@ function sanitizeModelProperty(
 }
 
 // 原因:ARMS 属观测链路,UI 主流程(启动/发送/渲染)不得因埋点失败而中断。
-function emit(payload: ArmsCustomEventPayload): void {
-  if (!armsReporter) {
+function emit(payload: CustomTelemetryEventPayload): void {
+  if (!telemetryReporter) {
     return;
   }
-  const sanitized: ArmsCustomEventPayload = {
+  const sanitized: CustomTelemetryEventPayload = {
     ...payload,
     properties: sanitizeModelProperty(payload.properties),
   };
   try {
-    void Promise.resolve(armsReporter.reportArmsCustomEvent(sanitized)).catch((error) => {
+    void Promise.resolve(telemetryReporter.reportCustomTelemetryEvent(sanitized)).catch((error) => {
       logger.warn("[ui-perf] ARMS 上报失败", { name: payload.name, error });
     });
   } catch (error) {

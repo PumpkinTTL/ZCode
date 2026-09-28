@@ -25,7 +25,7 @@ function classifyInvokerType(raw: RawAttribution): LoafInvokerType {
 }
 
 /**
- * 纯函数：解析 ARMS RUM longTask 事件的 snapshots(JSON 字符串化的 top-5 attribution) 与
+ * 纯函数：解析 遥测 RUM longTask 事件的 snapshots(JSON 字符串化的 top-5 attribution) 与
  * 长任务总时长，提炼低基数归因摘要。不返回原始脚本名/URL，避免路径泄露与高基数字段。
  * 解析失败/无有效 attribution 时返回 null，调用方应静默跳过。
  */

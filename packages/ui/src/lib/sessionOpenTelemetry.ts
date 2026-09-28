@@ -1,4 +1,4 @@
-import type { ArmsCustomEventPayload } from "@zcode/shared";
+import type { CustomTelemetryEventPayload } from "@zcode/shared";
 import { logger } from "@/logger.js";
 
 const SESSION_OPEN_ARMS_GROUP = "ui_perf";
@@ -19,8 +19,8 @@ type SessionOpenStatus = "success" | "failed" | "timeout";
 type SessionOpenProcessState = "spawned" | "reused";
 type SessionOpenRuntimeState = "cold" | "warm";
 
-export interface SessionOpenArmsReporter {
-  reportArmsCustomEvent(payload: ArmsCustomEventPayload): Promise<unknown>;
+export interface SessionOpenTelemetryReporter {
+  reportCustomTelemetryEvent(payload: CustomTelemetryEventPayload): Promise<unknown>;
 }
 
 export interface SessionOpenIdentity {
@@ -63,9 +63,9 @@ interface SessionOpenResultFields extends SessionOpenTimingFields {
   mcpPendingAtInteractive?: boolean;
 }
 
-let reporter: SessionOpenArmsReporter | null = null;
+let reporter: SessionOpenTelemetryReporter | null = null;
 
-export function setSessionOpenArmsReporter(next: SessionOpenArmsReporter | null): void {
+export function setSessionOpenTelemetryReporter(next: SessionOpenTelemetryReporter | null): void {
   reporter = next;
 }
 
@@ -80,12 +80,12 @@ function positiveOrZeroInteger(value: number | undefined): number | undefined {
 }
 
 function emit(
-  payload: ArmsCustomEventPayload,
-  targetReporter: SessionOpenArmsReporter | null | undefined = reporter,
+  payload: CustomTelemetryEventPayload,
+  targetReporter: SessionOpenTelemetryReporter | null | undefined = reporter,
 ): void {
   if (!targetReporter) return;
   try {
-    void Promise.resolve(targetReporter.reportArmsCustomEvent(payload)).catch((error) => {
+    void Promise.resolve(targetReporter.reportCustomTelemetryEvent(payload)).catch((error) => {
       logger.warn("[session-open] ARMS 上报失败", { name: payload.name, error });
     });
   } catch (error) {
@@ -103,7 +103,7 @@ function identityProperties(identity: SessionOpenIdentity): Record<string, strin
   };
 }
 
-function buildSessionOpenStartArmsPayload(identity: SessionOpenIdentity): ArmsCustomEventPayload {
+function buildSessionOpenStartTelemetryPayload(identity: SessionOpenIdentity): CustomTelemetryEventPayload {
   return {
     name: SESSION_OPEN_EVENT_START,
     group: SESSION_OPEN_ARMS_GROUP,
@@ -112,9 +112,9 @@ function buildSessionOpenStartArmsPayload(identity: SessionOpenIdentity): ArmsCu
   };
 }
 
-function buildSessionOpenResultArmsPayload(
+function buildSessionOpenResultTelemetryPayload(
   identity: SessionOpenIdentity & SessionOpenResultFields,
-): ArmsCustomEventPayload {
+): CustomTelemetryEventPayload {
   const properties: Record<string, string | number | boolean | undefined> = {
     ...identityProperties(identity),
     status: identity.status,
@@ -154,14 +154,14 @@ function buildSessionOpenResultArmsPayload(
 
 export function reportSessionOpenStart(
   identity: SessionOpenIdentity,
-  targetReporter?: SessionOpenArmsReporter | null,
+  targetReporter?: SessionOpenTelemetryReporter | null,
 ): void {
-  emit(buildSessionOpenStartArmsPayload(identity), targetReporter);
+  emit(buildSessionOpenStartTelemetryPayload(identity), targetReporter);
 }
 
 export function reportSessionOpenResult(
   identity: SessionOpenIdentity & SessionOpenResultFields,
-  targetReporter?: SessionOpenArmsReporter | null,
+  targetReporter?: SessionOpenTelemetryReporter | null,
 ): void {
-  emit(buildSessionOpenResultArmsPayload(identity), targetReporter);
+  emit(buildSessionOpenResultTelemetryPayload(identity), targetReporter);
 }

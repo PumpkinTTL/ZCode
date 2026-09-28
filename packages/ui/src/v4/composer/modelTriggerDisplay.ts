@@ -1,7 +1,3 @@
-import {
-  BUILTIN_MODEL_PROVIDER_IDS,
-  resolveModelProviderFamilyIdByProviderId,
-} from "@zcode/shared";
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
 import type { ModelSelectGroup, ModelSelectGroupItem } from "@/ModelConfigSelect.js";
 
@@ -10,31 +6,18 @@ interface V4ModelTriggerDisplay {
   modelLabel: string;
 }
 
+/**
+ * 模型切换记录的展示文案。官方套餐身份已随官方账号业务移除；
+ * 历史会话里可能仍有套餐切换记录，这里退回普通 Provider/模型文案。
+ */
 export function formatModelChangeLabel(
   providerId: string | undefined,
   providerName: string | undefined,
   modelName: string,
-  intl: Pick<IntlInstance, "formatMessage">,
+  _intl: Pick<IntlInstance, "formatMessage">,
 ): string {
-  let planLabelId: string;
-  // 切换记录必须保留当时的套餐身份，不能从当前连接或可用模型目录反推历史套餐。
-  switch (providerId) {
-    case BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan:
-    case BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan:
-      planLabelId = "settings.modelProvider.connectionMode.codingPlan";
-      break;
-    case BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan:
-    case BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan:
-      planLabelId = "settings.modelProvider.connectionMode.startPlan";
-      break;
-    case BUILTIN_MODEL_PROVIDER_IDS.zaiTeamCodingPlan:
-    case BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan:
-      planLabelId = "settings.modelProvider.connectionMode.teamPlan";
-      break;
-    default:
-      return formatProviderModelLabel(providerId, providerName, modelName);
-  }
-  return `${modelName}(${intl.formatMessage({ id: planLabelId })})`;
+  void _intl;
+  return formatProviderModelLabel(providerId, providerName, modelName);
 }
 
 export function formatProviderModelLabel(
@@ -42,12 +25,7 @@ export function formatProviderModelLabel(
   providerName: string | undefined,
   modelName: string,
 ): string {
-  // Z.ai / BigModel 的内置连接名属于产品固定入口，拼进模型文案会重复展示
-  // “Coding Plan”等连接信息；切换提示额外通过 formatModelChangeLabel 标明套餐类型。
-  if (providerId && resolveModelProviderFamilyIdByProviderId(providerId)) {
-    return modelName;
-  }
-
+  void providerId;
   const normalizedProviderName = providerName?.trim();
   return normalizedProviderName ? `${normalizedProviderName}/${modelName}` : modelName;
 }

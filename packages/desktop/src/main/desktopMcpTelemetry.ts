@@ -3,7 +3,7 @@ import type { ZCodeMcpTelemetryEvent } from "@zcode/shared";
 
 interface DesktopMcpTelemetryContext {
   appVersion: string;
-  armsEnv: string;
+  telemetryEnv: string;
   deviceMid: string;
 }
 
@@ -13,11 +13,11 @@ export function configureDesktopMcpTelemetry(next: DesktopMcpTelemetryContext): 
   context = next;
 }
 
-export function reportMcpTelemetryToArms(
+export function reportMcpTelemetryEvent(
   event: ZCodeMcpTelemetryEvent,
   runtimeSurface: "local" | "remote",
 ): void {
-  // 旧 CLI 的内存通知仍允许协议解析，但不能再生成已废弃的 ARMS 事件。
+  // 旧 CLI 的内存通知仍允许协议解析，但不能再生成已废弃的 遥测事件。
   if (!context || event.kind === "memory") return;
   const mapped = mapMcpTelemetryEvent(event);
   try {
@@ -26,7 +26,7 @@ export function reportMcpTelemetryToArms(
       name: mapped.name,
       properties: stringifyProperties({
         app_version: context.appVersion,
-        arms_env: context.armsEnv,
+        telemetry_env: context.telemetryEnv,
         device_mid: context.deviceMid,
         event_name: mapped.name,
         metric_value: mapped.value,

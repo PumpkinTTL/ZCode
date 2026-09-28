@@ -150,7 +150,7 @@ export const rendererTelemetryEventPayloadSchema = z.object({
   messageId: z.string().optional(),
 });
 
-export const armsCustomEventPayloadSchema = z.object({
+export const customTelemetryEventPayloadSchema = z.object({
   name: nonEmptyStringSchema,
   group: nonEmptyStringSchema,
   value: z.number().finite().optional(),

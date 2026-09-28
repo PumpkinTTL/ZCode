@@ -1,4 +1,4 @@
-import type { ArmsCustomEventPayload, IPlatformService } from "@zcode/shared";
+import type { CustomTelemetryEventPayload, IPlatformService } from "@zcode/shared";
 import { logger } from "@/logger.js";
 
 // Composer 发送漏斗埋点的 ARMS 出口。
@@ -11,7 +11,7 @@ const SEND_FUNNEL_EVENT_INPUT_FOCUS = "send_input_focus";
 const SEND_FUNNEL_EVENT_SEND_CLICK = "send_click";
 const SEND_FUNNEL_EVENT_SEND_RESULT = "send_result";
 
-type ArmsReporter = Pick<IPlatformService, "reportArmsCustomEvent">;
+type TelemetryReporter = Pick<IPlatformService, "reportCustomTelemetryEvent">;
 
 /** 发送落定的原因码。 */
 export type SendFunnelReasonCode =
@@ -25,19 +25,19 @@ export type SendFunnelReasonCode =
   | "provider_not_ready"
   | "composer_error";
 
-let armsReporter: ArmsReporter | null = null;
+let telemetryReporter: TelemetryReporter | null = null;
 
-export function setSendFunnelArmsReporter(reporter: ArmsReporter | null): void {
-  armsReporter = reporter;
+export function setSendFunnelTelemetryReporter(reporter: TelemetryReporter | null): void {
+  telemetryReporter = reporter;
 }
 
 // 原因:ARMS 属观测链路,发送主链路不得因埋点失败而中断。
-function emit(payload: ArmsCustomEventPayload): void {
-  if (!armsReporter) {
+function emit(payload: CustomTelemetryEventPayload): void {
+  if (!telemetryReporter) {
     return;
   }
   try {
-    void Promise.resolve(armsReporter.reportArmsCustomEvent(payload)).catch((error) => {
+    void Promise.resolve(telemetryReporter.reportCustomTelemetryEvent(payload)).catch((error) => {
       logger.warn("[send-funnel] ARMS 上报失败", { name: payload.name, error });
     });
   } catch (error) {

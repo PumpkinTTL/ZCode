@@ -1,5 +1,5 @@
 import telemetrySink from "./telemetrySink.js";
-import type { ArmsRumEnv, FinalArmsCustomEventPayload } from "@zcode/shared";
+import type { TelemetryEnvLabel, FinalCustomTelemetryEventPayload } from "@zcode/shared";
 
 import type { ZCodeDataSizeScanResult } from "./zcodeDataSizeScanner.js";
 import {
@@ -89,23 +89,23 @@ function stringifyProperties(
   );
 }
 
-function buildZCodeDataSizeArmsPayload(params: {
+function buildZCodeDataSizeTelemetryPayload(params: {
   context: {
     appVersion: string;
-    armsEnv: ArmsRumEnv;
+    telemetryEnv: TelemetryEnvLabel;
     dataRootKind: "custom" | "default";
     deviceMid: string;
     platform: NodeJS.Platform;
   };
   result: ZCodeDataSizeScanResult;
-}): FinalArmsCustomEventPayload {
+}): FinalCustomTelemetryEventPayload {
   const eventName = "perf_resource_zcode_data_size";
   return {
     group: "resource",
     name: eventName,
     properties: stringifyProperties({
       app_version: params.context.appVersion,
-      arms_env: params.context.armsEnv,
+      telemetry_env: params.context.telemetryEnv,
       data_root_kind: params.context.dataRootKind,
       device_mid: params.context.deviceMid,
       directories_scanned: params.result.directoriesScanned,
@@ -393,7 +393,7 @@ function createZCodeDataSizeTelemetryScheduler(
 let desktopScheduler: ReturnType<typeof createZCodeDataSizeTelemetryScheduler> | null = null;
 
 export function registerDesktopZCodeDataSizeTelemetry(options: {
-  context: Parameters<typeof buildZCodeDataSizeArmsPayload>[0]["context"];
+  context: Parameters<typeof buildZCodeDataSizeTelemetryPayload>[0]["context"];
   getSystemIdleTimeSeconds: () => number;
   isAppBackground: () => boolean;
   isZCodeBusy: () => boolean;
@@ -410,7 +410,7 @@ export function registerDesktopZCodeDataSizeTelemetry(options: {
     logger: options.logger,
     readState: () => readZCodeDataSizeTelemetryState(options.stateFile),
     report: (result) => {
-      const payload = buildZCodeDataSizeArmsPayload({ context: options.context, result });
+      const payload = buildZCodeDataSizeTelemetryPayload({ context: options.context, result });
       telemetrySink.sendCustom({
         group: payload.group,
         name: payload.name,

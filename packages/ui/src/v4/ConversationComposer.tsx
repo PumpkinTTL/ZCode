@@ -41,7 +41,6 @@ import {
   TID_V4_ATTACHMENT_UPLOAD_RETRY,
   TID_V4_STOP,
   testId,
-  type PlanIdentitySnapshot,
   type ZCodeProvider,
 } from "@zcode/shared";
 import type {
@@ -409,8 +408,6 @@ interface ConversationComposerProps {
   provider?: ZCodeProvider;
   /** 宿主 pane 与 workspace 遮罩共同裁决的真实可见性，仅用于 visible-only telemetry。 */
   telemetryVisible?: boolean;
-  /** 点击发送时读取套餐身份；二次确认会继续复用同一份冻结 seed。 */
-  readPlanIdentitySnapshot?: () => PlanIdentitySnapshot;
   onSendText: (
     text: string,
     options?: ConversationComposerSendOptions,
@@ -509,7 +506,6 @@ function ConversationComposerImpl({
   onRuntimeLifecycle,
   provider,
   telemetryVisible = true,
-  readPlanIdentitySnapshot,
   onSendText,
   onTextChange,
   onDraftStateChange,
@@ -1215,7 +1211,6 @@ function ConversationComposerImpl({
             configProvider: telemetryConfig?.provider,
             agentProvider: provider,
             providerBaseURL: resolveProviderBaseURL(telemetryConfig?.provider, modelSelectionView),
-            planIdentitySnapshot: readPlanIdentitySnapshot?.(),
           }),
         };
         const sendTrigger = sendTriggerRef.current;
@@ -1448,7 +1443,6 @@ function ConversationComposerImpl({
       onSendText,
       pendingShareContext,
       provider,
-      readPlanIdentitySnapshot,
       removeCodeCommentContext,
       removeConversationSelectionReference,
       removePptxElementReference,

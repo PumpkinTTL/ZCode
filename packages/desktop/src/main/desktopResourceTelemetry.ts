@@ -3,7 +3,7 @@ import {
   bytesToKb,
   createMemorySampleWriteGate,
   formatMemorySampleLine,
-  mapZCodeEnvToArmsRumEnv,
+  mapZCodeEnvToTelemetryEnvLabel,
   memoryUsageToSampleFields,
   type MemorySample,
   type MemorySampleWriteGate,
@@ -14,7 +14,7 @@ import {
 } from "@zcode/shared";
 import { BrowserWindow } from "electron";
 import os from "node:os";
-import { getSharedFinalArmsCustomEventE2EController } from "./desktopArmsCustomEvent.js";
+import { getSharedFinalCustomTelemetryEventE2EController } from "./desktopCustomTelemetryEvent.js";
 import { desktopRuntimeEnv } from "./desktopRuntimeEnv.js";
 import { mainMemoryDiagnosticsRegistry } from "./mainMemoryDiagnostics.js";
 import { addAppResourceTotals, type AppResourceTotals } from "./processResourceAppTotals.js";
@@ -45,7 +45,7 @@ import { listRegisteredHostAgentProcessIds } from "./resourceManagerWindow.js";
 /**
  * main 侧进程资源遥测。
  *
- * 唯一的 ARMS 资源出口：10 秒 tick 让每个样本来源写入有界窗口，
+ * 唯一的遥测资源出口：10 秒 tick 让每个样本来源写入有界窗口，
  * 5 分钟（开发构建与 E2E 1 分钟）flush 出每角色一条 `perf_process_window`
  * 与每设备一条 `perf_system_window`，正常退出排空残窗。
  * 性能红线：main 进程零外部进程，全链路禁止 PowerShell / WMI / CIM。
@@ -87,7 +87,7 @@ interface ResourceGlobalContext {
   deviceMid: string;
   platform: NodeJS.Platform;
   appVersion: string;
-  armsEnv: ReturnType<typeof mapZCodeEnvToArmsRumEnv>;
+  telemetryEnv: ReturnType<typeof mapZCodeEnvToTelemetryEnvLabel>;
 }
 
 let globalContext: ResourceGlobalContext | null = null;
@@ -130,7 +130,7 @@ function stringifyProperties(
 
 function reportResourceCustom(
   name: string,
-  /** ARMS custom 的 value 字段：控制台默认展示的主指标数值 */
+  /** 遥测 custom 的 value 字段：控制台默认展示的主指标数值 */
   metricValue: number,
   properties: Record<string, string | number | boolean | undefined>,
 ): void {
@@ -147,7 +147,7 @@ function reportResourceCustom(
   };
 
   // E2E 在 sendCustom 之前捕获，读到的就是真实上报内容。
-  const e2eController = getSharedFinalArmsCustomEventE2EController();
+  const e2eController = getSharedFinalCustomTelemetryEventE2EController();
   e2eController?.record(payload);
   if (e2eController?.shouldSuppress(name)) {
     return;
@@ -193,7 +193,7 @@ export function ingestToolExecResource(
   reportResourceCustom(PROCESS_RESOURCE_EVENT_NAMES.toolExecResource, sample.durationMs, {
     platform: normalizeOsCategory(sample.platform),
     app_version: globalContext.appVersion,
-    arms_env: globalContext.armsEnv,
+    telemetry_env: globalContext.telemetryEnv,
     device_mid: globalContext.deviceMid,
     runtime_surface: runtimeSurface,
     tool_name: sample.toolName,
@@ -265,7 +265,7 @@ function logMemorySample(
       logger.info(formatMemorySampleLine(sample, reason));
     }
   } catch {
-    // 诊断日志失败只丢当前样本，不影响资源采样与 ARMS 上报。
+    // 诊断日志失败只丢当前样本，不影响资源采样与遥测上报。
   }
 }
 
@@ -342,7 +342,7 @@ function reportProcessResourceWindows(): void {
   const context = {
     deviceMid: globalContext.deviceMid,
     appVersion: globalContext.appVersion,
-    armsEnv: globalContext.armsEnv,
+    telemetryEnv: globalContext.telemetryEnv,
     desktopHardware,
   };
   for (const report of processResourceWindows.drain()) {
@@ -378,7 +378,7 @@ function reportSystemResourceWindow(backgroundRatio: number): void {
     buildSystemWindowEventProperties(report, {
       deviceMid: globalContext.deviceMid,
       appVersion: globalContext.appVersion,
-      armsEnv: globalContext.armsEnv,
+      telemetryEnv: globalContext.telemetryEnv,
       desktopHardware,
     }),
   );
@@ -425,7 +425,7 @@ export function configureDesktopResourceTelemetry(context: ResourceGlobalContext
     device_mid: context.deviceMid,
     platform: normalizeOsCategory(context.platform),
     app_version: context.appVersion,
-    arms_env: context.armsEnv,
+    telemetry_env: context.telemetryEnv,
   });
 }
 

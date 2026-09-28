@@ -20,7 +20,7 @@ import type {
   RemoteConnectionStats,
   RemoteDisconnectReason,
   RemoteGaugeTransition,
-} from "./desktopRemoteUsageArmsTelemetry.js";
+} from "./desktopRemoteUsageTelemetry.js";
 import type { RemoteAssetDirs } from "./desktopRuntimeEnv.js";
 import { ProviderProvisioningEnvironmentCoordinator } from "./providerProvisioningEnvironmentCoordinator.js";
 
@@ -374,7 +374,7 @@ export function createRemoteWorkspaceSessionManager(options: {
             transition: "connected",
           });
         } catch (error) {
-          options.logger.warn("[remote-usage-arms] connected reporter failed", { error });
+          options.logger.warn("[remote-usage-telemetry] connected reporter failed", { error });
         }
       }
     }
@@ -507,7 +507,7 @@ export function createRemoteWorkspaceSessionManager(options: {
       options.reportRemoteConnectionStateChanged?.({ ...common, transition: reason });
     } catch (error) {
       // telemetry 是连接生命周期的旁路，不能因 reporter 异常回滚 route 退出状态。
-      options.logger.warn("[remote-usage-arms] disconnect gauge reporter failed", { error });
+      options.logger.warn("[remote-usage-telemetry] disconnect gauge reporter failed", { error });
     }
     try {
       options.reportRemoteDisconnect?.({
@@ -516,7 +516,7 @@ export function createRemoteWorkspaceSessionManager(options: {
         durationMs: Math.max(0, Math.round(monotonicNowMs() - route.connectedAtMonotonicMs)),
       });
     } catch (error) {
-      options.logger.warn("[remote-usage-arms] disconnect reporter failed", { error });
+      options.logger.warn("[remote-usage-telemetry] disconnect reporter failed", { error });
     }
   }
 

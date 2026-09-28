@@ -1,10 +1,10 @@
 import { redactTelemetryText, redactTelemetryUrl } from "@zcode/shared";
 
 /**
- * ARMS SDK 自动采集事件离开本机前的脱敏收口。
+ * 原官方遥测 SDK 自动采集事件离开本机前的脱敏收口。
  *
  * SDK collector 决定采集哪些字段，其原始内容可能包含用户界面文本（click）、本机路径与堆栈
- * （exception）以及完整 URL（api / resource）。`appARMSBootstrap.beforeReport` 是唯一能在上报前
+ * （exception）以及完整 URL（api / resource）。`appTelemetryBootstrap.beforeReport` 是唯一能在上报前
  * 改写整批事件的位置，因此规则集中在这里，不分散到各 collector 配置。
  *
  * 脱敏只改写上报
@@ -14,7 +14,7 @@ import { redactTelemetryText, redactTelemetryUrl } from "@zcode/shared";
 /** exception 的 message 上限：与依赖补丁里 console 归一化的 2000 字符口径保持一致。 */
 const EXCEPTION_MESSAGE_MAX_LENGTH = 2_000;
 
-/** stack / snapshots 上限：保证最近的抛错帧一定上得去，同时不把整段正文送进 ARMS。 */
+/** stack / snapshots 上限：保证最近的抛错帧一定上得去，同时不把整段正文送进遥测出口。 */
 const EXCEPTION_STACK_MAX_LENGTH = 4_000;
 
 /**
@@ -95,7 +95,7 @@ function redactResourceEvent(event: Record<string, unknown>): void {
  * 只处理 click / exception / api-resource 三类自动采集事件；自定义事件（`perf_*` 等）由各自的
  * 构造处负责脱敏，不在这里二次改写，避免同一字段被两套规则处理后失去可读性。
  */
-export function redactArmsEventBatch(
+export function redactTelemetryEventBatch(
   events: Array<Record<string, unknown>>,
 ): Array<Record<string, unknown>> {
   for (const event of events) {

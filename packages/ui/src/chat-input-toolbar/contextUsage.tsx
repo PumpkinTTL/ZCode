@@ -20,12 +20,6 @@ import {
 import { cn } from "@/components/lib/utils.js";
 import { Progress } from "@/components/ui/progress.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import {
-  ChatCodingPlanUsageRemainingPanel,
-  hasChatCodingPlanUsageRemaining,
-  type ChatCodingPlanUsageRemainingConfig,
-} from "@/chat-input-toolbar/CodingPlanContextUsage.js";
-import { runContextPanelActionWithClose } from "@/chat-input-toolbar/contextPanelAction.js";
 import { formatCompactTokenNumber } from "@/lib/tokenNumberFormat.js";
 
 type ContextUsageBreakdownSource = ZCodeContextUsageBreakdownItem["source"];
@@ -190,13 +184,11 @@ export function getContextCompressionCommand(_provider: ZCodeProvider): string {
 }
 
 export function ChatContextUsage({
-  codingPlanUsageRemaining,
   taskUsage,
   selectedProvider: _selectedProvider,
   intl,
   locale,
 }: {
-  codingPlanUsageRemaining?: ChatCodingPlanUsageRemainingConfig;
   taskUsage: {
     used: number;
     size: number;
@@ -210,58 +202,10 @@ export function ChatContextUsage({
   compressionDisabled?: boolean;
 }) {
   const [contextOpen, setContextOpen] = useState(false);
-  const [contextAccessRefreshing, setContextAccessRefreshing] = useState(false);
-  const contextAccessRefreshSeqRef = useRef(0);
-  const handleContextOpenChange = useCallback(
-    (open: boolean) => {
-      setContextOpen(open);
-      // hover 刷新入口不能只认 Coding Plan 的 onAccess：Start Plan（今日余额）与
-      // Coding Plan 连接方式互斥，start plan 用户 hover 时整条刷新链路都不触发，余额只能被动等
-      // 设置页/侧栏刷新。改为两段配置任一提供 onAccess 即发起本次静默 access 刷新（互斥下实际只有一个存在）。
-      const accessRefresh = codingPlanUsageRemaining?.onAccess;
-      if (!open || !accessRefresh) {
-        return;
-      }
-      // silent access refresh 有缓存快照时不会把 entitlement.loading 置 true。
-      // header 的刷新图标必须跟随本次 hover 触发的远端 promise，而不是只看快照 loading。
-      const refreshSeq = contextAccessRefreshSeqRef.current + 1;
-      contextAccessRefreshSeqRef.current = refreshSeq;
-      setContextAccessRefreshing(true);
-      Promise.resolve(accessRefresh()).finally(() => {
-        if (contextAccessRefreshSeqRef.current === refreshSeq) {
-          setContextAccessRefreshing(false);
-        }
-      });
-    },
-    [codingPlanUsageRemaining?.onAccess],
-  );
+  const handleContextOpenChange = useCallback((open: boolean) => {
+    setContextOpen(open);
+  }, []);
   const renderableTaskUsage = getRenderableTaskUsage(taskUsage);
-  const codingPlanUsageRemainingWithClose = useMemo<
-    ChatCodingPlanUsageRemainingConfig | undefined
-  >(() => {
-    if (!codingPlanUsageRemaining) {
-      return undefined;
-    }
-    const base = {
-      ...codingPlanUsageRemaining,
-      refreshing: contextAccessRefreshing || codingPlanUsageRemaining.refreshing === true,
-    };
-    if (!codingPlanUsageRemaining.onUsageClick) {
-      return base;
-    }
-
-    return {
-      ...base,
-      onUsageClick: () =>
-        runContextPanelActionWithClose({
-          action: codingPlanUsageRemaining.onUsageClick,
-          close: () => setContextOpen(false),
-        }),
-    };
-  }, [codingPlanUsageRemaining, contextAccessRefreshing]);
-  const hasCodingPlanUsageRemaining = codingPlanUsageRemainingWithClose
-    ? hasChatCodingPlanUsageRemaining(codingPlanUsageRemainingWithClose)
-    : false;
   // MCP 与不足三张的主额度同排；主额度占满三列时才在下一行贯穿，浮层始终保持统一宽度。
   const contextPanelWidthClass = "!w-80";
 
@@ -301,7 +245,7 @@ export function ChatContextUsage({
     [locale],
   );
 
-  if ((!renderableTaskUsage || !contextUsageLabel) && !hasCodingPlanUsageRemaining) {
+  if (!renderableTaskUsage || !contextUsageLabel) {
     return null;
   }
 
@@ -316,13 +260,7 @@ export function ChatContextUsage({
         used: renderableTaskUsage.used,
       })
     : null;
-  const triggerLabel =
-    contextUsageLabel ??
-    (hasCodingPlanUsageRemaining
-      ? intl.formatMessage({ id: "sidebar.usage.plan.title" })
-      : intl.formatMessage({
-          id: "settings.modelProvider.startPlan.balance.title",
-        }));
+  const triggerLabel = contextUsageLabel;
   const contextUsedTokens = renderableTaskUsage?.used ?? 0;
   const contextMaxTokens = renderableTaskUsage?.size ?? 1;
 
@@ -333,8 +271,7 @@ export function ChatContextUsage({
       open={contextOpen}
       onOpenChange={handleContextOpenChange}
     >
-      {/* span 承载 HoverCard 触发器锚点。官方套餐额度重置提示（状态 Tooltip 与机会提醒）
-          已随官方账号业务整体砍除，触发器不再承载额度重置浮层。 */}
+      {/* span 承载 HoverCard 触发器锚点。 */}
       <span className="inline-flex shrink-0">
         <ContextTrigger
           aria-label={triggerLabel}
@@ -350,7 +287,7 @@ export function ChatContextUsage({
               typeof window !== "undefined" &&
               window.matchMedia?.("(hover: none)").matches
             ) {
-              // 统一走受控 open handler，确保触摸打开也会触发额度 access 刷新和刷新态反馈。
+              // 统一走受控 open handler。
               if (!contextOpen) {
                 handleContextOpenChange(true);
               }
@@ -434,14 +371,6 @@ export function ChatContextUsage({
                 </div>
               ) : null}
             </>
-          ) : null}
-          {codingPlanUsageRemainingWithClose && hasCodingPlanUsageRemaining ? (
-            <ChatCodingPlanUsageRemainingPanel
-              config={codingPlanUsageRemainingWithClose}
-              intl={intl}
-              locale={locale}
-              separated={Boolean(renderableTaskUsage && compactTokenUsageLabel)}
-            />
           ) : null}
         </ContextContentBody>
       </ContextContent>

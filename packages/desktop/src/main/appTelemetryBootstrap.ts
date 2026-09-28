@@ -4,14 +4,14 @@ import { basename } from "node:path";
 import telemetrySink from "./telemetrySink.js";
 import { ZCODE_AGENT_LIFECYCLE_LOG_MARKER } from "@zcode/shared/process-diagnostic";
 import {
-  ZCODE_ARMS_RUM_ENDPOINT,
+  ZCODE_TELEMETRY_RUM_ENDPOINT,
   ZCODE_VERSION,
   ZCODE_TELEMETRY_ENABLED,
-  mapZCodeEnvToArmsRumEnv,
+  mapZCodeEnvToTelemetryEnvLabel,
 } from "@zcode/shared";
-import { redactArmsEventBatch } from "./armsEventRedaction.js";
+import { redactTelemetryEventBatch } from "./telemetryEventRedaction.js";
 import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
-import { ingestArmsApiEventsFromBatch } from "./desktopNetworkTelemetry.js";
+import { ingestTelemetryApiEventsFromBatch } from "./desktopNetworkTelemetry.js";
 import { desktopRuntimeEnv, runtimeApplicationName } from "./desktopRuntimeEnv.js";
 import { summarizeLongTaskAttribution } from "./longTaskAttributionSummary.js";
 import { logger } from "./logger.js";
@@ -140,16 +140,16 @@ export function filterAndEnrichNativeCrashEvents(
 }
 
 // Bugfix: 产品后端可使用 production，但源码启动的 Desktop 仍是本地开发运行态；
-// ARMS 环境必须优先按运行形态标记为 local，避免开发数据污染 prod。
-const armsRumEnv = mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv);
+// 遥测环境必须优先按运行形态标记为 local，避免开发数据污染 prod。
+const telemetryEnvLabel = mapZCodeEnvToTelemetryEnvLabel(desktopRuntimeEnv);
 
-// ARMS user.id 字段被 SDK 强制改写为内部随机值（config.user.id 在事件合并时被显式跳过，
+// 原 ARMS SDK 会强制改写 user.id 为内部随机值（config.user.id 在事件合并时被显式跳过，
 // 无法注入），而 user.name 不受屏蔽。这里把 device_mid 写入 user.name，使 RUM 日志可按
 // 设备维度关联。device_mid 复用 telemetry-state.json 同一持久化 UUID（与数仓 / preload 注入同源，
 // ensureDesktopDeviceMidSync 幂等且不重复写盘）。
-// 注意：渲染进程事件经 ArmsEventBridge 转发到主进程后，由主进程 client 用「主进程 config」
+// 注意：渲染进程事件转发到主进程后，由主进程 client 用「主进程 config」
 // 重新打包上报，故只需在主进程 init 设置一次，即可覆盖主进程 + 渲染进程的全部上报。
-const armsDeviceMid = ensureDesktopDeviceMidSync();
+const telemetryDeviceMid = ensureDesktopDeviceMidSync();
 
 // 原因：init() 返回 Promise；若不 await，web-contents-created / 渲染进程注入可能晚于首窗 dom-ready，导致零上报。
 // 须在 app.whenReady() 创建 BrowserWindow 之前 await telemetryInitPromise（见 index.ts）。
@@ -169,17 +169,17 @@ function startTelemetrySink(): Promise<void> {
     .init({
       enable: true,
       version: ZCODE_VERSION,
-      endpoint: ZCODE_ARMS_RUM_ENDPOINT,
-      env: armsRumEnv,
+      endpoint: ZCODE_TELEMETRY_RUM_ENDPOINT,
+      env: telemetryEnvLabel,
       app: {
         name: runtimeApplicationName,
         version: ZCODE_VERSION,
-        env: armsRumEnv,
+        env: telemetryEnvLabel,
         type: "electron",
         framework: "react",
       },
       user: {
-        name: armsDeviceMid,
+        name: telemetryDeviceMid,
       },
       // HTTP 全链路耗时来自 api 批次；生产/本地运行均 ingest，本地运行额外打印批次摘要
       onBatch: (payload: { events: Array<Record<string, unknown>> }) => {
@@ -202,11 +202,11 @@ function startTelemetrySink(): Promise<void> {
           basename(process.execPath),
         );
         payload.events = events;
-        ingestArmsApiEventsFromBatch(events);
+        ingestTelemetryApiEventsFromBatch(events);
         enrichLongTaskAttribution(events);
         // 隐私收口必须排在 ingest 与归因摘要之后：网络聚合沿用自己的 interface 归一规则，
         // longTask 摘要需要原始 snapshots；只有最终离开本机的副本才做脱敏。
-        redactArmsEventBatch(events);
+        redactTelemetryEventBatch(events);
         if (desktopRuntimeEnv === "development") {
           const perfEvents = events.filter(
             (event) => String(event.type ?? "").toLowerCase() === "perf",
@@ -230,7 +230,7 @@ function startTelemetrySink(): Promise<void> {
       },
     })
     .then(() => {
-      logger.info(`[telemetry] sink initialized env=${armsRumEnv} version=${ZCODE_VERSION}`);
+      logger.info(`[telemetry] sink initialized env=${telemetryEnvLabel} version=${ZCODE_VERSION}`);
     })
     .catch((error) => {
       logger.error("[telemetry] sink init failed:", error);
@@ -241,6 +241,6 @@ function startTelemetrySink(): Promise<void> {
 // 总开关关闭或端点未配置时不初始化出口。注意：出口即使初始化，也只有安装了 reporter
 // 才会真正出网；当前未接自有后端，所以这一路的事件会走完过滤/归因/脱敏后丢弃。
 export const telemetryInitPromise: Promise<void> =
-  ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT
+  ZCODE_TELEMETRY_ENABLED && ZCODE_TELEMETRY_RUM_ENDPOINT
     ? startTelemetrySink()
     : Promise.resolve();

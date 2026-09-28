@@ -1,5 +1,5 @@
 /**
- * 遥测出口（本地实现，已替换阿里云 ARMS RUM SDK）。
+ * 遥测出口（本地实现，已替换阿里云 遥测 RUM SDK）。
  *
  * **为什么不再用 SDK**：ARMS 是 ZCode 绑定的厂商通道，不是通用能力。Polaris 不会向它上报，
  * 却要为它把 4.8MB 的 SDK 打进主进程产物。这里保留**同一个调用面**
@@ -119,5 +119,5 @@ function push(event: Record<string, unknown>): void {
   flush();
 }
 
-/** 采集侧沿用的默认导出形状（替代 `import armsRum from "@arms/rum-electron"`）。 */
+/** 采集侧沿用的默认导出形状（替代原官方遥测 SDK 的默认导入）。 */
 export default telemetrySink;

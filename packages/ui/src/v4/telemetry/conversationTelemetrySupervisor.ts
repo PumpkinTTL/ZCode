@@ -40,15 +40,11 @@ import {
   recordPromptTokenUsageDelta,
 } from "@/lib/messageTelemetry.js";
 import {
-  reportPlanUsageModelRequestStartedToArms,
-  reportPlanUsageTtftToArms,
-} from "@/lib/planUsageArmsTelemetry.js";
-import {
   reportSendFunnelInputFocus,
   reportSendFunnelSendClick,
   reportSendFunnelSendResult,
   type SendFunnelReasonCode,
-} from "@/lib/sendFunnelArmsTelemetry.js";
+} from "@/lib/sendFunnelTelemetry.js";
 import {
   clearStreamStallTracking,
   recordStreamChunkArrival,
@@ -56,7 +52,7 @@ import {
   reportUiMessageComplete,
   reportUiToolCallDetail,
   reportUiTurnBreakdown,
-} from "@/lib/uiPerfArmsTelemetry.js";
+} from "@/lib/uiPerfTelemetry.js";
 import type { ZCodeUiError } from "@/lib/zcodeUiError.js";
 import { resolveLegacyRuntimeModelValue } from "@/v4/telemetry/conversationPromptTelemetry.js";
 
@@ -64,7 +60,7 @@ const MAX_DEDUPE_KEYS = 2_000;
 const MAX_BUFFERED_FACTS_PER_COMMAND = 128;
 const MAX_BUFFERED_COMMANDS = 200;
 
-type TelemetryPlatform = Pick<IPlatformService, "reportArmsCustomEvent" | "reportTelemetryEvent">;
+type TelemetryPlatform = Pick<IPlatformService, "reportCustomTelemetryEvent" | "reportTelemetryEvent">;
 
 export interface ConversationPromptTelemetrySeed {
   localTtft?: import("@zcode/shared").LocalTtftContext;
@@ -795,10 +791,6 @@ export class ConversationTelemetrySupervisor {
     const receivedAt = this.now();
     const foregroundAtReceipt = this.isForeground(fact.sessionId);
 
-    // plan_request 只依赖真实模型网络事实，可前后台上报，也不要求本地 prompt seed。
-    if (fact.kind === "model.request.status") {
-      reportPlanUsageModelRequestStartedToArms(this.platform, toLegacyNetworkEvent(fact));
-    }
     if (fact.kind === "subagent.lifecycle") {
       this.handleSubagentLifecycle(fact, receivedAt);
       return;
@@ -1816,7 +1808,7 @@ export class ConversationTelemetrySupervisor {
         messageId: lifecycle.sourceCommandId,
       });
       if (foregroundAtReceipt) {
-        this.reportCompletionArms(
+        this.reportCompletionTelemetry(
           fact.sessionId,
           lifecycle.sourceCommandId,
           completion.eventExtraDetail,
@@ -1844,7 +1836,7 @@ export class ConversationTelemetrySupervisor {
     this.drainPromptBlockedByDeferredTerminal(lifecycle.taskKey);
   }
 
-  private reportCompletionArms(
+  private reportCompletionTelemetry(
     sessionId: string,
     sourceCommandId: string,
     detail: Record<string, string>,
@@ -1856,12 +1848,6 @@ export class ConversationTelemetrySupervisor {
         model: detail.model_name || undefined,
         talkId: sessionId,
         messageId: sourceCommandId,
-      });
-      reportPlanUsageTtftToArms(this.platform, {
-        providerId: detail.model_provider,
-        modelName: detail.model_name,
-        askMode: detail.ask_mode,
-        ttftMs: foregroundTtftMs,
       });
     }
     const durationMs = finiteNumber(detail.duration_ms);

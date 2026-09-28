@@ -1,10 +1,10 @@
-/* eslint-disable max-lines -- 网络指标采集/聚合/ARMS 上报 */
+/* eslint-disable max-lines -- 网络指标采集/聚合/遥测上报 */
 import telemetrySink from "./telemetrySink.js";
-import { mapZCodeEnvToArmsRumEnv } from "@zcode/shared";
+import { mapZCodeEnvToTelemetryEnvLabel } from "@zcode/shared";
 import type { NetworkObservation } from "@zcode/rpc";
 import {
   flushInterfaceNetworkStats,
-  ingestArmsApiEvent,
+  ingestTelemetryApiEvent,
   recordNetworkObservation,
   resetNetworkTelemetryAggregator,
   type InterfaceNetworkStats,
@@ -23,7 +23,7 @@ interface NetworkGlobalContext {
   deviceMid: string;
   platform: NodeJS.Platform;
   appVersion: string;
-  armsEnv: ReturnType<typeof mapZCodeEnvToArmsRumEnv>;
+  telemetryEnv: ReturnType<typeof mapZCodeEnvToTelemetryEnvLabel>;
 }
 
 let globalContext: NetworkGlobalContext | null = null;
@@ -65,7 +65,7 @@ function reportNetworkCustom(
   const payload = stringifyProperties({
     platform: normalizeOsCategory(globalContext.platform),
     app_version: globalContext.appVersion,
-    arms_env: globalContext.armsEnv,
+    telemetry_env: globalContext.telemetryEnv,
     device_mid: globalContext.deviceMid,
     ...properties,
   });
@@ -122,14 +122,14 @@ function flushNetworkReports(logger: NetworkLogger): void {
   logger.info(`[network] perf_network flushed interfaces=${stats.length}`);
 }
 
-export function ingestArmsApiEventsFromBatch(
+export function ingestTelemetryApiEventsFromBatch(
   events: Array<Record<string, unknown>> | undefined,
 ): void {
   if (!events?.length) {
     return;
   }
   for (const event of events) {
-    ingestArmsApiEvent(event);
+    ingestTelemetryApiEvent(event);
   }
 }
 
@@ -145,7 +145,7 @@ export function configureDesktopNetworkTelemetry(context: NetworkGlobalContext):
     device_mid: context.deviceMid,
     platform: normalizeOsCategory(context.platform),
     app_version: context.appVersion,
-    arms_env: context.armsEnv,
+    telemetry_env: context.telemetryEnv,
   });
 }
 

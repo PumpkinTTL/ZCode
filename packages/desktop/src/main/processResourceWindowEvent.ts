@@ -1,6 +1,6 @@
 /** `perf_process_window` 的属性投影（纯函数，属性 key 与白名单一一对应）。 */
 
-import type { ArmsRumEnv } from "@zcode/shared";
+import type { TelemetryEnvLabel } from "@zcode/shared";
 import { PROCESS_RESOURCE_EVENT_NAMES } from "@zcode/shared";
 import type {
   ProcessResourceHardware,
@@ -12,12 +12,12 @@ export const PERF_PROCESS_WINDOW_EVENT_NAME = PROCESS_RESOURCE_EVENT_NAMES.proce
 export interface ProcessResourceReportContext {
   deviceMid: string;
   appVersion: string;
-  armsEnv: ArmsRumEnv;
+  telemetryEnv: TelemetryEnvLabel;
   /** 桌面机硬件；样本自带 hardware 时（远端 CLI / MCP）覆盖这里的默认值。 */
   desktopHardware: ProcessResourceHardware;
 }
 
-/** ARMS 的 `platform` 维度只有这三个取值，看板按它分组。 */
+/** 遥测的 `platform` 维度只有这三个取值，看板按它分组。 */
 type ProcessResourceOsCategory = "macos" | "windows" | "linux";
 
 export function normalizeOsCategory(platform: NodeJS.Platform): ProcessResourceOsCategory {
@@ -44,7 +44,7 @@ export function buildProcessWindowEventProperties(
   return {
     platform: normalizeOsCategory(hardware.platform),
     app_version: context.appVersion,
-    arms_env: context.armsEnv,
+    telemetry_env: context.telemetryEnv,
     device_mid: context.deviceMid,
     process_role: report.role,
     runtime_surface: report.runtimeSurface,

@@ -6,9 +6,9 @@ import {
   reportSessionOpenStart,
   type SessionOpenIdentity,
   type SessionOpenKind,
-  type SessionOpenArmsReporter,
+  type SessionOpenTelemetryReporter,
   type SessionOpenTrigger,
-} from "@/lib/sessionOpenArmsTelemetry.js";
+} from "@/lib/sessionOpenTelemetry.js";
 import type { SessionOpenRendererTiming } from "@/v4/conversationProjectionStore.js";
 
 const SESSION_OPEN_TIMEOUT_MS = 30_000;
@@ -57,7 +57,7 @@ function finishSessionOpen(
     rendererTiming?: SessionOpenRendererTiming;
     paintToInteractiveMs?: number;
     errorMessage?: string | null;
-    reporter?: SessionOpenArmsReporter | null;
+    reporter?: SessionOpenTelemetryReporter | null;
   } = {},
 ): void {
   if (runtime.finished) return;
@@ -111,14 +111,14 @@ interface UseSessionOpenArmsTelemetryParams {
   lastError: string | null;
   enabled?: boolean;
   readOnly?: boolean;
-  reporter?: SessionOpenArmsReporter | null;
+  reporter?: SessionOpenTelemetryReporter | null;
 }
 
 /**
  * 以 pane 首次 acquire 为 Renderer 可观测的打开起点；同一逻辑打开只发一组 start/result。
  * Web/mobile 即使挂载，也因 reporter 未安装而保持 no-op。
  */
-export function useSessionOpenArmsTelemetry({
+export function useSessionOpenTelemetry({
   sessionId,
   snapshot,
   openTiming,

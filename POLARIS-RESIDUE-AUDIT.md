@@ -183,9 +183,12 @@
 3. **§3c CLI 文案** —— `i18n` 里的 `/login` `/logout`、`callouts.*`、启动横幅等。
 4. **§3d 低优先** —— dev AUMID `cn.aminer.zcode`、`zcode-slash-command-help.ts` 等。
 5. **§4 契约项** —— 需要单独决策，尤其 `zcode://` scheme 是否改 `polaris://`。
-6. **命名的历史包袱**（功能无影响，属整洁性）：`appARMSBootstrap.ts`、`armsEventRedaction.ts`、
-   `armsRumShared.ts`、`armsUserIdentity.ts` 文件名与 `*ToArms` 函数名仍带 ARMS；
-   `appARMSBootstrap.ts` 的 `armsInitPromise` 已改名 `telemetryInitPromise`，其余留待统一整理。
+6. ~~**命名的历史包袱**~~ **已完成（本轮扫尾）**：ARMS 文件/符号全面去厂商化——
+   `appTelemetryBootstrap.ts`、`telemetryUserIdentity.ts`、`telemetryEventRedaction.ts`、
+   `desktopCustomTelemetryEvent.ts`、`desktopRemoteUsageTelemetry.ts`、`customEventObservability.ts`、
+   `reactErrorTelemetry.ts`、`sendFunnelTelemetry.ts`、`sessionOpenTelemetry.ts`、`uiPerfTelemetry.ts` 等；
+   `ArmsCustomEventPayload`→`CustomTelemetryEventPayload`、`reportArmsCustomEvent`→`reportCustomTelemetryEvent`；
+   残余的 `@arms` RUM bridge preload 拦截（服务于已删 SDK）整体移除。
 
 ## 6. 决策记录（本轮）
 
@@ -286,9 +289,10 @@
 
 1. **Built-in Config 远端刷新**（`node.ts:1534`）—— 自有后端未就绪，仍会每次失败一次。属**既定行为**；
    接自有后端后自动恢复。相关装配 `providerConfigRuntime` / `zcodeBuiltinRemoteConfig` 属抽象层，本轮未动。
-2. **Coding Plan 业务 UI**（约 60 文件：`CodingPlanUpgradeDialog*`、`useCodingPlanProducts`、
-   `useEnterpriseCodingPlanProducts`、`useStartPlanPreview`、`oauthTeamPricing`、`CodingPlanUsage*Panel`、
-   `StartPlanBalanceCard` 等）——服务端实现已空壳化，这些组件现为纯死重；整块删除属较大重构，单独一刀处理。
+2. ~~**Coding Plan 业务 UI**（约 60 文件）~~ **已完成（本轮扫尾）**：整层删除——设置页套餐导航/状态卡/
+   购买横幅、侧栏套餐徽标、额度横幅栈、composer 额度面板、使用统计套餐 tab、Start Plan 推荐、
+   升级弹窗机制（seam 由 Nimbus 账号弹窗直接承接）全部移除；i18n 同步清掉 532 个死键。
+   保留的 seam：`ICodingPlanSubscriptionService`（空实现）、闲时任务 UI/服务、`ZCODE_TELEMETRY_RUM_ENDPOINT`。
 3. **OAuth / `accountProvider*` 装配**（`node.ts` 仍装配约 3300 行）——启动会跑 `restoreOAuthSession`
    与 `shouldOpenLoginEntry`；拟按「保留接口 + 空壳实现」处理。
 4. **CLI 官方登录**（`login-command.ts` / `bootstrap/auth-login.ts` 410 行 / `tui-auth.ts` / `command-center/login-flow.ts`）
@@ -415,6 +419,10 @@ OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / J
 **为什么不一刀切**：清除 B 需要改 `StatusCards.tsx`（987 行）、`Detail.tsx`（1231 行）、
 `ModelProviderSection.tsx`、`SettingsPage.tsx`、`V4ComposerToolbar.tsx` 等中心文件，
 属大重构；建议单独一刀、逐子块 typecheck 完成。
+
+> **2026-09-29 更新：本节决策已执行完毕。** A 层 seam 全部保留（服务空实现、闲时任务、
+> `UsageStatsSection` 通用应用用量）；B 层连同 §12 遗留的中心文件计划线分支一并移除，
+> `Detail.tsx` / `StatusCards.tsx` / `ModelProviderSection.tsx` 已重写为「自定义供应商」专用视图。
 
 ---
 

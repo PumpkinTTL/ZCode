@@ -1,7 +1,7 @@
 import {
   resolveTelemetryModelId,
   resolveTelemetryProviderScope,
-  type ArmsCustomEventPayload,
+  type CustomTelemetryEventPayload,
   type IPlatformService,
 } from "@zcode/shared";
 import { logger } from "@/logger.js";
@@ -118,7 +118,7 @@ function buildChatErrorBannerTelemetryPayload(params: {
   displayMessage: string;
   error: ZCodeUiError;
   providerBusinessRecoveryAction: ChatProviderBusinessRecoveryAction | null;
-}): ArmsCustomEventPayload {
+}): CustomTelemetryEventPayload {
   const errorMsg = truncateTelemetryText(params.displayMessage);
   const underlyingErrorMessage = sanitizeUnderlyingTelemetryText(
     params.error.underlyingErrorMessage,
@@ -170,7 +170,7 @@ function buildChatErrorBannerTelemetryPayload(params: {
 }
 
 export async function reportChatErrorBannerTelemetry(
-  platform: Pick<IPlatformService, "reportArmsCustomEvent">,
+  platform: Pick<IPlatformService, "reportCustomTelemetryEvent">,
   params: {
     surface?: ChatErrorBannerSurface;
     errorKey?: string | null;
@@ -182,7 +182,7 @@ export async function reportChatErrorBannerTelemetry(
   try {
     // 修复原因：错误横幅属于异常可观测，不能走数仓业务 telemetry；
     // 这里改走 ARMS custom，与 React ErrorBoundary 保持同一监控出口。
-    await platform.reportArmsCustomEvent(buildChatErrorBannerTelemetryPayload(params));
+    await platform.reportCustomTelemetryEvent(buildChatErrorBannerTelemetryPayload(params));
   } catch (error) {
     logger.warn("[ChatViewErrorBanner] ARMS 上报失败:", error);
   }

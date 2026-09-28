@@ -18,7 +18,7 @@ export function buildSystemWindowEventProperties(
   return {
     platform: normalizeOsCategory(hardware.platform),
     app_version: context.appVersion,
-    arms_env: context.armsEnv,
+    telemetry_env: context.telemetryEnv,
     device_mid: context.deviceMid,
     arch: hardware.arch,
     logical_cpu_count: hardware.logicalCpuCount,

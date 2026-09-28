@@ -30,7 +30,7 @@ export type { WorkspacePurpose } from "./workspacePurpose.js";
 export { DEFAULT_LOCALE } from "./protocol.js";
 export { ZCODE_VERSION, ZCODE_COMMIT, ZCODE_BUILD_TIME } from "./version.js";
 export type { HelloMessage, HelloAckMessage } from "./handshake.js";
-export type { ArmsRumEnv, ZCodeEnv, ZCodeProductFlavor } from "./env.js";
+export type { TelemetryEnvLabel, ZCodeEnv, ZCodeProductFlavor } from "./env.js";
 export type { RemoteAssetInstallMode } from "./remoteAssetInstallMode.js";
 export type {
   RemoteResourcePackageId,
@@ -66,9 +66,9 @@ export {
   ZCODE_BUILD_COMMIT_ID_ENV,
   RUNTIME_ZCODE_DEBUG,
   ZCODE_TELEMETRY_REPORT_ENDPOINT,
-  ZCODE_ARMS_RUM_ENDPOINT,
+  ZCODE_TELEMETRY_RUM_ENDPOINT,
   ZCODE_TELEMETRY_ENABLED,
-  mapZCodeEnvToArmsRumEnv,
+  mapZCodeEnvToTelemetryEnvLabel,
   normalizeZCodeEnv,
   normalizeZCodeProductFlavor,
 } from "./env.js";
@@ -138,10 +138,10 @@ export {
   createOpenInEditorRemoteTarget,
 } from "./platform.js";
 export type {
-  ArmsCustomEventPayload,
-  ConfigureFinalArmsCustomEventE2ERequest,
-  FinalArmsCustomEventE2EEntry,
-  FinalArmsCustomEventPayload,
+  CustomTelemetryEventPayload,
+  ConfigureFinalCustomTelemetryEventE2ERequest,
+  FinalCustomTelemetryEventE2EEntry,
+  FinalCustomTelemetryEventPayload,
   RendererTelemetryEventPayload,
   TelemetryEventPayload,
   TelemetryRendererContext,

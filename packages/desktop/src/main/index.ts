@@ -4,13 +4,13 @@ import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
 import { powerMonitor, powerSaveBlocker } from "electron";
 import { crashCapturePaths } from "./appCrashCaptureBootstrap.js";
-import { telemetryInitPromise } from "./appARMSBootstrap.js";
+import { telemetryInitPromise } from "./appTelemetryBootstrap.js";
 import {
   onLocalDatabaseStartupReady,
   configureDatabaseStartupQuit,
 } from "./databaseStartupRelay.js";
 import telemetrySink from "./telemetrySink.js";
-import { createArmsUserIdentitySync } from "./armsUserIdentity.js";
+import { createTelemetryUserIdentitySync } from "./telemetryUserIdentity.js";
 import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
 import {
   createDesktopContextPromptRollout,
@@ -74,7 +74,7 @@ import {
   DEFAULT_LOCALE,
   ZCODE_VERSION,
   ZCODE_TELEMETRY_ENABLED,
-  ZCODE_ARMS_RUM_ENDPOINT,
+  ZCODE_TELEMETRY_RUM_ENDPOINT,
   buildZCodeEndpointUrls,
   resolveZCodeEndpointOrigin,
   shouldEnableE2ETestBridge,
@@ -189,10 +189,10 @@ import {
 } from "./desktopDeepLinkUrl.js";
 import { createRemoteWorkspaceSessionManager } from "./desktopRemoteSessions.js";
 import {
-  reportRemoteConnectionStateChangedToArms,
-  reportRemoteDisconnectToArms,
-  stopRemoteUsageArmsPeriodicSampling,
-} from "./desktopRemoteUsageArmsTelemetry.js";
+  reportRemoteConnectionStateChangedTelemetry,
+  reportRemoteDisconnectTelemetry,
+  stopRemoteUsagePeriodicSampling,
+} from "./desktopRemoteUsageTelemetry.js";
 import { resolveCanonicalWslTarget } from "./desktopWslTargetResolver.js";
 import {
   listRegisteredHostAgentProcessIds,
@@ -211,11 +211,11 @@ import {
   getStabilityLifecycleScene,
   notifyStabilityAppExit,
   notifyStabilityLifecycle,
-  reportAgentProcessExitToArms,
-  reportAgentProcessReadyToArms,
-  reportAgentProcessStartToArms,
-  reportAgentProcessSpawnErrorToArms,
-  reportAgentProcessExceptionToArms,
+  reportAgentProcessExitTelemetry,
+  reportAgentProcessReadyTelemetry,
+  reportAgentProcessStartTelemetry,
+  reportAgentProcessSpawnErrorTelemetry,
+  reportAgentProcessExceptionTelemetry,
   registerDesktopStabilityMonitors,
   registerStabilityMainWindow,
   scheduleReportPerfAppStartAfterMainViewReady,
@@ -231,14 +231,14 @@ import {
   registerDesktopZCodeDataSizeTelemetry,
   stopDesktopZCodeDataSizeTelemetry,
 } from "./desktopZCodeDataSizeTelemetry.js";
-import { configureDesktopMcpTelemetry, reportMcpTelemetryToArms } from "./desktopMcpTelemetry.js";
+import { configureDesktopMcpTelemetry, reportMcpTelemetryEvent } from "./desktopMcpTelemetry.js";
 import {
   configureDesktopNetworkTelemetry,
   registerDesktopNetworkTelemetry,
   stopDesktopNetworkTelemetry,
 } from "./desktopNetworkTelemetry.js";
 import { applyDesktopChromiumNetworkPolicies } from "./desktopNetworkPolicy.js";
-import { mapZCodeEnvToArmsRumEnv } from "@zcode/shared";
+import { mapZCodeEnvToTelemetryEnvLabel } from "@zcode/shared";
 import {
   findWindowsProcessesReferencingResourceMarkers,
   probeWindowsPackagedResourceWritable,
@@ -760,8 +760,8 @@ function syncAppTelemetryInteractiveState(): void {
       (win) => !win.isDestroyed() && win.isVisible() && win.isFocused(),
     ),
   );
-  // 登出/切号发生在 host 子进程，主进程无即时信号；窗口聚焦时兜底刷新 ARMS user.name
-  void armsUserIdentitySync.refresh();
+  // 登出/切号发生在 host 子进程，主进程无即时信号；窗口聚焦时兜底刷新遥测 user.name
+  void telemetryUserIdentitySync.refresh();
 }
 
 app.on("browser-window-focus", (_event, win) => {
@@ -786,8 +786,8 @@ const remoteSessionManager = createRemoteWorkspaceSessionManager({
   resolveRemoteAssetDirs: () =>
     resolveRemoteAssetDirs({ locale: currentApplicationLocale }, hostProcessLocalEnv),
   resolveWslTarget: resolveCanonicalWslTarget,
-  reportRemoteConnectionStateChanged: reportRemoteConnectionStateChangedToArms,
-  reportRemoteDisconnect: reportRemoteDisconnectToArms,
+  reportRemoteConnectionStateChanged: reportRemoteConnectionStateChangedTelemetry,
+  reportRemoteDisconnect: reportRemoteDisconnectTelemetry,
 });
 
 const deviceMid = ensureDesktopDeviceMidSync();
@@ -828,11 +828,11 @@ const rendererActionTraceBroker = createRendererActionTraceBroker({
   logger,
 });
 let disposeRendererActionTraceIpc: (() => void) | undefined;
-const armsUserIdentitySync = createArmsUserIdentitySync({
+const telemetryUserIdentitySync = createTelemetryUserIdentitySync({
   deviceMid,
   // 采集停用时 SDK 未初始化，setConfig 会抛错。
   setUser:
-    ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT
+    ZCODE_TELEMETRY_ENABLED && ZCODE_TELEMETRY_RUM_ENDPOINT
       ? (user) => telemetrySink.setConfig("user", user)
       : () => {},
 });
@@ -1025,7 +1025,7 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
   stopDesktopResourceTelemetry({ flushPendingWindows: true });
   stopDesktopZCodeDataSizeTelemetry();
   stopDesktopNetworkTelemetry();
-  stopRemoteUsageArmsPeriodicSampling();
+  stopRemoteUsagePeriodicSampling();
   disposeRendererActionTraceIpc?.();
   disposeRendererActionTraceIpc = undefined;
   notifyStabilityAppExit(
@@ -1720,13 +1720,13 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
             windowsCuaOperationIndicator.handleState(source, event),
           onCuaOperationStateSourceExited: (source) =>
             windowsCuaOperationIndicator.clearSource(source),
-          onAgentProcessExited: (event) => reportAgentProcessExitToArms(event, logger),
-          onAgentProcessError: (event) => reportAgentProcessSpawnErrorToArms(event, logger),
-          onAgentProcessException: (event) => reportAgentProcessExceptionToArms(event, logger),
-          onAgentProcessReady: (event) => reportAgentProcessReadyToArms(event, logger),
-          onAgentProcessSpawned: (event) => reportAgentProcessStartToArms(event, logger),
+          onAgentProcessExited: (event) => reportAgentProcessExitTelemetry(event, logger),
+          onAgentProcessError: (event) => reportAgentProcessSpawnErrorTelemetry(event, logger),
+          onAgentProcessException: (event) => reportAgentProcessExceptionTelemetry(event, logger),
+          onAgentProcessReady: (event) => reportAgentProcessReadyTelemetry(event, logger),
+          onAgentProcessSpawned: (event) => reportAgentProcessStartTelemetry(event, logger),
           onMcpTelemetry: (message) =>
-            reportMcpTelemetryToArms(message.event, message.runtimeSurface),
+            reportMcpTelemetryEvent(message.event, message.runtimeSurface),
           onSessionCreateTelemetry: (message) => {
             void appTelemetryCore.reportEvent(message.event).catch(() => {});
           },
@@ -2171,17 +2171,17 @@ app.whenReady().then(async () => {
     logger,
     appTelemetryRuntime,
     onOAuthCallbackHandledSideEffect: () => {
-      void armsUserIdentitySync.refresh();
+      void telemetryUserIdentitySync.refresh();
     },
     appTelemetryCore,
     reportRemoteUsageEvent: reportRemoteUsageEventForRenderer,
-    armsCustomContext: {
+    telemetryCustomContext: {
       deviceMid,
       platform: process.platform,
       appVersion: ZCODE_VERSION,
-      armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+      telemetryEnv: mapZCodeEnvToTelemetryEnvLabel(desktopRuntimeEnv),
     },
-    finalArmsCustomEventE2EEnabled: shouldEnableE2ETestBridge(process.env),
+    finalCustomTelemetryEventE2EEnabled: shouldEnableE2ETestBridge(process.env),
     createRemoteWorkspaceSession: remoteSessionManager.createRemoteWorkspaceSession,
     getRemoteConnectionStats: remoteSessionManager.getRemoteConnectionStats,
     disposeRemoteWorkspaceSession: remoteSessionManager.disposeRemoteWorkspaceSession,
@@ -2198,28 +2198,28 @@ app.whenReady().then(async () => {
   // 等待遥测出口完成 init（含渲染进程注入监听），避免首窗 dom-ready 早于注册导致无上报
   await telemetryInitPromise;
 
-  // ARMS init 完成后首次写入 user.name（落 device_mid）
-  void armsUserIdentitySync.refresh();
+  // 遥测 init 完成后首次写入 user.name（落 device_mid）
+  void telemetryUserIdentitySync.refresh();
 
-  // 未配置 ARMS 端点时不初始化上报 context，避免把空转误当成已启用。
-  if (ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT) {
+  // 未配置遥测端点时不初始化上报 context，避免把空转误当成已启用。
+  if (ZCODE_TELEMETRY_ENABLED && ZCODE_TELEMETRY_RUM_ENDPOINT) {
     configureDesktopStabilityTelemetry({
       deviceMid,
       platform: process.platform,
       appVersion: ZCODE_VERSION,
-      armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+      telemetryEnv: mapZCodeEnvToTelemetryEnvLabel(desktopRuntimeEnv),
     });
     configureDesktopResourceTelemetry({
       deviceMid,
       platform: process.platform,
       appVersion: ZCODE_VERSION,
-      armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+      telemetryEnv: mapZCodeEnvToTelemetryEnvLabel(desktopRuntimeEnv),
     });
     configureDesktopNetworkTelemetry({
       deviceMid,
       platform: process.platform,
       appVersion: ZCODE_VERSION,
-      armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+      telemetryEnv: mapZCodeEnvToTelemetryEnvLabel(desktopRuntimeEnv),
     });
   }
   // Polaris：MCP 遥测同样跟随埋点总开关（默认关闭）。
@@ -2227,7 +2227,7 @@ app.whenReady().then(async () => {
     configureDesktopMcpTelemetry({
       deviceMid,
       appVersion: ZCODE_VERSION,
-      armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+      telemetryEnv: mapZCodeEnvToTelemetryEnvLabel(desktopRuntimeEnv),
     });
   }
   registerDesktopStabilityMonitors(logger, crashCapturePaths);
@@ -2239,12 +2239,12 @@ app.whenReady().then(async () => {
   // 主窗口 renderer 的 60 秒 heap 样本入口；随 App 生命周期常驻，只注册一次。
   registerRendererHeapSampleIpc();
   const defaultDataBaseDir = process.env.HOME?.trim() || homedir();
-  // Polaris：数据体积遥测同样跟随埋点总开关（默认关闭）——它把数据目录统计发往 ARMS。
+  // Polaris：数据体积遥测同样跟随埋点总开关（默认关闭）——它把数据目录统计发往遥测。
   if (ZCODE_TELEMETRY_ENABLED) {
     registerDesktopZCodeDataSizeTelemetry({
       context: {
         appVersion: ZCODE_VERSION,
-        armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+        telemetryEnv: mapZCodeEnvToTelemetryEnvLabel(desktopRuntimeEnv),
         dataRootKind:
           resolve(getDataBaseDir()) === resolve(defaultDataBaseDir) ? "default" : "custom",
         deviceMid,

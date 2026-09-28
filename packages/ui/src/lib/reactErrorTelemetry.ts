@@ -1,11 +1,11 @@
 import {
   redactTelemetryText,
-  type ArmsCustomEventPayload,
+  type CustomTelemetryEventPayload,
   type IPlatformService,
 } from "@zcode/shared";
 import { logger } from "@/logger.js";
 
-/** ARMS 自定义事件名：React 错误边界捕获的渲染层异常 */
+/** 遥测自定义事件名：React 错误边界捕获的渲染层异常 */
 const REACT_ERROR_ARMS_EVENT_NAME = "perf_react_error";
 /** ARMS 业务分组 */
 const REACT_ERROR_ARMS_GROUP = "react_error";
@@ -17,9 +17,9 @@ const REACT_ERROR_ARMS_GROUP = "react_error";
  */
 const REACT_ERROR_STACK_MAX_LEN = 4000;
 
-type ArmsReporter = Pick<IPlatformService, "reportArmsCustomEvent">;
+type TelemetryReporter = Pick<IPlatformService, "reportCustomTelemetryEvent">;
 
-let armsReporter: ArmsReporter | null = null;
+let telemetryReporter: TelemetryReporter | null = null;
 
 /**
  * 注入 ARMS reporter。
@@ -28,8 +28,8 @@ let armsReporter: ArmsReporter | null = null;
  * 因为根级 AppErrorBoundary 的职责正是兜住 Root 自身渲染崩溃——若 reporter 走
  * Root effect 注入，Root 首帧就崩时 effect 从未执行，根级错误依旧丢失。
  */
-export function setReactErrorArmsReporter(reporter: ArmsReporter | null): void {
-  armsReporter = reporter;
+export function setReactErrorTelemetryReporter(reporter: TelemetryReporter | null): void {
+  telemetryReporter = reporter;
 }
 
 /**
@@ -42,11 +42,11 @@ function redactStack(value: string): string {
   return redactTelemetryText(value, { maxLength: REACT_ERROR_STACK_MAX_LEN });
 }
 
-function buildReactErrorArmsPayload(params: {
+function buildReactErrorTelemetryPayload(params: {
   error: Error;
   componentStack: string;
   scope?: string;
-}): ArmsCustomEventPayload {
+}): CustomTelemetryEventPayload {
   const errorStack = params.error.stack ? redactStack(params.error.stack) : undefined;
   const componentStack = params.componentStack ? redactStack(params.componentStack) : undefined;
   return {
@@ -65,33 +65,33 @@ function buildReactErrorArmsPayload(params: {
 }
 
 /**
- * 把 React 错误边界捕获的异常上报到 ARMS RUM。
+ * 把 React 错误边界捕获的异常上报到 遥测 RUM。
  *
  * 背景：React 错误边界拦截子树渲染异常、阻止其冒泡到 window.onerror，
  * 而 Browser RUM SDK 靠 window.onerror / unhandledrejection 自动采集，
  * 故边界捕获的错误对 RUM 默认完全不可见，只能靠本地日志。这里把它转发到
- * 与 perf_crash 同一条 ARMS 自定义事件干道，补上这块盲区。
+ * 与 perf_crash 同一条 遥测自定义事件干道，补上这块盲区。
  */
-export function reportReactErrorToArms(params: {
+export function reportReactErrorTelemetry(params: {
   error: Error;
   componentStack: string;
   scope?: string;
 }): void {
-  if (!armsReporter) {
+  if (!telemetryReporter) {
     return;
   }
 
   try {
-    const payload = buildReactErrorArmsPayload(params);
-    void Promise.resolve(armsReporter.reportArmsCustomEvent(payload)).catch((error) => {
+    const payload = buildReactErrorTelemetryPayload(params);
+    void Promise.resolve(telemetryReporter.reportCustomTelemetryEvent(payload)).catch((error) => {
       // 原因：ARMS 属观测链路，错误边界的 fallback 恢复流程不得因埋点失败而中断。
-      logger.warn("[react-error] ARMS 自定义事件上报失败", {
+      logger.warn("[react-error] 遥测自定义事件上报失败", {
         scope: params.scope ?? "app",
         error: error instanceof Error ? error.message : String(error),
       });
     });
   } catch (error) {
-    logger.warn("[react-error] ARMS 自定义事件上报异常", {
+    logger.warn("[react-error] 遥测自定义事件上报异常", {
       scope: params.scope ?? "app",
       error: error instanceof Error ? error.message : String(error),
     });
