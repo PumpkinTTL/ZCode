@@ -1006,8 +1006,9 @@ function V4ComposerModelControlsImpl({
       ) : null}
       {thoughtOption ? (
         <ThoughtLevelCycleControl
-          indicatorClassName="hidden @xl/composer:block"
-          triggerClassName="@max-sm/composer:size-7 @max-sm/composer:justify-center @max-sm/composer:p-0"
+          composerCollapsePriority={3}
+          labelVisibilityClassName="inline-flex"
+          indicatorClassName="block"
           option={thoughtOption}
           onValueChange={handleThoughtValueChange}
           disabled={disabled || recoveryPending}

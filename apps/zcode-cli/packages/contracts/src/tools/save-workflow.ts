@@ -32,26 +32,17 @@ export const SaveWorkflowInputSchema = z
       .string()
       .min(1)
       .max(SAVED_WORKFLOW_MAX_NAME_CHARS)
-      .describe(
-        "File-safe identifier the workflow will be recalled by. Letters, digits, dot, dash and underscore only.",
-      ),
-    description: z
-      .string()
-      .min(1)
-      .describe("One line saying what the workflow does. Shown wherever the workflow is listed."),
-    whenToUse: z
-      .string()
-      .min(1)
-      .optional()
-      .describe("Optional guidance on the situations this workflow is the right answer to."),
+      .describe("File-safe identifier: letters, digits, dot, dash and underscore."),
+    description: z.string().min(1).describe("One line saying what the workflow does."),
+    whenToUse: z.string().min(1).optional().describe("When this workflow is the right answer."),
     args: SavedWorkflowArgsDeclarationSchema.optional().describe(
-      "Optional argument declarations. The script reads validated values off the `args` global.",
+      "Argument declarations the script reads off `args`.",
     ),
     script: z
       .string()
       .optional()
       .describe(
-        "Full TypeScript workflow script written against the dynamic-workflow facade, exactly as CreateWorkflow takes it. Body only — do not include a metadata block. Provide this OR `script_path`, never both.",
+        "The script body, inline, without a metadata block. This OR `script_path`, never both.",
       ),
     /**
      * 正文的第二条来源：一个已经在盘上的文件，
@@ -63,7 +54,7 @@ export const SaveWorkflowInputSchema = z
       .min(1)
       .optional()
       .describe(
-        "The file holding the script body, relative to the working directory or absolute — usually a draft a CreateWorkflow/AmendWorkflow result named. Provide this OR `script`, never both; it saves a working draft without re-emitting it. A `/* zcode-workflow` block in that file is dropped: the metadata comes from this call's `description` / `whenToUse` / `args`.",
+        "A file holding the script body, usually a draft a result named. This OR `script`, never both.",
       ),
     // 作用域由**模型**说出，不由系统猜——没有默认值，每次都要判断。判据中性：脚本是否
     // 引用本仓库的东西？是 → project，否 → global。
