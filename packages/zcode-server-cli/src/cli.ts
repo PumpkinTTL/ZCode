@@ -235,7 +235,8 @@ async function runServe(
       serviceStarted,
     );
     if (json) stdout(io, started);
-    else stdout(io, `Polaris Server ${started.state} at ${started.host ?? ""}:${started.port ?? ""}`);
+    else
+      stdout(io, `Polaris Server ${started.state} at ${started.host ?? ""}:${started.port ?? ""}`);
     process.stdin.pause();
     process.stdin.destroy();
     return 0;

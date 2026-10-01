@@ -64,11 +64,7 @@ test("stable launcher is written as polaris and removes the legacy entrypoint", 
     await mkdir(layout.stableBinDir, { recursive: true });
 
     const platform =
-      process.platform === "win32"
-        ? "win32"
-        : process.platform === "darwin"
-          ? "darwin"
-          : "linux";
+      process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux";
     const launcherName = platform === "win32" ? "polaris.cmd" : "polaris";
     const legacyName = platform === "win32" ? "zcode.cmd" : "zcode";
     const legacyPath = join(layout.stableBinDir, legacyName);

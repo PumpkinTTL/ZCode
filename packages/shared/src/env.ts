@@ -1,9 +1,6 @@
-import type { ZCodeRuntimeEnv } from "./runtimeEnv.js";
-
 export type ZCodeEnv = "test" | "production";
 /** 安装包身份：决定应用名、app id、Electron 数据目录与更新策略；与后端环境 `ZCodeEnv` 是两个轴。 */
 export type ZCodeProductFlavor = "production" | "preview";
-export type TelemetryEnvLabel = "local" | "prod";
 
 // 非构建环境（如 e2e 测试的 mocha）下 define 不存在，用 typeof 检查 + fallback 避免 ReferenceError
 declare const __ZCODE_ENV__: string;
@@ -45,22 +42,5 @@ export const ZCODE_BUILD_COMMIT_ID_ENV = "ZCODE_BUILD_COMMIT_ID" as const;
 export const RUNTIME_ZCODE_DEBUG =
   typeof process !== "undefined" ? process.env.ZCODE_DEBUG : undefined;
 
-// Polaris：默认关闭官方埋点上报。能力完整保留——将来接自有统计时，
-// 把下面这个开关改回 true 并配置 ZCODE_TELEMETRY_REPORT_ENDPOINT /
-// ZCODE_TELEMETRY_RUM_ENDPOINT 指向自己的端点即可，无需改业务代码。
-// 说明：上游各出口本就带「端点未配置即停用」的检查，官方数据靠打包期注入
-// env 送达；我们不发官方，故开关默认 false。
-export const ZCODE_TELEMETRY_ENABLED: boolean = false;
-
-/** 数仓事件上报端点：由运行时环境变量提供，未配置即停用，构建产物不内嵌。 */
-export const ZCODE_TELEMETRY_REPORT_ENDPOINT =
-  typeof process !== "undefined" ? (process.env.ZCODE_TELEMETRY_REPORT_ENDPOINT ?? "") : "";
-
-/** 遥测 RUM 接入端点：由运行时环境变量提供，未配置即停用，构建产物不内嵌。 */
-export const ZCODE_TELEMETRY_RUM_ENDPOINT =
-  typeof process !== "undefined" ? (process.env.ZCODE_TELEMETRY_RUM_ENDPOINT ?? "") : "";
-
-/** 将本地运行态与编译期 ZCODE_ENV 映射为 遥测控制台识别的上报环境标签 */
-export function mapZCodeEnvToTelemetryEnvLabel(runtimeEnv: ZCodeRuntimeEnv): TelemetryEnvLabel {
-  return runtimeEnv !== "development" && ZCODE_ENV === "production" ? "prod" : "local";
-}
+// Polaris：上游的桌面端埋点体系（官方 RUM / 数仓上报 / 资源与网络采样）已整体移除，
+// 不再保留开关与端点常量。第三方模型、CLI/agent 侧的 OTLP 遥测与这里无关。

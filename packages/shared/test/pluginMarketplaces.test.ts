@@ -34,7 +34,9 @@ test("source list parsing trims, splits on comma/newline, dedupes, and drops emp
   assert.deepEqual(parsePluginMarketplaceSourceList(undefined), []);
   assert.deepEqual(parsePluginMarketplaceSourceList(""), []);
   assert.deepEqual(
-    parsePluginMarketplaceSourceList(" my-org/hub ,\n\n  https://git.example.com/x.git ,my-org/hub"),
+    parsePluginMarketplaceSourceList(
+      " my-org/hub ,\n\n  https://git.example.com/x.git ,my-org/hub",
+    ),
     ["my-org/hub", "https://git.example.com/x.git"],
   );
 });
@@ -101,10 +103,10 @@ test("source normalization is only for comparison, not for fetching", () => {
 });
 
 test("official marketplace mirrors default to Polaris first, Z.ai as fallback", () => {
-  assert.deepEqual([...OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS], [
-    POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
-    ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
-  ]);
+  assert.deepEqual(
+    [...OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS],
+    [POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL, ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL],
+  );
   assert.deepEqual(resolveOfficialPluginMarketplaceMirrors({} as NodeJS.ProcessEnv), [
     POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
     ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,

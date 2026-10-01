@@ -58,9 +58,7 @@ function getRootDir(source: SettingsDirectorySource, workspacePath?: string): st
   const baseDir = workspacePath ?? resolveUserHomeDir();
   if (source === "zcode") {
     // 用户级跟数据根走（Polaris fork：`.polaris`）；workspace 级仍是既定的 `.zcode` 点文件契约。
-    return workspacePath
-      ? join(baseDir, ".zcode")
-      : join(baseDir, DATA_ROOT_DIR_NAME, "cli");
+    return workspacePath ? join(baseDir, ".zcode") : join(baseDir, DATA_ROOT_DIR_NAME, "cli");
   }
   return join(baseDir, source === "agents" ? ".agents" : ".claude");
 }

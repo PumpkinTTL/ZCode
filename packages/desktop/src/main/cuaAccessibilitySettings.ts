@@ -194,7 +194,9 @@ async function verifyHelperPermissionIdentityUnchanged(
     options.resolveHelperIdentity ?? resolveHelperPermissionSubjectIdentity
   )(identity.appPath);
   if (!sameHelperPermissionIdentity(identity, currentIdentity)) {
-    throw new Error(`Polaris Computer Use permission identity changed during ${phase} verification`);
+    throw new Error(
+      `Polaris Computer Use permission identity changed during ${phase} verification`,
+    );
   }
   if (!cuaHelperBundleFingerprintUnchanged(identity.appPath, fingerprint)) {
     throw new Error(

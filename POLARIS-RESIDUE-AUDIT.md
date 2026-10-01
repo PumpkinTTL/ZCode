@@ -4,12 +4,12 @@
 
 ## 结论速览
 
-| 分类 | 数量 | 处置 |
-|---|---|---|
-| 官方域名运行时请求 | 4 处真请求 + 6 处潜伏/仅匹配键 | 见 §1（**未修**） |
-| **`~/.zcode` 数据根泄漏（真 bug）** | 约 60 处本地数据根 | **已修复**（见 §2） |
-| 用户可见 ZCode / Z.ai 品牌残留 | 约 40 处 | **应用名 / 窗口标题 / 分享页 / 托盘 / 关于框已修**，其余见 §3 |
-| 契约型路径（不能改） | `zcode://`、`.zcode-plugin/`、`.zcodeignore`、远程 `~/.zcode/server` 等 | 见 §4（**保留**） |
+| 分类                                | 数量                                                                    | 处置                                                          |
+| ----------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 官方域名运行时请求                  | 4 处真请求 + 6 处潜伏/仅匹配键                                          | 见 §1（**未修**）                                             |
+| **`~/.zcode` 数据根泄漏（真 bug）** | 约 60 处本地数据根                                                      | **已修复**（见 §2）                                           |
+| 用户可见 ZCode / Z.ai 品牌残留      | 约 40 处                                                                | **应用名 / 窗口标题 / 分享页 / 托盘 / 关于框已修**，其余见 §3 |
+| 契约型路径（不能改）                | `zcode://`、`.zcode-plugin/`、`.zcodeignore`、远程 `~/.zcode/server` 等 | 见 §4（**保留**）                                             |
 
 ---
 
@@ -17,15 +17,15 @@
 
 ### 1a. 真实出网（需要处理）
 
-| 位置 | 内容 | 建议 |
-|---|---|---|
-| `apps/zcode-cli/packages/adapters/src/auth/coding-plan-api-key.ts:4` | `ZAI_API_HOST = "https://api.z.ai"` 硬编码，**没走** `resolveZaiBusinessBaseUrl()`；`:122` 会真发 `POST /api/auth/z/login`，`:97` 发 `/api/biz/...`。同文件 `:81` 的 bigmodel 分支已经用了 `resolveBigModelApiOrigin` | 改指 `resolveZaiBusinessBaseUrl(process.env)` |
-| `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts:58` | `OFFICIAL_PLUGIN_ASSETS_BASE_URL = "https://cdn-zcode.z.ai/zcode/official-plugin/assets"`，给 8 个内置插件当地 `icon` URL 用（`:114` `:138` `:171` `:211` `:231` `:283` `:304` `:349`） | 本地化素材，或改指 `polaris.bitlesu.com/cdn` |
-| `config/default.json:2` | `feedback_url` = 智谱飞书表单 | 改指自有（或确认就是要发官方） |
-| `config/default.json:5,6` | `community_urls` = 飞书邀请 + `discord.gg/z9aBcQXZQ3` | 改指自有社群（UI 入口已隐藏） |
-| `packages/services/src/model-provider/legacyZCodeConfigProviderReader.ts:64` | `BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL = "https://open.bigmodel.cn/api/anthropic"`，作为**生产**兜底 baseUrl（`:71-73` `:79` `:88-90`）；导入旧 ZCode `config.json` 时会把请求打到 `open.bigmodel.cn` | 改指 `resolveBigModelApiOrigin()` |
-| `packages/desktop/src/main/desktopMainIpcRemote.ts:79`、`desktopWindowChrome.ts:293` | 内嵌 webview 导航白名单里硬编码 `"https://api.z.ai"` | 删掉这条（默认已指向 polaris） |
-| `apps/zcode-cli/packages/adapters/src/auth/cli-oauth.ts:4` | `DEFAULT_ZCODE_OAUTH_BASE_URL = "https://zcode.z.ai/api/v1"`（当前被调用方注入的 baseUrl 覆盖，属潜伏） | 默认值改指 polaris |
+| 位置                                                                                 | 内容                                                                                                                                                                                                                  | 建议                                          |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `apps/zcode-cli/packages/adapters/src/auth/coding-plan-api-key.ts:4`                 | `ZAI_API_HOST = "https://api.z.ai"` 硬编码，**没走** `resolveZaiBusinessBaseUrl()`；`:122` 会真发 `POST /api/auth/z/login`，`:97` 发 `/api/biz/...`。同文件 `:81` 的 bigmodel 分支已经用了 `resolveBigModelApiOrigin` | 改指 `resolveZaiBusinessBaseUrl(process.env)` |
+| `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts:58`        | `OFFICIAL_PLUGIN_ASSETS_BASE_URL = "https://cdn-zcode.z.ai/zcode/official-plugin/assets"`，给 8 个内置插件当地 `icon` URL 用（`:114` `:138` `:171` `:211` `:231` `:283` `:304` `:349`）                               | 本地化素材，或改指 `polaris.bitlesu.com/cdn`  |
+| `config/default.json:2`                                                              | `feedback_url` = 智谱飞书表单                                                                                                                                                                                         | 改指自有（或确认就是要发官方）                |
+| `config/default.json:5,6`                                                            | `community_urls` = 飞书邀请 + `discord.gg/z9aBcQXZQ3`                                                                                                                                                                 | 改指自有社群（UI 入口已隐藏）                 |
+| `packages/services/src/model-provider/legacyZCodeConfigProviderReader.ts:64`         | `BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL = "https://open.bigmodel.cn/api/anthropic"`，作为**生产**兜底 baseUrl（`:71-73` `:79` `:88-90`）；导入旧 ZCode `config.json` 时会把请求打到 `open.bigmodel.cn`               | 改指 `resolveBigModelApiOrigin()`             |
+| `packages/desktop/src/main/desktopMainIpcRemote.ts:79`、`desktopWindowChrome.ts:293` | 内嵌 webview 导航白名单里硬编码 `"https://api.z.ai"`                                                                                                                                                                  | 删掉这条（默认已指向 polaris）                |
+| `apps/zcode-cli/packages/adapters/src/auth/cli-oauth.ts:4`                           | `DEFAULT_ZCODE_OAUTH_BASE_URL = "https://zcode.z.ai/api/v1"`（当前被调用方注入的 baseUrl 覆盖，属潜伏）                                                                                                               | 默认值改指 polaris                            |
 
 ### 1b. 只是匹配键，不出网（保留）
 
@@ -60,21 +60,21 @@
 
 ### 2b. 修复清单
 
-| 位置 | 原 | 改为 |
-|---|---|---|
-| `services/src/setting/settingService.ts` | `<home>/.zcode/v2` | `DATA_ROOT_DIR_NAME` |
-| `desktop/src/main/index.ts:532` | `homedir()/.zcode/v2/setting.json` | 同上常量 |
-| `desktop/src/main/desktopChromiumHardwareAccelerationBootstrap.ts` | 同上 | 同上常量 |
-| `services/src/paths.ts:235-236` `copyDataDirectory` | `.zcode/v2`（迁移功能因此完全失效） | `DATA_ROOT_DIR_NAME` |
-| `services/src/storage/adapters/rootsResolver.ts:9` | `ZCODE_DATA_DIR_NAME = ".zcode"` | `.polaris` |
-| `services/src/zcode-agent/zcodeAgentService.ts:465` | 双嵌套 `~/.polaris/.zcode/...` | 数据根 |
-| `services/src/zcode-agent/modelTrajectoryFileTail.ts:18-19` | 读 `~/.zcode/cli` | 与写入方对齐 |
-| `apps/zcode-cli/.../cli/src/provider-runtime-env.ts:76,81,140` | `<dataBaseDir>/.zcode/v2` | 与桌面写入方对齐 |
-| `desktop/src/main/desktopRuntimeEnv.ts:498` | `ZCODE_HOME` 兜底 `~/.zcode` | `.polaris` |
-| `services/src/node.ts:1072,1800`、`runtime-tools/providerRuntimeResolver.ts:62,90`、`device/deviceMid.ts:25,32`、`telemetry/telemetryCore.ts:130,137` | 同上 | 同上 |
-| `apps/zcode-cli/.../adapters/src/auth/shared-credentials.ts:289` | `~/.zcode/v2/credentials.json` | `.polaris` |
-| `services/src/{commands,hooks,mcp-sync,plugin-sync,skill-sync,skills,subagents,settings-sync}/*.ts` | 约 25 处数据根字面量 | `.polaris` |
-| `desktop/src/main/exportLogs.ts` | 从 `.zcode` 收集日志 | 从 Polaris 根收集 |
+| 位置                                                                                                                                                  | 原                                  | 改为                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------------------- |
+| `services/src/setting/settingService.ts`                                                                                                              | `<home>/.zcode/v2`                  | `DATA_ROOT_DIR_NAME` |
+| `desktop/src/main/index.ts:532`                                                                                                                       | `homedir()/.zcode/v2/setting.json`  | 同上常量             |
+| `desktop/src/main/desktopChromiumHardwareAccelerationBootstrap.ts`                                                                                    | 同上                                | 同上常量             |
+| `services/src/paths.ts:235-236` `copyDataDirectory`                                                                                                   | `.zcode/v2`（迁移功能因此完全失效） | `DATA_ROOT_DIR_NAME` |
+| `services/src/storage/adapters/rootsResolver.ts:9`                                                                                                    | `ZCODE_DATA_DIR_NAME = ".zcode"`    | `.polaris`           |
+| `services/src/zcode-agent/zcodeAgentService.ts:465`                                                                                                   | 双嵌套 `~/.polaris/.zcode/...`      | 数据根               |
+| `services/src/zcode-agent/modelTrajectoryFileTail.ts:18-19`                                                                                           | 读 `~/.zcode/cli`                   | 与写入方对齐         |
+| `apps/zcode-cli/.../cli/src/provider-runtime-env.ts:76,81,140`                                                                                        | `<dataBaseDir>/.zcode/v2`           | 与桌面写入方对齐     |
+| `desktop/src/main/desktopRuntimeEnv.ts:498`                                                                                                           | `ZCODE_HOME` 兜底 `~/.zcode`        | `.polaris`           |
+| `services/src/node.ts:1072,1800`、`runtime-tools/providerRuntimeResolver.ts:62,90`、`device/deviceMid.ts:25,32`、`telemetry/telemetryCore.ts:130,137` | 同上                                | 同上                 |
+| `apps/zcode-cli/.../adapters/src/auth/shared-credentials.ts:289`                                                                                      | `~/.zcode/v2/credentials.json`      | `.polaris`           |
+| `services/src/{commands,hooks,mcp-sync,plugin-sync,skill-sync,skills,subagents,settings-sync}/*.ts`                                                   | 约 25 处数据根字面量                | `.polaris`           |
+| `desktop/src/main/exportLogs.ts`                                                                                                                      | 从 `.zcode` 收集日志                | 从 Polaris 根收集    |
 
 > **副作用提醒**：设置文件位置一变，之前累积在 `~/.zcode/v2/setting.json` 的
 > `recentProjects` / 外观设置等不会再被读到（等于按「干净起步」重来）。这符合既定策略。
@@ -85,37 +85,37 @@
 
 ### 3a. 系统级身份（可见度最高）
 
-| 位置 | 现值 | 建议 |
-|---|---|---|
-| `desktop/src/main/desktopRuntimeEnv.ts:63` | `runtimeApplicationName` 原为 `"ZCode"` / `"ZCode Dev"` / `"ZCode Preview"`，被 `app.setName`(`index.ts:262`)、`process.title`(`:275`)、macOS 应用菜单(`desktopApplicationMenu.ts:114`) 使用 | **已修**为 `Polaris` / `Polaris Dev` / `Polaris Preview`。注意它同时决定 Electron userData 目录名（`%APPDATA%/Polaris`），此前与官方 `%APPDATA%/ZCode` 是同一个目录 |
-| `desktop/electron-builder.config.js:459,461,462,703` | `homepage: zcode.z.ai`、`author: ZCode <dev@zcode.z.ai>`、Linux `maintainer` | 改 Polaris |
-| `desktop/src/renderer/cua-permission-panel.html:5,123` | `<title>ZCode Computer Use</title>` | 改 Polaris |
-| `desktop/src/main/desktopLinuxDeepLinkRegistration.ts:14,112` | `.desktop` 的 `Comment=` / 默认 `productName` | 改 Polaris |
-| `packages/web/index.html:15`、`web/src/main.tsx:99,124,418,449` | 浏览器标题 `ZCode` / `ZCode - Sign In` / `ZCode 会话分享` | 改 Polaris |
-| `shared/src/desktopMenu.ts:96-100,148-152`、`desktop/src/main/desktopCommandHandlers.ts:311,324,363,660` | 菜单与弹窗里的 `ZCode Endpoint` | 改 Polaris |
-| `services/src/runtime-tools/appCaCert.ts:64-65` | 自签 CA `commonName: "ZCode Network CA"`，会进系统证书库 | 改 Polaris |
-| `desktop/src/main/desktopFinderOpenFolderWorkflow.ts:7-12,25` | macOS 快速操作 `Open in ZCode.workflow`、bundle id `dev.zcode.app.*` | 改 Polaris |
-| `shared/src/process-names.ts:52`、`desktop/src/preload/index.ts:205` | 按标题 `"ZCode"` 判定渲染进程名 | 与窗口标题同步改 |
-| `desktop/src/host/browserControlMainBridge.ts:141` | `name: "ZCode In-app Browser"` | 改 Polaris |
-| `desktop/package.json:4,5` | `description` / `author` | 改 Polaris |
-| `packages/web/{index.html,src/main.tsx}`、`web/src/share/*`、`web/src/auth/webAuthLocale.ts` | 浏览器标题、分享落地页 wordmark 与「去 ZCode 继续 / 下载 ZCode」、登录页 brand | **已修** |
-| `packages/desktop/src/renderer/cua-permission-panel.html` | `<title>` / `.name` | **已修** |
-| `packages/shared/src/desktopMenu.ts`、`process-names.ts` | 「ZCode Endpoint」菜单标签；进程名靠窗口标题 `"ZCode"` 判定 | **已修**（进程名同时认 `ZCode`/`Polaris` 两种标题） |
+| 位置                                                                                                     | 现值                                                                                                                                                                                         | 建议                                                                                                                                                                |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `desktop/src/main/desktopRuntimeEnv.ts:63`                                                               | `runtimeApplicationName` 原为 `"ZCode"` / `"ZCode Dev"` / `"ZCode Preview"`，被 `app.setName`(`index.ts:262`)、`process.title`(`:275`)、macOS 应用菜单(`desktopApplicationMenu.ts:114`) 使用 | **已修**为 `Polaris` / `Polaris Dev` / `Polaris Preview`。注意它同时决定 Electron userData 目录名（`%APPDATA%/Polaris`），此前与官方 `%APPDATA%/ZCode` 是同一个目录 |
+| `desktop/electron-builder.config.js:459,461,462,703`                                                     | `homepage: zcode.z.ai`、`author: ZCode <dev@zcode.z.ai>`、Linux `maintainer`                                                                                                                 | 改 Polaris                                                                                                                                                          |
+| `desktop/src/renderer/cua-permission-panel.html:5,123`                                                   | `<title>ZCode Computer Use</title>`                                                                                                                                                          | 改 Polaris                                                                                                                                                          |
+| `desktop/src/main/desktopLinuxDeepLinkRegistration.ts:14,112`                                            | `.desktop` 的 `Comment=` / 默认 `productName`                                                                                                                                                | 改 Polaris                                                                                                                                                          |
+| `packages/web/index.html:15`、`web/src/main.tsx:99,124,418,449`                                          | 浏览器标题 `ZCode` / `ZCode - Sign In` / `ZCode 会话分享`                                                                                                                                    | 改 Polaris                                                                                                                                                          |
+| `shared/src/desktopMenu.ts:96-100,148-152`、`desktop/src/main/desktopCommandHandlers.ts:311,324,363,660` | 菜单与弹窗里的 `ZCode Endpoint`                                                                                                                                                              | 改 Polaris                                                                                                                                                          |
+| `services/src/runtime-tools/appCaCert.ts:64-65`                                                          | 自签 CA `commonName: "ZCode Network CA"`，会进系统证书库                                                                                                                                     | 改 Polaris                                                                                                                                                          |
+| `desktop/src/main/desktopFinderOpenFolderWorkflow.ts:7-12,25`                                            | macOS 快速操作 `Open in ZCode.workflow`、bundle id `dev.zcode.app.*`                                                                                                                         | 改 Polaris                                                                                                                                                          |
+| `shared/src/process-names.ts:52`、`desktop/src/preload/index.ts:205`                                     | 按标题 `"ZCode"` 判定渲染进程名                                                                                                                                                              | 与窗口标题同步改                                                                                                                                                    |
+| `desktop/src/host/browserControlMainBridge.ts:141`                                                       | `name: "ZCode In-app Browser"`                                                                                                                                                               | 改 Polaris                                                                                                                                                          |
+| `desktop/package.json:4,5`                                                                               | `description` / `author`                                                                                                                                                                     | 改 Polaris                                                                                                                                                          |
+| `packages/web/{index.html,src/main.tsx}`、`web/src/share/*`、`web/src/auth/webAuthLocale.ts`             | 浏览器标题、分享落地页 wordmark 与「去 ZCode 继续 / 下载 ZCode」、登录页 brand                                                                                                               | **已修**                                                                                                                                                            |
+| `packages/desktop/src/renderer/cua-permission-panel.html`                                                | `<title>` / `.name`                                                                                                                                                                          | **已修**                                                                                                                                                            |
+| `packages/shared/src/desktopMenu.ts`、`process-names.ts`                                                 | 「ZCode Endpoint」菜单标签；进程名靠窗口标题 `"ZCode"` 判定                                                                                                                                  | **已修**（进程名同时认 `ZCode`/`Polaris` 两种标题）                                                                                                                 |
 
 ### 3b. UI 文案
 
-| 位置 | 现值 |
-|---|---|
-| `ui/i18n/locales/zh-CN.ts:2901,2902`、`en-US.ts:3098,3099` | `presetTitle` = **「智谱」**、`presetDescription` = 「内置 Z.ai 与 BigModel 供应商，支持通过 OAuth 辅助完成配置。」——最扎眼的一处 |
-| `zh-CN.ts:2282` | `templateGroup.zhipu` = 「智谱」 |
-| `zh-CN.ts:2272` | `namePlaceholder` = 「如：智谱 GLM」 |
-| `zh-CN.ts:1839`、`en-US.ts:1950` | 「路径后缀 **.zcode**/v2 不可更改」——现在已是 `.polaris`，**文案错误** |
-| `web/src/auth/webAuthLocale.ts:21,36`、`web/src/share/ConversationShareLandingPage.tsx` 多处 | 登录页与分享页 wordmark / 「去 ZCode 继续」/「下载 ZCode」 |
-| `ui/src/lib/builtinSkillI18n.ts:57,59,117,118,160,162` | 技能描述里的「控制 ZCode 内置浏览器」等 |
-| `ui/src/v4/conversationProjectionStore.ts:47,69-72`、`ui/src/lib/zcodeUiError.ts:23` | 用户可见错误文案 `ZCode agent runtime 已被回收`（与 CLI 侧错误串**前缀匹配**，必须两边一起改） |
-| `ui/src/lib/codingPlanUsageSources.ts:44,216`、`CodingPlanUsageRemainingPanel.tsx:114`、`WorkspaceSidebarFooterUsageSummary.tsx:100`、`V4ComposerToolbar.tsx:569` | 侧栏/底栏/工具栏的 `Z.ai - Coding Plan` 徽标 |
-| `shared/src/plugin-display-name.ts:6` | `zcode: "ZCode"` 缩写表 |
-| `services/src/usage-stats/providers/bigmodelUsageQuotaProvider.ts:1594` | 服务层返回的展示名 `Z.ai - Coding Plan` |
+| 位置                                                                                                                                                              | 现值                                                                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `ui/i18n/locales/zh-CN.ts:2901,2902`、`en-US.ts:3098,3099`                                                                                                        | `presetTitle` = **「智谱」**、`presetDescription` = 「内置 Z.ai 与 BigModel 供应商，支持通过 OAuth 辅助完成配置。」——最扎眼的一处 |
+| `zh-CN.ts:2282`                                                                                                                                                   | `templateGroup.zhipu` = 「智谱」                                                                                                  |
+| `zh-CN.ts:2272`                                                                                                                                                   | `namePlaceholder` = 「如：智谱 GLM」                                                                                              |
+| `zh-CN.ts:1839`、`en-US.ts:1950`                                                                                                                                  | 「路径后缀 **.zcode**/v2 不可更改」——现在已是 `.polaris`，**文案错误**                                                            |
+| `web/src/auth/webAuthLocale.ts:21,36`、`web/src/share/ConversationShareLandingPage.tsx` 多处                                                                      | 登录页与分享页 wordmark / 「去 ZCode 继续」/「下载 ZCode」                                                                        |
+| `ui/src/lib/builtinSkillI18n.ts:57,59,117,118,160,162`                                                                                                            | 技能描述里的「控制 ZCode 内置浏览器」等                                                                                           |
+| `ui/src/v4/conversationProjectionStore.ts:47,69-72`、`ui/src/lib/zcodeUiError.ts:23`                                                                              | 用户可见错误文案 `ZCode agent runtime 已被回收`（与 CLI 侧错误串**前缀匹配**，必须两边一起改）                                    |
+| `ui/src/lib/codingPlanUsageSources.ts:44,216`、`CodingPlanUsageRemainingPanel.tsx:114`、`WorkspaceSidebarFooterUsageSummary.tsx:100`、`V4ComposerToolbar.tsx:569` | 侧栏/底栏/工具栏的 `Z.ai - Coding Plan` 徽标                                                                                      |
+| `shared/src/plugin-display-name.ts:6`                                                                                                                             | `zcode: "ZCode"` 缩写表                                                                                                           |
+| `services/src/usage-stats/providers/bigmodelUsageQuotaProvider.ts:1594`                                                                                           | 服务层返回的展示名 `Z.ai - Coding Plan`                                                                                           |
 
 ### 3c. CLI 文案
 
@@ -138,16 +138,16 @@
 
 这些改了就破坏既有磁盘/链接/远端契约：
 
-| 项 | 位置 | 不改的理由 |
-|---|---|---|
-| `zcode://` URL scheme | `shared/src/platform.ts:678`、`services/src/oauth/oauthService.ts:40`、`web/src/share/*`、`electron-builder.config.js:654` | 已分发的分享链接 / deep link 会失效。彻底改需要 `polaris://` + 双注册过渡 |
-| `.zcode-plugin/plugin.json` | `commandsService.ts:49`、`pluginSyncService.ts:78`、`settingsSyncService.ts:414`、`skillsService.ts:57`、`subagentsService.ts:85`、`server/src/remote/*` | 插件作者遵循的**格式契约** |
-| `.zcodeignore` | `file/workspaceFileIgnore.ts:19` + i18n | 用户仓库里已有的文件，改名即失效 |
-| `.zcode-share` / `.zcode-share-import.json` | `conversationShareService.ts:730,1390,1392,1717,2171,2176` | 分享导入格式 |
-| `.zcode-install-manifest`、`Icon=zcode`、`zcode-window-bounds` | `electron-builder.config.js:167,188,576,699-701` | 安装器元数据 |
-| 远程 `~/.zcode/server` | `server/src/remote/deployShared.ts:7`、`connect.ts:365,391`、`docker-backend.ts:87` | 已部署到 SSH 主机的 agent 路径 |
-| Electron `partition` 名（`zcode-embedded-browser` 等）、`ai.z.zcode` AppData key | `desktop/src/main/mcpUserDirectory/*` | 已存在的浏览器 profile / 用户数据键 |
-| SSH 端 `~/.zcode/tmp/prompt-attachments` | `desktop/src/host/remotePromptAttachments.ts:6-7` | 远端契约 |
+| 项                                                                               | 位置                                                                                                                                                     | 不改的理由                                                                |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `zcode://` URL scheme                                                            | `shared/src/platform.ts:678`、`services/src/oauth/oauthService.ts:40`、`web/src/share/*`、`electron-builder.config.js:654`                               | 已分发的分享链接 / deep link 会失效。彻底改需要 `polaris://` + 双注册过渡 |
+| `.zcode-plugin/plugin.json`                                                      | `commandsService.ts:49`、`pluginSyncService.ts:78`、`settingsSyncService.ts:414`、`skillsService.ts:57`、`subagentsService.ts:85`、`server/src/remote/*` | 插件作者遵循的**格式契约**                                                |
+| `.zcodeignore`                                                                   | `file/workspaceFileIgnore.ts:19` + i18n                                                                                                                  | 用户仓库里已有的文件，改名即失效                                          |
+| `.zcode-share` / `.zcode-share-import.json`                                      | `conversationShareService.ts:730,1390,1392,1717,2171,2176`                                                                                               | 分享导入格式                                                              |
+| `.zcode-install-manifest`、`Icon=zcode`、`zcode-window-bounds`                   | `electron-builder.config.js:167,188,576,699-701`                                                                                                         | 安装器元数据                                                              |
+| 远程 `~/.zcode/server`                                                           | `server/src/remote/deployShared.ts:7`、`connect.ts:365,391`、`docker-backend.ts:87`                                                                      | 已部署到 SSH 主机的 agent 路径                                            |
+| Electron `partition` 名（`zcode-embedded-browser` 等）、`ai.z.zcode` AppData key | `desktop/src/main/mcpUserDirectory/*`                                                                                                                    | 已存在的浏览器 profile / 用户数据键                                       |
+| SSH 端 `~/.zcode/tmp/prompt-attachments`                                         | `desktop/src/host/remotePromptAttachments.ts:6-7`                                                                                                        | 远端契约                                                                  |
 
 ---
 
@@ -192,11 +192,11 @@
 
 ## 6. 决策记录（本轮）
 
-| 项 | 决定 |
-|---|---|
-| 左侧「内置供应商」栏位（`PRESET_PROVIDER_SPECS` 被清空） | **等 owner 提供中转站 baseUrl 再做**：届时把智谱系 4 条模板改写成 Polaris 自有模板（方案 B）。在此之前维持现状——内置模板走「添加供应商 → 选模板」 |
-| 智谱系内置模板（2026-09-26 更新） | 已按**「砍官方计费套餐、留自带 key 通道」**执行：删 `zai-api` / `bigmodel-api` 与 8 条 `account:*` provider；保留 `zai-standard-api` / `bigmodel-standard-api`。详见 §7 |
-| 阿里云 ARMS RUM SDK（4.8MB） | **已移除** |
+| 项                                                       | 决定                                                                                                                                                                    |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 左侧「内置供应商」栏位（`PRESET_PROVIDER_SPECS` 被清空） | **等 owner 提供中转站 baseUrl 再做**：届时把智谱系 4 条模板改写成 Polaris 自有模板（方案 B）。在此之前维持现状——内置模板走「添加供应商 → 选模板」                       |
+| 智谱系内置模板（2026-09-26 更新）                        | 已按**「砍官方计费套餐、留自带 key 通道」**执行：删 `zai-api` / `bigmodel-api` 与 8 条 `account:*` provider；保留 `zai-standard-api` / `bigmodel-standard-api`。详见 §7 |
+| 阿里云 ARMS RUM SDK（4.8MB）                             | **已移除**                                                                                                                                                              |
 
 ---
 
@@ -207,26 +207,26 @@
 
 ### 7a. 内置 provider 配置（`config/provider/zcode-builtin.json`，revision 30 → 31）
 
-| 处置 | 内容 |
-|---|---|
-| **删除** | 2 条官方计费模板：`zai-api`（Z.ai Coding Plan）、`bigmodel-api`（BigModel Coding Plan）。二者 access type 为 `zhipu-coding-plan-api-key`，绑定官方账号与计费 |
-| **删除** | 8 条官方账号 provider，`providerRules` 清空：`account:{zai,bigmodel}-{individual,team}-coding-plan`、`account:{zai,bigmodel}-start-plan`、`account:{zai,bigmodel}-offpeak-idle-plan` |
-| **删除** | 上述 6 条对应 `templateModelRules` |
+| 处置     | 内容                                                                                                                                                                                                              |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **删除** | 2 条官方计费模板：`zai-api`（Z.ai Coding Plan）、`bigmodel-api`（BigModel Coding Plan）。二者 access type 为 `zhipu-coding-plan-api-key`，绑定官方账号与计费                                                      |
+| **删除** | 8 条官方账号 provider，`providerRules` 清空：`account:{zai,bigmodel}-{individual,team}-coding-plan`、`account:{zai,bigmodel}-start-plan`、`account:{zai,bigmodel}-offpeak-idle-plan`                              |
+| **删除** | 上述 6 条对应 `templateModelRules`                                                                                                                                                                                |
 | **保留** | 剩余 18 条模板：16 条第三方（moonshot / minimax / deepseek / qwen×2 / xiaomi / openai / anthropic / xai / openrouter / opencode×6）+ 2 条**自带 API Key 的标准通道** `zai-standard-api` / `bigmodel-standard-api` |
-| **保留** | `access.type` 枚举与 `account:*` 常量全部留在代码里（`provider/src/config/*`、`shared/src/model-provider-types.ts`、`provider-selection-v2` 迁移别名、`official-glm-selection-v3` SQL）——接口契约不动 |
+| **保留** | `access.type` 枚举与 `account:*` 常量全部留在代码里（`provider/src/config/*`、`shared/src/model-provider-types.ts`、`provider-selection-v2` 迁移别名、`official-glm-selection-v3` SQL）——接口契约不动             |
 
 红线遵守：第三方 API Key 通道（含 GLM 自带 key）一条未动；`model-provider/` 抽象层文件未改。
 
 ### 7b. 官方出网路径收口
 
-| 位置 | 处置 |
-|---|---|
-| `apps/zcode-cli/packages/adapters/src/auth/cli-oauth.ts` | **关闭**。删除硬编码 `https://zcode.z.ai/api/v1` 与 `/oauth/cli/*` 全部请求实现；工厂被调用即抛 `CliOAuthError`，类型/错误类保留 |
-| `apps/zcode-cli/packages/adapters/src/auth/coding-plan-api-key.ts` | **关闭**。删除 `ZAI_API_HOST = "https://api.z.ai"` 与 `/api/biz/...` 实现；工厂即抛 `CodingPlanApiKeyError` |
-| `packages/services/src/model-provider/legacyZCodeConfigProviderReader.ts` | 删除生产分支兜底。旧 config 里保存的官方域名一律改指 `resolveBigModelApiOrigin()`；原常量降级为**匹配键**（不再作为请求地址） |
-| `packages/desktop/src/main/desktopMainIpcRemote.ts`、`desktopWindowChrome.ts` | webview 白名单里的 `"https://api.z.ai"` 已删，只放行自有网关的 PayPal 中转地址 |
-| `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts` | `cdn-zcode.z.ai` 图标全部移除（8 处），插件 author 由 `Z.ai` 改为 `Polaris`。图标改由 `ui/src/lib/pluginIconSource.ts` 的打包素材按插件 id 命中，未命中时降级为中性占位图标 |
-| `apps/zcode-cli/packages/adapters/src/model/official-coding-plan-gateway.ts` | **保留**。官方 baseUrl 只作路由匹配键，出网地址在 `:59-63` 改写为自有 origin |
+| 位置                                                                          | 处置                                                                                                                                                                        |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/zcode-cli/packages/adapters/src/auth/cli-oauth.ts`                      | **关闭**。删除硬编码 `https://zcode.z.ai/api/v1` 与 `/oauth/cli/*` 全部请求实现；工厂被调用即抛 `CliOAuthError`，类型/错误类保留                                            |
+| `apps/zcode-cli/packages/adapters/src/auth/coding-plan-api-key.ts`            | **关闭**。删除 `ZAI_API_HOST = "https://api.z.ai"` 与 `/api/biz/...` 实现；工厂即抛 `CodingPlanApiKeyError`                                                                 |
+| `packages/services/src/model-provider/legacyZCodeConfigProviderReader.ts`     | 删除生产分支兜底。旧 config 里保存的官方域名一律改指 `resolveBigModelApiOrigin()`；原常量降级为**匹配键**（不再作为请求地址）                                               |
+| `packages/desktop/src/main/desktopMainIpcRemote.ts`、`desktopWindowChrome.ts` | webview 白名单里的 `"https://api.z.ai"` 已删，只放行自有网关的 PayPal 中转地址                                                                                              |
+| `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts`    | `cdn-zcode.z.ai` 图标全部移除（8 处），插件 author 由 `Z.ai` 改为 `Polaris`。图标改由 `ui/src/lib/pluginIconSource.ts` 的打包素材按插件 id 命中，未命中时降级为中性占位图标 |
+| `apps/zcode-cli/packages/adapters/src/model/official-coding-plan-gateway.ts`  | **保留**。官方 baseUrl 只作路由匹配键，出网地址在 `:59-63` 改写为自有 origin                                                                                                |
 
 ### 7c. 文案
 
@@ -238,13 +238,13 @@
 
 用户在运行态看到「内置两个：BigModel 与 Z.ai」后决定**全砍**（推翻 7a 的「留自带 key 通道」）：
 
-| 处置 | 内容 |
-|---|---|
-| **删除** | 最后两条智谱系模板 `zai-standard-api` / `bigmodel-standard-api` + 48 条模板模型规则；内置模板只剩 16 条第三方（revision 32） |
-| **删除** | `usage-stats/providers/` 全部 6 个文件（含 1606 行的 `BigModelUsageQuotaProvider`）、`model-provider/zaiStartPlanBilling.ts`、dead code `bigmodelStartPlanZcodeJwt.ts` |
+| 处置                     | 内容                                                                                                                                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **删除**                 | 最后两条智谱系模板 `zai-standard-api` / `bigmodel-standard-api` + 48 条模板模型规则；内置模板只剩 16 条第三方（revision 32）                                                                                                    |
+| **删除**                 | `usage-stats/providers/` 全部 6 个文件（含 1606 行的 `BigModelUsageQuotaProvider`）、`model-provider/zaiStartPlanBilling.ts`、dead code `bigmodelStartPlanZcodeJwt.ts`                                                          |
 | **改写为不使用官方链路** | `usageStatsService`：只保留 `getAppUsageSnapshot`（读本机 agent 数据库）；Coding Plan 四个方法抛 `coding_plan_removed`，`getEntitlementSnapshot` 返回 `not_configured` 空态（避免常驻请求报错），接口 `IUsageStatsService` 不变 |
-| **连带清理** | desktop host 侧已无人使用的 `AccountRequestAuthService` / `AccountProviderCredentialService` / `OAuthCredentialRepo` 装配 |
-| **保留** | `modelRules` 里以 `api.z.ai` / `open.bigmodel.cn` 为 `baseUrlMatch` 的条目 —— 它们是**静态匹配键**而非请求，且用户自建 provider 指向同一网关时仍需它们 |
+| **连带清理**             | desktop host 侧已无人使用的 `AccountRequestAuthService` / `AccountProviderCredentialService` / `OAuthCredentialRepo` 装配                                                                                                       |
+| **保留**                 | `modelRules` 里以 `api.z.ai` / `open.bigmodel.cn` 为 `baseUrlMatch` 的条目 —— 它们是**静态匹配键**而非请求，且用户自建 provider 指向同一网关时仍需它们                                                                          |
 
 **仍然存在（下一刀目标）**：`oauth/`（1841 行）与 `model-provider/accountProvider*`（约 1500 行）仍由 `node.ts` 装配，
 `oauthService` 被 10 处 UI 引用（`useCredentials` / `useTokenRefresh` /
@@ -264,8 +264,8 @@
 
 ### 8a. 客户端场景（首页推荐词 / Automations 模板目录）
 
-| 位置 | 处置 |
-|---|---|
+| 位置                                                         | 处置                                                                                                                                                                                               |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/services/src/client-scenes/clientScenesService.ts` | 由「请求官方 `/api/v1/client/scenes`」改为**空实现**：`list()` 直接返回 `{ code: 0, msg: "", data: [] }`，不发网络、不抛错。接口 `IClientScenesService` 与工厂签名（依赖对象 `apiClient`）保持不变 |
 
 效果：启动不再出现 `[v4-suggested-prompts] Client scenes 请求失败，推荐列表保持为空`；
@@ -273,17 +273,17 @@
 
 ### 8b. 品牌残留
 
-| 位置 | 原 | 改为 |
-|---|---|---|
-| `packages/provider-node/src/zcode-builtin-download.ts` | 错误串 `ZCode Built-in client-config: invalid response` | `Polaris Built-in …`（会经 `provider-settings.refresh` 冒到 UI 日志） |
-| `apps/zcode-cli/packages/i18n/src/locales/{zh-CN,en-US}.ts` | CLI 启动横幅 `正在启动 ZCode…` / `Starting ZCode...` | `正在启动 Polaris…` / `Starting Polaris...` |
+| 位置                                                        | 原                                                      | 改为                                                                  |
+| ----------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------- |
+| `packages/provider-node/src/zcode-builtin-download.ts`      | 错误串 `ZCode Built-in client-config: invalid response` | `Polaris Built-in …`（会经 `provider-settings.refresh` 冒到 UI 日志） |
+| `apps/zcode-cli/packages/i18n/src/locales/{zh-CN,en-US}.ts` | CLI 启动横幅 `正在启动 ZCode…` / `Starting ZCode...`    | `正在启动 Polaris…` / `Starting Polaris...`                           |
 
 ### 8c. 死代码 / 无用日志
 
-| 位置 | 处置 |
-|---|---|
-| `packages/desktop/src/main/desktopHostProcess.ts` | 删除 `[spawnHostProcess] BIGMODEL_OAUTH_APP_SECRET source: …` 日志行——该 secret 在仓库中已无任何消费点，仅此一行引用，且不该在日志里点名 secret |
-| `packages/shared/src/model-provider-family.ts` | 删除死代码 `resolveModelProviderFamilyIdByBaseURL` 与 `ModelProviderFamilySpec.rootDomain`（`rootDomain: "z.ai" / "bigmodel.cn"`）——审计确认零调用方 |
+| 位置                                              | 处置                                                                                                                                                 |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/desktop/src/main/desktopHostProcess.ts` | 删除 `[spawnHostProcess] BIGMODEL_OAUTH_APP_SECRET source: …` 日志行——该 secret 在仓库中已无任何消费点，仅此一行引用，且不该在日志里点名 secret      |
+| `packages/shared/src/model-provider-family.ts`    | 删除死代码 `resolveModelProviderFamilyIdByBaseURL` 与 `ModelProviderFamilySpec.rootDomain`（`rootDomain: "z.ai" / "bigmodel.cn"`）——审计确认零调用方 |
 
 ### 8d. 仍然存在（下一刀目标，按优先级）
 
@@ -315,13 +315,13 @@ CLI `@zcode/i18n` 单独 `tsc --noEmit` ✅ 通过（`turbo run typecheck` 里 i
 
 ### 9a. 处置
 
-| 文件 | 处置 |
-|---|---|
+| 文件                                          | 处置                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/services/src/oauth/oauthService.ts` | 1223 行 → 空壳实现：接口 `IOAuthService` 与工厂 `createOAuthService(credentialService, deps)` 签名不变；`getProviders/getActiveProvider/restoreCachedSession/restoreSession/pollPendingOAuth/handleCallback` 返回空，`restoreCachedSessionState` 恒返回 `signed-out`，`startOAuth/startOAuthWithPolling` 抛可读错误，`logout/logoutAll/refreshToken/cancelPending` 无操作；保留非接口方法 `logoutIfCurrentCredentialRequest`（恒返回 false，不触发 JWT 失效广播） |
-| `oauth/oauthProfileSchema.ts`（148 行） | **删除**（仅被 oauthService 引用） |
-| `oauth/callbackAttribution.ts`（22 行） | **删除**（仅被 oauthService 引用；desktop 侧另有同名局部函数，不受影响） |
-| `oauth/providerAdapter.ts`（47 行） | **删除**（仅为已移除适配器的类型契约，无引用方） |
-| `oauth/runtimeConfig.ts`（33 行） | **删除**（原为官方 provider 运行时配置构造，无引用方） |
+| `oauth/oauthProfileSchema.ts`（148 行）       | **删除**（仅被 oauthService 引用）                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `oauth/callbackAttribution.ts`（22 行）       | **删除**（仅被 oauthService 引用；desktop 侧另有同名局部函数，不受影响）                                                                                                                                                                                                                                                                                                                                                                                          |
+| `oauth/providerAdapter.ts`（47 行）           | **删除**（仅为已移除适配器的类型契约，无引用方）                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `oauth/runtimeConfig.ts`（33 行）             | **删除**（原为官方 provider 运行时配置构造，无引用方）                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 **保留（接自有账号时的 seam）**：`oauth/oauth.ts`（`IOAuthService` 接口）、
 `oauth/repo/oauthCredentialRepo.ts`（通用凭据仓库，node.ts 仍在用于 onboarding userId / 账号身份）、
@@ -338,14 +338,14 @@ CLI `@zcode/i18n` 单独 `tsc --noEmit` ✅ 通过（`turbo run typecheck` 里 i
 
 > 处理原则：**空壳化插在红线链路里的服务，不动红线本身的构造签名。**
 
-| 位置 | 处置 |
-|---|---|
-| `model-provider/accountRequestAuthService.ts` | 改为**空壳**：`resolveAccessCurrent→null`、`resolveCurrent/assertCurrent→throw AccountRequestCredentialUnavailableError`。类型（含 `AccountRequestAuthResolver` / 错误类）与导出名全部保留，工厂改为无参 |
-| `model-provider/accountProviderConnectionResolver.ts` | 344 行 → 空 overlay：`createAccountProviderConfigSource` 用 `createAccountProviderConfigResolver(async () => [])` 返回**零账号连接**，签名（`configSource`）不变。**保留它的原因**：Provider Runtime / Agent / Provider Provisioning 依赖这个第三层 Source，直接摘掉 `accountSource` 会改 Provider 抽象层构造签名（红线） |
-| `oauth/oauthProviderLogout.ts` | 改为空壳：不再依赖 `accountProviderCredentialStore`，只保留 `refreshAccountProviders` 扩展点 |
-| `node.ts` | 删除整条账号链装配（`accountProviderCredentialStore` / `AccountProviderApiClient` / `AccountProviderApiKeyResolver` / `accountProviderCredentialService` / `legacyTeamOrganizationResolver` / `readAccountProviderSettings` / `loadAccountIdentity` / `bindAccountProviderInvalidation` / `createCodingPlanFamilyAvailabilityResolver`），约 -149 行 |
-| `desktop/remoteWorkspaceServiceCollection.ts` | 去掉 `createAccountProviderCredentialStore` 装配 |
-| **删除** | `accountProviderRequestAuthService`、`accountProviderApiClient`、`accountProviderApiKeyResolver`、`accountProviderApiTypes`、`accountProviderCredentialService`、`accountProviderCredentialStore`、`accountProviderCredentialKey`、`accountProviderTeamPlanRequestKey`、`accountProviderInvalidation`、`codingPlanProviderAvailability`、`legacyTeamOrganizationResolver`（11 个文件） |
+| 位置                                                  | 处置                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model-provider/accountRequestAuthService.ts`         | 改为**空壳**：`resolveAccessCurrent→null`、`resolveCurrent/assertCurrent→throw AccountRequestCredentialUnavailableError`。类型（含 `AccountRequestAuthResolver` / 错误类）与导出名全部保留，工厂改为无参                                                                                                                                                                               |
+| `model-provider/accountProviderConnectionResolver.ts` | 344 行 → 空 overlay：`createAccountProviderConfigSource` 用 `createAccountProviderConfigResolver(async () => [])` 返回**零账号连接**，签名（`configSource`）不变。**保留它的原因**：Provider Runtime / Agent / Provider Provisioning 依赖这个第三层 Source，直接摘掉 `accountSource` 会改 Provider 抽象层构造签名（红线）                                                              |
+| `oauth/oauthProviderLogout.ts`                        | 改为空壳：不再依赖 `accountProviderCredentialStore`，只保留 `refreshAccountProviders` 扩展点                                                                                                                                                                                                                                                                                           |
+| `node.ts`                                             | 删除整条账号链装配（`accountProviderCredentialStore` / `AccountProviderApiClient` / `AccountProviderApiKeyResolver` / `accountProviderCredentialService` / `legacyTeamOrganizationResolver` / `readAccountProviderSettings` / `loadAccountIdentity` / `bindAccountProviderInvalidation` / `createCodingPlanFamilyAvailabilityResolver`），约 -149 行                                   |
+| `desktop/remoteWorkspaceServiceCollection.ts`         | 去掉 `createAccountProviderCredentialStore` 装配                                                                                                                                                                                                                                                                                                                                       |
+| **删除**                                              | `accountProviderRequestAuthService`、`accountProviderApiClient`、`accountProviderApiKeyResolver`、`accountProviderApiTypes`、`accountProviderCredentialService`、`accountProviderCredentialStore`、`accountProviderCredentialKey`、`accountProviderTeamPlanRequestKey`、`accountProviderInvalidation`、`codingPlanProviderAvailability`、`legacyTeamOrganizationResolver`（11 个文件） |
 
 **行为等价性**：移除前因无任何 `zhipu-account` provider，`resolveAccessCurrent` 已恒定返回 null、
 `resolveCurrent/assertCurrent` 已恒定抛 `AccountRequestCredentialUnavailableError`；空壳保持同一行为。
@@ -359,10 +359,10 @@ CLI `@zcode/i18n` 单独 `tsc --noEmit` ✅ 通过（`turbo run typecheck` 里 i
 
 ## 10. 本轮：CLI 官方登录编排空壳化（2026-09-26 第六刀）
 
-| 位置 | 处置 |
-|---|---|
+| 位置                                                  | 处置                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/zcode-cli/packages/bootstrap/src/auth-login.ts` | 410 行 → 空壳（约 36 行）：保留全部导出类型与函数签名（`loginZCodeCli` / `loginBigmodelCodingPlan` / `configureCodingPlanApiKey` / `logoutZCodeCli` / `hasConfiguredStandaloneCodingPlan` / `ZCodeCliLoginError`），登录类入口一律抛可读 `ZCodeCliLoginError`；`logoutZCodeCli` 仍清共享凭据文件（纯本地操作） |
-| `auth-login-polling.ts` / `auth-login-abort.ts` | **删除**（仅被 auth-login 使用） |
+| `auth-login-polling.ts` / `auth-login-abort.ts`       | **删除**（仅被 auth-login 使用）                                                                                                                                                                                                                                                                               |
 
 CLI 命令/TUI 接线（`login-command.ts` / `tui-auth.ts` / `cli-types.ts` / `command-center/*`）未改，只把错误在用户面前变成可读提示。
 
@@ -380,13 +380,13 @@ CLI 命令/TUI 接线（`login-command.ts` / `tui-auth.ts` / `cli-types.ts` / `c
 OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / JWT 失效广播 / 登录后 family 校正
 全部**不可达**，一并删除：
 
-| 位置 | 处置 |
-|---|---|
-| `ui/root/useRootOAuthEffects.ts` | 411 行 → 最小实现（约 80 行）：只保留「启动恢复登录态（恒未登录）」与「通知主进程渲染就绪」，对外 props 签名不变，`Root.tsx` 零改动 |
-| `ui/root/oauthCachedSessionRestore.ts` | **删除**（只被该 hook 使用） |
-| `ui/root/oauthLoginAttemptGuard.ts` | **删除**（只被该 hook 使用） |
-| `ui/root/oauthProviderFamilySelectionRefresh.ts` | **删除**（只被该 hook 使用） |
-| `ui/root/oauthTeamPricing.ts` | **删除**（只被上者使用） |
+| 位置                                             | 处置                                                                                                                                |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `ui/root/useRootOAuthEffects.ts`                 | 411 行 → 最小实现（约 80 行）：只保留「启动恢复登录态（恒未登录）」与「通知主进程渲染就绪」，对外 props 签名不变，`Root.tsx` 零改动 |
+| `ui/root/oauthCachedSessionRestore.ts`           | **删除**（只被该 hook 使用）                                                                                                        |
+| `ui/root/oauthLoginAttemptGuard.ts`              | **删除**（只被该 hook 使用）                                                                                                        |
+| `ui/root/oauthProviderFamilySelectionRefresh.ts` | **删除**（只被该 hook 使用）                                                                                                        |
+| `ui/root/oauthTeamPricing.ts`                    | **删除**（只被上者使用）                                                                                                            |
 
 **保留**：`zcodeJwtInvalidRestartMarker.ts`（`Root.tsx` 仍 `consume`）、`providerFamilyDomainSettings.ts`
 （`useRootWorkspaceActions` / `ModelProviderSection` 仍用）。
@@ -402,12 +402,14 @@ OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / J
 分析结论（建议按「两层」处理）：
 
 **A. 必须保留（自建套餐的 seam）**
+
 - 服务接口：`ICodingPlanSubscriptionService`、`IUsageStatsService`（已完成空壳化，接口不变）。
 - 与厂商无关的用量展示：`CodingPlanUsagePanel` + 用量图表、`chat-input-toolbar/*`（上下文/额度显示）、
   `WorkspaceSidebarFooterUsageSummary`、`useUsageStats` / `usePlanIdentitySnapshot`。
 - 购买弹窗的**壳**：`CodingPlanUpgradeDialog(Provider)` 的上下文/开关机制。
 
 **B. 建议清除（官方专属，自建套餐时必重写）**
+
 - 企业/团队定价：`oauthTeamPricing`（已删）、`enterpriseCodingPlanProducts`、
   `useEnterpriseCodingPlanProducts`、`codingPlanEnterpriseTiers`。
 - 官方免费档：`StartPlanBalanceCard` / `StartPlanQuotaStatusCard` / `useStartPlanPreview`。
@@ -430,12 +432,12 @@ OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / J
 
 ### 13.1 打包元数据品牌残留（纯标识，零 agent 能力）
 
-| 位置 | 处置 |
-|---|---|
-| `packages/desktop/electron-builder.config.js` `extraMetadata.homepage` | `https://zcode.z.ai` → `https://polaris.bitlesu.com` |
-| 同处 `author.name` / `email` | `ZCode` / `dev@zcode.z.ai` → `Polaris` / `dev@polaris.bitlesu.com` |
-| Linux `maintainer` | `ZCode <dev@zcode.z.ai>` → `Polaris <dev@polaris.bitlesu.com>` |
-| `resolveAppAsarPath` / `resolvePackagedResourcesDir` 的 `?? "ZCode"` 兜底名 | → `?? "Polaris"` |
+| 位置                                                                        | 处置                                                               |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `packages/desktop/electron-builder.config.js` `extraMetadata.homepage`      | `https://zcode.z.ai` → `https://polaris.bitlesu.com`               |
+| 同处 `author.name` / `email`                                                | `ZCode` / `dev@zcode.z.ai` → `Polaris` / `dev@polaris.bitlesu.com` |
+| Linux `maintainer`                                                          | `ZCode <dev@zcode.z.ai>` → `Polaris <dev@polaris.bitlesu.com>`     |
+| `resolveAppAsarPath` / `resolvePackagedResourcesDir` 的 `?? "ZCode"` 兜底名 | → `?? "Polaris"`                                                   |
 
 注：`appId` 早已是 `com.bitlesu.polaris`（见 `scripts/desktop-product-identity.mjs`）；
 邮箱沿用自有域名，如后续有正式对外邮箱可再替换。
@@ -447,12 +449,12 @@ OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / J
 经 ZCode 平台网关发送（做官方套餐权益校验）。官方 provider 已全部移除，这两个端点不再被任何模板引用，
 该改写层成为死代码。
 
-| 位置 | 处置 |
-|---|---|
-| `model/official-coding-plan-gateway.ts` | **删除**（含 `OFFICIAL_CODING_PLAN_GATEWAY_ROUTES`） |
-| `model/adapters/index.ts` | 移除对应 `export *` |
-| `model/model-execution.ts` | 移除 import 与 `createProviderTransportFetch` 包装；模型出口直接走
-  `createProviderProxyFetch`（非官方 provider 行为 100% 不变） |
+| 位置                                                         | 处置                                                               |
+| ------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `model/official-coding-plan-gateway.ts`                      | **删除**（含 `OFFICIAL_CODING_PLAN_GATEWAY_ROUTES`）               |
+| `model/adapters/index.ts`                                    | 移除对应 `export *`                                                |
+| `model/model-execution.ts`                                   | 移除 import 与 `createProviderTransportFetch` 包装；模型出口直接走 |
+| `createProviderProxyFetch`（非官方 provider 行为 100% 不变） |
 
 **为什么安全**：`createOfficialCodingPlanGatewayFetch` 对非官方端点一直是直通；删除后第三方/自建
 provider 的请求路径与请求头完全一致，不触碰 agent 能力。
@@ -466,14 +468,15 @@ provider 的请求路径与请求头完全一致，不触碰 agent 能力。
 `/login` 原先构建 4 个官方登录选项（Z.AI / BigModel 各一套 OAuth + API Key），但这些入口背后的
 登录编排早已空壳化（调用恒抛可读错误），UI 只是给用户展示一串必然失败的官方选项，属于官方残留。
 
-| 位置 | 处置 |
-|---|---|
-| `command-center/login-flow.ts` | 159 → 13 行：删除 `buildLoginSelection` / `formatLoginResult` /
-  `formatProviderSetupResult` / `emitLoginAuthorizeMessage` / `parseApiKeyLoginArgs`，只保留 `loginSetupResponse` |
-| `command-center/create.ts` | `/login` 分支简化为返回一条稳定提示（不再构建选项 UI）；导入收窄；`/logout` 文案去官方化 |
-| `command-center/types.ts` | 删除 `CommandCenterLoginResult` / `CommandCenterLoginAuthorizeData` /
-  `CommandCenterLoginOptions` / `CommandCenterBigmodelLoginOptions(Result)` / `CommandCenterApiKeyOptions(Result)`
-  及 `CommandCenterDeps` 上对应的 `login` / `loginBigmodel` / `configureApiKey` 字段 |
+| 位置                                                                                                            | 处置                                                                                     |
+| --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `command-center/login-flow.ts`                                                                                  | 159 → 13 行：删除 `buildLoginSelection` / `formatLoginResult` /                          |
+| `formatProviderSetupResult` / `emitLoginAuthorizeMessage` / `parseApiKeyLoginArgs`，只保留 `loginSetupResponse` |
+| `command-center/create.ts`                                                                                      | `/login` 分支简化为返回一条稳定提示（不再构建选项 UI）；导入收窄；`/logout` 文案去官方化 |
+| `command-center/types.ts`                                                                                       | 删除 `CommandCenterLoginResult` / `CommandCenterLoginAuthorizeData` /                    |
+
+`CommandCenterLoginOptions` / `CommandCenterBigmodelLoginOptions(Result)` / `CommandCenterApiKeyOptions(Result)`
+及 `CommandCenterDeps` 上对应的 `login` / `loginBigmodel` / `configureApiKey` 字段 |
 | `tui-auth.ts` | 删除 `loginForTui` / `loginBigmodelForTui` / `configureApiKeyForTui`，仅保留 `logoutForTui`（纯本地凭据清理） |
 | `tui-prompt-handler.ts` | 移除三个登录 deps 接线 |
 | `login-command.ts` | `zcode logout` 文案去官方化 |
@@ -492,9 +495,9 @@ provider 的请求路径与请求头完全一致，不触碰 agent 能力。
 
 ## 15. 零散用户可见品牌文案
 
-| 位置 | 处置 |
-|---|---|
-| `desktop/src/main/index.ts` 退出确认弹窗 | `确认退出 Z Code?` / `Quit Z Code?` → `Polaris` |
+| 位置                                           | 处置                                                |
+| ---------------------------------------------- | --------------------------------------------------- |
+| `desktop/src/main/index.ts` 退出确认弹窗       | `确认退出 Z Code?` / `Quit Z Code?` → `Polaris`     |
 | `web/src/auth/webAuthLocale.ts` Web 登录页文案 | `使用……Z.AI 账号身份` / `用 Z.AI 登录` → 去 Z.AI 化 |
 
 均为纯展示文案，不涉及任何能力。验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors。
@@ -561,11 +564,11 @@ bundle 文件没变，跑的还是旧代码。纯 UI（渲染层）改动走 Vit
 
 **一个插件都没砍。** 数字拆解（两边都是磁盘实证）：
 
-| 组成 | 上游装机（`~/.zcode/cli/plugins`） | 本 fork（`~/.polaris/cli/plugins`） |
-|---|---|---|
-| 远端目录（Z.ai CDN，26 条） | 26 | 26 |
-| 本地 seed（内置插件包） | 14 | **2** |
-| 合计 | **40** | **28** |
+| 组成                        | 上游装机（`~/.zcode/cli/plugins`） | 本 fork（`~/.polaris/cli/plugins`） |
+| --------------------------- | ---------------------------------- | ----------------------------------- |
+| 远端目录（Z.ai CDN，26 条） | 26                                 | 26                                  |
+| 本地 seed（内置插件包）     | 14                                 | **2**                               |
+| 合计                        | **40**                             | **28**                              |
 
 为什么本地 seed 少 12 个：`official-plugin-definitions.ts` 里每个定义都有 `rootCandidates`，
 只有能在磁盘上找到 `.zcode-plugin/plugin.json` 的插件才会进入目录。本仓库里：
@@ -626,13 +629,13 @@ INSTALL 相对路径条目                            4053ms  （sparse checkout
 
 ### 17b. 本轮改动文件清单
 
-| 文件 | 一句话 |
-|---|---|
-| `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts` | 只读清单（删掉整树复制路径）；github 免 clone 取清单；安装按需 sparse 物化；旧整树自动回收 |
-| `apps/zcode-cli/packages/adapters/test/marketplaceStagingWeight.test.ts` | 新增 3 条守护测试（只落清单 / 按需物化 / 回收旧树） |
-| `packages/ui/src/components/ui/dialog.tsx` | 组件层修形（§17a.4） |
-| `packages/ui/src/settings/AddMarketplaceSourceDialog.tsx` | 推荐源区块加 `min-w-0` / `overflow-x-hidden` / `shrink-0` 第二道保险 |
-| `POLARIS-PLUGIN-MARKETPLACE.md` | §4.4 改写为最终物化语义 + 实测数据；新增 §4.5.1 对话框溢出复盘；§10.1 变更记录 |
+| 文件                                                                     | 一句话                                                                                     |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts`            | 只读清单（删掉整树复制路径）；github 免 clone 取清单；安装按需 sparse 物化；旧整树自动回收 |
+| `apps/zcode-cli/packages/adapters/test/marketplaceStagingWeight.test.ts` | 新增 3 条守护测试（只落清单 / 按需物化 / 回收旧树）                                        |
+| `packages/ui/src/components/ui/dialog.tsx`                               | 组件层修形（§17a.4）                                                                       |
+| `packages/ui/src/settings/AddMarketplaceSourceDialog.tsx`                | 推荐源区块加 `min-w-0` / `overflow-x-hidden` / `shrink-0` 第二道保险                       |
+| `POLARIS-PLUGIN-MARKETPLACE.md`                                          | §4.4 改写为最终物化语义 + 实测数据；新增 §4.5.1 对话框溢出复盘；§10.1 变更记录             |
 
 ### 17c. 我引入过、并已修掉的问题（不藏）
 
@@ -657,11 +660,11 @@ INSTALL 相对路径条目                            4053ms  （sparse checkout
 
 ### 17e. 存储与残留
 
-| 目录 | 大小 | 归属 | 处置 |
-|---|---|---|---|
-| `~/.polaris/cli/plugins` | 2.7M | **本 fork 在用** | 已无整树，`marketplaces/*` 合计 384K |
-| `~/.zcode` | 11G | 上游 ZCode 的旧数据根（本 fork 不做迁移，`DATA_ROOT_DIR_NAME = ".polaris"`） | 未动；要清理用 `rm -rf ~/.zcode`（会一并删掉旧版已装插件与工作区，不可逆，故留给你决定） |
-| `~/.openclaude` | 7.5M | 6 月的无关残留 | 未动 |
+| 目录                     | 大小 | 归属                                                                         | 处置                                                                                     |
+| ------------------------ | ---- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `~/.polaris/cli/plugins` | 2.7M | **本 fork 在用**                                                             | 已无整树，`marketplaces/*` 合计 384K                                                     |
+| `~/.zcode`               | 11G  | 上游 ZCode 的旧数据根（本 fork 不做迁移，`DATA_ROOT_DIR_NAME = ".polaris"`） | 未动；要清理用 `rm -rf ~/.zcode`（会一并删掉旧版已装插件与工作区，不可逆，故留给你决定） |
+| `~/.openclaude`          | 7.5M | 6 月的无关残留                                                               | 未动                                                                                     |
 
 ### 17f. 待你拍板的开放项
 
@@ -719,12 +722,12 @@ git log --oneline -S "电脑控制回退为默认关闭"                 # → 8
 
 方法：把基准以来的删除物分四类，逐个回查仓内是否仍有引用。
 
-| 检查项 | 结果 |
-|---|---|
-| 被删的 53 个文案键是否仍被代码引用 | **0 个悬空**（32 个仍被引用，但它们的键在 zh/en 两侧都还在，删掉的只是同一个键的重复行） |
-| 被删的 66 个文件的模块名是否仍被 import | **0 个真实悬空**（命中项全是**注释**里的历史说明，如 `oauthUnauthorizedRequest.ts:23`、`officialMcpCredentials.ts:39`）；`coding-plan-subscription/` 目录只删了 provider 实现，被 import 的 `codingPlanSubscription*.js` 都还在 |
-| 被删的 8 个支付图标是否仍被引用 | **0 个引用**（纯资源，删对了） |
-| 仍指向官方域名的出网路径 | 只剩三类命中，**均为有意保留**：① 旧配置里官方域名→自有网关的**匹配键**（`legacyZCodeConfigProviderReader.ts:66`，永不直接请求）；② 历史注释；③ 插件市场镜像（本线程新增，可用环境变量关掉）。`zcodeEndpoint.ts` 四个默认 origin 均已指向 `polaris.bitlesu.com` |
+| 检查项                                  | 结果                                                                                                                                                                                                                                                            |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 被删的 53 个文案键是否仍被代码引用      | **0 个悬空**（32 个仍被引用，但它们的键在 zh/en 两侧都还在，删掉的只是同一个键的重复行）                                                                                                                                                                        |
+| 被删的 66 个文件的模块名是否仍被 import | **0 个真实悬空**（命中项全是**注释**里的历史说明，如 `oauthUnauthorizedRequest.ts:23`、`officialMcpCredentials.ts:39`）；`coding-plan-subscription/` 目录只删了 provider 实现，被 import 的 `codingPlanSubscription*.js` 都还在                                 |
+| 被删的 8 个支付图标是否仍被引用         | **0 个引用**（纯资源，删对了）                                                                                                                                                                                                                                  |
+| 仍指向官方域名的出网路径                | 只剩三类命中，**均为有意保留**：① 旧配置里官方域名→自有网关的**匹配键**（`legacyZCodeConfigProviderReader.ts:66`，永不直接请求）；② 历史注释；③ 插件市场镜像（本线程新增，可用环境变量关掉）。`zcodeEndpoint.ts` 四个默认 origin 均已指向 `polaris.bitlesu.com` |
 
 也就是说：能力层面**没发现砍错的东西**。
 
@@ -735,7 +738,7 @@ git log --oneline -S "电脑控制回退为默认关闭"                 # → 8
      `fetchTeamCodingPlanEntitlement` / `isActivePersonalCodingPlan` 均 0 外部引用）
    - `packages/services/src/bigmodel/teamPlanApiKey.ts`（只被上面那个文件 import）
    - `packages/services/src/providers/zaiBusinessTokenResolver.ts`（`ZaiBusinessTokenResolver` 仅自引用）
-   合起来 ~5.5K 行附近的官方业务残留，是整个 `bigmodel/` 目录与 `providers/` 里最后一小块。
+     合起来 ~5.5K 行附近的官方业务残留，是整个 `bigmodel/` 目录与 `providers/` 里最后一小块。
 2. **陈旧元数据**：`third-party/inventory.json` 仍列着已删除的
    `patches/@arms__rum-electron@0.0.3.patch` 与 `@arms/rum-electron@0.0.3`（4 处）；
    依赖与补丁文件都已不在（`patches/` 下只剩两个 ai-sdk 补丁）。
@@ -750,8 +753,6 @@ git log --oneline -S "电脑控制回退为默认关闭"                 # → 8
    仍指向已不可达的官方业务（见 §12 的保留/清除边界决策）。
 
 ### 18d. 本次复核的局限（别把它当全覆盖）
-
-
 
 - 悬空引用靠**字符串级**扫描，能抓住死键/死模块/死资源，但抓不住「运行时才走到」的问题。
 - 布局类（如 §17a.4 的弹窗溢出）无法用静态检查定性，必须逐页真机 DOM 验证。
@@ -772,26 +773,26 @@ git log --oneline -S "电脑控制回退为默认关闭"                 # → 8
 
 ### 19a. 本次改掉的 13 处（全部是字符串字面量，无逻辑，仓库内无任何代码/测试解析它们）
 
-| 类别 | 位置 | 原 → 新 |
-|---|---|---|
-| 身份前缀（模型自称的源头） | `context/sections/cli-prefix.ts` | You are ZCode… → **You are Polaris, an interactive coding agent** |
-| 身份段（同上） | `context/sections/identity.ts` | ZCode's tools… / You are an interactive ZCode agent… → **Polaris** |
-| 段名/标题 | `context/sections/desktop.ts` | ZCode Desktop Context → **Polaris Desktop Context** |
-| 子代理身份 | `subagent/explore.ts`、`subagent/general-purpose.ts` | ZCode Explore / agent for ZCode CLI → **Polaris** |
-| 连通性探测身份 | `runtime/methods/workspace-generate-text.ts` | You are ZCode connectivity probe. → **Polaris** |
-| 注入给模型的文本 | `runtime/helpers/conversation.ts`、`session-context/references.ts`、`system-reminder/incoming-message.ts`、`tool/handlers/read-session-context.ts`、`tool/handlers/read.ts`、`runtime/helpers/attachment-path-reference.ts`、`tool/handlers/agent.ts` | 界面/工具描述里的 ZCode → **Polaris** |
-| 出网 UA / 标题 | `tool/handlers/webfetch-constants.ts`、`plugins/github-archive-source.ts`、`browser/descriptor.ts`、`shared/zcode-source-headers.ts`、`shared/openrouter-attribution.ts` | ZCode-WebFetch（原指向 zcode.ai）/ ZCode-Plugin-Installer / ZCode Headless Chromium / ZCode-unknown / Z Code@electron / X-OpenRouter-Title → **Polaris** |
+| 类别                       | 位置                                                                                                                                                                                                                                                  | 原 → 新                                                                                                                                                  |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 身份前缀（模型自称的源头） | `context/sections/cli-prefix.ts`                                                                                                                                                                                                                      | You are ZCode… → **You are Polaris, an interactive coding agent**                                                                                        |
+| 身份段（同上）             | `context/sections/identity.ts`                                                                                                                                                                                                                        | ZCode's tools… / You are an interactive ZCode agent… → **Polaris**                                                                                       |
+| 段名/标题                  | `context/sections/desktop.ts`                                                                                                                                                                                                                         | ZCode Desktop Context → **Polaris Desktop Context**                                                                                                      |
+| 子代理身份                 | `subagent/explore.ts`、`subagent/general-purpose.ts`                                                                                                                                                                                                  | ZCode Explore / agent for ZCode CLI → **Polaris**                                                                                                        |
+| 连通性探测身份             | `runtime/methods/workspace-generate-text.ts`                                                                                                                                                                                                          | You are ZCode connectivity probe. → **Polaris**                                                                                                          |
+| 注入给模型的文本           | `runtime/helpers/conversation.ts`、`session-context/references.ts`、`system-reminder/incoming-message.ts`、`tool/handlers/read-session-context.ts`、`tool/handlers/read.ts`、`runtime/helpers/attachment-path-reference.ts`、`tool/handlers/agent.ts` | 界面/工具描述里的 ZCode → **Polaris**                                                                                                                    |
+| 出网 UA / 标题             | `tool/handlers/webfetch-constants.ts`、`plugins/github-archive-source.ts`、`browser/descriptor.ts`、`shared/zcode-source-headers.ts`、`shared/openrouter-attribution.ts`                                                                              | ZCode-WebFetch（原指向 zcode.ai）/ ZCode-Plugin-Installer / ZCode Headless Chromium / ZCode-unknown / Z Code@electron / X-OpenRouter-Title → **Polaris** |
 
 ### 19b. 有意**不改**的（每一类都有理由）
 
-| 项 | 理由 |
-|---|---|
+| 项                                                                            | 理由                                                           |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `@zcode/*` 包名、`ZCODE_*` 环境变量、文件名、`zcode-agent` 这类**内部标识符** | 沿用历轮约定：改它们会改变磁盘/配置/协议形状，不是用户可见品牌 |
-| `X-ZCode-App-Version` 的**头名** | 与后端/网关的契约字段，改名前必须同步服务端（本次只改了值） |
-| 启动计时标记、错误类名（如 `ZCodeCliLoginError`）、debug 日志 | 用户不可见，改了只是噪声 |
-| `ZCODE_AGENT_PROVIDER_LABEL = "ZCode Agent"` | 已经是**死常量**（全仓 0 引用），改或删都不影响行为 |
-| `.agents/skills/**` 里的 ZCode 文案 | 开发期 agent 技能文档，不进产品提示词 |
-| `zcode-guide` 定义的 `displayName: "ZCode Guide"` 等 listing | 该插件包本仓不存在，装了上游包才能在商店里看到 |
+| `X-ZCode-App-Version` 的**头名**                                              | 与后端/网关的契约字段，改名前必须同步服务端（本次只改了值）    |
+| 启动计时标记、错误类名（如 `ZCodeCliLoginError`）、debug 日志                 | 用户不可见，改了只是噪声                                       |
+| `ZCODE_AGENT_PROVIDER_LABEL = "ZCode Agent"`                                  | 已经是**死常量**（全仓 0 引用），改或删都不影响行为            |
+| `.agents/skills/**` 里的 ZCode 文案                                           | 开发期 agent 技能文档，不进产品提示词                          |
+| `zcode-guide` 定义的 `displayName: "ZCode Guide"` 等 listing                  | 该插件包本仓不存在，装了上游包才能在商店里看到                 |
 
 ### 19c. 生效方式与验证
 
@@ -814,51 +815,51 @@ pnpm typecheck ✅ 0 错误 · CLI turbo run typecheck ✅ 27/27 · tsx --test �
 
 ### 20a. 已经是对的（不需改）
 
-| 项 | 现状 |
-|---|---|
-| 安装包身份 | `productName: Polaris`、`appId: com.bitlesu.polaris`、Linux executable `polaris`、homepage/maintainer 均为 `polaris.bitlesu.com` |
-| 主进程身份 | `app.setName()` / `process.title` = 运行时产品名（Polaris） |
-| 右键菜单/Finder 服务的**展示名** | 已是「在 Polaris 中打开 / Open in Polaris」 |
-| 端点默认值 | `zcodeEndpoint.ts` 四个默认 origin 全部 `polaris.bitlesu.com` |
-| 更新源 | `publish.url` 仍是 `http://localhost:8081` 占位（有意） |
+| 项                               | 现状                                                                                                                             |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 安装包身份                       | `productName: Polaris`、`appId: com.bitlesu.polaris`、Linux executable `polaris`、homepage/maintainer 均为 `polaris.bitlesu.com` |
+| 主进程身份                       | `app.setName()` / `process.title` = 运行时产品名（Polaris）                                                                      |
+| 右键菜单/Finder 服务的**展示名** | 已是「在 Polaris 中打开 / Open in Polaris」                                                                                      |
+| 端点默认值                       | `zcodeEndpoint.ts` 四个默认 origin 全部 `polaris.bitlesu.com`                                                                    |
+| 更新源                           | `publish.url` 仍是 `http://localhost:8081` 占位（有意）                                                                          |
 
 ### 20b. 本轮改掉的（全部带旧值清理，不会产生重复菜单/孤儿文件）
 
-| 项 | 位置 | 改法 |
-|---|---|---|
-| 深链 scheme | `desktopDeepLinkUrl.ts` 解析层、`web/share/conversationSharePreviewClient.ts` 发送层、`electron-builder.config.js` `protocols` | 对外发布 `polaris://`；**解析层两 scheme 都收**；注册层两个都注册（polaris 优先声明）。旧分享链接继续可用 |
-| macOS Finder 服务 | `desktopFinderOpenFolderWorkflow.ts` | `Open in Polaris.workflow` + bundle id `app.polaris.finder-open-workflow` + 脚本改用 `polaris://`；按 legacy bundle id 确认归属后删掉旧的 `Open in ZCode.workflow` |
-| Windows 右键菜单 | `desktopWindowsOpenFolderContextMenu.ts` | 注册表键 `Polaris.OpenInPolaris`；新键写成功后删除 `ZCode.OpenInZCode`（Directory/Drive 两处） |
-| Linux 协议处理器 | `desktopLinuxDeepLinkRegistration.ts` | `polaris.desktop` + `x-scheme-handler/polaris`；MimeType 同时声明旧 scheme；归属标记两个都认（新 `Comment=Polaris Desktop App` + 旧 `Comment=ZCode Desktop App`）；旧 `zcode.desktop` 被识别为自己的就清理 |
-| 进程名 | `shared/src/process-names.ts` | 前缀 `zcode` → `polaris`（任务管理器里从 `zcode-*` 变 `polaris-*`）；全部消费者走同一 formatter，资源管理器进程列表自动跟随 |
-| 开发态更新缓存目录 | `packages/desktop/dev-app-update.yml` | `zcode-dev-updater` → `polaris-dev-updater`（仅目录名） |
-| 文案 | `shared/src/platform.ts` 注释 | `zcode://` → `polaris://` |
+| 项                 | 位置                                                                                                                           | 改法                                                                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 深链 scheme        | `desktopDeepLinkUrl.ts` 解析层、`web/share/conversationSharePreviewClient.ts` 发送层、`electron-builder.config.js` `protocols` | 对外发布 `polaris://`；**解析层两 scheme 都收**；注册层两个都注册（polaris 优先声明）。旧分享链接继续可用                                                                                                  |
+| macOS Finder 服务  | `desktopFinderOpenFolderWorkflow.ts`                                                                                           | `Open in Polaris.workflow` + bundle id `app.polaris.finder-open-workflow` + 脚本改用 `polaris://`；按 legacy bundle id 确认归属后删掉旧的 `Open in ZCode.workflow`                                         |
+| Windows 右键菜单   | `desktopWindowsOpenFolderContextMenu.ts`                                                                                       | 注册表键 `Polaris.OpenInPolaris`；新键写成功后删除 `ZCode.OpenInZCode`（Directory/Drive 两处）                                                                                                             |
+| Linux 协议处理器   | `desktopLinuxDeepLinkRegistration.ts`                                                                                          | `polaris.desktop` + `x-scheme-handler/polaris`；MimeType 同时声明旧 scheme；归属标记两个都认（新 `Comment=Polaris Desktop App` + 旧 `Comment=ZCode Desktop App`）；旧 `zcode.desktop` 被识别为自己的就清理 |
+| 进程名             | `shared/src/process-names.ts`                                                                                                  | 前缀 `zcode` → `polaris`（任务管理器里从 `zcode-*` 变 `polaris-*`）；全部消费者走同一 formatter，资源管理器进程列表自动跟随                                                                                |
+| 开发态更新缓存目录 | `packages/desktop/dev-app-update.yml`                                                                                          | `zcode-dev-updater` → `polaris-dev-updater`（仅目录名）                                                                                                                                                    |
+| 文案               | `shared/src/platform.ts` 注释                                                                                                  | `zcode://` → `polaris://`                                                                                                                                                                                  |
 
 验证：desktop 构建产物（dev watch 已重建）`polaris-*` 命中 19 处、`zcode-renderer|zcode-host-|zcode-main` 命中 **0**。
 
 ### 20c. 有意保留的（契约 / 格式 / 生态兼容）
 
-| 项 | 为什么不改 |
-|---|---|
-| `.zcode-plugin/` 插件清单目录、`.zcodeignore` | 第三方插件包与公开生态按这个名字声明；改名等于与整个插件生态脱钩。若要自有品牌，应做**双支持**（`.polaris-plugin/` 优先、`.zcode-plugin/` 兼容）——需要单独设计 |
-| `~/.zcode/server`（远程会话路径） | 远端机器上的契约路径，改名前必须同步远端 agent |
-| `X-ZCode-App-Version` 头名 | 与自有网关的契约字段（值已改）；改名要前后端同时发 |
-| `@zcode/*` 包名、`ZCODE_*` 环境变量、`zcode-agent` 之类内部标识 | 历轮约定的“内部标识不改” |
-| `mcpUserDirectory/legacy.ts` 里的 `join(appData, "ZCode", ...)` | 这是**读旧版数据做迁移**用的，改了反而丢用户数据 |
-| 模型供应商名 `Z.ai` / `BigModel`（locale 与 web 分享页） | 它们是**真实的第三方 provider**（用户可选接入），不是本产品身份 |
-| Linux 图标名 `Icon=zcode` | 与打包写入的图标文件名成对；改了若不同步会出现“齿轮”图标（需打包侧一起改） |
-| `zcodeProductFlavor` / `.zcode-install-manifest` / `zcode-window-bounds` 等资源名 | 仅内部产物名，用户不可见 |
+| 项                                                                                | 为什么不改                                                                                                                                                     |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.zcode-plugin/` 插件清单目录、`.zcodeignore`                                     | 第三方插件包与公开生态按这个名字声明；改名等于与整个插件生态脱钩。若要自有品牌，应做**双支持**（`.polaris-plugin/` 优先、`.zcode-plugin/` 兼容）——需要单独设计 |
+| `~/.zcode/server`（远程会话路径）                                                 | 远端机器上的契约路径，改名前必须同步远端 agent                                                                                                                 |
+| `X-ZCode-App-Version` 头名                                                        | 与自有网关的契约字段（值已改）；改名要前后端同时发                                                                                                             |
+| `@zcode/*` 包名、`ZCODE_*` 环境变量、`zcode-agent` 之类内部标识                   | 历轮约定的“内部标识不改”                                                                                                                                       |
+| `mcpUserDirectory/legacy.ts` 里的 `join(appData, "ZCode", ...)`                   | 这是**读旧版数据做迁移**用的，改了反而丢用户数据                                                                                                               |
+| 模型供应商名 `Z.ai` / `BigModel`（locale 与 web 分享页）                          | 它们是**真实的第三方 provider**（用户可选接入），不是本产品身份                                                                                                |
+| Linux 图标名 `Icon=zcode`                                                         | 与打包写入的图标文件名成对；改了若不同步会出现“齿轮”图标（需打包侧一起改）                                                                                     |
+| `zcodeProductFlavor` / `.zcode-install-manifest` / `zcode-window-bounds` 等资源名 | 仅内部产物名，用户不可见                                                                                                                                       |
 
 ### 20d. 空壳能力盘点（“不该砍的”答复）
 
 你担心的“公用功能被砍”逐项核过：**接口都还在，只是实现变空壳 + 写明重接点**，调用方无需改。
 
-| 能力 | 现状 | 重接方式 |
-|---|---|---|
-| 账号请求鉴权 | `model-provider/accountRequestAuthService.ts`：读返回 `null`，写抛 `AccountRequestCredentialUnavailableError`（等价于“没连账号”的旧行为） | 实现 `IAccountRequestAuthService` / 接回 `AccountRequestAuthResolver`，调用点不动 |
-| OAuth 服务 | `oauth/oauthService.ts`、`oauthProviderLogout.ts` 空壳；凭证仓库 `oauth/repo` 保留 | 自有 provider 接回即可 |
-| 会话分享 | **未砍**：真实 `ConversationShareService` 在用，`createUnsupportedConversationShareService` 只用于 remote workspace（上游原有行为）；分享站点指向自有 origin | — |
-| 插件市场 / 技能 / 子代理 / 工作流 / 浏览器 / 电脑控制脚手架 | 全部保留 | — |
+| 能力                                                        | 现状                                                                                                                                                         | 重接方式                                                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| 账号请求鉴权                                                | `model-provider/accountRequestAuthService.ts`：读返回 `null`，写抛 `AccountRequestCredentialUnavailableError`（等价于“没连账号”的旧行为）                    | 实现 `IAccountRequestAuthService` / 接回 `AccountRequestAuthResolver`，调用点不动 |
+| OAuth 服务                                                  | `oauth/oauthService.ts`、`oauthProviderLogout.ts` 空壳；凭证仓库 `oauth/repo` 保留                                                                           | 自有 provider 接回即可                                                            |
+| 会话分享                                                    | **未砍**：真实 `ConversationShareService` 在用，`createUnsupportedConversationShareService` 只用于 remote workspace（上游原有行为）；分享站点指向自有 origin | —                                                                                 |
+| 插件市场 / 技能 / 子代理 / 工作流 / 浏览器 / 电脑控制脚手架 | 全部保留                                                                                                                                                     | —                                                                                 |
 
 ### 20e. 本轮验证
 
@@ -895,11 +896,11 @@ tsx --test（9 个文件）    ✅ 26/27
 
 ### 21b. 本轮砍掉的
 
-| 项 | 内容 | 依据 |
-|---|---|---|
-| 死模块 3 个 | `packages/services/src/bigmodel/codingPlanEntitlement.ts`、`.../bigmodel/teamPlanApiKey.ts`、`.../providers/zaiBusinessTokenResolver.ts`（`bigmodel/` 目录随之消失） | 顶层导出在全仓 0 外部引用（`teamPlanApiKey` 仅被 `codingPlanEntitlement` 引用，后者又 0 引用）；无测试引用 |
-| 死文案键 17 个 | `login.oauth.*`(12)、`login.expired.title|description|restart`(3)、`welcome.login`、`welcome.loginFailed` | `login.oauth.` 前缀在代码中 0 次；`login.expired.action` **被 `StatusCards.tsx:504` 使用而保留** |
-| 陈旧 third-party 元数据 | `third-party/inventory.json` 里 `@arms/rum-*` 全部（hashes 映射 1 处、`patches` 1 条、`packages` 3 条、`exceptions` 3 条）+ 3 个孤儿证据文件 `third-party/upstream/*.txt` | `@arms/rum-{browser,core,electron}` 在 `pnpm-lock.yaml` 中已 **0 引用**（整族随遥测改写层移除） |
+| 项                      | 内容                                                                                                                                                                      | 依据                                                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 死模块 3 个             | `packages/services/src/bigmodel/codingPlanEntitlement.ts`、`.../bigmodel/teamPlanApiKey.ts`、`.../providers/zaiBusinessTokenResolver.ts`（`bigmodel/` 目录随之消失）      | 顶层导出在全仓 0 外部引用（`teamPlanApiKey` 仅被 `codingPlanEntitlement` 引用，后者又 0 引用）；无测试引用 |
+| 死文案键 17 个          | `login.oauth.*`(12)、`login.expired.title                                                                                                                                 | description                                                                                                | restart`(3)、`welcome.login`、`welcome.loginFailed` | `login.oauth.` 前缀在代码中 0 次；`login.expired.action` **被 `StatusCards.tsx:504` 使用而保留** |
+| 陈旧 third-party 元数据 | `third-party/inventory.json` 里 `@arms/rum-*` 全部（hashes 映射 1 处、`patches` 1 条、`packages` 3 条、`exceptions` 3 条）+ 3 个孤儿证据文件 `third-party/upstream/*.txt` | `@arms/rum-{browser,core,electron}` 在 `pnpm-lock.yaml` 中已 **0 引用**（整族随遥测改写层移除）            |
 
 ### 21c. 本轮验证
 
@@ -921,13 +922,13 @@ JSON.parse(third-party/inventory.json)  ✅ OK
   `useCodingPlanUpgradeDialog`（购买入口的上下文与状态机）、通用用量/额度展示。将来接自有套餐只需实现接口。
 - **不可复用、已砍**：
 
-| 文件 | 内容 | 为什么不可复用 |
-|---|---|---|
-| `settings/model-provider-section/BigModelRegistrationHint.tsx` | BigModel 未注册提示 + 官方注册跳转 | 绑死 BigModel 品牌与官方注册页 |
-| `settings/CodingPlanEmbeddedWebviewDialog.tsx` | 打开 Z.ai 官网 `/coding-plan` 的内嵌 webview | 打开官方站点、注入官方 OAuth 凭据 |
+| 文件                                                           | 内容                                          | 为什么不可复用                                |
+| -------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------- |
+| `settings/model-provider-section/BigModelRegistrationHint.tsx` | BigModel 未注册提示 + 官方注册跳转            | 绑死 BigModel 品牌与官方注册页                |
+| `settings/CodingPlanEmbeddedWebviewDialog.tsx`                 | 打开 Z.ai 官网 `/coding-plan` 的内嵌 webview  | 打开官方站点、注入官方 OAuth 凭据             |
 | `settings/model-provider-section/codingPlanEmbeddedWebview.ts` | 官网 URL 构造 + 凭据注入脚本 + 官方上报上下文 | 写死 `oauth:zai:*` / `zcodeBridge` / 官网路径 |
-| `settings/codingPlanUpgradeLoginRecovery.ts` | 官方 OAuth 登录后重开购买弹窗 | 依赖官方 OAuth 登录编排 |
-| `settings/model-provider-section/codingPlanPurchaseAuth.ts` | 官方购买鉴权判定 | 仅服务官方 webview，0 其余引用 |
+| `settings/codingPlanUpgradeLoginRecovery.ts`                   | 官方 OAuth 登录后重开购买弹窗                 | 依赖官方 OAuth 登录编排                       |
+| `settings/model-provider-section/codingPlanPurchaseAuth.ts`    | 官方购买鉴权判定                              | 仅服务官方 webview，0 其余引用                |
 
 处置：`CodingPlanUpgradeDialog.tsx` 改写为**无界面 seam**（保留 `CodingPlanUpgradeDialogTarget` 类型与
 组件签名，`useEffect` 里回报 `onOpenResult(false)`，不打开任何官方界面）；Provider 与所有入口调用方零改动。
@@ -958,14 +959,14 @@ pnpm lint        ✅ 0 errors（80 warnings，回到本轮前基线，未新增�
 
 连带把 `CodingPlanUpgradeDialogTarget.funnelContext` 及全部构造点清掉（共 6 个文件）：
 
-| 文件 | 改动 |
-|---|---|
-| `settings/CodingPlanUpgradeDialogProvider.tsx` | 移除 `usePlatform` / `reportCodingPlanUpgradeClick` 与 funnel 合并块 |
+| 文件                                              | 改动                                                                           |
+| ------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `settings/CodingPlanUpgradeDialogProvider.tsx`    | 移除 `usePlatform` / `reportCodingPlanUpgradeClick` 与 funnel 合并块           |
 | `settings/model-provider-section/StatusCards.tsx` | 移除 `createSettingPlanCardFunnelContext` 与 `openUpgradePlans` 的 funnel 参数 |
-| `settings/model-provider-section/Detail.tsx` | 移除 `nextFunnelContext` 与两处 `funnelContext: options.funnelContext` |
-| `v4/SessionPane.tsx` | 移除闲时/额度横幅入口的 funnel 构造 |
-| `settings/AutomationsSection.tsx` | 移除闲时入口的 funnel 构造 |
-| `settings/CodingPlanUpgradeDialog.tsx` | target 类型去掉 `funnelContext` |
+| `settings/model-provider-section/Detail.tsx`      | 移除 `nextFunnelContext` 与两处 `funnelContext: options.funnelContext`         |
+| `v4/SessionPane.tsx`                              | 移除闲时/额度横幅入口的 funnel 构造                                            |
+| `settings/AutomationsSection.tsx`                 | 移除闲时入口的 funnel 构造                                                     |
+| `settings/CodingPlanUpgradeDialog.tsx`            | target 类型去掉 `funnelContext`                                                |
 
 「可复用」边界不变：`openCodingPlanUpgrade` 入口 API、`inventory` 门禁、弹窗 seam 均保留。
 
@@ -991,13 +992,13 @@ pnpm lint        ✅ 0 errors（80 warnings，回到本轮前基线，未新增�
 
 Start Plan / 企业套餐 7 个文件**不是死代码，不该砍**。只匹配 `import ... from` 语句的精确统计：
 
-| 文件 | 活跃 importer |
-|---|---|
-| `useEnterpriseCodingPlanProducts` | **5**：SettingsPage、WorkspaceSidebarFooterUsageSummary、ModelProviderSection、Detail、V4ComposerToolbar |
-| `enterpriseCodingPlanProducts` | **5**：codingPlanUsageSources、codingPlanEnterpriseTiers、providerFamilyConnectionVisibility、useEnterpriseCodingPlanProducts、useModelProviderNavigation |
-| `codingPlanEnterpriseTiers` | 3：CodingPlanUpgradeDialog、Detail、StatusCards |
-| `StartPlanCard` / `StartPlanBalanceCard` | 各 2 |
-| `useStartPlanPreview` / `StartPlanQuotaStatusCard` | 各 1 |
+| 文件                                               | 活跃 importer                                                                                                                                             |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useEnterpriseCodingPlanProducts`                  | **5**：SettingsPage、WorkspaceSidebarFooterUsageSummary、ModelProviderSection、Detail、V4ComposerToolbar                                                  |
+| `enterpriseCodingPlanProducts`                     | **5**：codingPlanUsageSources、codingPlanEnterpriseTiers、providerFamilyConnectionVisibility、useEnterpriseCodingPlanProducts、useModelProviderNavigation |
+| `codingPlanEnterpriseTiers`                        | 3：CodingPlanUpgradeDialog、Detail、StatusCards                                                                                                           |
+| `StartPlanCard` / `StartPlanBalanceCard`           | 各 2                                                                                                                                                      |
+| `useStartPlanPreview` / `StartPlanQuotaStatusCard` | 各 1                                                                                                                                                      |
 
 **决定性的一点**：`resolveEnterpriseCodingPlanProductFamily` 被 `codingPlanUsageSources.ts` 与
 `providerFamilyConnectionVisibility.ts` 调用，是**用量来源计算 + provider 连接可见性**的核心逻辑，
@@ -1005,12 +1006,12 @@ Start Plan / 企业套餐 7 个文件**不是死代码，不该砍**。只匹配
 
 同时 4 个「数据源」方法有活跃 UI 调用方，**保留即等于「数据源已砍」**（它们返回空值）：
 
-| 方法 | 调用方 |
-|---|---|
-| `getStaticProducts` | `useCodingPlanProducts:438` |
-| `getStaticTeamProducts` | `useEnterpriseCodingPlanProducts:143` |
-| `getStartPlanPreview` | `useCodingPlanProducts:383`、`useStartPlanPreview:95` |
-| `getEnterprisePricing` | `useCodingPlanEntryPlanList:51`、`useEnterpriseCodingPlanProducts:146` |
+| 方法                    | 调用方                                                                 |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `getStaticProducts`     | `useCodingPlanProducts:438`                                            |
+| `getStaticTeamProducts` | `useEnterpriseCodingPlanProducts:143`                                  |
+| `getStartPlanPreview`   | `useCodingPlanProducts:383`、`useStartPlanPreview:95`                  |
+| `getEnterprisePricing`  | `useCodingPlanEntryPlanList:51`、`useEnterpriseCodingPlanProducts:146` |
 
 ### 22b. 官方数据源早已在 3af70d7 砍掉
 
@@ -1020,10 +1021,10 @@ Start Plan / 企业套餐 7 个文件**不是死代码，不该砍**。只匹配
 
 ### 22c. 本轮砍掉的（2 处，互不相干）
 
-| # | 目标 | 判定依据 |
-|---|---|---|
-| 1 | **删除 `adapters/src/auth/bigmodel-oauth.ts`** + `auth/index.ts` 的 barrel 行 | 6 个导出符号全仓引用 **全部 0**（用正确符号名 `createBigmodelOAuthClient` / `createBigmodelOAuthState` / `BigmodelOAuth*` / `BIGMODEL_*` 复核）；barrel 下游只拿 `shared-credentials`；`from "@zcode/adapters"` 通配导入 5 处无一使用；动态调用 0、测试 0、package exports 0。内容是完整可用的官方 OAuth 客户端（`BIGMODEL_APP_ID = "zcode"`、`/login`、`/api/auth/tokenByAuthCode`），同目录 `cli-oauth` / `coding-plan-api-key` 早已改成抛错空壳，**唯它漏网** |
-| 2 | **从 `ICodingPlanSubscriptionService` 与空实现同步删除 19 个下单/支付方法** | `productInfo`、`preview`、`createSign`、`updateSign`、`checkPayment`、`checkPendingOrders`、`queryStripeCards`、`bindStripeCard`、`unbindStripeCard`、`payStripe`、`checkPaypalSupport`、`createPaypalSetupToken`、`subscribePaypal`、`getEnterpriseBalance`、`calculateEnterpriseOrder`、`createEnterpriseOrder`、`getEnterprisePendingOrders`、`cancelEnterpriseOrder`、`continueEnterpriseOrderPayment`、`checkEnterpriseOrderStatus` —— 逐个 `.方法(` 精确查 **20/20 = 0**；动态/字符串调用 0；测试 0；实现方仅空实现 1 个。顺带清理 `@zcode/shared` 中随之失效的类型导入（44 → 10） |
+| #   | 目标                                                                          | 判定依据                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **删除 `adapters/src/auth/bigmodel-oauth.ts`** + `auth/index.ts` 的 barrel 行 | 6 个导出符号全仓引用 **全部 0**（用正确符号名 `createBigmodelOAuthClient` / `createBigmodelOAuthState` / `BigmodelOAuth*` / `BIGMODEL_*` 复核）；barrel 下游只拿 `shared-credentials`；`from "@zcode/adapters"` 通配导入 5 处无一使用；动态调用 0、测试 0、package exports 0。内容是完整可用的官方 OAuth 客户端（`BIGMODEL_APP_ID = "zcode"`、`/login`、`/api/auth/tokenByAuthCode`），同目录 `cli-oauth` / `coding-plan-api-key` 早已改成抛错空壳，**唯它漏网**                                                                                                                         |
+| 2   | **从 `ICodingPlanSubscriptionService` 与空实现同步删除 19 个下单/支付方法**   | `productInfo`、`preview`、`createSign`、`updateSign`、`checkPayment`、`checkPendingOrders`、`queryStripeCards`、`bindStripeCard`、`unbindStripeCard`、`payStripe`、`checkPaypalSupport`、`createPaypalSetupToken`、`subscribePaypal`、`getEnterpriseBalance`、`calculateEnterpriseOrder`、`createEnterpriseOrder`、`getEnterprisePendingOrders`、`cancelEnterpriseOrder`、`continueEnterpriseOrderPayment`、`checkEnterpriseOrderStatus` —— 逐个 `.方法(` 精确查 **20/20 = 0**；动态/字符串调用 0；测试 0；实现方仅空实现 1 个。顺带清理 `@zcode/shared` 中随之失效的类型导入（44 → 10） |
 
 改动面：**4 个文件，-114 行 / +2 行**（1 删 3 改），不碰任何渲染逻辑。
 
@@ -1053,16 +1054,16 @@ coding-plan 相关测试                             0 个（不存在，故无�
 
 ### 7.1 已完成
 
-| 批次 | 内容 | 收益 |
-|---|---|---|
-| A 死重清理 | ai-elements 30 个零引用组件、devDeps 2 个、死资源 11 类 | 渲染包 43.1MB → 28MB |
-| A shiki 去重 | 双版本（4.0.2 / 3.23.0）合并为单版本 | 语言 chunk 900+ 对合一 |
-| B 官方品牌 | 内置插件 author/图标、CLI 上下文、webfetch UA、zcode-server-cli 管道名等 | — |
-| B CLI 登录链 | 官方登录编排空壳化 + 选项 UI 下掉 | ~1,700 行 |
-| C 官方套餐线 | 购买漏斗/配额链/智谱系内置模板/服务端 quota provider | ~4,000 行 |
-| D preload 去重 | 值导入改走 shared 细粒度子路径 | **3.3MB → 533KB** |
-| D 生产 sourcemap | 默认不生成（`ZCODE_UPLOAD_MAPS=1` 可开） | 渲染产物 139MB → 43MB |
-| D **端点闸门** | 阻止 shell 里的官方端点变量烤进产物 | 见 7.2 |
+| 批次             | 内容                                                                     | 收益                   |
+| ---------------- | ------------------------------------------------------------------------ | ---------------------- |
+| A 死重清理       | ai-elements 30 个零引用组件、devDeps 2 个、死资源 11 类                  | 渲染包 43.1MB → 28MB   |
+| A shiki 去重     | 双版本（4.0.2 / 3.23.0）合并为单版本                                     | 语言 chunk 900+ 对合一 |
+| B 官方品牌       | 内置插件 author/图标、CLI 上下文、webfetch UA、zcode-server-cli 管道名等 | —                      |
+| B CLI 登录链     | 官方登录编排空壳化 + 选项 UI 下掉                                        | ~1,700 行              |
+| C 官方套餐线     | 购买漏斗/配额链/智谱系内置模板/服务端 quota provider                     | ~4,000 行              |
+| D preload 去重   | 值导入改走 shared 细粒度子路径                                           | **3.3MB → 533KB**      |
+| D 生产 sourcemap | 默认不生成（`ZCODE_UPLOAD_MAPS=1` 可开）                                 | 渲染产物 139MB → 43MB  |
+| D **端点闸门**   | 阻止 shell 里的官方端点变量烤进产物                                      | 见 7.2                 |
 
 ### 7.2 新发现的真问题：构建环境把官方端点烤进产物
 
@@ -1081,11 +1082,82 @@ coding-plan 相关测试                             0 个（不存在，故无�
 
 ### 7.3 有意保留（不在删除范围）
 
-| 项 | 原因 |
-|---|---|
-| 套餐线剩余 UI（45 个文件 / 7,554 行） | 运行时已中和（规格数组为空、无官方 provider、产物里 0 处标识），但被 **26 个非套餐文件（31,231 行）** 静态引用（设置页/会话面板/DI 容器/窗口 chrome）。删干净需专门一轮外科改造，收益只是整洁——留给独立一轮做，不在收尾里动刀 |
-| `bigmodel.cn` 匹配键（`legacyZCodeConfigProviderReader`） | 只用于识别旧配置里残留的官方域名并改指自有网关，不发起请求 |
-| marketplace 的 Z.ai 兼容镜像 | 你设计的过渡降级：自有地址优先，官方作镜像，可用 `POLARIS_PLUGIN_MARKETPLACE_MIRRORS` 覆盖 |
-| `@babel/runtime` | bundle 校验脚本把它当主进程启动依赖兜底，1MB 不值得冒险 |
-| `packages/zcode-server-cli` | 产品决策：保留（无头服务端 CLI） |
-| `services/session/claude-native` | 产品决策：保留（Claude 历史导入） |
+| 项                                                        | 原因                                                                                                                                                                                                                          |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 套餐线剩余 UI（45 个文件 / 7,554 行）                     | 运行时已中和（规格数组为空、无官方 provider、产物里 0 处标识），但被 **26 个非套餐文件（31,231 行）** 静态引用（设置页/会话面板/DI 容器/窗口 chrome）。删干净需专门一轮外科改造，收益只是整洁——留给独立一轮做，不在收尾里动刀 |
+| `bigmodel.cn` 匹配键（`legacyZCodeConfigProviderReader`） | 只用于识别旧配置里残留的官方域名并改指自有网关，不发起请求                                                                                                                                                                    |
+| marketplace 的 Z.ai 兼容镜像                              | 你设计的过渡降级：自有地址优先，官方作镜像，可用 `POLARIS_PLUGIN_MARKETPLACE_MIRRORS` 覆盖                                                                                                                                    |
+| `@babel/runtime`                                          | bundle 校验脚本把它当主进程启动依赖兜底，1MB 不值得冒险                                                                                                                                                                       |
+| `packages/zcode-server-cli`                               | 产品决策：保留（无头服务端 CLI）                                                                                                                                                                                              |
+| `services/session/claude-native`                          | 产品决策：保留（Claude 历史导入）                                                                                                                                                                                             |
+
+---
+
+## 9. 本轮：启动日志归零 + CUA PiP 空转收口（2026-10-01）
+
+> 目标：把「设计如此、但每次启动都刷屏」的噪音清掉；不动任何核心能力。
+> 原则：不新增任何定时器/轮询；只改门控、日志级别与失败语义。
+
+### 9a. CUA PiP 在未启用平台上的空转
+
+PiP 只在 `platform === "darwin" && serviceAuthorityMode === "desktop-local"` 才可能启用
+（`services/node.ts` 的 `cuaPipSessionEnabled`）。而 Windows/Linux 上整条投递链仍是活的：
+每个 `turn-started`/`turn-ended` 与每次窗口 focus 变化都会走完 IPC → host → 服务，
+最后以 `event delivery dropped { skipReason: "service-disabled" }` 被丢掉。
+
+| 位置                                                                  | 处置                                                                                                                                                                                         |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/services/src/cua-permission-broker/cuaPipSessionService.ts` | `publishFocus`/`publishLifecycle` 在 `!enabled` 时静默早退（不走 `resolveCredentials`、不打 warn）                                                                                           |
+| `packages/services/src/node.ts`                                       | `onCuaPipSessionLifecycle` 挂载门控由 `authorityMode === "desktop-local"` 收紧为 `cuaPipSessionEnabled`；`lifecycleWired` 诊断同步改为 `cuaPipSessionEnabled`（原先恒报 `true`，会误导排查） |
+| `packages/desktop/src/main/index.ts`                                  | focus router 的 `send` 加 `process.platform !== "darwin"` 早退，非 macOS 连 IPC 都不发                                                                                                       |
+
+### 9b. 三条「永远失败的远端调用」
+
+三条都指向 `polaris.bitlesu.com/api/v1/client/configs`（自有后端未就绪）。它们本来就 fail-safe
+到 bundled/本地配置，问题只在**失败被当成故障上报**：
+
+| 位置                                                      | 问题                                                                                                                                                      | 处置                                                                                              |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `packages/services/src/model-provider/providerRuntime.ts` | `refreshSources` 把旁路 Source 的 rejection 直接上抛，UI 启动即渲染 `[Root] 刷新 Provider Runtime 失败: Polaris Built-in client-config: invalid response` | 改为 best-effort：`allSettled` 后只让 Registry 刷新自身的错误上抛                                 |
+| `packages/desktop/src/main/singleFeatureRollout.ts`       | 失败不更新 `snapshotExpiresAt`，每个调用点（Host 创建、窗口聚焦）都重打一发 3s 请求                                                                       | 失败也进 60s 负缓存；日志 warn → info；顺带修正指向已删除 `rendererActionTraceRollout` 的过时注释 |
+| `packages/services/src/node.ts`                           | `onZCodeBuiltinRefreshError` 用 warn + `{ error }`，Error 序列化成 `{}`                                                                                   | 降为 debug + 显式 `errorMessage`                                                                  |
+
+### 9c. 实测（重启 dev 前后对比）
+
+| 指标                                                  | 改前        | 改后                           |
+| ----------------------------------------------------- | ----------- | ------------------------------ |
+| `[Root] 刷新 Provider Runtime 失败`                   | 2           | **0**                          |
+| `Built-in Config 远端刷新失败`                        | 每小时 1 条 | **0**                          |
+| `config unavailable`                                  | 3           | 1（首次探测，之后 60s 负缓存） |
+| `event delivery dropped`                              | 多处        | **0**                          |
+| `[error]` / `[warn]` 行                               | —           | **0 / 0**                      |
+| `dom-ready` / `reattached` / boot 看门狗 / 运行期自愈 | —           | 1 / 0 / 0 / 0（健康）          |
+
+门禁：`oxfmt --check` ✅、`pnpm typecheck` ✅、`oxlint` 0 errors、`architecture:check` 0 violations、
+desktop `tsup` 4/4、harness 7/7 + 7/7 + 16/16。
+
+### 9d. 明确保留：`@zcode/telemetry`（产品决策）
+
+**结论：保留，不砍。** 理由（按「核心能力不能丢」这条硬约束）：
+
+1. 它是**与品牌无关的通用 OTLP 可观测层**，不是 Z.ai 业务：导出地址完全由
+   `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` / `..._METRICS_ENDPOINT` / `..._ENDPOINT` 决定，
+   可以直接指向自有 collector。
+2. **默认惰性**：`prepareModelTelemetryEnv` 在拿不到 trace endpoint 时直接原样返回，
+   连 OTel SDK/Exporter 都不 import——无序启、无定时器、无网络。
+3. 它的端口（`AgentExecutionTelemetryPort` / `ModelExecutionTelemetryPort`）贯穿 agent
+   执行链（core runtime / tool executor / contracts / bootstrap / workflow），共 49 处引用、
+   约 60–80 文件。删除是**穿心一刀**，与「所有核心功能都不能丢」直接冲突，收益仅为整洁。
+
+同理保留 `desktop-context-prompt` 的首次远端探测（info 级 + 60s 负缓存）：自有后端上线后
+灰度开关可自动恢复生效，不写死。
+
+残余的 `zcode.*` 指标/属性名（`apps/zcode-cli/packages/telemetry/src/agent-metrics.ts` 等）
+保留：它们是 OTLP 指标标识符而非用户可见品牌，重命名会让既有看板/告警全部失联。
+
+### 9e. 已知但未动（待你决定）
+
+| 项                                                                                               | 现象                                                                                     |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `[cua-product-helper] Windows CUA Helper runtime resolution failed { invalid-runtime-manifest }` | 启动时 host-log 一条；属 Windows CUA 打包运行时问题，不在本轮清单内                      |
+| renderer 活着但什么都不干的静默挂起                                                              | 只有轮询能发现，已按你的原则否掉轮询；当前仅有「进程 gone / unresponsive」事件驱动的自愈 |

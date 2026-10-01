@@ -12,14 +12,13 @@ export function resolveModelProviderDisplayName(
   return getProviderFormLabel(provider);
 }
 
-export type ModelProviderNavItem =
-  | {
-      key: string;
-      type: "custom";
-      label: string;
-      provider: ProviderSettingsFormProvider;
-      statusActive: boolean;
-    };
+export type ModelProviderNavItem = {
+  key: string;
+  type: "custom";
+  label: string;
+  provider: ProviderSettingsFormProvider;
+  statusActive: boolean;
+};
 
 export type ModelProviderNavGroupId = "custom";
 

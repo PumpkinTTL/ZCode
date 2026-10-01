@@ -21,8 +21,6 @@ import { SSHDialog } from "@/SSHDialog.js";
 import { SettingsPage } from "@/SettingsPage.js";
 import { WelcomeScreen, type LoginCompleteReason } from "@/WelcomeScreen.js";
 import { setDefaultFileDisplayBasePath } from "@/lib/fileDisplay.js";
-import { readRendererLaunchTimings, shouldReportLaunchToInput } from "@/lib/launchToInputReport.js";
-import { reportUiLaunchToInput } from "@/lib/uiPerfTelemetry.js";
 import { countAllUnreadTasks } from "@/lib/unreadTaskCount.js";
 import {
   isProviderStartupSyncPending,
@@ -39,6 +37,7 @@ import { TabStoreProvider, useTabStore, useTabStoreApi } from "@/store/TabStoreP
 import { isSettingsTab, isWorkspaceTab } from "@/store/tabStore.js";
 import { logger } from "@/logger.js";
 import { RootShell } from "@/root/RootShell.js";
+import { RootNoWorkspaceRecovery } from "@/root/RootNoWorkspaceRecovery.js";
 import { RootWorkspaceContent } from "@/root/RootWorkspaceContent.js";
 import { resolveRootWorkspaceShellTarget } from "@/root/rootWorkspaceShellTarget.js";
 import { OccupationOnboarding } from "@/onboarding/OccupationOnboarding.js";
@@ -67,9 +66,6 @@ import {
   markCodeCommentRemoved,
 } from "@/lib/codeCommentContext.js";
 import { useCodeCommentPreviewStore } from "@/store/codeCommentPreviewStore.js";
-import { setUiPerfTelemetryReporter } from "@/lib/uiPerfTelemetry.js";
-import { setSessionOpenTelemetryReporter } from "@/lib/sessionOpenTelemetry.js";
-import { setSendFunnelTelemetryReporter } from "@/lib/sendFunnelTelemetry.js";
 import { RootStartupLoading } from "@/root/RootStartupLoading.js";
 import { resolveProviderAvailabilityState } from "@/lib/modelProviderAvailability.js";
 import { useProviderAvailabilityLoginEntryGuard } from "@/root/useProviderAvailabilityLoginEntryGuard.js";
@@ -77,10 +73,6 @@ import { ensureProviderFamilyDomainMigration } from "@/lib/providerFamilyDomainM
 import { useSettings } from "@/hooks/useSettingService.js";
 import { CLOSE_ACTIVE_CONTEXT_REQUEST_EVENT } from "@/lib/closeActiveContext.js";
 import { AssistantCodeCommentFeatureProvider } from "@/AssistantCodeCommentFeatureProvider.js";
-import {
-  disposeConversationTelemetrySupervisors,
-  reconcileConversationTelemetryWorkspaceScopes,
-} from "@/v4/telemetry/ConversationTelemetryAttachment.js";
 
 const DEFAULT_LUCIDE_STROKE_WIDTH = 1.5;
 interface RemoteConnectionOpenPreference {
@@ -158,25 +150,10 @@ function RootInner({
 }: RootProps) {
   useEffect(() => {
     setMcpStorePlatform(platform);
-    // 对话 UI perf 只属于 desktop-continuous；Web/mobile 即使能看到权威状态也不装 reporter。
-    setUiPerfTelemetryReporter(isDesktop ? platform : null);
-    setSessionOpenTelemetryReporter(isDesktop ? platform : null);
-    // 发送漏斗同理：只在 Electron 桌面端上报，Web/mobile 的 reportCustomTelemetryEvent 是空实现。
-    setSendFunnelTelemetryReporter(isDesktop ? platform : null);
     return () => {
       setMcpStorePlatform(null);
-      setUiPerfTelemetryReporter(null);
-      setSessionOpenTelemetryReporter(null);
-      setSendFunnelTelemetryReporter(null);
     };
-  }, [isDesktop, platform]);
-
-  useEffect(
-    () => () => {
-      disposeConversationTelemetrySupervisors();
-    },
-    [],
-  );
+  }, [platform]);
 
   // 动态工作流灰度快照的唯一取数点：
   // 放在 app 级 ServiceProvider 这一层取一次，自动化页与 run 面板只读。消费方可能位于
@@ -483,6 +460,7 @@ function RootInner({
     setWelcomeScreenOpenReason("session-expired");
   }, []);
   const {
+    workspaceActionError,
     setWorkspaceActionError,
     startDraftInWorkspace,
     startNewTaskFromActiveWorkspace,
@@ -519,6 +497,23 @@ function RootInner({
     userId: user?.id,
     onOpenRemoteConnection: allowRemoteWorkspace ? handleOpenRemoteConnection : undefined,
   });
+  // 无工作区兜底面上的显式恢复：重置一次性 ref 后走与启动相同的默认对话工作区链路，
+  // 失败时把原因留在错误行，而不是让用户面对一个没有出口的空窗口。
+  const handleRecoverDefaultWorkspace = useCallback(() => {
+    setWorkspaceActionError(null);
+    didRequestFallbackWorkspaceRef.current = false;
+    setIsCreatingFallbackWorkspace(true);
+    void handleEnsureConversationWorkspace()
+      .catch((error) => {
+        logger.error("[Root] 恢复默认对话工作区失败", { error });
+        setWorkspaceActionError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (rootInnerMountedRef.current) {
+          setIsCreatingFallbackWorkspace(false);
+        }
+      });
+  }, [handleEnsureConversationWorkspace, setWorkspaceActionError]);
   const handleRemoteWorkspaceActivated = useCallback(
     ({
       workspacePath,
@@ -586,19 +581,6 @@ function RootInner({
     buildPersistPatch: buildPersistedTabPatch,
   });
 
-  useEffect(() => {
-    if (!isDesktop || !hasCompletedFullRestore) return;
-    // Bug 原因：active-first 的单 workspace 只是 Renderer 首屏投影，若立刻对外同步，
-    // 会短暂撤销其他 workspace 的 telemetry scope。完整补齐后才能发布全量集合。
-    reconcileConversationTelemetryWorkspaceScopes(
-      windowWorkspaceTabs.map((tab) => ({
-        workspacePath: tab.workspacePath,
-        ...(tab.workspaceIdentity ? { workspaceIdentity: tab.workspaceIdentity } : {}),
-        ...(tab.remoteSessionId ? { remoteSessionId: tab.remoteSessionId } : {}),
-      })),
-    );
-  }, [hasCompletedFullRestore, isDesktop, windowWorkspaceTabs]);
-
   const { tryRefresh, clearCredentials } = useTokenRefresh();
   void tryRefresh;
   void clearCredentials;
@@ -612,31 +594,6 @@ function RootInner({
     isRestoring,
     isBootstrappingInitialWorkspace: isBootstrappingInitialWorkspace || isCreatingFallbackWorkspace,
   });
-
-  const launchReportedRef = useRef(false);
-  useEffect(() => {
-    if (
-      !shouldReportLaunchToInput({
-        isStartupRenderBlocked,
-        welcomeScreenOpen: Boolean(welcomeScreenOpenReason),
-        alreadyReported: launchReportedRef.current,
-      })
-    ) {
-      return;
-    }
-    launchReportedRef.current = true;
-    const timings = readRendererLaunchTimings();
-    if (!timings || !timings.marks) {
-      return; // 锚点缺失(非桌面/未注入 marks),整批跳过
-    }
-    reportUiLaunchToInput({
-      marks: timings.marks,
-      rendererStart: timings.rendererStart,
-      reactCommit: timings.reactCommit,
-      inputReady: Date.now(), // T6
-      sessionId: `launch-${timings.marks.createdAt}`,
-    });
-  }, [isStartupRenderBlocked, welcomeScreenOpenReason]);
 
   useRootPlatformEffects({
     initialWorkspaceAbsPath,
@@ -777,6 +734,15 @@ function RootInner({
     onRemoteWorkspaceTabsClosed: handleRemoteWorkspaceTabsClosed,
   });
 
+  // 兜底必须可重复触发：旧实现用一次性 ref 且永不复位，用户关闭最后一个 workspace
+  // （或远程 workspace 因断连被移除）后，这个 effect 不会再跑，Root 会一直渲染空内容，
+  // 表现为整窗空白、只能重启 App。workspace 重新出现后重新武装，下一次丢失才能再兜底。
+  useEffect(() => {
+    if (workspaceShellPath) {
+      didRequestFallbackWorkspaceRef.current = false;
+    }
+  }, [workspaceShellPath]);
+
   useEffect(() => {
     if (
       shouldBlockRootRender({
@@ -796,6 +762,7 @@ function RootInner({
 
     didRequestFallbackWorkspaceRef.current = true;
     setIsCreatingFallbackWorkspace(true);
+    logger.warn("[Root] 当前没有可用 workspace，回落到默认对话工作区");
     // 以前 tab store 的默认空态会把 Root 带到打开工作区中间页。
     // 删除整页流程后，启动恢复为空或入口没有传 initialWorkspacePath 时必须在 Root
     // 兜底落到默认 workspace，避免用户先看到一张“打开工作区”中间页或空白页。
@@ -981,7 +948,10 @@ function RootInner({
         {rootModelSelectionErrorNode}
         {remoteConnectionDialog}
         {directoryBrowserDialog}
-        <WelcomeScreen onComplete={handleWelcomeScreenComplete} />
+        <WelcomeScreen
+          onComplete={handleWelcomeScreenComplete}
+          onClose={() => setWelcomeScreenOpenReason(null)}
+        />
       </RootShell>
     );
   }
@@ -1025,7 +995,16 @@ function RootInner({
             >
               <SettingsPage {...settingsLayerProps} />
             </ScopedErrorBoundary>
-          ) : null
+          ) : (
+            <ScopedErrorBoundary scope="no-workspace-recovery" variant="silent" className="h-full">
+              <RootNoWorkspaceRecovery
+                busy={isCreatingFallbackWorkspace}
+                error={workspaceActionError}
+                onOpenWorkspace={handleOpenWorkspace}
+                onCreateDefaultWorkspace={handleRecoverDefaultWorkspace}
+              />
+            </ScopedErrorBoundary>
+          )
         ) : (
           <RootWorkspaceContent
             workspaceScopedServices={workspaceScopedServices}

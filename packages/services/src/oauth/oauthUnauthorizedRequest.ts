@@ -23,7 +23,9 @@ function readEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
 // Polaris：官方账号 adapter 目录已剥离，userinfo 地址（原先取自 bigmodel/zaiProviderConfig）
 // 就地内联为常量解析，401 归因逻辑本身是通用流程，必须保留。
 function resolveBigModelUserinfoUrl(env: NodeJS.ProcessEnv): string {
-  return readEnv(env, "BIGMODEL_OAUTH_USERINFO_URL") ?? buildBigModelApiUrl(env, BIGMODEL_USERINFO_PATH);
+  return (
+    readEnv(env, "BIGMODEL_OAUTH_USERINFO_URL") ?? buildBigModelApiUrl(env, BIGMODEL_USERINFO_PATH)
+  );
 }
 
 function resolveZaiUserinfoUrl(env: NodeJS.ProcessEnv): string {

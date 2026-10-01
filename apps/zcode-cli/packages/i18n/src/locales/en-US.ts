@@ -18,7 +18,6 @@ Commands:
   app-server Run the ZCode Protocol stdio app server
   commands   List custom slash commands (\`commands list\`)
   doctor     Inspect runtime and packaging assumptions
-  login      Configure a model provider (official sign-in removed)
   logout     Remove locally stored login credentials
   plugins    Manage plugins and marketplaces (\`plugins list|install|uninstall|enable|disable|update|validate|marketplace ...\`; alias: plugin)
   skills     List local skills (\`skills list\`)
@@ -48,7 +47,6 @@ Options:
   --target-replace Replace any existing session goal set by --target
   -c, --continue        Resume the latest session for the current directory
   --json           Print machine-readable JSON where supported
-  --no-browser     Print the OAuth URL without opening a browser
   --no-color       Disable ANSI colors
   --verbose        Print extra diagnostic detail
 

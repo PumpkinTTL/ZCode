@@ -18,6 +18,12 @@ import {
   registerMainApplicationWindow,
   unregisterMainApplicationWindow,
 } from "./resourceManagerWindow.js";
+import {
+  armRendererBootWatchdog,
+  disposeRendererBootWatchdog,
+  noteRendererBootAlive,
+} from "./desktopRendererBootWatchdog.js";
+import { attachRendererRuntimeRecovery } from "./desktopRendererRuntimeRecovery.js";
 
 const DEFAULT_RUNTIME_PROCESS_ENV_WAIT_TIMEOUT_MS = 4_500;
 
@@ -127,6 +133,18 @@ export function createWindow(options: {
     cancelRuntimeProcessEnvWait = null;
     const currentDomReadyGeneration = ++domReadyGeneration;
     options.logger.info(`[createWindow] dom-ready fired (${label})`);
+    // HTML 跑起来不等于界面跑起来：renderer 的 bundle 可能根本没加载或主入口直接抛错，
+    // 那时窗口是空 #root（灰/白死窗口），用户只能重启应用。这里在 dom-ready 后等一个
+    // renderer 主动信号，等不到就自动 reload 一次（每个窗口只自动恢复一次）。
+    armRendererBootWatchdog(win, () => {
+      if (win.isDestroyed()) {
+        return;
+      }
+      options.logger.warn(
+        `[createWindow] renderer produced no boot signal after dom-ready (${label}), reloading once`,
+      );
+      win.webContents.reload();
+    });
 
     if (process.platform === "win32" && !win.isDestroyed()) {
       win.show();
@@ -259,8 +277,20 @@ export function createWindow(options: {
     });
   });
 
+  // 运行期自愈：界面已经跑起来之后才卡死/崩溃的那条路。详见该模块对「零轮询」的约束。
+  const runtimeRecovery = attachRendererRuntimeRecovery(win, { logger: options.logger, label });
+
+  // renderer 在业务 Root effect 里发来的就绪信号。
+  win.webContents.on("ipc-message", (_event, channel) => {
+    if (channel === PlatformChannels.RendererReady) {
+      noteRendererBootAlive(win);
+    }
+  });
+
   win.on("closed", () => {
     unregisterMainApplicationWindow(wcId);
+    disposeRendererBootWatchdog(win);
+    runtimeRecovery.dispose();
     cancelRuntimeProcessEnvWait?.();
     cancelRuntimeProcessEnvWait = null;
     options.logger.info(`[createWindow] window closed, killing host process (${label})`);

@@ -1179,7 +1179,7 @@ export async function exportLogs(
 
     const sourceDir = getSourceDir();
     const timestamp = formatTimestamp(now());
-    const exportBaseName = `zcode-logs-${timestamp}`;
+    const exportBaseName = `polaris-logs-${timestamp}`;
     const outputRootDir = getOutputRootDir();
     await mkdir(outputRootDir, { recursive: true });
     const outputDir = await mkdtemp(join(outputRootDir, `${exportBaseName}-`));

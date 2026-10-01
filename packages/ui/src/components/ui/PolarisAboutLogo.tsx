@@ -29,7 +29,7 @@ export function PolarisAboutLogo({ className }: { className?: string }) {
         d="M52 150 C88 186 168 186 204 150 C208 146 214 151 210 156 C172 196 84 196 46 156 C42 151 48 146 52 150 Z"
       />
     </svg>
-  )
+  );
 }
 
 export function PolarisWordmarkLogo({ className }: { className?: string }) {
@@ -45,10 +45,7 @@ export function PolarisWordmarkLogo({ className }: { className?: string }) {
       focusable="false"
     >
       {/* 星形标记（左侧） */}
-      <path
-        fill="currentColor"
-        d="M27 6 L33 21 L48 27 L33 33 L27 48 L21 33 L6 27 L21 21 Z"
-      />
+      <path fill="currentColor" d="M27 6 L33 21 L48 27 L33 33 L27 48 L21 33 L6 27 L21 21 Z" />
       {/* 字标 POLARIS（几何无衬线，粗体） */}
       <g fill="currentColor" transform="translate(60 0)">
         {/* P */}
@@ -67,5 +64,5 @@ export function PolarisWordmarkLogo({ className }: { className?: string }) {
         <path d="M266 1 H288 V11 H276 C271 11 270 13 270 15 C270 17 271 19 276 19 C288 19 292 25 292 33 C292 45 285 53 270 53 H264 V43 H276 C281 43 282 41 282 39 C282 37 281 35 276 35 C264 35 260 29 260 21 C260 9 267 1 266 1 Z" />
       </g>
     </svg>
-  )
+  );
 }

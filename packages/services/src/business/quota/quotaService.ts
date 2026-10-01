@@ -49,9 +49,7 @@ function computeQuotaView(
   wallet: QuotaStatus["account"]["wallet"],
   subscriptions: readonly QuotaSubscription[],
 ): QuotaStatus["quota"] {
-  const active = subscriptions.filter(
-    (s) => s.status === "active" || s.status === "used_up",
-  );
+  const active = subscriptions.filter((s) => s.status === "active" || s.status === "used_up");
   const first = active[0];
   if (!first) {
     return { kind: "wallet", left: wallet.available, total: null, notActivated: false };
@@ -72,10 +70,23 @@ function computeQuotaView(
   };
 }
 
+/**
+ * 从密钥列表条目里取出可用的密钥值。
+ *
+ * 不限定字段名与 `sk-` 前缀：不同部署的密钥列表字段并不统一（`key` / `token` / `secret` /
+ * `api_key`），也不保证都以 `sk-` 开头。过去只认 `key` + `sk-` 前缀，匹配不到就转去创建，
+ * 于是每次登录都会新建一把密钥。
+ */
+function readApiKeyValue(entry: Record<string, unknown>): string {
+  for (const field of ["key", "token", "api_key", "apiKey", "secret"]) {
+    const value = entry[field];
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  }
+  return "";
+}
+
 /** 生效中的订阅排前，同级按剩余额度降序。 */
-function sortSubscriptions(
-  subs: readonly QuotaSubscription[],
-): readonly QuotaSubscription[] {
+function sortSubscriptions(subs: readonly QuotaSubscription[]): readonly QuotaSubscription[] {
   const weight = (s: QuotaSubscription) => (s.status === "active" ? 0 : 1);
   return [...subs].sort((a, b) => weight(a) - weight(b) || b.remaining - a.remaining);
 }
@@ -189,18 +200,23 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
       await clearCredentials();
     },
 
-    /** 确保存在一个可用的 sk- 调用密钥：已有则复用第一个，没有则自动创建。 */
+    /**
+     * 取一个可用的调用密钥：**只复用账号里已有的密钥，不自动创建**。
+     *
+     * 为什么不再创建：登录换取的是用户身份（token），调用模型用的是账号里**已经有**的
+     * 密钥。登录流程凭空多建一把密钥，既在用户门户里留下无法解释的条目，又让「登录」失败
+     * 在密钥创建接口上（权限/限额/限流），把用户按在登录页。账号里真没有可用密钥时，
+     * 给一句可读文案让用户去门户创建后重试。
+     */
     async ensureApiKey(): Promise<string> {
       const token = await requireToken();
       const keys = await client.listApiKeys(token);
-      const existing = keys
-        .map((k) => (typeof k.key === "string" ? k.key.trim() : ""))
-        .find((key) => key.startsWith("sk-"));
+      const existing = keys.map(readApiKeyValue).find((key) => key.length > 0);
       if (existing) return existing;
-      return client.createApiKey(token, "Polaris");
+      throw new QuotaApiError(400, "账号下没有可用的调用密钥，请先在门户创建一个 sk- 密钥后再登录");
     },
 
-    /** 用 sk- 密钥拉模型目录（OpenAI 兼容 /v1/models），返回去重后的模型 id。 */
+    /** 用调用密钥拉模型目录（OpenAI 兼容 /v1/models），返回去重后的模型 id。 */
     async getModelIds(apiKey: string): Promise<string[]> {
       const ids = await client.listModelIds(apiKey);
       return [...new Set(ids)];

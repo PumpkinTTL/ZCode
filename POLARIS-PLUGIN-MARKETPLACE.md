@@ -2,6 +2,7 @@
 
 > 本文是插件市场能力的设计、运维与接入说明。改动涉及市场源解析、目录刷新降级、
 > 设置页 UI 与外部工具接入点。相关代码集中在：
+>
 > - `packages/shared/src/plugin-marketplaces.ts`（源注册表 / 预置清单 / 接入点）
 > - `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts`（源解析、拉取、激活）
 > - `apps/zcode-cli/packages/bootstrap/src/plugins.ts`（overview / 刷新 / 降级判定）
@@ -21,13 +22,13 @@
 
 ## 2. 概念模型
 
-| 概念 | 说明 | 是否联网 |
-|---|---|---|
-| **内置插件** | 随应用打包的 10 个插件（browser-use / image-search / documents / pdf / presentations / spreadsheets / node-repl-host / skill-creator / plugin-creator / zcode-guide） | 否，本地 seed |
-| **默认源** | 应用自带并自动登记的市场源（`zcode-plugins-official`），按**镜像列表**优先级刷新 | 仅刷新时 |
-| **镜像源** | 同一个 `zcode-plugins-official` 目录的多个来源（Polaris 自有 + Z.ai 原站），按优先级逐个尝试 | 仅刷新时 |
-| **预置源** | 公开、可直接添加的 `.claude-plugin/marketplace.json` 目录清单，**不自动添加** | 用户点「添加」后 |
-| **用户源** | 用户手动输入的任意源（GitHub / git / URL / npm / file / directory / zip） | 用户触发时 |
+| 概念         | 说明                                                                                                                                                                  | 是否联网         |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **内置插件** | 随应用打包的 10 个插件（browser-use / image-search / documents / pdf / presentations / spreadsheets / node-repl-host / skill-creator / plugin-creator / zcode-guide） | 否，本地 seed    |
+| **默认源**   | 应用自带并自动登记的市场源（`zcode-plugins-official`），按**镜像列表**优先级刷新                                                                                      | 仅刷新时         |
+| **镜像源**   | 同一个 `zcode-plugins-official` 目录的多个来源（Polaris 自有 + Z.ai 原站），按优先级逐个尝试                                                                          | 仅刷新时         |
+| **预置源**   | 公开、可直接添加的 `.claude-plugin/marketplace.json` 目录清单，**不自动添加**                                                                                         | 用户点「添加」后 |
+| **用户源**   | 用户手动输入的任意源（GitHub / git / URL / npm / file / directory / zip）                                                                                             | 用户触发时       |
 
 **关键设计**：默认源自动登记；预置源只是「建议清单」，必须用户显式添加。因此**默认安装不向任何第三方发请求**。
 
@@ -50,15 +51,15 @@
 
 `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts` 支持以下源，全部保留：
 
-| 类型 | 形态 | 备注 |
-|---|---|---|
-| `url` | `{ source: "url", url }` | 直连 `marketplace.json` |
-| `github` | `{ source: "github", repo, ref?, path?, sparsePaths? }` | `owner/repo` 简写即此 |
-| `git` | `{ source: "git", url, ref?, path? }` | 任意 git 远端 |
-| `git-subdir` | 目录内子路径 | Claude 标准里的 `git-subdir` |
-| `npm` | `{ source: "npm", package }` | npm 包 |
-| `file` / `directory` | 本地 `.json` 或目录 | 离线可用 |
-| `zip` | zip 归档（带 sha256） | 插件包形态 |
+| 类型                 | 形态                                                    | 备注                         |
+| -------------------- | ------------------------------------------------------- | ---------------------------- |
+| `url`                | `{ source: "url", url }`                                | 直连 `marketplace.json`      |
+| `github`             | `{ source: "github", repo, ref?, path?, sparsePaths? }` | `owner/repo` 简写即此        |
+| `git`                | `{ source: "git", url, ref?, path? }`                   | 任意 git 远端                |
+| `git-subdir`         | 目录内子路径                                            | Claude 标准里的 `git-subdir` |
+| `npm`                | `{ source: "npm", package }`                            | npm 包                       |
+| `file` / `directory` | 本地 `.json` 或目录                                     | 离线可用                     |
+| `zip`                | zip 归档（带 sha256）                                   | 插件包形态                   |
 
 `parseMarketplaceSourceInput()` 负责把用户输入串归一化成上述结构；`addMarketplace()` 负责拉取、
 校验、原子激活与回滚。
@@ -80,7 +81,7 @@ none       刷新失败 + 本地无任何目录      → error（真的什么都
 
 ```ts
 const hasLocalCatalog = loadMarketplaceManifestSync(pluginStorageRoot, record.id) !== null;
-severity: hasLocalCatalog ? "warning" : "error"
+severity: hasLocalCatalog ? "warning" : "error";
 ```
 
 有本地目录时消息会追加
@@ -117,11 +118,11 @@ OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS = [
 
 添加一个市场源**不等于**把它的插件全部下载到本地。策略分三层：
 
-| 阶段 | 行为 |
-|---|---|
+| 阶段            | 行为                                                                                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **添加 / 刷新** | `github` 源直接按 ref 取清单（`raw.githubusercontent.com/<repo>/<ref>/.claude-plugin/marketplace.json`），**不 clone 仓库**；取不到才回落到 clone（clone 出来的临时树读取完即清理，不落盘） |
-| **落盘** | **永远只写 `marketplace.json`**（+ 官方目录的 `cdn-/bundled-` 分片）。`loadMarketplaceFromSource` 只读清单，没有任何复制源树的路径 |
-| **安装** | 相对路径条目按住物化：对需要它的仓库做一次 **sparse checkout**，只取那几个目录（`git-subdir` / `--sparse`）；自带的 `url` / `github` / `git-subdir` / `npm` / `zip` 条目直接解析，不取仓 |
+| **落盘**        | **永远只写 `marketplace.json`**（+ 官方目录的 `cdn-/bundled-` 分片）。`loadMarketplaceFromSource` 只读清单，没有任何复制源树的路径                                                          |
+| **安装**        | 相对路径条目按住物化：对需要它的仓库做一次 **sparse checkout**，只取那几个目录（`git-subdir` / `--sparse`）；自带的 `url` / `github` / `git-subdir` / `npm` / `zip` 条目直接解析，不取仓    |
 
 实测（最终代码，临时 storage root，真实网络）：
 
@@ -137,8 +138,6 @@ INSTALL 相对路径条目 marketing-skills           4053ms  ← sparse checkou
 **源树所有权**：物化得到的临时仓库由调用方负责清理（install / describe 结束即删），市场目录里**不存在长期驻留的源树**，只有 `marketplace.json`。
 
 **历史包袱自动回收**：旧版本的整树由 `activateDirectoryAtomically`（无 `sourcePath` = 整目录重建）在下次刷新该源时**原子替换掉**，不需要用户「移除再加」。实测：`claude-code-skills` 从 60M 收敛到 96K。
-
-
 
 ### 4.5 UI 呈现
 
@@ -173,14 +172,14 @@ INSTALL 相对路径条目 marketing-skills           4053ms  ← sparse checkou
 
 来源：`packages/shared/src/plugin-marketplaces.ts` → `PRESET_PLUGIN_MARKETPLACES`。
 
-| 展示名 | 源 | 目录声明名（添加后的 id） | 条目数 |
-|---|---|---|---|
-| Claude Plugins Official | `anthropics/claude-plugins-official` | `claude-plugins-official` | 314 |
-| Awesome Claude Plugins | `composio-community/awesome-claude-plugins` | `awesome-claude-plugins` | 24 |
-| Claude Code Skills | `alirezarezvani/claude-skills` | `claude-code-skills` | 99 |
-| Sylvain's Plugins | `sgaunet/claude-plugins` | `sylvain-marketplace` | 4 |
-| xiaolai Marketplace | `xiaolai/claude-plugin-marketplace` | `xiaolai` | 19 |
-| Agent 37 Skills | `agent37-platform/agent37-skills-collection` | `agent37-skills` | 3 |
+| 展示名                  | 源                                           | 目录声明名（添加后的 id） | 条目数 |
+| ----------------------- | -------------------------------------------- | ------------------------- | ------ |
+| Claude Plugins Official | `anthropics/claude-plugins-official`         | `claude-plugins-official` | 314    |
+| Awesome Claude Plugins  | `composio-community/awesome-claude-plugins`  | `awesome-claude-plugins`  | 24     |
+| Claude Code Skills      | `alirezarezvani/claude-skills`               | `claude-code-skills`      | 99     |
+| Sylvain's Plugins       | `sgaunet/claude-plugins`                     | `sylvain-marketplace`     | 4      |
+| xiaolai Marketplace     | `xiaolai/claude-plugin-marketplace`          | `xiaolai`                 | 19     |
+| Agent 37 Skills         | `agent37-platform/agent37-skills-collection` | `agent37-skills`          | 3      |
 
 **未收录**：`dvcrn/openclaw-skills-marketplace`（26k+ 条目，仓库归档超过 GitHub archive 源的
 200MB 上限，添加必然失败）。需要时用户可手动添加。
@@ -248,8 +247,12 @@ UI / CLI / 文档都从这里读。
     {
       "name": "my-plugin",
       "description": "…",
-      "source": { "source": "git-subdir", "url": "https://github.com/my-org/my-tool.git",
-                  "path": "packages/my-plugin", "ref": "main" }
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/my-org/my-tool.git",
+        "path": "packages/my-plugin",
+        "ref": "main"
+      }
     }
   ]
 }
@@ -290,6 +293,7 @@ node_modules/.bin/tsx --test apps/zcode-cli/packages/bootstrap/test/marketplaceD
 ```
 
 覆盖（8 + 3 个测试）：
+
 - 预置源唯一性 / 必填字段 / `catalogName` 存在性
 - 源串列表解析（切分、去空、去重）
 - 环境变量注入与去重；无 env 时的浏览器安全性
@@ -305,6 +309,7 @@ node_modules/.bin/tsx --test apps/zcode-cli/packages/bootstrap/test/marketplaceD
 ```
 
 实测结果（2026-09）：
+
 - 上表 6 个预置源全部添加成功，`id` 与 `catalogName` 完全一致。
 - 官方目录镜像：主源不可达（约 1.1s）后回退到 Z.ai 原站，拉到 26 个插件，`refreshFailure` 为空。
 
@@ -319,42 +324,42 @@ node_modules/.bin/tsx --test apps/zcode-cli/packages/bootstrap/test/marketplaceD
 
 ## 9. 排查
 
-| 现象 | 可能原因 | 处理 |
-|---|---|---|
-| 市场列表为空 | 唯一的源刷新失败且本地无快照 | 检查默认源地址是否可达；内置插件不受影响 |
-| 源显示「离线目录」 | 远程不可达但快照可用 | 正常降级；恢复网络后点刷新 |
-| 添加某源失败 `HTTP response is too large` | 仓库归档 > 200MB | 该源不适用 archive 路径；改用 git/github 且限制 `sparsePaths` |
-| 添加后 id 与预期不符 | 目录声明名与预期不同 | 以 manifest 的 `name` 为准，修正 `catalogName` |
-| 出现重复来源 | 目录改名导致 id 变化 | 删除旧来源后重新添加 |
+| 现象                                      | 可能原因                     | 处理                                                          |
+| ----------------------------------------- | ---------------------------- | ------------------------------------------------------------- |
+| 市场列表为空                              | 唯一的源刷新失败且本地无快照 | 检查默认源地址是否可达；内置插件不受影响                      |
+| 源显示「离线目录」                        | 远程不可达但快照可用         | 正常降级；恢复网络后点刷新                                    |
+| 添加某源失败 `HTTP response is too large` | 仓库归档 > 200MB             | 该源不适用 archive 路径；改用 git/github 且限制 `sparsePaths` |
+| 添加后 id 与预期不符                      | 目录声明名与预期不同         | 以 manifest 的 `name` 为准，修正 `catalogName`                |
+| 出现重复来源                              | 目录改名导致 id 变化         | 删除旧来源后重新添加                                          |
 
 ---
 
 ## 10. 变更记录
 
-| 文件 | 变更 |
-|---|---|
-| `packages/shared/src/plugin-marketplaces.ts` | 新增 `PresetPluginMarketplace`、`PRESET_PLUGIN_MARKETPLACES`、`PLUGIN_MARKETPLACE_SOURCES_ENV`、`parsePluginMarketplaceSourceList`、`resolvePresetPluginMarketplaces`、`isPresetMarketplaceAdded`、`normalizeMarketplaceSourceForCompare`；新增官方目录镜像 `POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL` / `ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL` / `OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS` / `PLUGIN_MARKETPLACE_MIRRORS_ENV` / `resolveOfficialPluginMarketplaceMirrors` |
-| `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts` | 新增 `resolveMarketplaceRefreshSources`：官方目录按镜像优先级逐个尝试；`updateMarketplace` / `ensureMarketplaceManifestAvailable` 支持降级回退；新增 `readRelativeSourcePath` / `marketplaceRequiresLocalSourceTree` / `stagedMarketplaceHasSourceTree` / `tryLoadGitHubMarketplaceManifest` / `resolveMarketplaceSourceTree`：github 源免 clone 取清单、按需才落源树、安装时 sparse 物化 |
-| `apps/zcode-cli/packages/adapters/src/plugins/official-marketplace.ts` | 合并官方目录时只取镜像的**内容**字段（`featured` / `allowCrossMarketplaceDependenciesOn`），丢弃其品牌身份（`owner` / `description`） |
-| `apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts` | 内置分片写入 Polaris 自有 `description`，压过镜像文案 |
-| `packages/shared/src/zcode-protocol/index.ts` | `zcodePluginMarketplaceSummarySchema` 增加可选 `degraded` |
-| `apps/zcode-cli/packages/bootstrap/src/plugins.ts` | `ZCodeMarketplaceSummaryData` 增加 `degraded`；overview 计算 `degraded`；刷新失败按「有/无本地目录」降级为 warning/error |
-| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/plugins.ts` | `toMarketplaceSummary` 透传 `degraded` |
-| `packages/ui/src/settings/AddMarketplaceSourceDialog.tsx` | 新增「推荐市场源」一键添加区 |
-| `packages/ui/src/settings/PluginStoreSourcesDialog.tsx` | 降级状态用中性提示替代报错样式 |
-| `packages/ui/src/settings/PluginStorePage.tsx` | 把预置源与已登记市场传给添加对话框 |
-| `packages/ui/src/i18n/locales/{zh-CN,en-US}.ts` | `presets.*` 与 `store.sources.degraded` 文案 |
-| `packages/ui/src/components/ui/dialog.tsx` | 弹窗外壳列宽钉成 `minmax(0, 1fr)` + `[&>*]:min-w-0`：从组件层消除「一个 nowrap 子元素顶宽整条轨道，连累所有同级元素溢出」这一类问题（§4.5.1） |
-| 测试 | `packages/shared/test/pluginMarketplaces.test.ts`（7）、`apps/zcode-cli/packages/bootstrap/test/marketplaceDegradation.test.ts`（6）、`apps/zcode-cli/packages/adapters/test/marketplaceStagingWeight.test.ts`（3）、`apps/zcode-cli/packages/adapters/test/officialMarketplaceBranding.test.ts`（品牌红线） |
+| 文件                                                                   | 变更                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/shared/src/plugin-marketplaces.ts`                           | 新增 `PresetPluginMarketplace`、`PRESET_PLUGIN_MARKETPLACES`、`PLUGIN_MARKETPLACE_SOURCES_ENV`、`parsePluginMarketplaceSourceList`、`resolvePresetPluginMarketplaces`、`isPresetMarketplaceAdded`、`normalizeMarketplaceSourceForCompare`；新增官方目录镜像 `POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL` / `ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL` / `OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS` / `PLUGIN_MARKETPLACE_MIRRORS_ENV` / `resolveOfficialPluginMarketplaceMirrors` |
+| `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts`          | 新增 `resolveMarketplaceRefreshSources`：官方目录按镜像优先级逐个尝试；`updateMarketplace` / `ensureMarketplaceManifestAvailable` 支持降级回退；新增 `readRelativeSourcePath` / `marketplaceRequiresLocalSourceTree` / `stagedMarketplaceHasSourceTree` / `tryLoadGitHubMarketplaceManifest` / `resolveMarketplaceSourceTree`：github 源免 clone 取清单、按需才落源树、安装时 sparse 物化                                                                                   |
+| `apps/zcode-cli/packages/adapters/src/plugins/official-marketplace.ts` | 合并官方目录时只取镜像的**内容**字段（`featured` / `allowCrossMarketplaceDependenciesOn`），丢弃其品牌身份（`owner` / `description`）                                                                                                                                                                                                                                                                                                                                       |
+| `apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts`         | 内置分片写入 Polaris 自有 `description`，压过镜像文案                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `packages/shared/src/zcode-protocol/index.ts`                          | `zcodePluginMarketplaceSummarySchema` 增加可选 `degraded`                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `apps/zcode-cli/packages/bootstrap/src/plugins.ts`                     | `ZCodeMarketplaceSummaryData` 增加 `degraded`；overview 计算 `degraded`；刷新失败按「有/无本地目录」降级为 warning/error                                                                                                                                                                                                                                                                                                                                                    |
+| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/plugins.ts`      | `toMarketplaceSummary` 透传 `degraded`                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `packages/ui/src/settings/AddMarketplaceSourceDialog.tsx`              | 新增「推荐市场源」一键添加区                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `packages/ui/src/settings/PluginStoreSourcesDialog.tsx`                | 降级状态用中性提示替代报错样式                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `packages/ui/src/settings/PluginStorePage.tsx`                         | 把预置源与已登记市场传给添加对话框                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `packages/ui/src/i18n/locales/{zh-CN,en-US}.ts`                        | `presets.*` 与 `store.sources.degraded` 文案                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `packages/ui/src/components/ui/dialog.tsx`                             | 弹窗外壳列宽钉成 `minmax(0, 1fr)` + `[&>*]:min-w-0`：从组件层消除「一个 nowrap 子元素顶宽整条轨道，连累所有同级元素溢出」这一类问题（§4.5.1）                                                                                                                                                                                                                                                                                                                               |
+| 测试                                                                   | `packages/shared/test/pluginMarketplaces.test.ts`（7）、`apps/zcode-cli/packages/bootstrap/test/marketplaceDegradation.test.ts`（6）、`apps/zcode-cli/packages/adapters/test/marketplaceStagingWeight.test.ts`（3）、`apps/zcode-cli/packages/adapters/test/officialMarketplaceBranding.test.ts`（品牌红线）                                                                                                                                                                |
 
 验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors；CLI `turbo run typecheck` ✅ 27/27；
 上述测试 ✅ 16/16。
 
 ### 10.1 变更记录（第二批：物化策略与 UI 修形）
 
-| 文件 | 变更 |
-|---|---|
-| `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts` | `loadMarketplaceFromSource` 改为**只读清单**（去掉 `persist` 与整树复制路径，签名去掉 `storageRoot`）；`tryLoadGitHubMarketplaceManifest`（github 免 clone 取清单）；`resolveMarketplaceSourceTree` 支持 `sparsePaths`；`installMarketplacePlugin` 安装相对路径条目时按需 sparse checkout；`addMarketplace` 统一走 `stageMarketplaceManifest`（只落 `marketplace.json`，旧整树被原子替换回收） |
-| `apps/zcode-cli/packages/adapters/test/marketplaceStagingWeight.test.ts` | 守护测试：添加只落清单、安装按需物化、旧整树在刷新时被回收 |
-| `packages/ui/src/components/ui/dialog.tsx` | 组件层修形（§4.5.1） |
-| `packages/ui/src/settings/AddMarketplaceSourceDialog.tsx` | 推荐源区块加 `min-w-0` / `overflow-x-hidden` / `shrink-0` 第二道保险 |
+| 文件                                                                     | 变更                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts`            | `loadMarketplaceFromSource` 改为**只读清单**（去掉 `persist` 与整树复制路径，签名去掉 `storageRoot`）；`tryLoadGitHubMarketplaceManifest`（github 免 clone 取清单）；`resolveMarketplaceSourceTree` 支持 `sparsePaths`；`installMarketplacePlugin` 安装相对路径条目时按需 sparse checkout；`addMarketplace` 统一走 `stageMarketplaceManifest`（只落 `marketplace.json`，旧整树被原子替换回收） |
+| `apps/zcode-cli/packages/adapters/test/marketplaceStagingWeight.test.ts` | 守护测试：添加只落清单、安装按需物化、旧整树在刷新时被回收                                                                                                                                                                                                                                                                                                                                     |
+| `packages/ui/src/components/ui/dialog.tsx`                               | 组件层修形（§4.5.1）                                                                                                                                                                                                                                                                                                                                                                           |
+| `packages/ui/src/settings/AddMarketplaceSourceDialog.tsx`                | 推荐源区块加 `min-w-0` / `overflow-x-hidden` / `shrink-0` 第二道保险                                                                                                                                                                                                                                                                                                                           |

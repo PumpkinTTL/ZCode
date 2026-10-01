@@ -133,7 +133,6 @@ function requiresProviderRuntime(argv: readonly string[]): boolean {
     command === "tui" ||
     command === "app-server" ||
     command === "agent-server" ||
-    command === "login" ||
     command === "logout"
   );
 }

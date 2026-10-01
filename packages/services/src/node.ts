@@ -129,8 +129,6 @@ export { createOAuthProviderLogoutHandler } from "./oauth/oauthProviderLogout.js
 export { OAuthCredentialRepo } from "./oauth/repo/oauthCredentialRepo.js";
 export { ensureDeviceMid } from "./device/deviceMid.js";
 export type { EnsureDeviceMidOptions } from "./device/deviceMid.js";
-export { createTelemetryCore, ensureTelemetryDeviceMid } from "./telemetry/telemetryCore.js";
-export type { EnsureTelemetryDeviceMidOptions } from "./telemetry/telemetryCore.js";
 export type { AccountRequestAuthResolver } from "./model-provider/accountRequestAuthService.js";
 export { importLegacyPersonalProviderConfig } from "./model-provider/legacyPersonalProviderConfigImporter.js";
 export { createAccountProviderConfigSource } from "./model-provider/accountProviderConnectionResolver.js";
@@ -1443,7 +1441,12 @@ export function createLocalServices(options: {
         }),
     },
     onZCodeBuiltinRefreshError: (error) => {
-      providerConfigLog.warn(undefined, "Polaris Built-in Config 远端刷新失败", { error });
+      // 自有后端未就绪 / CDN 不可达属预期状态：Bundled/LKG 配置继续生效，这里只留诊断线索。
+      // 过去用 warn + `{ error }`：既在每个检查周期刷屏，又把 Error 序列化成 `{}`（结构化日志
+      // 拿不到任何信息）。降到 debug 并显式取 message。
+      providerConfigLog.debug(undefined, "Polaris Built-in Config 远端刷新失败，保留本地配置", {
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
     },
     onPersonalConfigRecovery: (event) => {
       providerConfigLog.warn(
@@ -1733,7 +1736,8 @@ export function createLocalServices(options: {
     enabled: cuaPipSessionEnabled,
     platform: process.platform,
     serviceAuthorityMode: options?.serviceAuthorityMode ?? null,
-    lifecycleWired: options?.serviceAuthorityMode === "desktop-local",
+    // lifecycle 回调现在与 enabled 同门控（非 macOS 不再挂），不能继续按 authorityMode 报 true。
+    lifecycleWired: cuaPipSessionEnabled,
   });
   // Computer Use Helper macOS 权限状态服务：renderer 经 host RPC 查询当前 Helper 的运行态与权限，并在
   // 用户授权后从明确入口精确重启一次 Helper。重启**必须走 resolver.restart()**（不是裸 host.restart），
@@ -1994,7 +1998,9 @@ export function createLocalServices(options: {
       ? options?.cuaOperationStateReporter
       : undefined,
     // ZCode 只发布 turn/session 事实；面板 terminal policy 由 producer coordinator 决定。
-    ...(options?.serviceAuthorityMode === "desktop-local"
+    // 只在 PiP 真可能启用时挂 lifecycle：非 macOS 上服务恒为 disabled，挂上也只是给
+    // cuaOperationTurnTracker 多接一条必然被丢弃的出口（见 cuaPipSessionEnabled）。
+    ...(cuaPipSessionEnabled
       ? {
           onCuaPipSessionLifecycle: (_workspace, event) => {
             void cuaPipSessionService.publishLifecycle(event);
@@ -2326,10 +2332,7 @@ export function createLocalServices(options: {
     )
     .register(IFileWatcherService, createFileWatcherService())
     .register(IOAuthService, oauthService)
-    .register(
-      IUsageStatsService,
-      createUsageStatsService({ zcodeAgentService }),
-    )
+    .register(IUsageStatsService, createUsageStatsService({ zcodeAgentService }))
     .register(ICodingPlanSubscriptionService, codingPlanSubscriptionService)
     .register(
       IClientConfigService,
@@ -2517,84 +2520,6 @@ export function createLocalServices(options: {
   sqliteReposToClose.push(taskIndexRepo);
   sharedSqliteRepos.set(services, sqliteReposToClose);
   return services;
-}
-
-export function createTelemetryUserIdLoader(
-  credentialService: Pick<ICredentialService, "load">,
-): () => Promise<string> {
-  const log = createServiceLogger("telemetry-user-id");
-  return async () => {
-    try {
-      const activeProvider = (await credentialService.load("oauth:active_provider"))?.trim() ?? "";
-      if (!activeProvider) {
-        return "";
-      }
-
-      const rawUserInfo = await credentialService.load(`oauth:${activeProvider}:user_info`);
-      return readTelemetryOAuthUserId(rawUserInfo);
-    } catch (error) {
-      if (!isCredentialDecryptError(error)) {
-        throw error;
-      }
-
-      // Bugfix: telemetry 只是只读 userId 上报入口，不能抢在 host OAuthService 前
-      // 对损坏凭据做半套清理；否则会漏掉派生模型 provider key 的 logout 收口。
-      log.warn(undefined, "skip telemetry user id: OAuth credential decrypt failed", error);
-      return "";
-    }
-  };
-}
-
-/** 仅给同一事件账号返回当前 ZCode JWT；不缓存、不修改登录凭据。 */
-export function createTelemetryAuthorizationLoader(
-  credentialService: Pick<ICredentialService, "load">,
-): (userId: string) => Promise<string | null> {
-  return async (userId) => {
-    if (!userId) return null;
-    try {
-      const provider = (await credentialService.load("oauth:active_provider"))?.trim();
-      if (provider !== "zai" && provider !== "bigmodel") return null;
-      const readUserId = async () =>
-        readTelemetryOAuthUserId(await credentialService.load(`oauth:${provider}:user_info`));
-      if ((await readUserId()) !== userId) return null;
-      const jwt = (await credentialService.load("zcodejwttoken"))?.trim();
-      // 退出/切账号可能发生在异步读取期间；禁止将旧身份的 token 附到其他账号事件上。
-      if (
-        (await credentialService.load("oauth:active_provider"))?.trim() !== provider ||
-        (await readUserId()) !== userId
-      )
-        return null;
-      return jwt && /^[\x21-\x7e]+$/.test(jwt) ? `Bearer ${jwt}` : null;
-    } catch {
-      return null;
-    }
-  };
-}
-
-export function createTelemetryMarketingParamsLoader(
-  credentialService: ICredentialService,
-): () => Promise<import("@zcode/shared").OAuthLoginAttribution | null> {
-  // 恢复原因：固定返回 null 会丢掉已保存的渠道归因，数仓应读取 OAuth 的同一份事实。
-  const repo = new OAuthCredentialRepo(credentialService);
-  return () => repo.loadLoginAttribution();
-}
-
-function readTelemetryOAuthUserId(rawUserInfo: string | null): string {
-  if (!rawUserInfo) {
-    return "";
-  }
-
-  try {
-    const parsed = JSON.parse(rawUserInfo) as {
-      id?: unknown;
-      user_id?: unknown;
-    };
-    const id = typeof parsed.id === "string" ? parsed.id : "";
-    const userId = typeof parsed.user_id === "string" ? parsed.user_id : "";
-    return id.trim() || userId.trim();
-  } catch {
-    return "";
-  }
 }
 
 export function disposeServiceResources(services: ServiceCollection): void {

@@ -49,9 +49,7 @@ export const PLUGIN_MARKETPLACE_MIRRORS_ENV = "POLARIS_PLUGIN_MARKETPLACE_MIRROR
  * 解析官方目录镜像源顺序。环境变量非空时完全覆盖内置默认（顺序即优先级）；
  * 未配置时回到 {@link OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS}。
  */
-export function resolveOfficialPluginMarketplaceMirrors(
-  env?: NodeJS.ProcessEnv,
-): string[] {
+export function resolveOfficialPluginMarketplaceMirrors(env?: NodeJS.ProcessEnv): string[] {
   const resolvedEnv = env ?? (typeof process === "undefined" ? undefined : process.env);
   const overridden = parsePluginMarketplaceSourceList(
     resolvedEnv?.[PLUGIN_MARKETPLACE_MIRRORS_ENV],
@@ -136,8 +134,7 @@ export const PRESET_PLUGIN_MARKETPLACES: readonly PresetPluginMarketplace[] = [
     id: "claude-plugins-official",
     source: "anthropics/claude-plugins-official",
     name: "Claude Plugins Official",
-    description:
-      "Anthropic 维护的官方 Claude Code 插件目录（含内部插件与通过审核的第三方插件）。",
+    description: "Anthropic 维护的官方 Claude Code 插件目录（含内部插件与通过审核的第三方插件）。",
     catalogName: "claude-plugins-official",
     homepage: "https://github.com/anthropics/claude-plugins-official",
     license: "每个插件各自的 LICENSE",

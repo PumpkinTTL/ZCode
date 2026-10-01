@@ -86,22 +86,5 @@ export {
   loadUiFontSizePx,
   subscribeToUiFontSizeStorageChanges,
 } from "./lib/uiFontSize.js";
-export { reportUiLaunchToInput } from "./lib/uiPerfTelemetry.js";
-export {
-  RendererUserActionTelemetry,
-  runUserAction,
-  runUserActionAsync,
-  setUserActionTelemetry,
-  startUserAction,
-} from "./lib/userActionTelemetry.js";
-export {
-  CORE_USER_ACTION_FEATURES,
-  SETTINGS_USER_ACTION_FEATURES,
-  USER_ACTION_CATALOG,
-} from "./lib/userActionTraceCatalog.js";
-export { setReactErrorTelemetryReporter } from "./lib/reactErrorTelemetry.js";
-export { recordCustomTelemetryEventForE2E } from "./lib/customEventObservability.js";
 export { generateMobileDeviceFingerprint, setStreamClientId } from "./lib/streamClientId.js";
 export { GlobalDatabaseStartupLoading } from "./root/GlobalDatabaseStartupLoading.js";
-
-export { LocalTtftObserver, setLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";

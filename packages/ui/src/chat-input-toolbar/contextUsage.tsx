@@ -1,11 +1,5 @@
 /* eslint-disable max-lines -- context 面板聚合 Context windows 与 Coding Plan 展示；后续拆分需要单独梳理弹层状态边界。 */
-import {
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useCallback, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   TID_CHAT_CONTEXT_USAGE_TRIGGER,
   type ZCodeContextUsageBreakdownItem,

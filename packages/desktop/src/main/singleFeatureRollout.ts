@@ -2,11 +2,11 @@
  * 单功能灰度 rollout 的通用机制层：TTL 缓存、in-flight 去重、3s 请求超时、
  * awaitFirstDecision 有界裁决。解析层（每个 feature 各自的 resolveConfig）由调用方注入。
  *
- * 抽取原因：desktopContextPromptRollout 与 rendererActionTraceRollout 共享同一套
- * /api/v1/client/configs 旁路请求机制，只有 `data.configs.<key>` 的解析不同；复制两份
- * 170 行机制代码会让超时/TTL 语义悄悄分叉。
+ * 抽取原因：把 /api/v1/client/configs 旁路请求的超时/TTL/去重语义收在一处，
+ * 解析层与机制层分离（`data.configs.<key>` 的解析由调用方注入），避免后续接入的
+ * 灰度功能各自复制一份机制代码、让超时/TTL 语义悄悄分叉。
  *
- * 语义约定（与 desktopContextPromptRollout 一致，CUA 灰度 fail-close 也复用同一语义）：
+ * 语义约定（desktopContextPrompt 灰度 fail-close，CUA 灰度也复用同一语义）：
  * - 请求失败/超时/解析失败：沿用上次快照（首次即失败 → 初始快照，由 defaultValue 决定）；
  * - 服务端成功但未下发该 key：视为"未启用"，覆盖旧缓存（不能继续沿用旧的开启快照）。
  */
@@ -37,6 +37,8 @@ export interface SingleFeatureRolloutLogger {
 
 const SINGLE_FEATURE_REQUEST_TIMEOUT_MS = 3_000;
 const SINGLE_FEATURE_CACHE_TTL_MS = 60 * 60 * 1_000;
+/** 失败后的负缓存窗口：远端不可达时不退化为"每次调用都重打一发"的失败风暴。 */
+const SINGLE_FEATURE_FAILURE_RETRY_MS = 60_000;
 
 interface CreateSingleFeatureRolloutOptions<T extends SingleFeatureRolloutConfig> {
   /** 解析 /api/v1/client/configs 响应体；null 表示响应无效（按失败处理，沿用旧快照）。 */
@@ -49,6 +51,8 @@ interface CreateSingleFeatureRolloutOptions<T extends SingleFeatureRolloutConfig
   logger: SingleFeatureRolloutLogger;
   timeoutMs?: number;
   cacheTtlMs?: number;
+  /** 失败后的重试间隔（负缓存）；默认 60s。 */
+  failureRetryMs?: number;
 }
 
 export function createSingleFeatureRollout<T extends SingleFeatureRolloutConfig>(
@@ -59,6 +63,7 @@ export function createSingleFeatureRollout<T extends SingleFeatureRolloutConfig>
   let inFlight: Promise<T> | undefined;
   const timeoutMs = Math.max(options.timeoutMs ?? SINGLE_FEATURE_REQUEST_TIMEOUT_MS, 1);
   const cacheTtlMs = Math.max(options.cacheTtlMs ?? SINGLE_FEATURE_CACHE_TTL_MS, 1);
+  const failureRetryMs = Math.max(options.failureRetryMs ?? SINGLE_FEATURE_FAILURE_RETRY_MS, 1);
 
   const refresh = (): Promise<T> => {
     if (Date.now() < snapshotExpiresAt) {
@@ -95,7 +100,11 @@ export function createSingleFeatureRollout<T extends SingleFeatureRolloutConfig>
         return snapshot;
       } catch (error) {
         // 灰度配置是旁路能力：服务端异常或超时不能阻塞客户端；有成功结果时沿用，首次失败回退默认。
-        options.logger.warn(`[${options.logTag}] config unavailable, using cached decision`, {
+        // 失败也进负缓存：否则每个调用点（Host 创建、窗口聚焦）都会重打一发 3s 请求，
+        // 自有后端未就绪时在启动日志里堆成一串 "config unavailable"。
+        snapshotExpiresAt = Date.now() + failureRetryMs;
+        // info 而非 warn：灰度拉取失败是预期降级（fail-close 到默认值），不是故障。
+        options.logger.info?.(`[${options.logTag}] config unavailable, using cached decision`, {
           error,
           enabled: snapshot.enabled,
         });

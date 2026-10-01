@@ -11,18 +11,20 @@
 
 ## 审计结论（已核实，照此执行）
 
-| 模块 | 引用情况 | 处置 |
-|---|---|---|
-| UI 层官方账号入口 | `packages/ui/src/login/`、`components/coding-plan-quota-reset/` | **整体删除** |
-| `oauth/providers/`（zai/bigmodel 适配器） | 只被 oauth 内部引用 | **删除适配器，保留接口** |
-| `oauth/`（`oauth.ts` 接口等） | `accessor.ts:16,64` 声明服务、`feedbackService` 引类型 | **保留接口定义**，实现体按需精简 |
-| `coding-plan-subscription/`（4 文件） | `accessor.ts:22,70`、`node.ts:208,397`、`zcodeAgentService:20` 用 `OffPeakClientConfig` 类型 | **保留接口 + 类型**，实现可空壳化 |
-| `model-provider/accountProvider*`（11 文件） | 需逐个验证，部分被通用链路引用 | **甄别后处理** |
+| 模块                                         | 引用情况                                                                                     | 处置                              |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------- |
+| UI 层官方账号入口                            | `packages/ui/src/login/`、`components/coding-plan-quota-reset/`                              | **整体删除**                      |
+| `oauth/providers/`（zai/bigmodel 适配器）    | 只被 oauth 内部引用                                                                          | **删除适配器，保留接口**          |
+| `oauth/`（`oauth.ts` 接口等）                | `accessor.ts:16,64` 声明服务、`feedbackService` 引类型                                       | **保留接口定义**，实现体按需精简  |
+| `coding-plan-subscription/`（4 文件）        | `accessor.ts:22,70`、`node.ts:208,397`、`zcodeAgentService:20` 用 `OffPeakClientConfig` 类型 | **保留接口 + 类型**，实现可空壳化 |
+| `model-provider/accountProvider*`（11 文件） | 需逐个验证，部分被通用链路引用                                                               | **甄别后处理**                    |
 
 ## 三档执行
 
 ### 第一档：UI 层（零风险）
+
 删除所有面向用户的官方账号界面：
+
 - `packages/ui/src/login/`（2 文件）
 - `packages/ui/src/components/coding-plan-quota-reset/`（5 文件）
 - i18n 里对应的文案 key（保留 key 不删也行，但界面不引用）
@@ -31,6 +33,7 @@
 验证：`build:bootstrap` 通过 + 起应用截图（设置页无官方账号入口）
 
 ### 第二档：OAuth 适配器（低风险）
+
 - 删除 `packages/services/src/oauth/providers/`（zai/bigmodel 适配器）
 - 保留 `oauth.ts` 接口、`repo/`（凭据仓库是通用能力）
 - 处理 `oauthService.ts`：让它只保留接口实现骨架，不引用已删的适配器
@@ -39,6 +42,7 @@
 验证：构建通过 + 起应用可用
 
 ### 第三档：计费服务（需谨慎）
+
 - `coding-plan-subscription/` 保留**接口 + 类型定义**（`codingPlanSubscription.ts` 的 `ICodingPlanSubscriptionService`、`OffPeakClientConfig`）
 - 删除 zai/bigmodel 的具体实现（`zaiCodingPlanSubscriptionProvider.ts`、`bigmodelCodingPlanSubscriptionProvider.ts`）
 - `codingPlanSubscriptionService.ts` 改为**空实现**（所有方法返回空/undefined，不抛错）

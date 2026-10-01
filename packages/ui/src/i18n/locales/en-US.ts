@@ -51,7 +51,8 @@ const enUS: Record<string, string> = {
   "occupationOnboarding.migration": "Migrate conversations",
   "occupationOnboarding.migrationDescription": "Migrate conversation history from Claude Code",
   "occupationOnboarding.memory": "Enable Workspace Memory",
-  "occupationOnboarding.memoryDescription": "Let Polaris remember your preferences and work context.",
+  "occupationOnboarding.memoryDescription":
+    "Let Polaris remember your preferences and work context.",
   "occupationOnboarding.suggestions": "Enable proactive task suggestions",
   "occupationOnboarding.suggestionsDescription":
     "Show suggestions in new conversations. Click to fill the composer.",
@@ -536,7 +537,7 @@ const enUS: Record<string, string> = {
   "confirmDialog.projectRemoveDescription":
     "Project “{projectName}” will be removed from the sidebar, but files on disk will remain untouched.",
   "bots.title": "Bots",
-  "bots.description": "Connect external chats and webhooks to ZCode bots.",
+  "bots.description": "Connect external chats and webhooks to Polaris bots.",
   "bots.listTitle": "Bots",
   "bots.addBot": "New bot",
   "bots.addBinding": "Add binding",
@@ -590,9 +591,9 @@ const enUS: Record<string, string> = {
   "bots.setup.guide.weixin.create.1":
     "Start Weixin QR login, scan the QR code with Weixin, then confirm on your phone.",
   "bots.setup.guide.weixin.create.2":
-    "ZCode saves the bot_token returned by iLink automatically; after scanning, send any message to the bot in Weixin to activate the chat.",
+    "Polaris saves the bot_token returned by iLink automatically; after scanning, send any message to the bot in Weixin to activate the chat.",
   "bots.setup.guide.weixin.create.3":
-    "ZCode uses a built-in iLink client: `/ilink/bot/getupdates` for long polling and `/ilink/bot/sendmessage` for replies.",
+    "Polaris uses a built-in iLink client: `/ilink/bot/getupdates` for long polling and `/ilink/bot/sendmessage` for replies.",
   "bots.setup.guide.weixin.bind.1": "Open the Weixin direct chat you want to bind.",
   "bots.setup.guide.weixin.bind.2": "Send {command}.",
   "bots.setup.guide.weixin.bind.3":
@@ -609,13 +610,13 @@ const enUS: Record<string, string> = {
   "bots.setup.guide.feishu.bind.3":
     "Return here after the bind succeeds to finish the workspace and CLI defaults.",
   "bots.setup.guide.webhook.create.1":
-    "Webhook mode does not require a native bot in the third-party product; your integration only needs to POST messages to ZCode.",
+    "Webhook mode does not require a native bot in the third-party product; your integration only needs to POST messages to Polaris.",
   "bots.setup.guide.webhook.create.2":
     "Set a shared secret first; add an outbound webhook URL as well if you want asynchronous replies pushed back.",
   "bots.setup.guide.webhook.create.3":
     "Keep one stable userId per external user so binding and future context resolve to the same person.",
   "bots.setup.guide.webhook.bind.1":
-    "POST a private-message callback to ZCode's `/api/bots/webhook` endpoint.",
+    "POST a private-message callback to Polaris's `/api/bots/webhook` endpoint.",
   "bots.setup.guide.webhook.bind.2":
     'The payload should at least include this botId, a stable userId, `chatType: "private"`, and set text to {command}.',
   "bots.setup.guide.webhook.bind.3":
@@ -754,7 +755,7 @@ const enUS: Record<string, string> = {
   "bots.runtime.telegramLongPollingStarting": "Telegram long polling is starting.",
   "bots.runtime.telegramLongPollingStopped": "Telegram long polling is stopped.",
   "bots.runtime.telegramLongPollingHandledElsewhere":
-    "Telegram long polling is handled by another ZCode window.",
+    "Telegram long polling is handled by another Polaris window.",
   "bots.runtime.telegramTokenMissing": "Telegram bot credential is missing.",
   "bots.runtime.telegramPollingFailedRetrying": "Telegram polling failed; retrying.",
   "bots.runtime.feishuWebSocketStarting": "Feishu WebSocket is starting.",
@@ -842,29 +843,14 @@ const enUS: Record<string, string> = {
   "bots.deleteFailed": "Failed to delete bot: {error}",
 
   // Welcome / Login
-  "welcome.title": "Welcome to Polaris",
-  "welcome.username": "Username",
-  "welcome.password": "Password",
-  "welcome.loggingIn": "Logging in...",
   "login.title": "Welcome to Polaris",
   "login.description": "Connect your account to start using Polaris",
-  "login.expired.action": "Sign in again",
-  "login.useApiKey": "Use API key",
-  "login.apiKey.title": "API Key",
-  "login.apiKey.placeholder": "Enter API key",
-  "login.apiKey.providerLabel": "API key provider",
-  "login.apiKey.provider.deepseek": "DeepSeek",
-  "login.backToNimbus": "Back to Nimbus sign-in",
-  "login.apiKey.provider.moonshotkimi": "Kimi",
-  "login.apiKey.getApiKey": "Get API Key",
-  "login.apiKey.cancel": "Cancel",
-  "login.apiKey.continue": "Continue",
-  "login.apiKey.emptyError": "Enter an API key.",
-  "login.apiKey.providerMissingError":
-    "Built-in provider configuration for {provider} was not found. Please try again later.",
-  "login.apiKey.saveError": "Failed to save API key: {error}",
-  "login.apiKey.skipError": "Failed to skip API key setup: {error}",
-  "login.skip": "Skip for now",
+  "login.usernamePlaceholder": "Enter your username",
+  "login.passwordPlaceholder": "Enter your password",
+  "login.passwordShow": "Show password",
+  "login.passwordHide": "Hide password",
+  "login.providerHint": "Add other model providers in Settings → Model Providers",
+  "login.close": "Close sign-in",
   "settings.onboarding": "Onboard",
   "settings.onboardingDescription":
     "Choose your role, interface mode, and preferences again. Use Migration settings to import data.",
@@ -1016,6 +1002,11 @@ const enUS: Record<string, string> = {
   "chat.toolbar.model.targetMissing": "No model target",
   "settings.subagents.modelLoadFailed": "The model list failed to load.",
   "root.modelSelection.loadFailed": "Model configuration failed to load.",
+  "root.noWorkspace.title": "No workspace is open",
+  "root.noWorkspace.description":
+    "The previous workspace was removed or its remote connection ended. Open a workspace to continue, or restore the default conversation workspace.",
+  "root.noWorkspace.createDefault": "Use default workspace",
+  "root.noWorkspace.fallbackFailed": "Restoring the default workspace failed: {message}",
   "modelTrajectory.openSourceDirectory": "Open source folder",
   "modelTrajectory.refresh": "Refresh",
   "modelTrajectory.close": "Close",
@@ -1703,7 +1694,7 @@ const enUS: Record<string, string> = {
     "We are establishing the {method} connection. You can follow the live setup progress here.",
   "webRemoteControl.trigger": "Mobile remote control",
   "webRemoteControl.title": "Mobile remote control",
-  "webRemoteControl.description": "Control ZCode workspaces through chat bots.",
+  "webRemoteControl.description": "Control Polaris workspaces through chat bots.",
   "webRemoteControl.botChannel.title": "Use a bot channel",
   "webRemoteControl.botChannel.description": "Connect a chat bot for longer-running mobile access.",
   "webRemoteControl.botChannel.weixin.title": "Weixin",
@@ -2346,7 +2337,19 @@ const enUS: Record<string, string> = {
   "business.quota.manage": "Manage",
   "business.quota.summaryLoggedIn": "Connected as {username} · {left} credits left",
   "business.quota.summaryLoggedOut": "Not connected — sign in to view balance and plans",
-  "business.quota.provisionFailed": "Provider provisioning failed, retry in Settings: ",
+  "business.quota.monthSpend": "Used this month",
+  "business.quota.avgCacheHitRate": "Avg cache hit rate",
+  "business.quota.perYuan": "¥1 = {credits} credits",
+  "business.quota.callsUnit": "calls",
+  "business.quota.window5h": "5-hour window",
+  "business.quota.windowWeekly": "This week",
+  "business.quota.usageChartTitle": "Last {days} days",
+  "business.quota.usageTotal": "{value} credits total",
+  "business.quota.usageCharged": "Credits used",
+  "business.quota.usageCacheHit": "Cache hit rate",
+  "business.quota.usageEmpty": "No usage recorded in this period",
+  "business.quota.usageLoadFailed":
+    "Usage data is unavailable right now; balance and plans are unaffected.",
   "settings.providerQuotaTitle": "Quota",
   "settings.usageDescription":
     "Review rough activity and model usage aggregated from local sessions.",
@@ -2933,7 +2936,8 @@ const enUS: Record<string, string> = {
   "sidebar.usage.plan.toolCalls": "Tool calls",
   "sidebar.usage.plan.mcp": "Polaris MCP",
   "sidebar.usage.plan.zcodeMcp": "Polaris MCP",
-  "sidebar.usage.plan.zcodeMcpDescription": "Daily aggregate quota for Polaris built-in plugin MCPs",
+  "sidebar.usage.plan.zcodeMcpDescription":
+    "Daily aggregate quota for Polaris built-in plugin MCPs",
   "usage.error.chatPlan.credential":
     "Unable to read plan quota. Reconnect the Coding Plan account or confirm that the account has an active plan.",
   "usage.error.chatPlan.generic":
@@ -3379,7 +3383,8 @@ const enUS: Record<string, string> = {
   "settings.plugins.store.sources.pluginCount": "{count} plugins",
   "settings.plugins.store.sources.lastUpdated": "Updated {time}",
   "settings.plugins.store.sources.refreshFailed": "Refresh failed at {time}",
-  "settings.plugins.store.sources.degraded": "Offline catalog: refresh failed at {time}; showing the last successful catalog",
+  "settings.plugins.store.sources.degraded":
+    "Offline catalog: refresh failed at {time}; showing the last successful catalog",
   "settings.plugins.store.sources.update": "Refresh this marketplace",
   "settings.plugins.store.sources.remove": "Remove this marketplace",
   "settings.plugins.store.section.mcp": "MCP servers",

@@ -1,12 +1,7 @@
-import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import { logger } from "./logger.js";
 import { initializeCrashCapture, type CrashCapturePaths } from "./desktopCrashCapture.js";
 
-// 须在 appTelemetryBootstrap 之前完成：先由 desktopEarlyDataBaseDirBootstrap 注入 dataBaseDir，再配置 crashDumps。
-// remoteCrashReporterEnabled=true 表示 远端 crash 上报（remoteCrashReporter）已接管，不再启动仅本地的 crashReporter。
-// Polaris：远端上报跟随埋点总开关（默认关闭）——关闭时自动保留纯本地 crashReporter，
-// 崩溃转储仍写入数据目录，用户可自行导出，只是不再发往官方。
-export const crashCapturePaths: CrashCapturePaths = initializeCrashCapture(
-  logger,
-  ZCODE_TELEMETRY_ENABLED,
-);
+// 须在渲染进程与窗口创建之前完成：先由 desktopEarlyDataBaseDirBootstrap 注入 dataBaseDir，再配置 crashDumps。
+// Polaris 不做远端崩溃上报，crashReporter 恒为纯本地：崩溃转储写入数据目录，
+// 启动时归档到 ~/.polaris/v2/crash/archive，用户可从日志包自行导出排查。
+export const crashCapturePaths: CrashCapturePaths = initializeCrashCapture(logger, false);

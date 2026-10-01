@@ -188,6 +188,10 @@ export function createCuaPipSessionService(options: {
 
   const publish = (event: PipSessionEvent): Promise<void> => {
     if (disposed) return Promise.resolve();
+    // 功能未启用（非 macOS / 非 desktop-local）时整条投递链是死路：直接静默丢弃，不再走
+    // resolveCredentials、也不再打 warn。过去每个 turn-started/ended 与每次 focus 变化都会
+    // 在这里刷一条 "event delivery dropped: service-disabled"，但那是**设计如此**、不是故障。
+    if (!options.enabled) return Promise.resolve();
     const operation = tail.then(async () => {
       try {
         const resolution = await getClient();

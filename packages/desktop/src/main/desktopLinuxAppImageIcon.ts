@@ -22,14 +22,7 @@ function resolveLinuxUserIconFilePath(
   dataDir: string,
   iconName: string = LINUX_APP_ICON_NAME,
 ): string {
-  return join(
-    dataDir,
-    "icons",
-    "hicolor",
-    LINUX_APP_ICON_SIZE,
-    "apps",
-    `${iconName}.png`,
-  );
+  return join(dataDir, "icons", "hicolor", LINUX_APP_ICON_SIZE, "apps", `${iconName}.png`);
 }
 
 function removeLegacyLinuxUserIcons(params: {

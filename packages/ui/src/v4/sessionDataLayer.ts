@@ -5,7 +5,8 @@
 // Map<workspaceKey, SessionDataLayer>，本层不感知 workspace。
 import { ConversationProjectionStore } from "@/v4/conversationProjectionStore.js";
 import { shouldExposeE2EStoreBridge } from "@/lib/e2eStoreBridge.js";
-import type { SessionOpenKind } from "@/lib/sessionOpenTelemetry.js";
+/** 租约建立时命中的缓存层级，仅用于 lifecycle 日志（telemetry 已移除，保留诊断语义）。 */
+type SessionOpenKind = "cold" | "warm" | "keep_warm";
 import { conversationTopic, type ConversationTransport } from "@/v4/transport.js";
 import { logger } from "@/logger.js";
 import type { CommandsQueryParams, CommandsQueryResult } from "@zcode/shared/zcode-protocol-v4";

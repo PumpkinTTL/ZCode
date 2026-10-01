@@ -6,7 +6,7 @@ import {
   databaseStartupControlSchema,
   type DatabaseStartupState,
 } from "@zcode/shared";
-import { reportDatabaseStartupState } from "./databaseStartupTelemetry.js";
+import { noteRendererBootAlive } from "./desktopRendererBootWatchdog.js";
 
 let localStorageReady = false;
 let quit: (() => void) | undefined;
@@ -48,11 +48,6 @@ export function bindDatabaseStartupRelay(
     if (latest && state.startupId === latest.startupId && state.sequence <= latest.sequence) return;
     latest = state;
     forward(state);
-    try {
-      reportDatabaseStartupState(state);
-    } catch {
-      /* 遥测故障不阻断启动。 */
-    }
     if (state.phase === "ready" && !localStorageReady) {
       localStorageReady = true;
       for (const listener of readyListeners) listener();
@@ -67,6 +62,9 @@ export function bindDatabaseStartupRelay(
     if (disposed || event.sender !== win.webContents) return;
     const result = databaseStartupControlSchema.safeParse(raw);
     if (!result.success) return;
+    // 启动壳能发控制消息，说明这次加载的 renderer 真的跑起来了：这是启动存活看门狗
+    // 能收到的最早信号，必须在这里解除，否则会在缓启动的界面上误触自动重载。
+    noteRendererBootAlive(win);
     if (result.data.action === "exit") {
       quit?.();
       return;

@@ -202,10 +202,7 @@ export function ProviderModelMetadataDialog({
               {/* 展示名只影响模型菜单与触发器文案；真实请求继续用上面的模型 ID。 */}
               <div className="min-w-0 flex-1">
                 <div className="mb-1 block text-ui-base text-foreground-subtle">
-                  <ModelConfigInputLabel
-                    field="modelDisplayName"
-                    htmlFor={displayNameInputId}
-                  />
+                  <ModelConfigInputLabel field="modelDisplayName" htmlFor={displayNameInputId} />
                 </div>
                 <Input
                   id={displayNameInputId}

@@ -23,10 +23,7 @@ export interface OAuthServiceDependencies {
   now?: () => number;
   env?: NodeJS.ProcessEnv;
   /** provider 登出回调：用于清理派生的 Start / Coding Plan provider key。 */
-  onProviderLogout?: (
-    provider: OAuthProviderId,
-    accountIdentity?: string | null,
-  ) => Promise<void>;
+  onProviderLogout?: (provider: OAuthProviderId, accountIdentity?: string | null) => Promise<void>;
 }
 
 const OAUTH_REMOVED_MESSAGE = "Polaris 未接入自有账号体系，OAuth 登录当前不可用。";

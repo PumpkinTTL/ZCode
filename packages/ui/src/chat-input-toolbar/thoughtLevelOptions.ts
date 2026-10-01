@@ -115,5 +115,5 @@ export function getThoughtLevelLabel(
 
   // 开关型档位与缺名场景回落到本地化词表；都没有才用裸 value。
   const fallback = resolveThoughtLevelValueLabel(entry.value, intl.formatMessage);
-  return fallback === entry.value ? (configuredLabel || entry.value) : fallback;
+  return fallback === entry.value ? configuredLabel || entry.value : fallback;
 }

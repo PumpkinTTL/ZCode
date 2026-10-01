@@ -175,7 +175,11 @@ export function AddMarketplaceSourceDialog({
                       onClick={() => void handleAddPreset(preset)}
                     >
                       {adding ? (
-                        <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+                        <Loader2
+                          data-icon="inline-start"
+                          className="animate-spin"
+                          aria-hidden="true"
+                        />
                       ) : (
                         <Plus data-icon="inline-start" aria-hidden="true" />
                       )}

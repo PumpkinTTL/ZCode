@@ -78,7 +78,9 @@ export function ModelProviderSection({
   const [invalidProviderTarget, setInvalidProviderTarget] = useState(
     () =>
       Boolean(initialModelProviderTarget) &&
-      !modelProviders.some((provider) => provider.providerId === initialModelProviderTarget?.providerId),
+      !modelProviders.some(
+        (provider) => provider.providerId === initialModelProviderTarget?.providerId,
+      ),
   );
   const [selectedNodeKey, setSelectedNodeKey] = useState<string | null>(() => {
     const providerId = initialModelProviderTarget?.providerId;
@@ -194,14 +196,11 @@ export function ModelProviderSection({
     [platform],
   );
 
-  const handleSelectNavItem = useCallback(
-    (item: (typeof navigationItems)[number]) => {
-      setInvalidProviderTarget(false);
-      setSelectedNodeKey(item.key);
-      setTemplatePickerOpen(false);
-    },
-    [],
-  );
+  const handleSelectNavItem = useCallback((item: (typeof navigationItems)[number]) => {
+    setInvalidProviderTarget(false);
+    setSelectedNodeKey(item.key);
+    setTemplatePickerOpen(false);
+  }, []);
 
   const handleCreateProvider = useCallback(
     async (input: { templateId?: string; providerName?: string }) => {

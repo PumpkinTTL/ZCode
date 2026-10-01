@@ -242,7 +242,10 @@ function writeFileIfChanged(path: string, content: string): boolean {
  * 只删**确认由本应用写入**的那一份：读它以旧 bundle id 写入的 Info.plist，命中才删，
  * 避免误删用户自己同名的手写 workflow。
  */
-function removeLegacyFinderWorkflow(servicesDir: string, logger: { info: (...args: unknown[]) => void }): void {
+function removeLegacyFinderWorkflow(
+  servicesDir: string,
+  logger: { info: (...args: unknown[]) => void },
+): void {
   const legacyDir = join(servicesDir, LEGACY_WORKFLOW_NAME);
   const legacyInfoPlistPath = join(legacyDir, "Contents", "Info.plist");
   if (!existsSync(legacyInfoPlistPath)) {

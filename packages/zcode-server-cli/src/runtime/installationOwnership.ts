@@ -12,10 +12,7 @@ const SERVER_INSTALL_OWNERSHIP_SCHEMA_VERSION = 1;
 
 const serverInstallOwnershipSchema = z
   .object({
-    product: z.enum([
-      SERVER_INSTALL_OWNERSHIP_PRODUCT,
-      LEGACY_SERVER_INSTALL_OWNERSHIP_PRODUCT,
-    ]),
+    product: z.enum([SERVER_INSTALL_OWNERSHIP_PRODUCT, LEGACY_SERVER_INSTALL_OWNERSHIP_PRODUCT]),
     schemaVersion: z.literal(SERVER_INSTALL_OWNERSHIP_SCHEMA_VERSION),
     canonicalServerRoot: z.string().min(1),
     installationId: z.string().uuid(),

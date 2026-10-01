@@ -27,10 +27,11 @@
 测试入口以目标包当前的 `package.json` 和实际测试文件为准，不假定存在统一的单测或 E2E 命令。
 
 - `packages/desktop`：Electron main、host、renderer。
-- `packages/web`、`packages/server`：Web 客户端与服务端。
+- `packages/web`、`packages/server`：Web 客户端与服务端；`packages/zcode-server-cli`：独立 server 启动器。
 - `packages/ui`：共享 React 组件、hooks 与 Zustand store。
-- `packages/services`：业务服务；`packages/rpc`：RPC 框架。
-- `packages/shared`：共享协议与类型；`packages/client`：Agent 客户端 SDK。
+- `packages/services`：业务服务；`packages/rpc`：RPC 框架；`packages/provider`：Provider/模型配置领域模型与解析（浏览器安全）；`packages/provider-node`：其 Node 实现（配置来源、缓存路径、Release 校验与远端同步）。
+- `packages/shared`：共享协议与类型；`packages/client`：Agent 客户端 SDK；`packages/model-option-map`：模型选项映射。
+- `packages/zcode-cua`：Computer Use 占位包（本构建不含 Computer Use）；`packages/formal-proof`：形式化证明。
 - `apps/zcode-cli`：Agent CLI 与运行时。
 - `CONTEXT.md`：插件商店领域词汇；修改相关 UI 前阅读。
 - `DESIGN.md`：UI 设计规范；修改 UI 前阅读。

@@ -155,7 +155,6 @@ function WorkflowRunSettingsForm({
         : buildRegistryModelSelectGroups(ZCODE_AGENT_PROVIDER, view, {
             apiKeyLabel: format("settings.modelProvider.apiKey"),
             apiKeyBadgeLabel: format("settings.modelProvider.connectionMode.apiKeyBadge"),
-
           }),
     [format, view],
   );

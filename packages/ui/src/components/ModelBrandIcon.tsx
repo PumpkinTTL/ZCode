@@ -33,12 +33,7 @@ export function ModelBrandIcon({
       className={cn("shrink-0", className)}
     >
       {shapes.map((shape, index) => (
-        <path
-          key={index}
-          d={shape.d}
-          fillOpacity={shape.fillOpacity}
-          fillRule={shape.fillRule}
-        />
+        <path key={index} d={shape.d} fillOpacity={shape.fillOpacity} fillRule={shape.fillRule} />
       ))}
     </svg>
   );

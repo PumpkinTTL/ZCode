@@ -6,6 +6,7 @@
  * - token 只放 Authorization Header，不放 URL query（会进访问日志）
  * - 错误响应统一形如 { detail: string }，detail 是给最终用户看的中文，可直接展示
  * - 401 = token 过期/登出 → 需重新登录；429 → 读 Retry-After
+ * - 密钥只**读**不写：登录后复用账号里已有的调用密钥，不代替用户在门户创建新密钥。
  */
 
 const LOGIN_PATH = "/api/v1/user/login";
@@ -60,9 +61,7 @@ async function parseJson(response: Response): Promise<unknown> {
 async function toApiError(response: Response): Promise<QuotaApiError> {
   const body = (await parseJson(response)) as { detail?: unknown } | null;
   const detail =
-    typeof body?.detail === "string"
-      ? body.detail
-      : `额度服务请求失败（HTTP ${response.status}）`;
+    typeof body?.detail === "string" ? body.detail : `额度服务请求失败（HTTP ${response.status}）`;
   return new QuotaApiError(response.status, detail);
 }
 
@@ -124,22 +123,6 @@ export class QuotaApiClient {
     return [];
   }
 
-  async createApiKey(token: string, name: string, signal?: AbortSignal): Promise<string> {
-    const response = await this.#fetchImpl(`${this.#baseUrl}${KEYS_PATH}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name }),
-      signal,
-    });
-    if (!response.ok) throw await toApiError(response);
-    const body = (await parseJson(response)) as Record<string, unknown>;
-    // 容错：密钥可能落在 key / token / data.key 等字段
-    for (const candidate of [body?.key, body?.token, (body?.data as { key?: unknown })?.key]) {
-      if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-    }
-    throw new QuotaApiError(response.status, "创建密钥成功但响应缺少密钥值");
-  }
-
   async listModelIds(apiKey: string, signal?: AbortSignal): Promise<string[]> {
     const response = await this.#fetchImpl(`${this.#baseUrl}${MODELS_PATH}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
@@ -177,10 +160,10 @@ export class QuotaApiClient {
     signal?: AbortSignal,
   ): Promise<Array<Record<string, unknown>>> {
     const clamped = Math.min(90, Math.max(1, Math.trunc(days)));
-    const response = await this.#fetchImpl(
-      `${this.#baseUrl}${USAGE_DAILY_PATH}?days=${clamped}`,
-      { headers: { Authorization: `Bearer ${token}` }, signal },
-    );
+    const response = await this.#fetchImpl(`${this.#baseUrl}${USAGE_DAILY_PATH}?days=${clamped}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
     if (!response.ok) throw await toApiError(response);
     const body = (await parseJson(response)) as { items?: unknown } | null;
     return Array.isArray(body?.items) ? (body.items as Array<Record<string, unknown>>) : [];
@@ -219,7 +202,9 @@ export function projectEmailMasked(me: Record<string, unknown>): string | null {
  * credits 与 per_call 两种计费模式的字段互斥，按 billing_mode 分支。
  */
 import type { QuotaSubscription } from "./quotaTypes.js";
-export function projectSubscription(raw: Record<string, unknown>): QuotaSubscription | null
+export function projectSubscription(raw: Record<string, unknown>):
+  | QuotaSubscription
+  | null
   | {
       kind: "credits" | "per_call";
       id: number;

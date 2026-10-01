@@ -179,16 +179,16 @@ function createSettingsMutationTarget(
       ),
     refresh: (reason) => registryService.refresh(reason),
     refreshSources: async (reason) => {
-      const sourceResults = await Promise.allSettled([
+      // Config/Account Source 是**旁路**事实：远端不可用（自有后端未就绪、CDN 不可达）时保留
+      // 本地与 Bundled 事实即可，不能让一次远端拉取失败把整次 Provider Runtime 刷新变成异常。
+      // 过去这里把 source 的 rejection 直接抛出，于是启动时 UI 会把它渲染成
+      // "[Root] 刷新 Provider Runtime 失败: Polaris Built-in client-config: invalid response"。
+      // 远端失败已由 synchronizer 按 endpoint 记账退避，并经 onZCodeBuiltinRefreshError 上报。
+      await Promise.allSettled([
         configRuntime.refreshZCodeBuiltin({ force: true }),
         accountSource.refresh?.(reason) ?? Promise.resolve(),
       ]);
-      const snapshot = await registryService.refresh(reason);
-      const failed = sourceResults.find(
-        (result): result is PromiseRejectedResult => result.status === "rejected",
-      );
-      if (failed) throw failed.reason;
-      return snapshot;
+      return await registryService.refresh(reason);
     },
   };
 }

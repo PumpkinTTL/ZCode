@@ -2,10 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import {
-  BUILTIN_MODEL_PROVIDER_IDS,
-  resolveBigModelApiOrigin,
-} from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, resolveBigModelApiOrigin } from "@zcode/shared";
 import {
   createModelProviderModelConfig,
   getDefaultModelSupportedFormatsFromApiFormat,
@@ -62,8 +59,7 @@ function isLegacyPresetGlmProviderId(providerId: string): boolean {
 
 // Polaris：官方 Coding Plan 已移除。该常量只作为"旧配置里可能残留的官方域名"
 // 的匹配键，不再作为任何请求地址，永远不会被直接使用。
-const OFFICIAL_BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL =
-  "https://open.bigmodel.cn/api/anthropic";
+const OFFICIAL_BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL = "https://open.bigmodel.cn/api/anthropic";
 
 function normalizeBigModelCodingPlanAnthropicBaseUrlForEnv(
   baseUrl: string | undefined,

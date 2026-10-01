@@ -22,7 +22,10 @@ const MODEL_ICON_RULES: readonly ModelIconRule[] = [
   { slug: "anthropic", pattern: /(^|\/)anthropic\/|^claude[-.\d]/ },
 
   // OpenAI
-  { slug: "openai", pattern: /(^|\/)openai\/|^gpt[-.\d]|^gpt-oss|^o[1-9](?:-|$)|^text-davinci|^chatgpt/ },
+  {
+    slug: "openai",
+    pattern: /(^|\/)openai\/|^gpt[-.\d]|^gpt-oss|^o[1-9](?:-|$)|^text-davinci|^chatgpt/,
+  },
 
   // DeepSeek
   { slug: "deepseek", pattern: /(^|\/)deepseek\/|^deepseek/ },

@@ -18,7 +18,6 @@ export const zhCN: ZCodeCopy = {
   app-server 运行 ZCode Protocol stdio app server
   commands   列出自定义 slash commands（\`commands list\`）
   doctor     检查运行时和打包假设
-  login      配置模型 Provider（官方账号登录已移除）
   logout     删除本地保存的登录凭据
   plugins    管理插件与市场（\`plugins list|install|uninstall|enable|disable|update|validate|marketplace ...\`；别名 plugin）
   skills     列出本地 skills（\`skills list\`）
@@ -48,7 +47,6 @@ export const zhCN: ZCodeCopy = {
   --target-replace 替换 --target 已存在的 goal
   -c, --continue        恢复当前目录最近的 session
   --json           在支持的命令中输出机器可读 JSON
-  --no-browser     不打开浏览器，只打印 OAuth URL
   --no-color       禁用 ANSI 颜色
   --verbose        打印更多诊断信息
 

@@ -16,7 +16,8 @@ import {
   readHeadlessRuntimeFacts,
   waitForHeadlessWorkflowSettle,
 } from "./headless-workflow.js";
-import { runLoginCommand, runLogoutCommand } from "./login-command.js";
+import { loginSetupResponse } from "./command-center/login-flow.js";
+import { runLogoutCommand } from "./login-command.js";
 import { resolveResumeSession } from "./resume.js";
 import { readRuntimeEventSubscriber } from "./runtime-event-subscriber.js";
 import {
@@ -91,7 +92,9 @@ export const runPrompt = async (
       ctx.stderr.write("Usage: /login\n");
       return 1;
     }
-    return await runLoginCommand(ctx, options, deps, false);
+    // Polaris fork：官方账号登录已移除，`/login` 只输出与 TUI 一致的配置引导。
+    ctx.stdout.write(`${loginSetupResponse(options.locale)}\n`);
+    return 0;
   }
   if (slashCommand?.type === "known" && slashCommand.name === "logout") {
     if (slashCommand.args.length > 0) {
