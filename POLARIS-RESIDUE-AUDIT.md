@@ -1161,3 +1161,312 @@ desktop `tsup` 4/4、harness 7/7 + 7/7 + 16/16。
 | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
 | `[cua-product-helper] Windows CUA Helper runtime resolution failed { invalid-runtime-manifest }` | 启动时 host-log 一条；属 Windows CUA 打包运行时问题，不在本轮清单内                      |
 | renderer 活着但什么都不干的静默挂起                                                              | 只有轮询能发现，已按你的原则否掉轮询；当前仅有「进程 gone / unresponsive」事件驱动的自愈 |
+
+## 10. 终扫：孤儿源文件与死资源（极保守）
+
+扫描器：`scripts/find-orphans.mjs`（未提交）。方法：`git ls-files` 取全部源码，用 TypeScript
+`preProcessFile` 抽 import/require/动态 import 说明符，再解析回真实文件路径，逐文件统计「入度」，
+入度为 0 的列为疑似孤儿；入口 / `package.json` 的 `exports|bin|main` / 测试 / 构建配置 / 字符串引用
+一律计为「被引用」。已处理三类别名：`@/`（ui 的 tsconfig paths）、`@zcode/*` workspace exports、
+以及 `#src/*`（services 的 Node subpath imports）。
+
+结论：3818 个候选中仅 2 个确认 0 引用并删除，其余全部保留。
+
+### 10a. 实际删除（0 引用证据）
+
+| 文件                                                    | 0 引用证据                                                                                     |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `packages/ui/src/components/ui/accordion.tsx`           | `git grep -i accordion -- '*.ts' '*.tsx'` 全仓只剩文件自身；非 `@zcode/ui` 导出项、无 importer |
+| `packages/desktop/scripts/conversation-docker-plan.mjs` | 纯导出 helper，全仓 0 importer、不在任何 package.json script；其标记文档已不在仓库             |
+
+### 10b. 资源扫描：0 删除
+
+`packages/ui/src/assets/**` 48 个文件全部被静态引用（`channel-icons` 经 index.ts、`provider-icons`
+经 ProviderLogo/oauthProviderIcon、`plugin-icons`/`feature-prompt-icons`/`onboarding/assets` 经
+`featureSuggestedPrompts` 等）。`packages/desktop/build/**` 12 个文件由 `electron-builder.config.js`
+打包引用（`icon.icns/ico/png`、`icon_installer.*`、`icon_windows.png`、`icons/512x512.png`、
+`dmg_background.png`、`entitlements.*.plist`）；其中 `icon.icns`、`dmg_background@2x.png`、
+`entitlements.helper.plist` 静态搜不到但由 electron-builder 按约定 / 变体 / helper 配置引用，保留。
+`material-icons` 由 `fileDisplay.tsx` 按运行时 base URL + 扩展名动态解析，全部保留。`public/icon_512@2x.png`
+经 `new URL()` 引用；`packages/web/public/favicon.ico` 为浏览器约定请求的公共资源，保留。
+
+### 10c. 疑似但保留（克制清单）
+
+| 文件                                                                                                                                                                                                     | 保留理由                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `packages/desktop/src/{host/tasksStorageWorker,main/storageScanWorker}.ts`、ui 两个 `*.worker.ts`                                                                                                        | 经 `new Worker(new URL("./x.worker.js", import.meta.url))` 加载，静态 import 扫不到      |
+| `packages/services/src/storage/module.ts`、`packages/server/build-remote.ts`、`packages/zcode-server-cli/src/packaging/stageCli.ts`、`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/replay.ts` | knip entry / package.json script / package exports 子路径入口，属公开出口                |
+| `apps/zcode-cli/packages/browser-use-plugin/src/browser-client.ts`、`apps/zcode-cli/tools/prompt-trajectory/src/cli.ts`                                                                                  | knip entry / 独立 CLI 工具入口                                                           |
+| `packages/desktop/scripts/ttft-otlp-receiver.mjs`                                                                                                                                                        | 本地 OTLP 验收接收器，对接**保留**的 `@zcode/telemetry`；头部注释即用法说明              |
+| `apps/zcode-cli/scripts/shadow-replay.mjs`、`scripts/zcode-distribution-smoke.mjs`、`apps/zcode-cli/packages/dynamic-workflow/scratch/run.mjs`                                                           | 手工运维/发布/scratch 工具，头部含完整用法文档                                           |
+| `.agents/**`（83）、根/包内 `scripts/**`、`*.config.ts`                                                                                                                                                  | 技能文档随附脚本 / 构建与发布脚本，按路径字符串或 package.json script 调用               |
+| `packages/rpc/examples/*`                                                                                                                                                                                | 示例代码，刻意不被 import                                                                |
+| `packages/ui/src/assets/{model-icons,provider-icons}/**`                                                                                                                                                 | 品牌图标系统（红线），动态解析；即使 `model-provider-logo-sources.json` 未静态命中也不删 |
+
+门禁：`pnpm typecheck` ✅ 0 错误；`pnpm lint` 90 warnings + 1 error（**均 pre-existing**，唯一 error 是
+受保护文件 `packages/ui/src/assets/model-icons/modelIconShapes.ts` 的超长行，与本次无关）；
+`oxfmt --check scripts/find-orphans.mjs` ✅。
+
+## 11. 用户可见品牌终审（zcode → Polaris）
+
+结论：**用户可见面已全部是 Polaris**。逐面核验：`<title>Polaris</title>`（desktop/web）、
+`productName: Polaris`、`app.setName()` = Polaris / Polaris Dev / Polaris Preview（同时决定 userData 目录名，
+避免与官方 ZCode 的 `%APPDATA%/ZCode` 互覆）、托盘 `tray.tooltip` = Polaris、涉及菜单「关于 Polaris」/
+「Polaris Endpoint」/「打开 Polaris」、Endpoint 弹窗标题 `Polaris Endpoint`、Linux 深链 `Name=Polaris`、
+`ZCodeAboutLogo` 仅为兼容壳（实际渲染 `PolarisAboutLogo`）。i18n 文案值中无 `ZCode`/`Z.ai`/`智谱`。
+
+**按约定不处理的内部项**（不可见 + 改名=穿心大改）：`@zcode/*` 包名、`ZCODE_*` 环境变量、CLI 可执行名
+`zcode`、协议串 `"ZCode Protocol/1"`、注册表遗留键 `ZCode.OpenInZCode`、迁移用旧路径 `%APPDATA%/ZCode`、
+以及大量仅内部使用的函数名/注释。
+
+**本轮修复的两个用户可见瑕疵**：
+
+| 问题                                                                                                                                                               | 修复                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `login.oauth.regionTag.zai` / `.bigmodel` 被 `botsUi.ts` 返回并在 BotsDialog / 远程控制弹窗 `formatMessage`，但 `0d60c52` 清理品牌时把这两个键删了 → 渲染成原始 id | 按删除前原值恢复：zh 全球/中国、en Global/CN（区域名，与品牌无关） |
+| 反馈工单正文/`agentProvider` 字段写死 `"ZCode Agent"`                                                                                                              | 改为 `"Polaris Agent"`（常量重命名 `FEEDBACK_AGENT_LABEL`）        |
+
+门禁：`pnpm typecheck` ✅ 0 错误；`pnpm lint` 89 warnings + 1 error（仅 pre-existing `modelIconShapes.ts`
+超长行）；`oxfmt --check` 4 个改动文件全部 ✅。
+
+## 12. Agent 能力完整性审计（运行时实测）
+
+工具注册表：`apps/zcode-cli/packages/core/src/tool/handlers/index.ts` 的 `builtInTools` 数组，
+入口 `registerBuiltInTools`。这一层**不在根 `pnpm typecheck` 覆盖范围**（根 tsconfig 不含 apps/zcode-cli），
+必须单独验。
+
+实测方式：esbuild 把 `registry.ts + handlers/index.ts` 打成 CJS，`node` 直接跑 `createToolRegistry()` +
+`registerBuiltInTools(...)` 并枚举。
+
+| 场景                                         | 结果                                                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 桌面 main-agent（所有端口在场）              | **40/40 工具全部注册**                                                                      |
+| 默认（无选项，最小集）                       | 27 个（13 个按端口/灰度门关闭，符合预期）                                                   |
+| `@zcode/contracts` + `@zcode/core` typecheck | ✅ 5/5（`turbo run typecheck --filter` 顺序跑）                                             |
+| 契约完整性                                   | 39 个 provider 可见工具**全部带 input schema**                                              |
+| workflow_child 结构性禁用                    | `CreateWorkflow/SaveWorkflow/AmendWorkflow/EvalWorkflowSnippet/ResumeWorkflowRun` 未泄漏 ✅ |
+| 工具 handler 是否依赖已砍业务                | **无**（不 import `business/`、`official-mcp`、`coding-plan`、`zai/bigmodel`）              |
+
+完整能力面（40）：Read/Write/Edit/Bash/Glob/Grep/WebFetch/WebSearch/TodoRead/TodoWrite/
+EnterPlanMode/ExitPlanMode/AskUserQuestion/SendMessage/RespondToCoordinator/submit_result/escalate/
+TaskOutput/TaskStop/ReadSessionContext/Agent/Task/Skill/js/Cron×4/OffPeak×2/CreateWorkflow/AmendWorkflow/
+SaveWorkflow/EvalWorkflowSnippet/ListWorkflowRuns/GetWorkflowRun/ResumeWorkflowRun/
+ResolveWorkflowQuestion/ListSavedWorkflows/ListModels。
+
+### 12a. 垃圾业务代码清理状态
+
+| 目标线                | 状态    | 证据                                                              |
+| --------------------- | ------- | ----------------------------------------------------------------- |
+| 桌面遥测链 / ARMS·RUM | ✅ 已砍 | 全仓 `@arms/`、`arms/rum` 0 命中                                  |
+| bingmodel 包          | ✅ 已砍 | 0 文件；仅剩 `bigmodel` 作为**历史 provider id**（迁移/兼容映射） |
+| 官方套餐线 UI/业务流  | ✅ 已砍 | ProviderTemplatePicker 注明官方计费模板已移除                     |
+
+### 12b. 仍在但刻意不动的“背景线”（用户不可见，删除=穿心大改）
+
+| 项                                                                    | 为何保留                                                                  |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `packages/services/src/coding-plan-subscription/**`                   | 已接进 `node.ts` / `accessor.ts` / `client/remoteServiceAccess.ts` 服务图 |
+| `packages/services/src/official-mcp/**` + `shared/src/official-mcp-*` | `zcodeAgentService` 发放审计在用                                          |
+| `BUILTIN_MODEL_PROVIDER_IDS`（zai/bigmodel 官方套餐 id）              | `shared/model-provider-types.ts` 导出，被迁移映射与类型引用               |
+| DB 迁移 `0020` / `0022` 里的 `builtin:bigmodel → bigmodel-api`        | 历史迁移不可改                                                            |
+
+另：`apps/zcode-cli` 的 `registry:check`（bash 命令注册表新鲜度门）**当前是 stale**，与本次改动无关
+（生成器依赖 fig 规范），属 pre-existing，未处理。
+
+## 13. 本轮：开发期 HMR Context 身份崩溃根治（2026-10-01）
+
+**症状（真机日志实证）**：编辑 locale / store 等被 Provider 模块间接引用的文件时，Vite HMR 会重载
+`IntlProvider.tsx` / `StoreProvider.tsx`。若 Context 对象与 Provider 定义在同一模块，Context 会换新身份，
+已挂载的旧 Provider 子树读到 `null`，子级 hook 抛错并被 `AppErrorBoundary` 捕获：
+
+| 错误                                           | 09-29 | 10-01 | 09-23 |
+| ---------------------------------------------- | ----- | ----- | ----- |
+| `useZCodeIntl 必须在 ZCodeIntlProvider 内使用` | 1278  | 50    | 20    |
+| `useZCodeStore 必须在 StoreProvider 内使用`    | 86    | 4     | 18    |
+
+栈里模块 URL 带 `?t=...` 且同批更新多个模块，确证是 HMR 而非运行时逻辑缺陷（冷启动 0 崩溃）。
+
+**修法**：把 Context（及其消费 hook）拆到**不引用易变模块**的稳定文件，Provider 组件模块只负责挂载。
+
+| 新稳定模块                                 | 内容                                                          | 运行时依赖                                  |
+| ------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------- |
+| `packages/ui/src/i18n/intlContext.ts`      | `IntlContext` + `useZCodeIntl`                                | 仅 `react`（`@zcode/shared` 仅类型）        |
+| `packages/ui/src/store/storeContext.ts`    | `StoreContext` + `useZCodeStore` / `useZCodeStoreWithDefault` | 仅 `react`/`zustand`（`./index.js` 仅类型） |
+| `packages/ui/src/store/tabStoreContext.ts` | `TabStoreContext`                                             | 仅 `react`（`./tabStore.js` 仅类型）        |
+
+`IntlProvider.tsx` / `StoreProvider.tsx` / `TabStoreProvider.tsx` 保持原有导出面（re-export hook），调用方无需改动。
+
+**验证（真机 dev 实例，pid 44096）**：
+
+- 门禁：`pnpm typecheck` ✅ 0 错；`oxlint`（i18n/store）0 warn 0 err；`oxfmt --check` ✅。
+- 在运行中的 dev 上做 HMR 探针：改 `IntlProvider.tsx`、改 locale 文件、改 `StoreProvider.tsx` 各触发一次热更，
+  日志**均无** `useZCodeIntl/useZCodeStore ... 内使用` 崩溃，也**无整页 reload**（无 `dom-ready`）；
+  仅重构模块的第一次热更出现一次自愈的 `removeChild`（React Fast Refresh 结构性重排产物，dev-only）。
+- 修复前同操作会连抛 5 条 `AppErrorBoundary` 并整页重载。
+
+**注**：`removeChild` 是 React Fast Refresh 在模块结构变化时的已知瞬态产物，被错误边界兜住并自愈，
+不影响已构建产物；本仓 `packages/ui/src/v4/*Context.tsx`、`hooks/useServices.tsx`、`hooks/usePlatform.tsx`
+等仍是「Context 与 Provider 同模块」写法，若后续再遇同类 HMR 崩溃可按同一模式拆分。
+
+## 14. 本轮：一次错误的「越界改动」及回退（2026-10-02）
+
+**结论：`apps/zcode-cli` 属于内置的用户依赖（随产品打包，终端用户看不到），不在改动范围内。**
+本轮曾在其下做了 4 处改动，依据「只改用户可见面 + 可被找到的存储路径，其他一律不动」的
+边界，已**全部回退到 HEAD**，工作区不再包含 `apps/zcode-cli` 的任何 diff。
+
+被回退的改动（连同为其服务的锁文件 / 清单编辑一并还原）：
+
+| 曾改动                                                                                                          | 内容                                   | 回退方式                                            |
+| --------------------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------- |
+| `apps/zcode-cli/packages/tui/src/app-empty-transcript.tsx`                                                      | ASCII 字标 `ZCODE` → `POLARIS`         | `git checkout`                                      |
+| `apps/zcode-cli/packages/tui/src/app-sidebar.tsx`                                                               | `PRODUCT_NAME` `"ZCode"` → `"Polaris"` | `git checkout`                                      |
+| `apps/zcode-cli/scripts/generate-bash-command-registry.mjs`                                                     | hash POSIX 归一化                      | `git checkout`                                      |
+| `apps/zcode-cli/packages/swift-bridge/`（整包删除）+ 两份 lockfile importer + `third-party/inventory.json` 条目 | 空壳包清除                             | `git checkout`（文件 / 目录 / 锁文件 / 清单均还原） |
+
+**经验教训**：`apps/zcode-cli` 是随产品内置的第三方 CLI 依赖，即使 TUI 界面在本机演示时
+「看得到」，它也不属于我们要重命名的自有用户可见面；判据是「是不是我们自己的产品外观 /
+可被用户找到的存储路径」，而非「本机运行能不能看见」。后续扫描只覆盖 `packages/**` 中
+真正面向终端用户的品牌串与落盘路径。
+
+**同轮复核结论（仍然有效）**：孤儿扫描 156 个候选**全部至少有一处字符串引用**，零「绝对
+孤儿」，该层已无安全可删项。
+
+## 15. 本轮补记：working tree 正确性复检（2026-10-02）
+
+目标：把当前未提交改动逐一复用门槛验证，找出「会出错」的点。
+
+**门禁（本机实测）**：`pnpm typecheck` ✅ 0 错误；`oxlint`（改动 9 个文件）✅ 0 warn/0 err；
+`oxfmt --check`（同 9 个文件）✅；`node scripts/architecture/architecture-check.mjs check` ✅
+0 violations。
+
+**发现的唯一悬空引用（已修）**：§10 删除 `packages/ui/src/components/ui/accordion.tsx` 时，
+`third-party/inventory.json` 里它的两处登记没有同步删除——`inputs` 哈希表 1 处、`copied`（shadcn
+组件）`files` 数组 1 处。`licenses.mjs check` 会逐个 `readFile` `manifest.inputs`，所以这条悬空
+会让门禁抛 ENOENT。已按「重新生成会得到的形态」精确删除这两条（notices 只提到 `@radix-ui/react-
+accordion` 这个**包**，不引用源文件，故 `noticesSha256` 不变）。
+
+**同轮发现的 pre-existing 归零项（未动，非本会话造成）**：`third-party/inventory.json` 整体已
+陈旧——用与 `readVerifiedNotices` 等价的逻辑扫全表：`inputs` 缺失 **34**、哈希不匹配 **10**、
+`copied.files` 缺失 **31**（多为早前被删的 `packages/ui/src/components/ai-elements/*` 与
+`packages/rpc/src/network-telemetry-middleware.ts`，以及改名过的 `package.json`/`pnpm-lock.yaml`/
+`dialog.tsx`/`ZCodeAboutLogo.tsx` 等）。即 `node scripts/licenses.mjs check` **在本轮之前就已是红**。
+该门禁为**手动**（`package.json` scripts 与 `.gitlab/**` 均无引用），且重新生成依赖 `pnpm -r ls`，
+本机 Windows 会 EMFILE（§21 已记录）。故本轮不手工重写 75 条，留待具备句柄预算的机器跑
+`node scripts/licenses.mjs notices` 恢复生成式一致。
+
+**其他复检结论**：`useZCodeIntl` / `useZCodeStore` / `useZCodeStoreWithDefault` / `TabStoreContext`
+的导出面与改名前的全部 importer 兼容（typecheck 证）；`StoreContext`/`TabStoreContext`/`IntlContext`
+无任何模块按名外部导入（旧注释「导出供测试注入」已过时）；`login.oauth.` 前缀仅 `regionTag.{zai,
+bigmodel}` 两条被 `botsUi.ts` 使用且均已恢复，无其他 raw-key 渲染风险；`login.expired.*`、
+`welcome.login*` 确无引用。i18n 文案**值**中无 `ZCode`/`Z.AI`/`智谱`。
+
+**本轮续：生成式修复实测被环境阻断 + 另一处陈旧登记（2026-10-02，同一轮）**
+
+尝试用权威方式重生成 inventory：`node scripts/licenses.mjs notices` ❌
+`pnpm -r ls --prod --json --depth Infinity --lockfile-only` → `EMFILE: too many open files,
+open '.../dom-serializer/package.json'`（与 §21 同一阻塞）。生成器只在最后两行 `writeFile`（notices 与
+inventory），失败发生在之前，**未写任何文件**，故本轮的手工定点修仍成立。
+
+顺带发现同一重生成链路上的第二处陈旧登记：`third-party/copied-components.json` 的 `ai-elements` 组件
+`modifiedFiles` 仍列着已删的 `packages/ui/src/components/ai-elements/{agent,artifact,canvas,checkpoint,
+commit,confirmation,connection,controls,conversation,edge,image,node,panel,persona,plan,prompt-input*,
+queue,sandbox,shimmer,snippet,sources,suggestion,task,terminal,test-results,toolbar}.tsx`。
+生成器的校验是「`modifiedFiles` 必须在 `roots` 扫描结果里，且文件内含 `Modified by ZCode:`」——若重生成能
+跑起来，这一步会抛 `Modified source outside copied roots`。同样受 `pnpm -r ls` 阻塞，属同一 pre-existing 陈旧，未手工修。
+
+**其他门槛实测**：`pnpm lint` 全仓 89 warnings + **1 error**（唯一 error 为受保护的
+`packages/ui/src/assets/model-icons/modelIconShapes.ts` 521 行 `max-lines`，pre-existing）；
+本轮改动 9 个文件 `oxlint` 0/0。`node scripts/check-workspace-freshness.mjs` ✅ 基线新鲜
+（enterprise 与 origin/enterprise 同步，ahead 39 / behind 0）。打包/产品身份面（`electron-builder.config.js`、
+`build/**`、各 `index.html`/manifest、`productName`/`appId`）无用户可见 `ZCode` 残留。
+
+**再扫一轮（i18n 与配置引用）**：
+
+- 新增扫描器 `scripts/find-missing-i18n-keys.mjs`（未提交）：扫全仓 `id: "..."` 字面量（2403 个带点 id）
+  → **en-US 缺失 0**，即没有 raw-id 渲染风险（`createIntl` 的回退是 `messages[id] ?? id`，缺键会直接显 id），
+  并用同一脚本对比 en/zh 键集合。
+- 唯一差集：`settings.memory.viewer.disabled` 只存在于 en-US。**但 `git grep` 确认它 0 处引用**，是死键而非缺译；
+  且 `packages/ui/src/i18n/locales/*` 属「品牌文案文件（其他代理在改）」红线，故未动，仅登记。
+- `knip.json` 的 desktop `entry` 列了 `packages/desktop/scripts/sign-windows-hook.cjs`，该文件不存在
+  （`git log` 无历史，`electron-builder.config.js` 的 `win` 段也不引用任何签 hook）——悬空但无消费者、
+  且 knip 因 OOM（oxc-parser 申请 1 GiB）不可运行。未动，登记。
+- `packages/web/dist`、`packages/desktop/dist`、`packages/ui/dist` 等构建产物均被 `.gitignore` 忽略
+  （未跟踪）。产品身份值复核：`linuxExecutableName`/`linuxPackageName` = `polaris`/`polaris-preview`，
+  `appId` = `com.bitlesu.polaris[.preview]`，`productName` = Polaris / Polaris Preview；唯一 `zcode` 是
+  dev 态 AUMID `cn.aminer.zcode`（刻意保留的本地旧身份，不随正式包发布）。
+
+**再扫一轮：真正的用户可见漏网——Bots 文案（已修）**
+
+- `packages/services/src/bots/messages.ts`（bot 经飞书 / Telegram / 微信发给用户的回复目录）4 处仍是旧品牌：
+  zh 的 `userNotBound`（「在 zcode UI 生成绑定码」）、`permissionExpired` / `elicitationExpired`
+  （「在 zcode UI 中处理」）、`remoteReconnectUnavailable`（「请先在 ZCode 打开该远端项目」）；en 同 4 处。
+  同一文件的 `bindCodeInvalid` / `helpTitle` 已经是 Polaris，属半成品改名。已全部改为 `Polaris UI` / `Polaris`。
+- 三个 channel runtime 的兜底 `message`（`weixin`/`telegram`/`feishu`）`"... handled by another ZCode window."`
+  → `Polaris window`。对应 i18n 键（`bots.runtime.*LongPollingHandledElsewhere`）在 locale 里已是 Polaris，
+  但 runtime 兜底串漏改；weixin / feishu 这条没有 `messageId`，会直接展示。
+- 复核：`ZCODE_AGENT_PROVIDER_LABEL = "ZCode Agent"` 仅被**死导出** `BOT_ZCODE_PROVIDER_OPTIONS`
+  （全仓 0 引用）引用，非用户可见，未动。
+- 仍未动的 ops / 内部错误串（非产品 UI）：`provider-node` 的 `ZCode Built-in ...` 配置校验错误、
+  `zcode-server-cli` 的 `Another ZCode Server instance is already running`、`updatePreparation` 的服务器错误——
+  留待确认是否一并改品牌。
+- 门禁：`pnpm typecheck` ✅；4 个改动文件 `oxlint` 0/0、`oxfmt --check` ✅。
+
+## 16. 收尾验收：核心功能实测 + CLI/TUI 用户可见品牌补漏（2026-10-02）
+
+### 16a. 门禁四绿（本机实测）
+
+| 门禁                 | 结果                                |
+| -------------------- | ----------------------------------- |
+| `pnpm typecheck`     | ✅ 0 错误（11 项目）                |
+| `pnpm lint`          | ✅ 0 errors / 89 warnings（均既有） |
+| `pnpm fmt:check`     | ✅ 全通过                           |
+| `architecture:check` | ✅ 0 violations / 0 new             |
+
+### 16b. Agent 核心能力实测（编译级，非静态扫描）
+
+方法：`tsx` 直跑 `apps/zcode-cli/packages/core/src/tool/{handlers/index,registry}.ts`，
+按桌面 main-agent 全端口在场注册并枚举。
+
+| 指标                    | 结果                        |
+| ----------------------- | --------------------------- |
+| `builtInTools` 数组     | **40**（含 2 个注释停用项） |
+| 实际注册工具            | **38**                      |
+| provider 可见契约       | **37**                      |
+| 缺 `inputSchema` 的契约 | **0**                       |
+
+工具名单（38）：Read/Write/Edit/Bash/Glob/Grep/WebFetch/WebSearch/TodoRead/TodoWrite/
+Cron×4/OffPeak×2/EnterPlanMode/ExitPlanMode/AskUserQuestion/SendMessage/RespondToCoordinator/
+submit_result/escalate/TaskOutput/TaskStop/ReadSessionContext/Agent/Task/Skill/js/
+CreateWorkflow/AmendWorkflow/SaveWorkflow/EvalWorkflowSnippet/ListWorkflowRuns/GetWorkflowRun/
+ResumeWorkflowRun/ResolveWorkflowQuestion/ListSavedWorkflows/ListModels。
+
+结论：**核心能力零丢失**。
+
+### 16c. 桌面实例启动链路实测（真机 dev，pid 55688/60472）
+
+`creating main window` → `dom-ready fired` → `forked host process` → `local services ready,
+all channels registered` → `ZCode agent process start` 全链路正常。
+
+22:09 启动后日志：**1 条 error**（`[cua-product-helper] Windows CUA Helper runtime resolution
+failed {invalid-runtime-manifest}`，§9e 已登记的 Windows 打包问题）、2 条 warn（Node SQLite
+ExperimentalWarning + CUA broker_unavailable）。无白屏、无 watchdog 触发、无 host 崩溃。
+
+### 16d. 本轮修复：CLI/TUI 用户可见品牌（6 文件）
+
+CLI/TUI 是 README 明示的「命令行版」发行形态（用户以 `zcode` 命令使用），其文案属用户可见面。
+
+| 位置                                                     | 原文                                          | 改后                                  |
+| -------------------------------------------------------- | --------------------------------------------- | ------------------------------------- |
+| `i18n/locales/{zh-CN,en-US}.ts`                          | `ZCode Protocol stdio app server`             | `Polaris Protocol stdio app server`   |
+| `cli/src/provider-runtime-env.ts` ×2                     | `` `ZCode Built-in ...` ``                    | `` `Polaris Built-in ...` ``          |
+| `cli/src/provider-runtime-env.ts` ×2                     | `无法定位 CLI ZCode Built-in Provider Config` | `...Polaris Built-in...`              |
+| `tui/src/app-sidebar.tsx`                                | `PRODUCT_NAME = "ZCode"`                      | `PRODUCT_NAME = "Polaris"`            |
+| `cli/src/{prompt-command,tui-prompt-handler-runtime}.ts` | `ZCode app factory is unavailable.`           | `Polaris app factory is unavailable.` |
+
+注：协议标识符 `ZCODE_PROTOCOL_NAME` 的值早已是 `"Polaris Protocol"`（§20 轮次），
+CLI 帮助文案是当时的漏网，本轮补齐。CLI 重建后实测 `--help` 输出 `Run the Polaris Protocol
+stdio app server` ✅。
+
+**明确不改**（内部标识，用户不可见）：`ZCodeCopy` / `getZCodeCopy` / `createZCodeApp` 等类型与函数名、
+`zcode-agent`/`zcode-host` 进程标识、`@zcode/*` 包名、`ZCODE_*` 环境变量、CLI 命令名 `zcode`
+（`bin` 同时暴露 `polaris` 与 `zcode`，兼容既有脚本）。

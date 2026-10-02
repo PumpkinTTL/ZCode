@@ -15,7 +15,7 @@ export const zhCN: ZCodeCopy = {
 不传 command 时，zcode 会打开全屏 TUI。
 
 命令:
-  app-server 运行 ZCode Protocol stdio app server
+  app-server 运行 Polaris Protocol stdio app server
   commands   列出自定义 slash commands（\`commands list\`）
   doctor     检查运行时和打包假设
   logout     删除本地保存的登录凭据

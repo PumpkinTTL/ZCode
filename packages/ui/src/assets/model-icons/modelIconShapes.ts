@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 品牌图标路径数据表，按图标逐条维护，超行数上限是刻意的。 */
 /* 由 @lobehub/icons-static-svg@1.95.1 的 24x24 currentColor 路径生成，禁止手改。
  * 每条 path 只保留几何与覆盖属性；viewBox 统一 0 0 24 24，配色由调用方 currentColor 决定。
  * 来源与选型说明见同目录 model-icon-sources.json。 */

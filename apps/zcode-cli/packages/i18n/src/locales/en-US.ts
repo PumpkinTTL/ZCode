@@ -15,7 +15,7 @@ Usage:
 With no command, zcode opens the full-screen TUI.
 
 Commands:
-  app-server Run the ZCode Protocol stdio app server
+  app-server Run the Polaris Protocol stdio app server
   commands   List custom slash commands (\`commands list\`)
   doctor     Inspect runtime and packaging assumptions
   logout     Remove locally stored login credentials
