@@ -775,6 +775,8 @@ const zhCN: Record<string, string> = {
   "login.passwordHide": "隐藏密码",
   "login.providerHint": "其他模型提供商可在「设置 → 模型提供商」中添加",
   "login.close": "关闭登录页",
+  "login.oauth.regionTag.zai": "全球",
+  "login.oauth.regionTag.bigmodel": "中国",
   "settings.onboarding": "引导",
   "settings.onboardingDescription":
     "重新选择职业、界面模式和使用偏好。数据迁移可在迁移设置中操作。",

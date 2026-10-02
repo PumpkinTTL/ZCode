@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import type { Locale, LocalePreference } from "@zcode/shared";
 import { DEFAULT_LOCALE } from "@zcode/shared";
@@ -16,19 +8,18 @@ import {
   readSafeLocalStorage,
   writeSafeLocalStorage,
 } from "@/lib/browserEnvironment.js";
+import { IntlContext, type IntlContextValue, type IntlInstance } from "./intlContext.js";
 import zhCN from "./locales/zh-CN.js";
 import enUS from "./locales/en-US.js";
+
+export type { IntlInstance };
+export { useZCodeIntl } from "./intlContext.js";
 
 /** 语言 → 翻译消息映射 */
 const MESSAGES: Record<Locale, Record<string, string>> = {
   "zh-CN": zhCN,
   "en-US": enUS,
 };
-
-/** 简易 intl 工具：根据 id 查找翻译，支持 {key} 占位符替换 */
-export interface IntlInstance {
-  formatMessage(descriptor: { id: string }, values?: Record<string, string | number>): string;
-}
 
 const LOCALE_PREFERENCE_KEY = "zcode-locale-preference";
 const STATE_LOCALE_CHANNEL = "state:locale";
@@ -125,16 +116,6 @@ function createIntl(locale: Locale): IntlInstance {
     },
   };
 }
-
-interface IntlContextValue {
-  intl: IntlInstance;
-  locale: Locale;
-  localePreference: LocalePreference;
-  setLocale: (locale: Locale) => void;
-  setLocalePreference: (localePreference: LocalePreference) => void;
-}
-
-const IntlContext = createContext<IntlContextValue | null>(null);
 
 /**
  * 国际化 Provider —— 管理当前语言和 intl 实例。
@@ -362,13 +343,4 @@ export function ZCodeIntlProvider({
   );
 
   return <IntlContext value={value}>{children}</IntlContext>;
-}
-
-/** 获取 intl 上下文 */
-export function useZCodeIntl(): IntlContextValue {
-  const ctx = useContext(IntlContext);
-  if (!ctx) {
-    throw new Error("useZCodeIntl 必须在 ZCodeIntlProvider 内使用");
-  }
-  return ctx;
 }

@@ -851,6 +851,8 @@ const enUS: Record<string, string> = {
   "login.passwordHide": "Hide password",
   "login.providerHint": "Add other model providers in Settings → Model Providers",
   "login.close": "Close sign-in",
+  "login.oauth.regionTag.zai": "Global",
+  "login.oauth.regionTag.bigmodel": "CN",
   "settings.onboarding": "Onboard",
   "settings.onboardingDescription":
     "Choose your role, interface mode, and preferences again. Use Migration settings to import data.",

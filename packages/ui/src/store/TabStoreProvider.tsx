@@ -3,10 +3,11 @@
  *
  * 每个窗口独立挂载，tab 状态不跨窗口广播。
  */
-import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
+import { useContext, useEffect, useRef, type ReactNode } from "react";
 import { useStore } from "zustand";
 import { shouldExposeE2EStoreBridge } from "@/lib/e2eStoreBridge.js";
 import { createTabStore, type TabStore, type TabStoreState } from "./tabStore.js";
+import { TabStoreContext } from "./tabStoreContext.js";
 
 declare global {
   interface Window {
@@ -14,7 +15,6 @@ declare global {
   }
 }
 
-const TabStoreContext = createContext<TabStore | null>(null);
 const fallbackTabStore = createTabStore(null);
 
 export function TabStoreProvider({ children }: { children: ReactNode }) {
