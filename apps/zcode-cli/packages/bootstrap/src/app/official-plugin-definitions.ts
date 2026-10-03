@@ -91,7 +91,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
   {
     defaultEnabled: true,
     listing: {
-      author: ZAI_AUTHOR,
+      author: OFFICIAL_PLUGIN_AUTHOR,
       category: "productivity",
       displayName: "Visualize",
       displayName_i18n: { "zh-CN": "交互视图" },
