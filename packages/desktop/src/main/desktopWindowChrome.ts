@@ -36,6 +36,7 @@ import {
   resolveDesktopWindowSize,
   type DesktopWindowSize,
 } from "./desktopWindowSize.js";
+import { getPluginSandboxHost, isPluginSandboxSrc } from "./pluginSandbox/index.js";
 // CDP-on-guest pivot：内置浏览器改回 `<webview>` 渲染，宿主 BrowserWindow 需重新开 webviewTag，
 // 并在 will/did-attach-webview 里做 guest 硬化 + URL 白名单 + popup 路由回内部 tab。
 const ALLOWED_EMBEDDED_BROWSER_PROTOCOLS = new Set([
@@ -437,8 +438,76 @@ export function createBrowserWindow(options: {
   win.on("maximize", () => syncDesktopWindowChromeState(win));
   win.on("unmaximize", () => syncDesktopWindowChromeState(win));
   attachWindowsWindowRepaint(win);
+  // will-attach 与 did-attach 按顺序配对；队列元素记录 guest 种类，did-attach 据此分派策略。
+  const pendingWebviewGuestKinds: Array<
+    { kind: "browser" } | { kind: "pluginSandbox"; sandboxId: string }
+  > = [];
+
+  win.webContents.on("will-attach-webview", (event, webPreferences, params) => {
+    // CDP 在原生 Dialog 已创建后再替换 UI，macOS 仍可能显示已经排队的
+    // Chromium NSAlert。固定 preload 在每个 frame 调用原生 API 前拦截，且隔离世界只
+    // 暴露 alert/confirm 同步桥；网页主世界仍没有 Node 或任意 IPC 能力。
+    const targetUrl = params.src ?? "about:blank";
+    // 插件 UI 沙箱 guest：独立分支，不走内置浏览器的 preload / allowpopups / 协议白名单。
+    if (isPluginSandboxSrc(targetUrl)) {
+      const host = getPluginSandboxHost();
+      const decision = host?.configureGuest({
+        webPreferences,
+        params,
+        ownerWebContentsId: win.webContents.id,
+      });
+      if (!decision?.ok) {
+        options.logger.warn(
+          `[plugin-sandbox] blocked webview attach: ${decision ? decision.reason : "host-not-installed"}`,
+        );
+        event.preventDefault();
+        return;
+      }
+      pendingWebviewGuestKinds.push({ kind: "pluginSandbox", sandboxId: decision.sandboxId });
+      return;
+    }
+    webPreferences.preload = embeddedBrowserJavaScriptDialogPreloadPath;
+    webPreferences.contextIsolation = true;
+    webPreferences.nodeIntegration = false;
+    webPreferences.nodeIntegrationInSubFrames = true;
+    webPreferences.sandbox = true;
+
+    delete params.preload;
+    delete params.nodeintegration;
+    // nodeIntegrationInSubFrames 是 guest 创建期偏好；派生 WebPreferences 与原始 attach
+    // 参数都固定为 true，确保发生真实导航的子 frame 在网页脚本前加载同一 preload。
+    // 无 src 的继承型空 frame 不触发 preload，由 preload 内的同源 frame 观察器接管。
+    params.nodeintegrationinsubframes = "true";
+    delete params.disablewebsecurity;
+    delete params.allowpopups;
+
+    // webview 内 target=_blank/window.open 如果完全禁用 popup 会表现为点击无响应；
+    // 如果放任 Electron 默认处理，又会创建脱离 Polaris 的 BrowserWindow。这里由宿主重新打开
+    // allowpopups，并在 did-attach-webview 中用 setWindowOpenHandler 统一 deny 默认窗口创建，
+    // 再把合法 URL 路由到内部 Browser tab 或系统浏览器。
+    params.allowpopups = "true";
+
+    if (!isAllowedEmbeddedBrowserUrl(targetUrl)) {
+      options.logger.warn(`[browser-pane] blocked unsupported webview url: ${targetUrl}`);
+      event.preventDefault();
+      return;
+    }
+
+    pendingWebviewGuestKinds.push({ kind: "browser" });
+  });
 
   win.webContents.on("did-attach-webview", (_event, guestWebContents) => {
+    const guestKind = pendingWebviewGuestKinds.shift() ?? {
+      kind: "browser" as const,
+    };
+    if (guestKind.kind === "pluginSandbox") {
+      getPluginSandboxHost()?.attachGuest({
+        guest: guestWebContents,
+        hostWebContents: win.webContents,
+        sandboxId: guestKind.sandboxId,
+      });
+      return;
+    }
     attachEmbeddedBrowserWindowOpenHandler({
       guestWebContents,
       hostWebContents: win.webContents,

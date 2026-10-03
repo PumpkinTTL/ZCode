@@ -1470,3 +1470,58 @@ stdio app server` ✅。
 **明确不改**（内部标识，用户不可见）：`ZCodeCopy` / `getZCodeCopy` / `createZCodeApp` 等类型与函数名、
 `zcode-agent`/`zcode-host` 进程标识、`@zcode/*` 包名、`ZCODE_*` 环境变量、CLI 命令名 `zcode`
 （`bin` 同时暴露 `polaris` 与 `zcode`，兼容既有脚本）。
+
+## 17. 合并上游 feat/ui-plugin：UI Plugins + Gen UI（2026-10-03）
+
+上游 `feat/ui-plugin` 分支（`662c30b`，2026-09-29）带来 426 文件 / +55,671 行的能力扩展：
+**UI Plugin**（MCP Apps 交互式插件页面，Excalidraw 为例）与 **Gen UI**（Agent 按需生成
+可交互 HTML 页面嵌入对话）。这是**能力层扩展，非业务功能**，零官方域名、零官方依赖，故合并。
+
+### 17a. 冲突处置（9 文件真冲突，18 个冲突块）
+
+保留原则：**新能力全收，已砍业务不回滚。**
+
+| 文件                                      | 处置                                                                                                                                                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared/src/channels.ts`                  | 保留 `PluginSandboxRegisterRequest`（新能力）；丢弃 `NetworkTelemetryBatch`（已砍遥测）                                                                                                        |
+| `shared/src/validation.ts`                | 保留 pluginSandbox schema + `mcpAppInstanceSchema`；丢弃 `hostNetworkTelemetryBatchResponseSchema`、`networkObservationSchema`、`automationSessionCreateTelemetrySchema`；清理 3 个重复 import |
+| `desktop/tsup.config.ts`                  | 端点闸门（我方）与 Gen UI 资源拷贝（上游）**都保留**                                                                                                                                           |
+| `desktop/src/main/index.ts`               | 保留 `pluginSandbox` import；丢弃 `mainMemoryDiagnosticsRegistry`（遥测链，唯一消费者 `desktopResourceTelemetry` 已删）                                                                        |
+| `desktop/src/host/index.ts`               | 保留 `hostMemoryDiagnosticsLog`（本地日志）+ `pluginSandboxRegistrationBridge`（新能力）；丢弃 `stopHostNetworkTelemetry`/`hostSelfResourceTelemetry`/`disposeLocalResourceTelemetry`（已砍）  |
+| `desktop/src/main/desktopHostProcess.ts`  | 保留 `RemoteTarget` + `TaskRealtimeBus`；丢弃 `HostMcpTelemetryResponse`/`HostSessionCreateTelemetryResponse`；删除 3 个指向已删文件的死 import                                                |
+| `desktop/src/main/desktopWindowChrome.ts` | 保留 pluginSandbox guest 分支 + 浏览器硬化逻辑；**丢弃 Coding Plan 官网 webview 分支**（`isCodingPlanEmbeddedWebviewSrc`/`codingPlanWebviewPreloadPath`/`isCodingPlanGuest`，已砍）            |
+| `ui/src/v4/SessionPane.tsx`               | 保留 Gen UI 上下文注入（`buildGenUiModelContext` + `genUiService.listState`）；丢弃 `onAcceptedSelection`/`recommendStartPlan`（已砍推荐线）                                                   |
+| `pnpm-lock.yaml`                          | 手工冲突丢弃，改用 `pnpm install --lockfile-only` 权威重建                                                                                                                                     |
+
+### 17b. 品牌化（用户可见面）
+
+| 位置                                         | 改动                                                                                            |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `pluginSandbox/permissions.ts`               | 权限对话框文案（中/英）`ZCode 的沙箱` → `Polaris 的沙箱`、`ZCode restarts` → `Polaris restarts` |
+| `pluginSandbox/permissionGate.ts`、`host.ts` | 默认 server 名 `"ZCode Gen UI"` → `"Polaris Gen UI"`                                            |
+| `UI_PLUGIN.md` / `UI_PLUGIN.en.md`           | 产品名 7 处 → Polaris；**上游仓库引用 `zai-org/ZCode` 保留**（事实）                            |
+
+### 17c. 明确保留的内部标识（契约，不改）
+
+`useZCodeIntl`/`ZCodeCopy` 等类型与 hook 名、`experimental["zcode/..."]` MCP 扩展键
+（与插件生态的协议契约）、`@zcode/*` 包名、`ZCODE_*` 环境变量。
+`zcodeMcpTelemetryEventSchema` 是 agent 协议 schema（非桌面遥测），保留。
+
+### 17d. 垃圾文件核查
+
+- **保留**：`desktop/scripts/{mcp-apps-host-fixture,gen-ui-fixture}/`（被 `gen-ui-e2e.mjs`/`mcp-apps-host-e2e.mjs` 引用的 E2E 工具链）、`visualize-plugin/skills/visualize/assets/vendor/`（Gen UI 离线资产，916K，带 LICENSE）、`docs/images/{ui-plugins,gen-ui}/`（文档配图）。
+- **新增源码零官方域名**（`*.invalid`/`*.test` 为测试假域名）。
+
+### 17e. 验证
+
+```
+pnpm typecheck        ✅ 0 错误（含新增 300 文件）
+pnpm lint             ✅ 0 errors / 92 warnings（+3，均为新增文件的既有风格）
+pnpm fmt:check        ✅ 全通过
+architecture:check    ✅ 0 violations
+vitest（新增）        ✅ desktop pluginSandbox 24/24、shared 48/48、ui 142/142
+  · 2 个 Failed Suite 为 node:test 格式文件被 vitest 误收，属预先存在的跑法差异（§20e 已记录）
+tsx --test 复验       ✅ pluginMarketplaces 8/8
+```
+
+已砍业务零复活核查：遥测文件、`mainMemoryDiagnostics`、codingPlan 系列、`bigmodel-oauth` 全部确认未回归。
