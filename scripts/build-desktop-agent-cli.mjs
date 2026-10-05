@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs";
+import { cpSync, existsSync } from "node:fs";
 import { access } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stageAgentBundle } from "../packages/desktop/scripts/stage-agent-bundle.mjs";
 import { runCommand } from "./spawn-command.mjs";
@@ -91,11 +91,57 @@ async function verifyRequiredDevPluginRuntimeArtifacts() {
  *
  * dev 只跑宿主平台，所以 platformKey 直接取 process；打包链的跨平台 target 由它自己解析。
  */
+/**
+ * 官方插件包随 agent 一并暂存（dev 独有；打包链有等价的 stageOfficialPlugins）：
+ * agent 侧的内置插件 seed 只在入口目录旁的 `packages/<name>` 找根
+ * （candidateBaseDirs = 入口目录 / 运行时目录 / cwd），而 stageAgentBundle 会清空 glm
+ * 只放 zcode.cjs —— 官方插件在 dev 下因此长期没有根：不 seed、不进插件清单，CUA 的
+ * broker 注入门（pluginRuntimeFeatures.computerUse，依赖 computer-use 插件出现在清单里）
+ * 随之关闭，真机表现为会话里 "Computer Use is unavailable for this node_repl session"。
+ * 这里把仓库里的官方插件包按打包链同构的目录名一并暂存，dev 与打包的插件布局保持一致。
+ */
+const DEV_STAGED_OFFICIAL_PLUGINS = [
+  ["apps/zcode-cli/packages/visualize-plugin", "visualize-plugin"],
+  ["apps/zcode-cli/packages/browser-use-plugin", "browser-use-plugin"],
+  ["apps/zcode-cli/packages/node-repl-host", "node-repl-host"],
+  ["packages/zcode-cua-plugin", "zcode-cua-plugin"],
+];
+
+function stageDevOfficialPlugins() {
+  const packagesDir = resolve(
+    repoRoot,
+    "packages",
+    "desktop",
+    "bundled-agents",
+    `${process.platform}-${process.arch}`,
+    "glm",
+    "packages",
+  );
+  let staged = 0;
+  for (const [sourceRelative, stagedName] of DEV_STAGED_OFFICIAL_PLUGINS) {
+    const sourceRoot = resolve(repoRoot, sourceRelative);
+    // 只暂存有插件清单的包；本 checkout 缺包的插件由 seed 自己降级处理。
+    if (!existsSync(resolve(sourceRoot, ".zcode-plugin", "plugin.json"))) continue;
+    cpSync(sourceRoot, resolve(packagesDir, stagedName), {
+      recursive: true,
+      filter: (source) => {
+        const name = basename(source);
+        return (
+          name !== "node_modules" && name !== ".turbo" && name !== ".venv" && name !== "__pycache__"
+        );
+      },
+    });
+    staged += 1;
+  }
+  console.log(`[stage:agent-bundle] staged ${staged} official plugin packages`);
+}
+
 function stageDevAgentBundle() {
   stageAgentBundle({
     repoRoot,
     platformKey: `${process.platform}-${process.arch}`,
   });
+  stageDevOfficialPlugins();
 }
 
 async function runBootstrapWithRemoteBuild() {

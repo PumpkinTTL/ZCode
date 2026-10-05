@@ -1807,3 +1807,37 @@ data 共 6 个）、分片文件 name 与 `plugins[].cachePath`（bundled 在 `m
 - 门禁：root typecheck ✓ / CLI turbo typecheck 27/27 ✓ / lint 92-0 ✓ / fmt 2934 ✓。
 - dev 重启后：helper ready、新名运行时产物/证书自动重建；数据根扫描仅剩 `.zcode-plugin`
   （格式契约）与日志历史（内容层）。
+
+## 29. CUA 真机会话不可用根因修复：dev 插件包未随 agent 暂存（2026-10-06）
+
+现象（用户实测 + 会话转录第一现场）：任务里 `agent.computerUse` 报
+"Computer Use is unavailable for this node_repl session"（桥在、broker 凭据缺失）；
+skill bootstrap 读到的 `ZCODE_CUA_PLUGIN_ROOT` 落到 browser-use 根。
+
+根因链（每跳实证）：
+
+1. agent 侧内置插件 seed 只在**入口目录旁**找根（`candidateBaseDirs()` = 入口目录 / 运行时目录 / cwd）；
+   而 `stage-agent-bundle.mjs`（dev 与打包共用）会清空 glm 只放 zcode.cjs —— dev 下官方插件包
+   永远不在 `glm/packages/`，根解析全部落空。
+2. computer-use 因此从未被 seed（cache 无此目录，实机核对）→ 不进 `pluginOutcome` →
+   `pluginRuntimeFeatures.computerUse` 缺失 → `runtime-config.ts` 的 node_repl broker 注入门
+   （`cuaBridgeServerNames.add("node_repl")`）关闭 → node_repl 进程无 socket → 上述报错。
+   其余插件能跑只是因为旧 cache 还在。
+3. 反证：services `buildCuaProductHelperAgentEnv` 冷启动 133ms 返回完整凭据组（探针实测）；
+   `zcode.cjs __zcode-plugin-host` 下游全链（plugin-host→node_repl→helper→driver）实测通过
+   （276 个应用）。断裂点唯一：dev 的"插件根 → computerUse 门"。
+
+修复：
+
+- `scripts/build-desktop-agent-cli.mjs`：新增 `stageDevOfficialPlugins()` —— dev 暂存
+  visualize / browser-use / node-repl-host / zcode-cua-plugin 四包到 `glm/packages/`（布局与打包链同构）；
+  boot 日志 `[stage:agent-bundle] staged 4 official plugin packages`。
+- `packages/desktop/scripts/prepare-agent-node-bundle.mjs`：打包清单补 computer-use 条目
+  （stagedPath `packages/zcode-cua-plugin` + 三个 requiredSeedPaths），打包态与 dev 对齐。
+
+验证（重启 dev 实测）：
+
+- `glm/packages` 四包齐；`cache/polaris-plugins-official/computer-use/0.6.3` 出现（seed 成功）。
+- **glm 基准下复刻 agent 判定**（探针）：computer-use enabled 且 root=cache 路径；
+  `runtimeFeatures.computerUse: true`；nodeRepl env `ZCODE_CUA_PLUGIN_ROOT` = computer-use 根。
+- 启动日志零错误、Helper ready；下游链（此前已验证）不变。

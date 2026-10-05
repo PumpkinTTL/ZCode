@@ -145,6 +145,21 @@ const officialPluginPackages = [
     runtimeBuildScript: "scripts/build.mjs",
     stagedPath: "packages/node-repl-host",
   },
+  {
+    // computer-use（CUA）插件包：模型面 SDK + skill + docs；仓库内 vendored 自官方
+    // 0.6.3（MIT）。执行由 shared node_repl host 承载，本包没有需要构建的 runtime。
+    // dev 链在 scripts/build-desktop-agent-cli.mjs 的 stageDevOfficialPlugins 里同构暂存。
+    packageName: "@zcode/zcode-cua-plugin",
+    relativePath: "packages/zcode-cua-plugin",
+    requiresRuntime: false,
+    requiredRuntimePaths: [],
+    requiredSeedPaths: [
+      "docs/computer-use.md",
+      "scripts/computer-use-client.mjs",
+      "skills/computer-use/SKILL.md",
+    ],
+    stagedPath: "packages/zcode-cua-plugin",
+  },
 ];
 // 随 CLI 内置的技能包（不是插件）：bootstrap 的 resolveBundledSkillRoots 沿官方插件同款候选目录
 // 在 zcode.cjs 旁找 packages/bundled-skills 并原地读取。漏 stage 它，桌面包的 /workflow 会展开成
