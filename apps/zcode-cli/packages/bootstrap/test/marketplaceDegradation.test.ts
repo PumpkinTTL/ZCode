@@ -8,7 +8,7 @@ import { PLUGIN_MARKETPLACE_MIRRORS_ENV } from "@zcode/shared";
 
 const MARKETPLACE_ID = "degradation-fixture";
 const MARKETPLACE_DIR = join("marketplaces", MARKETPLACE_ID);
-const OFFICIAL_MARKETPLACE_ID = "zcode-plugins-official";
+const OFFICIAL_MARKETPLACE_ID = "polaris-plugins-official";
 
 async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(join(path, ".."), { recursive: true });
@@ -162,8 +162,9 @@ test("official marketplace falls through unreachable mirrors in priority order",
     process.env[PLUGIN_MARKETPLACE_MIRRORS_ENV] = "https://127.0.0.1:1/unreachable.json";
 
     const catalogRoot = join(storageRoot, "official-catalog");
+    // 真实形态：镜像清单声明历史名（Z.ai 原站至今如此）——刷新时按本地官方 id 归一化。
     await writeJson(join(catalogRoot, ".claude-plugin", "marketplace.json"), {
-      name: OFFICIAL_MARKETPLACE_ID,
+      name: "zcode-plugins-official",
       plugins: [{ name: "mirror-plugin", description: "fixture" }],
     });
     await writeJson(join(storageRoot, "known_marketplaces.json"), {
@@ -193,6 +194,11 @@ test("official marketplace falls through unreachable mirrors in priority order",
     const official = result.marketplaces.find((item) => item.id === OFFICIAL_MARKETPLACE_ID);
     assert.equal(official?.pluginCount, 1);
     assert.equal(official?.refreshFailure, undefined);
+    // 历史名镜像不得以旧名落成记录（归一化为本地官方 id）。
+    assert.equal(
+      result.marketplaces.some((item) => item.id === "zcode-plugins-official"),
+      false,
+    );
   } finally {
     if (previousMirrors === undefined) delete process.env[PLUGIN_MARKETPLACE_MIRRORS_ENV];
     else process.env[PLUGIN_MARKETPLACE_MIRRORS_ENV] = previousMirrors;

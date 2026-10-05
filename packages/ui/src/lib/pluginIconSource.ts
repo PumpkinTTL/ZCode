@@ -7,12 +7,12 @@ import spreadsheetsIconUrl from "@/assets/plugin-icons/spreadsheets.png";
 import { isTrustedImageUrl } from "@/lib/trustedImageUrl.js";
 
 const OFFICIAL_PLUGIN_ICON_BY_ID: Readonly<Record<string, string>> = {
-  "documents@zcode-plugins-official": documentsIconUrl,
-  "image-search@zcode-plugins-official": imageSearchIconUrl,
-  "pdf@zcode-plugins-official": pdfIconUrl,
-  "plugin-creator@zcode-plugins-official": pluginCreatorIconUrl,
-  "presentations@zcode-plugins-official": presentationsIconUrl,
-  "spreadsheets@zcode-plugins-official": spreadsheetsIconUrl,
+  "documents@polaris-plugins-official": documentsIconUrl,
+  "image-search@polaris-plugins-official": imageSearchIconUrl,
+  "pdf@polaris-plugins-official": pdfIconUrl,
+  "plugin-creator@polaris-plugins-official": pluginCreatorIconUrl,
+  "presentations@polaris-plugins-official": presentationsIconUrl,
+  "spreadsheets@polaris-plugins-official": spreadsheetsIconUrl,
 };
 
 const TRUSTED_BUNDLED_PLUGIN_ICONS = new Set(Object.values(OFFICIAL_PLUGIN_ICON_BY_ID));

@@ -14,7 +14,9 @@
   并在 `POLARIS-RESIDUE-AUDIT.md` 记录决策与冲突处置表。
 - 合并完成后必须：① 用户可见面品牌复核（ZCode → Polaris，含文档/技能/提示词面）；
   ② 能力完整性检查（工具注册数、内置插件定义、技能包、MCP 频道）；③ `pnpm typecheck`、
-  `pnpm lint`、`pnpm fmt:check` 全绿，并在审计文档登记结果。
+  `pnpm lint`、`pnpm fmt:check` 全绿，并在审计文档登记结果；
+  ④ 官方市场 id 守卫生效：全仓 grep `zcode-plugins-official`，只允许命中 legacy 常量定义、
+  迁移脚本与测试夹具（改名决策见审计 §27）；上游新引入的字面量须补进替换清单。
 
 ## 命令与仓库结构
 

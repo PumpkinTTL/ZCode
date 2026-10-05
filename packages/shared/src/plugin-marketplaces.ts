@@ -7,7 +7,7 @@ export interface DefaultPluginMarketplace {
   lastUpdated?: string;
 }
 
-export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "zcode-plugins-official";
+export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "polaris-plugins-official";
 
 /** Polaris 自有官方目录地址（默认优先镜像）。 */
 export const POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL =
@@ -18,16 +18,17 @@ export const POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_DESCRIPTION =
   "Polaris plugins marketplace: built-in and community plugins for Polaris.";
 
 /**
- * Z.ai 官方目录原站（同一份 `zcode-plugins-official` 清单的镜像）。
+ * Z.ai 官方目录原站（同一份官方清单的历史镜像；其 manifest 至今声明历史名
+ * `zcode-plugins-official`）。
  *
- * 它的 manifest 声明名就是 `zcode-plugins-official`，与官方保留 id 同名，因此**不能**作为普通
- * 用户源添加（会被保留 id 守卫拒绝），只能作为官方目录的镜像。静态 URL 仅作源标识。
+ * 该历史名与现行官方保留 id 并列受守卫：**不能**作为普通用户源添加（会被保留 id 守卫拒绝），
+ * 只能作为官方目录的镜像；镜像路径会把它归一化为本地官方 id。静态 URL 仅作源标识。
  */
 export const ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL =
   "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json";
 
 /**
- * 官方目录（`zcode-plugins-official`）的镜像源，按优先级排序：靠前的先试，失败才降级到下一个。
+ * 官方目录（`polaris-plugins-official`）的镜像源，按优先级排序：靠前的先试，失败才降级到下一个。
  *
  * 默认：Polaris 自有地址优先，Z.ai 原站作兼容镜像。用户可用
  * {@link PLUGIN_MARKETPLACE_MIRRORS_ENV} 完全覆盖顺序（例如把 Z.ai 提到最前）。
@@ -59,19 +60,19 @@ export function resolveOfficialPluginMarketplaceMirrors(env?: NodeJS.ProcessEnv)
 
 /** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
-  "browser-use@zcode-plugins-official",
-  "image-search@zcode-plugins-official",
-  "documents@zcode-plugins-official",
-  "pdf@zcode-plugins-official",
-  "presentations@zcode-plugins-official",
-  "spreadsheets@zcode-plugins-official",
+  "browser-use@polaris-plugins-official",
+  "image-search@polaris-plugins-official",
+  "documents@polaris-plugins-official",
+  "pdf@polaris-plugins-official",
+  "presentations@polaris-plugins-official",
+  "spreadsheets@polaris-plugins-official",
   // node_repl 宿主：不进市场、不对用户露出，也不贡献任何 skill/command/subagent，但必须
   // 始终可用 —— node_repl 的注册门禁是「Browser Use 或 Computer Use 任一启用」，宿主自己
   // 不参与那个判断。Browser Use 默认开着，宿主若默认关就等于它上来就没有宿主。
-  "node-repl-host@zcode-plugins-official",
-  "skill-creator@zcode-plugins-official",
-  "plugin-creator@zcode-plugins-official",
-  "zcode-guide@zcode-plugins-official",
+  "node-repl-host@polaris-plugins-official",
+  "skill-creator@polaris-plugins-official",
+  "plugin-creator@polaris-plugins-official",
+  "zcode-guide@polaris-plugins-official",
   // 电脑控制回退为默认关闭，故 computer-use 不在此名单内。
   // 该集合必须与 official-plugin-definitions.ts 里标了 defaultEnabled 的插件逐一对应，
   // bootstrap 的「Settings 默认启用集合与 CLI 的官方插件声明一致」单测机械对照两者。
@@ -80,7 +81,8 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
 export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
   {
     // Polaris：插件市场能力保留，源改指自有地址，并保留镜像降级能力。
-    // 本地 seed 分片仍在 Agent storage 内合并；CDN manifest 的 name 必须与该 canonical id 一致。
+    // 本地 seed 分片仍在 Agent storage 内合并；CDN/镜像 manifest 的 name 允许是历史名
+    // （zcode-plugins-official），adapter 层会归一化为本地官方 id —— 身份归 Polaris，镜像只贡献内容。
     // 自有市场尚未部署时，刷新会按 OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS 降级到下一个镜像；
     // 全部不可达且本地无快照时才会报错，不影响本地已安装/内置插件。
     id: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
@@ -91,7 +93,7 @@ export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
   },
 ];
 
-// 商店「公开」分段只有一个 ZCode 官方市场 id，内置与 CDN 不再拆分身份。
+// 商店「公开」分段只有一个官方市场 id，内置与 CDN 不再拆分身份。
 export const PUBLIC_STORE_MARKETPLACE_IDS = [ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID] as const;
 
 export function isPublicStoreMarketplaceId(id: string): boolean {

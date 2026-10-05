@@ -4,7 +4,7 @@ import type { McpServerConfig } from "../interfaces/mcp.port.js";
 import type { SkillRoot } from "../skills/index.js";
 import type { ExecutionContext, TraceContext } from "../tracing/tracer.js";
 
-export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE = "zcode-plugins-official";
+export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE = "polaris-plugins-official";
 export const ZCODE_INLINE_PLUGIN_MARKETPLACE = "inline";
 export const ZCODE_PLUGIN_HOST_COMMAND = "__zcode-plugin-host";
 /**
@@ -21,6 +21,17 @@ export const ZCODE_DWF_CHILD_COMMAND = "__zcode-dwf-child";
 
 export function isOfficialMarketplaceId(id: string): boolean {
   return id === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE;
+}
+
+/**
+ * 官方目录的历史名（市场 id 改名前的值）。Z.ai 原站镜像至今以该名声明 manifest：
+ * - 镜像路径（官方记录的受信任刷新/懒加载）把它按本地 id 归一化，只贡献内容；
+ * - 用户侧新增来源若声明该名，与现行官方 id 同等保留，拒绝为普通市场。
+ */
+export const LEGACY_OFFICIAL_PLUGIN_MARKETPLACE_NAMES = ["zcode-plugins-official"] as const;
+
+export function isLegacyOfficialMarketplaceName(name: string): boolean {
+  return (LEGACY_OFFICIAL_PLUGIN_MARKETPLACE_NAMES as readonly string[]).includes(name);
 }
 
 export type PluginSource = "official" | "inline" | "cache";

@@ -38,14 +38,14 @@ const ENTRIES = [
 
 /**
  * Resolve the CLI cache dir for zcode-cua. Prefer the cachePath declared in the
- * zcode-plugins-official marketplace.json; fall back to the single version dir under
+ * polaris-plugins-official marketplace.json; fall back to the single version dir under
  * the cache root. Throws if neither yields an existing dir (plugin not installed).
  */
 async function resolveCacheDir() {
   if (process.argv[2]) return resolve(process.argv[2]);
   const marketplace = join(
     homedir(),
-    ".zcode/cli/plugins/marketplaces/zcode-plugins-official/marketplace.json",
+    ".zcode/cli/plugins/marketplaces/polaris-plugins-official/marketplace.json",
   );
   try {
     const text = await readFile(marketplace, "utf8");
@@ -57,7 +57,7 @@ async function resolveCacheDir() {
   } catch {
     // marketplace.json missing/unreadable — fall through to glob.
   }
-  const cacheRoot = join(homedir(), ".zcode/cli/plugins/cache/zcode-plugins-official/computer-use");
+  const cacheRoot = join(homedir(), ".zcode/cli/plugins/cache/polaris-plugins-official/computer-use");
   if (existsSync(cacheRoot)) {
     const dirs = await readdir(cacheRoot);
     if (dirs.length === 1) return join(cacheRoot, dirs[0]);

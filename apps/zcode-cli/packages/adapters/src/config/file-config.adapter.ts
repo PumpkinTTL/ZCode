@@ -1,12 +1,6 @@
 // File Config Adapter - Load and patch JSON configuration files
 
-import {
-  existsSync,
-  readFileSync,
-  renameSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -15,7 +9,7 @@ import { z } from "zod";
 import {
   CANONICAL_CUA_PLUGIN_ID,
   canonicalizePluginId,
-  LEGACY_CUA_PLUGIN_ID,
+  LEGACY_CUA_PLUGIN_IDS,
   parseConfigFileToRuntimePatchWithDiagnostics,
   pluginIdAliases,
   type ConfigDiagnostic,
@@ -128,9 +122,10 @@ function migratePluginConfigInFile(value: unknown): Record<string, unknown> | un
   if (isRecord(plugins.enabledPlugins)) {
     const enabledPlugins = { ...plugins.enabledPlugins };
     for (const [id, enabled] of Object.entries(plugins.enabledPlugins)) {
-      if (id === LEGACY_CUA_PLUGIN_ID) {
-        const canonicalId = CANONICAL_CUA_PLUGIN_ID;
-        if (enabledPlugins[canonicalId] === undefined) enabledPlugins[canonicalId] = enabled;
+      if (LEGACY_CUA_PLUGIN_IDS.includes(id)) {
+        if (enabledPlugins[CANONICAL_CUA_PLUGIN_ID] === undefined) {
+          enabledPlugins[CANONICAL_CUA_PLUGIN_ID] = enabled;
+        }
         delete enabledPlugins[id];
         changed = true;
       }
@@ -139,9 +134,7 @@ function migratePluginConfigInFile(value: unknown): Record<string, unknown> | un
   }
 
   if (Array.isArray(plugins.suppressedBuiltins)) {
-    const suppressedBuiltins = plugins.suppressedBuiltins.map((id) =>
-      id === LEGACY_CUA_PLUGIN_ID ? CANONICAL_CUA_PLUGIN_ID : id,
-    );
+    const suppressedBuiltins = plugins.suppressedBuiltins.map((id) => canonicalizePluginId(id));
     if (JSON.stringify(suppressedBuiltins) !== JSON.stringify(plugins.suppressedBuiltins)) {
       nextPlugins.suppressedBuiltins = suppressedBuiltins;
       changed = true;
@@ -151,9 +144,10 @@ function migratePluginConfigInFile(value: unknown): Record<string, unknown> | un
   if (isRecord(plugins.options)) {
     const options = { ...plugins.options };
     for (const [id, pluginOptions] of Object.entries(plugins.options)) {
-      if (id === LEGACY_CUA_PLUGIN_ID) {
-        const canonicalId = CANONICAL_CUA_PLUGIN_ID;
-        if (options[canonicalId] === undefined) options[canonicalId] = pluginOptions;
+      if (LEGACY_CUA_PLUGIN_IDS.includes(id)) {
+        if (options[CANONICAL_CUA_PLUGIN_ID] === undefined) {
+          options[CANONICAL_CUA_PLUGIN_ID] = pluginOptions;
+        }
         delete options[id];
         changed = true;
       }
@@ -164,10 +158,7 @@ function migratePluginConfigInFile(value: unknown): Record<string, unknown> | un
   return changed ? { ...value, plugins: nextPlugins } : undefined;
 }
 
-function persistPluginConfigMigration(
-  filePath: string,
-  value: Record<string, unknown>,
-): void {
+function persistPluginConfigMigration(filePath: string, value: Record<string, unknown>): void {
   const tempPath = `${filePath}.migrate.${process.pid}.${Date.now()}.tmp`;
   try {
     writeFileSync(tempPath, `${JSON.stringify(value, null, 2)}\n`, {

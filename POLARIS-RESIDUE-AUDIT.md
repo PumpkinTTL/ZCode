@@ -1723,3 +1723,44 @@ pnpm lint        ✅ 0 errors / 92 warnings（与基线一致）
   （当前靠环境变量，建议写进 dev 脚本/.env）；PiP 事件面（mac 形态）；观察重编号策略后续可再评估。
 - 依赖：Windows 原生层由 cua-driver（MIT，本机已装）提供；未装时 Helper 仍存活、工具调用返回
   带安装指引的 `broker_unavailable`（fail-closed）。
+
+## 27. 插件市场 id 改名：zcode-plugins-official → polaris-plugins-official（2026-10-06）
+
+用户指出该 id 会出现在**用户可达路径**（`~/.polaris/cli/plugins/cache/zcode-plugins-official/…`、
+`data/<插件>@zcode-plugins-official`、`enabledPlugins` 键），决定改名（此前按「内部键名」保留）。
+
+### 27a. 改动内容
+
+- 常量值（4 处定义）：`packages/shared/src/plugin-marketplaces.ts`、CLI `contracts/src/plugins/index.ts`、
+  services commands/skills 两个局部拷贝；其余全为常量引用，自动跟随。
+- 字面量替换 21 个文件（含 UI 建议提示里的 `plugin://…@` 链接 60+ 处、图标映射、内置技能 i18n
+  路径标记、SEA 打包清单、README/CONTEXT 文档）。
+- **镜像归一化（关键暗坑）**：`assertOfficialManifest` 原先要求远端清单 name === 本地 id，而 Z.ai CDN
+  镜像至今声明 `zcode-plugins-official` —— 只改 id 会直接顶掉官方目录刷新。改为：
+  - `writeCdnOfficialMarketplacePartitionSync` 走 `normalizeOfficialManifest`（远端 name 只作存在性
+    校验，落盘重写为本地 id；与字段白名单同一原则：镜像只贡献内容，身份归 Polaris）；
+  - `addMarketplace` 守卫扩展：现行 id 与历史名**并列保留**（未受信任的新增声明任一 → 拒绝）；
+    官方记录的受信任刷新接受历史名并归一化，record id/name 统一为现行 id（带自愈）。
+- **老配置兼容**：`LEGACY_CUA_PLUGIN_IDS = ["zcode-cua@<旧id>", "computer-use@<旧id>"]` →
+  `computer-use@polaris-plugins-official`；`canonicalizePluginId` / `pluginIdAliases` /
+  `file-config.adapter` 磁盘迁移三处共用，老 `enabledPlugins` 键无需动手也仍被识别。
+- 测试：`officialMarketplaceBranding` 改用历史名镜像并断言归一化落盘（legacy 串不得落盘）；
+  `marketplaceDegradation` 随 id 更新。
+
+### 27b. 本机状态迁移（一次性脚本，已 --apply）
+
+`scripts/polaris-migrate-official-plugin-marketplace.mjs`（dry-run 默认、幂等）：
+known_marketplaces / installed_plugins / cli.config.enabledPlugins 键、目录改名（marketplaces/cache/
+data 共 6 个）、分片文件 name 与 `plugins[].cachePath`（bundled 在 `manifest.plugins` 下）。
+
+- 执行结果：13 项落盘；`~/.polaris/cli/plugins` 全目录 grep 旧名 = **零残留**。
+- 因产品未发布不存在其他存量用户；新用户从第一天就是新 id（旧名仅存于 legacy 常量、迁移脚本、
+  测试夹具与本文档的历史描述）。
+
+### 27c. 验证
+
+- 门禁：根 typecheck ✓ / CLI turbo typecheck 27/27 ✓ / lint 92-0 ✓ / fmt 2934 ✓。
+- 测试：branding 1/1 ✓、degradation 4/4 ✓（镜像降级路径以旧名清单跑通归一化）。
+- dev 实测：重启后 `Windows Computer Use Helper ready`、插件/市场 RPC 正常、无刷新断言错误；
+  缓存路径 = `cache/polaris-plugins-official/…`；lark-cli / computer-use 启用状态保持。
+- 维护：合并上游时按 AGENTS.md ④ 全仓 grep 复查该字面量。

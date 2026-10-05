@@ -27,22 +27,16 @@ export function writeCdnOfficialMarketplacePartitionSync(input: {
   manifest: Record<string, unknown>;
   storageRoot: string;
 }): Record<string, unknown> {
-  assertOfficialManifest(input.manifest);
-  writeJsonFileSync(partitionPath(input.storageRoot, CDN_PARTITION_FILE), input.manifest);
+  const persistedManifest = normalizeOfficialManifest(input.manifest);
+  writeJsonFileSync(partitionPath(input.storageRoot, CDN_PARTITION_FILE), persistedManifest);
   return rebuildOfficialMarketplaceSync(input.storageRoot);
 }
 
-export function loadBundledOfficialPluginRootsSync(
-  storageRoot: string,
-): string[] | undefined {
+export function loadBundledOfficialPluginRootsSync(storageRoot: string): string[] | undefined {
   const bundledPartition = readBundledPartition(storageRoot);
   if (!bundledPartition) return undefined;
 
-  const officialCacheRoot = resolve(
-    storageRoot,
-    "cache",
-    ZCODE_OFFICIAL_PLUGIN_MARKETPLACE,
-  );
+  const officialCacheRoot = resolve(storageRoot, "cache", ZCODE_OFFICIAL_PLUGIN_MARKETPLACE);
   return readPluginEntries(bundledPartition.manifest).flatMap((plugin) => {
     const name = readPluginName(plugin);
     const cachePath = typeof plugin.cachePath === "string" ? plugin.cachePath : undefined;
@@ -96,10 +90,7 @@ function rebuildOfficialMarketplaceSync(storageRoot: string): Record<string, unk
  * 都是内容声明。其余字段（name / description / owner / …）属于目录身份，必须由本地决定，
  * 不能由镜像覆盖。
  */
-const CDN_CONTRIBUTED_FIELDS = [
-  "featured",
-  "allowCrossMarketplaceDependenciesOn",
-] as const;
+const CDN_CONTRIBUTED_FIELDS = ["featured", "allowCrossMarketplaceDependenciesOn"] as const;
 
 function readCdnContributedFields(
   cdnManifest: Record<string, unknown> | undefined,
@@ -151,6 +142,19 @@ function assertOfficialManifest(manifest: Record<string, unknown>): void {
       `Official marketplace manifest must be named ${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`,
     );
   }
+}
+
+/**
+ * 官方目录镜像 manifest 的归一化：远端可以携带历史声明名（Z.ai 原站至今如此），
+ * 但落盘的身份字段必须是本地官方 id —— 与 rebuild 的字段白名单同一原则（镜像只贡献内容）。
+ */
+function normalizeOfficialManifest(manifest: Record<string, unknown>): Record<string, unknown> {
+  if (typeof manifest.name !== "string" || manifest.name.length === 0) {
+    throw new Error("Official marketplace manifest must declare a name");
+  }
+  return manifest.name === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE
+    ? manifest
+    : { ...manifest, name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE };
 }
 
 function partitionPath(storageRoot: string, fileName: string): string {

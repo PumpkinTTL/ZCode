@@ -9,7 +9,7 @@ import {
   writeCdnOfficialMarketplacePartitionSync,
 } from "../src/plugins/official-marketplace.js";
 
-const OFFICIAL_ID = "zcode-plugins-official";
+const OFFICIAL_ID = "polaris-plugins-official";
 const MERGED_PATH = join("marketplaces", OFFICIAL_ID, "marketplace.json");
 
 /**
@@ -28,10 +28,13 @@ test("remote mirror branding never becomes the official marketplace identity", a
       },
       storageRoot,
     });
+    // Z.ai 原站 manifest 至今声明历史名：镜像路径必须归一化为本地官方 id 后再落盘。
+    const LEGACY_ID = "zcode-plugins-official";
     const merged = writeCdnOfficialMarketplacePartitionSync({
       manifest: {
-        name: OFFICIAL_ID,
-        description: "Official ZCode plugins marketplace: built-in and community plugins for ZCode.",
+        name: LEGACY_ID,
+        description:
+          "Official ZCode plugins marketplace: built-in and community plugins for ZCode.",
         description_i18n: { "zh-CN": "ZCode 官方插件目录" },
         owner: { name: "Z.ai", url: "https://z.ai" },
         featured: ["cloudbase-skills"],
@@ -51,10 +54,20 @@ test("remote mirror branding never becomes the official marketplace identity", a
     assert.deepEqual(names, ["cloudbase-skills", "browser-use"]);
     assert.deepEqual(merged.featured, ["cloudbase-skills"]);
 
-    // 落盘的规范 manifest 同样不能含厂商品牌。
+    // 落盘的规范 manifest 同样不能含厂商品牌，也不能残留历史市场名。
     const onDisk = await readFile(join(storageRoot, MERGED_PATH), "utf8");
-    assert.equal(onDisk.includes("Z.ai"), false, "persisted manifest must not contain vendor brand");
+    assert.equal(
+      onDisk.includes("Z.ai"),
+      false,
+      "persisted manifest must not contain vendor brand",
+    );
     assert.equal(onDisk.includes("Official ZCode plugins marketplace"), false);
+    assert.equal(
+      onDisk.includes(LEGACY_ID),
+      false,
+      "legacy marketplace name must be normalized before persisting",
+    );
+    assert.equal(onDisk.includes(OFFICIAL_ID), true);
   } finally {
     await rm(storageRoot, { recursive: true, force: true });
   }

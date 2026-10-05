@@ -5,7 +5,11 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { PluginDiagnostic, PluginManifest, PluginStoreListing } from "@zcode/contracts";
-import { isOfficialMarketplaceId, ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
+import {
+  isOfficialMarketplaceId,
+  isLegacyOfficialMarketplaceName,
+  ZCODE_OFFICIAL_PLUGIN_MARKETPLACE,
+} from "@zcode/contracts";
 import {
   DEFAULT_PLUGIN_MARKETPLACES,
   resolveOfficialPluginMarketplaceMirrors,
@@ -346,7 +350,7 @@ export async function ensureMarketplaceManifestAvailable(input: {
 /**
  * 一个 known record 的刷新源候选，按优先级排序。
  *
- * 普通市场源只有一个候选（record.source）；官方目录（`zcode-plugins-official`）则以
+ * 普通市场源只有一个候选（record.source）；官方目录（`polaris-plugins-official`）则以
  * {@link resolveOfficialPluginMarketplaceMirrors} 的镜像顺序为准，并把 record 自己的 source
  * 作为最后一个兼容候选补上（用户显式改指过的源不会丢）。
  */
@@ -392,7 +396,18 @@ export async function addMarketplace(input: {
       signal: operationSignal,
     });
     throwIfPluginOperationAborted(operationSignal);
-    if (isOfficialMarketplaceId(loaded.manifest.name) && loaded.manifest.name !== input.trustedId) {
+    // 官方命名空间守卫：现行 id 与历史名都保留给官方目录。
+    // 唯一例外：本来就是官方类记录的受信任刷新（trustedId 也是官方类）——镜像清单可以声明
+    // 任一官方类名字（Z.ai 原站至今声明历史名），落盘前统一归一化；用户侧新增、或非官方记录
+    // 的刷新声明官方类名字，一律拒绝（防冒名与刷新期改名）。
+    const claimsOfficialName =
+      isOfficialMarketplaceId(loaded.manifest.name) ||
+      isLegacyOfficialMarketplaceName(loaded.manifest.name);
+    const trustedOfficialRefresh =
+      typeof input.trustedId === "string" &&
+      (isOfficialMarketplaceId(input.trustedId) ||
+        isLegacyOfficialMarketplaceName(input.trustedId));
+    if (claimsOfficialName && !trustedOfficialRefresh) {
       throw new Error(
         `Cannot add a marketplace named "${loaded.manifest.name}": that id is reserved for the official marketplace.`,
       );
@@ -402,29 +417,27 @@ export async function addMarketplace(input: {
         `Marketplace declaration id mismatch: expected ${input.expectedId}, received ${loaded.manifest.name}`,
       );
     }
-    if (
-      input.trustedId === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE &&
-      loaded.manifest.name !== ZCODE_OFFICIAL_PLUGIN_MARKETPLACE
-    ) {
+    // 官方记录的受信任刷新：镜像可以用历史名声明（Z.ai 原站 manifest 至今如此），
+    // 落盘前统一归一化为本地官方 id —— 镜像只贡献内容，身份归 Polaris。
+    if (input.trustedId === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE && !claimsOfficialName) {
       throw new Error(
         `Official marketplace source must provide ${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}, received ${loaded.manifest.name}`,
       );
     }
-    const persistedManifest =
-      loaded.manifest.name === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE
-        ? parseRequiredMarketplaceManifest(
-            writeCdnOfficialMarketplacePartitionSync({
-              manifest: loaded.manifest.raw,
-              storageRoot: input.storageRoot,
-            }),
-          )
-        : loaded.manifest;
+    const persistedManifest = claimsOfficialName
+      ? parseRequiredMarketplaceManifest(
+          writeCdnOfficialMarketplacePartitionSync({
+            manifest: loaded.manifest.raw,
+            storageRoot: input.storageRoot,
+          }),
+        )
+      : loaded.manifest;
     // 旧流程先删 marketplace target 再复制 source，刷新失败会丢失最后成功快照。
     // source tree 与规范 manifest 在同一 staging 目录准备完毕后一次 rename 激活。
     // 市场目录只落 marketplace.json：源树一律改为按需物化（见 resolveMarketplaceSourceTree）。
     // 添加一个 300+ 插件的公开目录不再复制整仓；旧版本遗留的整棵树会在本次刷新时被
     // 原子替换掉（activateDirectoryAtomically 无 sourcePath 即整目录重建），自动回收空间。
-    if (loaded.manifest.name !== ZCODE_OFFICIAL_PLUGIN_MARKETPLACE) {
+    if (!claimsOfficialName) {
       marketplaceActivation = await stageMarketplaceManifest(
         input.storageRoot,
         loaded.manifest.name,
@@ -433,11 +446,14 @@ export async function addMarketplace(input: {
       );
     }
     throwIfPluginOperationAborted(operationSignal);
+    const canonicalMarketplaceName = claimsOfficialName
+      ? ZCODE_OFFICIAL_PLUGIN_MARKETPLACE
+      : loaded.manifest.name;
     const now = new Date().toISOString();
     const record: KnownMarketplaceRecord = {
-      id: loaded.manifest.name,
+      id: canonicalMarketplaceName,
       source: input.source,
-      name: loaded.manifest.name,
+      name: canonicalMarketplaceName,
       // 描述取自"激活后"的规范 manifest 而不是原始远端 manifest：官方目录要合并内置分片，
       // 若用远端原文，镜像的厂商文案（如 Z.ai 的 "Official ZCode plugins marketplace"）
       // 会被写成官方目录的描述。
@@ -1634,10 +1650,7 @@ function stagedMarketplaceHasSourceTree(
   const relativeEntries = manifest.plugins
     .map((entry) => readRelativeSourcePath(entry))
     .filter((value): value is string => value !== undefined);
-  const required = [
-    ...(manifest.pluginRoot ? [manifest.pluginRoot] : []),
-    ...relativeEntries,
-  ];
+  const required = [...(manifest.pluginRoot ? [manifest.pluginRoot] : []), ...relativeEntries];
   if (required.length === 0) return true;
   return required.every((relativePath) => {
     const inside = resolveInside(stagedRoot, relativePath);
@@ -1720,10 +1733,7 @@ async function tryLoadGitHubMarketplaceManifest(
 ): Promise<LoadMarketplaceResult | undefined> {
   const ref = source.ref && source.ref.length > 0 ? source.ref : "HEAD";
   const prefix = source.path ? `${source.path.replace(/^[/\\]+|[/\\]+$/gu, "")}/` : "";
-  const candidates = [
-    `${prefix}.claude-plugin/marketplace.json`,
-    `${prefix}marketplace.json`,
-  ];
+  const candidates = [`${prefix}.claude-plugin/marketplace.json`, `${prefix}marketplace.json`];
   for (const candidate of candidates) {
     const url = `${GITHUB_RAW_BASE_URL}/${source.repo}/${ref}/${candidate}`;
     try {
