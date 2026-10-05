@@ -1,7 +1,8 @@
 # Polaris Computer Use（CUA）恢复实现方案
 
-日期：2026-10-05。状态：M0 完成（插件包入库 + 方案定档）；M1 待开工。
-背景与判定证据见 `POLARIS-RESIDUE-AUDIT.md` §24 / §25。
+日期：2026-10-05（2026-10-06 更新：M1/M2 已实现并实测，见审计 §26）。
+状态：M0 完成（插件包入库 + 方案定档）；M1/M2 完成（自研 runtime + Windows Helper + 动作链路实测）；M3/M4 待续。
+背景与判定证据见 `POLARIS-RESIDUE-AUDIT.md` §24 / §25 / §26。
 
 ## 0. 目标与范围
 
@@ -10,7 +11,7 @@
 - 范围：只做 Windows；macOS Helper（`ZCode Computer Use.app`）闭源且形态不同，暂缓。
 - 原则：**既有开源接线一律不改**（bridge / cua-broker / permission / PiP / 设置面板 / 插件
   SDK 全部原样驱动我们的实现）。新增 = `packages/zcode-cua` 的真实现（替换 placeholder）
-  + Helper 进程 + dev/打包清单。
+  - Helper 进程 + dev/打包清单。
 
 ## 1. 架构与接缝（现状接线，均为仓内已存在的代码）
 
@@ -31,13 +32,13 @@ helper   【要实现的进程】windows-helper 等价物（Node，ELECTRON_RUN_
 
 固定契约（不可自主发挥，出处全在仓）：
 
-| 边界 | 出处 | 说明 |
-| --- | --- | --- |
-| 会话管道协议 | `cua-bridge.ts` / `cua-broker.ts` | `{id,token,method,input,context}` 行协议；回 `{id,ok,result,responseMeta}` |
-| runtime 接口 | placeholder `packages/zcode-cua/index.d.ts` | `execute / closeSession / dispose` |
-| Helper fork/控制 | `windowsCuaHelperHostSupport.ts` | argv、控制消息、health 探针、代际管理 |
-| dev 接缝 | `windowsCuaDevRuntime.ts` | `ZCODE_CUA_DEV_ROOT` + `zcodeCuaRuntime:{schema:1,windows:{entry,nativeAddon}}` |
-| 工具语义/响应形状 | MIT 插件 `scripts/computer-use-client.mjs` + `docs/computer-use.md` | 14 工具、错误码、state_id/frame/image_ref、possibly_sent |
+| 边界              | 出处                                                                | 说明                                                                            |
+| ----------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 会话管道协议      | `cua-bridge.ts` / `cua-broker.ts`                                   | `{id,token,method,input,context}` 行协议；回 `{id,ok,result,responseMeta}`      |
+| runtime 接口      | placeholder `packages/zcode-cua/index.d.ts`                         | `execute / closeSession / dispose`                                              |
+| Helper fork/控制  | `windowsCuaHelperHostSupport.ts`                                    | argv、控制消息、health 探针、代际管理                                           |
+| dev 接缝          | `windowsCuaDevRuntime.ts`                                           | `ZCODE_CUA_DEV_ROOT` + `zcodeCuaRuntime:{schema:1,windows:{entry,nativeAddon}}` |
+| 工具语义/响应形状 | MIT 插件 `scripts/computer-use-client.mjs` + `docs/computer-use.md` | 14 工具、错误码、state_id/frame/image_ref、possibly_sent                        |
 
 自主定义（两端都是我们，协议自拟）：runtime ↔ helper 管道内部协议。
 
@@ -62,15 +63,15 @@ PiP 会话、设置页 CUA 段、placeholder 的 `.d.ts` 契约。
 
 ## 3. 工具保真度对照（Phase 1：cua-driver 后端）
 
-| 官方工具 | cua-driver 可用面 | Phase 1 策略 |
-| --- | --- | --- |
-| list_apps | `list_apps`（Lyra 实测通过） | 直用 |
-| list_windows | 窗口管理类工具 | 映射 |
-| get_app_state | `screenshot` + capture 绑定 | 截图态（树保真降级并如实标注） |
-| left_click / scroll / drag | click / scroll（capture_id 一次性绑定） | 直用 |
-| type / key / paste | type / key / 剪贴板 | 直用 |
-| set_value / select_text / perform_action | 无元素级对应 | Phase 1 fail-closed（ACTION_UNAVAILABLE + 明确文案）；Phase 2 补 |
-| request_access / stop | 权限/停止语义 | 映射 |
+| 官方工具                                 | cua-driver 可用面                       | Phase 1 策略                                                     |
+| ---------------------------------------- | --------------------------------------- | ---------------------------------------------------------------- |
+| list_apps                                | `list_apps`（Lyra 实测通过）            | 直用                                                             |
+| list_windows                             | 窗口管理类工具                          | 映射                                                             |
+| get_app_state                            | `screenshot` + capture 绑定             | 截图态（树保真降级并如实标注）                                   |
+| left_click / scroll / drag               | click / scroll（capture_id 一次性绑定） | 直用                                                             |
+| type / key / paste                       | type / key / 剪贴板                     | 直用                                                             |
+| set_value / select_text / perform_action | 无元素级对应                            | Phase 1 fail-closed（ACTION_UNAVAILABLE + 明确文案）；Phase 2 补 |
+| request_access / stop                    | 权限/停止语义                           | 映射                                                             |
 
 保真度如实标注：Phase 1 “能用但元素级受限”，坐标/截图工作流优先；Phase 2 = 元素树/索引/
 帧台账自研（koffi → UIA）。

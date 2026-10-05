@@ -1670,3 +1670,56 @@ pnpm lint        ✅ 0 errors / 92 warnings（与基线一致）
 
 实现方案（架构/接缝/保真度对照/里程碑 M1-M4）见 `POLARIS-CUA-PLAN.md`（同日）。
 下一步：M1 骨架——以真实现替换 `packages/zcode-cua` placeholder + Helper 进程。
+
+## 26. CUA 引擎复现完成：自研 runtime + Windows Helper（2026-10-06）
+
+按用户指令「直接复现做好」实现并实测通过（M1+M2，动作链路端到端）。
+
+### 26a. 落地的实现（placeholder → 真实现）
+
+- `packages/zcode-cua/`：
+  - `index.js` runtime 客户端（broker 一跳、错误码归一、按方法超时）；
+  - `broker.js` broker 协议单一事实源（行 JSON 编解码 / callBrokerMethod / 健康探针 / 方法表）；
+  - `broker-server.js` 宿主面常量与函数（buildHelperOpenArgs / isCuaLocalDevelopmentRuntime /
+    waitForCuaHelperStartup(caller_timeout) / resolver 转发 / unavailable 标记）；
+  - `frame-contract.js` 帧契约真实现（image_ref 识别 / 凭证解析 / pair 定位 / attestation / preserve）；
+  - `helper/main.js` Helper 入口（argv、transport_ready/ready 控制消息、父进程 watchdog、driver 会话收尾）；
+  - `helper/backend.js` 14 工具 + 内部方法（观察/索引空间/帧 one-use/effect evidence/错误归一）；
+  - `helper/driver.js` **常驻 `cua-driver mcp` stdio 会话**（自研 JSON-RPC 客户端，断链自愈、image block 回填）；
+  - `helper/state.js` 树渲染（ZCode 风格）+ 增量 diff + 索引保持 + 摘要；
+  - `helper/native.js` nativeAddon 契约锚点（Phase 2 koffi 位置）；
+  - `package.json` 增加 `zcodeCuaRuntime` 契约（entry=helper/main.js，nativeAddon=helper/native.js）；
+  - `test/smoke.mjs` 只读冒烟（入库）。
+- 两个关键架构发现（实测驱动，修正初版）：
+  1. **one-shot `cua-driver call` 每次都是独立会话**：element_token 跨调用即 stale
+     （"pid X has no current snapshot"）→ 必须常驻 `cua-driver mcp` 会话（与 Lyra 同形态）。
+  2. **MCP 模式返回形态与 CLI 不同**：树是文本块、元数据在 `structuredContent`、截图是真实
+     image block（CLI 是内联 screenshot_png_b64）→ payload 逐块解析 + 图片回填。
+
+### 26b. 实测证据
+
+- 冒烟（`test/smoke.mjs`）：health / list_apps(264 项) / list_windows / get_app_state
+  （元素树 + 截图 + image_ref 帧签发）/ 二次观察 diff + base_state_id —— 全通过。
+- 动作链路（scratch 记事本，结束即 taskkill 清理）：
+  - AUMID 隐藏启动（Win11 UWP 必须 `aumid`；`launch_path` 直传会失败——已修）；
+  - 元素级 type 真落入文档（标题出现未保存标记 `*`）；
+  - 截图帧（1438x1123）→ 坐标 click（frame_id 绑定、driver capture_id 一次性消费）→ 再 type 成功；
+  - 复用已消费帧 / 无帧坐标 → `stale_frame`；过期索引 → `element_unavailable`（fail-closed 与官方一致）。
+- dev 联调（`ZCODE_CUA_DEV_ROOT=packages/zcode-cua` 重启 dev 实例）：
+  `[cua-product-helper] Windows Computer Use Helper ready {"generation":1,"pid":41652}` ——
+  原 `invalid-runtime-manifest` 消失；Helper 以 fork 自带 Electron（ELECTRON_RUN_AS_NODE）运行，
+  `cua-driver mcp` 子进程按需懒启动。
+- 插件启用：`~/.polaris/cli/config.json` 的 `plugins.enabledPlugins` 已置
+  `"computer-use@zcode-plugins-official": true`（等同设置页开关；新会话生效，未生效则重启 dev）。
+- 门禁：fmt 2933 文件全过 / lint 92 warnings 0 errors（基线一致）。
+
+### 26c. 保真度现状与待办（如实）
+
+- 已按官方语义：state_id / 元素索引（diff 保持、失效 fail-closed）/ one-use 栅格帧 /
+  possibly_sent / 错误码词表 / effect_evidence / 树渲染与索引稀疏化说明位。
+- 明确 fail-closed（清晰文案）：`select_text`、`hold_seconds`、click/drag 的 modifiers
+  （Windows driver 面暂无对应原语）。
+- 待办：打包接线（runtime-manifest 生成 + 资源 staging）；dev 启动固化 `ZCODE_CUA_DEV_ROOT`
+  （当前靠环境变量，建议写进 dev 脚本/.env）；PiP 事件面（mac 形态）；观察重编号策略后续可再评估。
+- 依赖：Windows 原生层由 cua-driver（MIT，本机已装）提供；未装时 Helper 仍存活、工具调用返回
+  带安装指引的 `broker_unavailable`（fail-closed）。
