@@ -22,13 +22,13 @@
 
 ## 2. 概念模型
 
-| 概念         | 说明                                                                                                                                                                  | 是否联网         |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| **内置插件** | 随应用打包的 10 个插件（browser-use / image-search / documents / pdf / presentations / spreadsheets / node-repl-host / skill-creator / plugin-creator / zcode-guide） | 否，本地 seed    |
-| **默认源**   | 应用自带并自动登记的市场源（`zcode-plugins-official`），按**镜像列表**优先级刷新                                                                                      | 仅刷新时         |
-| **镜像源**   | 同一个 `zcode-plugins-official` 目录的多个来源（Polaris 自有 + Z.ai 原站），按优先级逐个尝试                                                                          | 仅刷新时         |
-| **预置源**   | 公开、可直接添加的 `.claude-plugin/marketplace.json` 目录清单，**不自动添加**                                                                                         | 用户点「添加」后 |
-| **用户源**   | 用户手动输入的任意源（GitHub / git / URL / npm / file / directory / zip）                                                                                             | 用户触发时       |
+| 概念         | 说明                                                                                                                                                                                                                                                                                                                                                                                        | 是否联网         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **内置插件** | 目标态 11 个默认启用插件定义（visualize / node-repl-host / browser-use / documents / pdf / presentations / spreadsheets / image-search / plugin-creator / skill-creator / zcode-guide，权威清单见 `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts`）；本 checkout 仅落盘 3 个可 seed 包（visualize / node-repl-host / browser-use），其余待完整发布 checkout 补齐 | 否，本地 seed    |
+| **默认源**   | 应用自带并自动登记的市场源（`zcode-plugins-official`），按**镜像列表**优先级刷新                                                                                                                                                                                                                                                                                                            | 仅刷新时         |
+| **镜像源**   | 同一个 `zcode-plugins-official` 目录的多个来源（Polaris 自有 + Z.ai 原站），按优先级逐个尝试                                                                                                                                                                                                                                                                                                | 仅刷新时         |
+| **预置源**   | 公开、可直接添加的 `.claude-plugin/marketplace.json` 目录清单，**不自动添加**                                                                                                                                                                                                                                                                                                               | 用户点「添加」后 |
+| **用户源**   | 用户手动输入的任意源（GitHub / git / URL / npm / file / directory / zip）                                                                                                                                                                                                                                                                                                                   | 用户触发时       |
 
 **关键设计**：默认源自动登记；预置源只是「建议清单」，必须用户显式添加。因此**默认安装不向任何第三方发请求**。
 

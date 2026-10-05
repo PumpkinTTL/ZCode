@@ -9,8 +9,12 @@
  * 删除本目录 + services 的 business/ 目录即为整体下线。
  */
 import { useCallback, useEffect, useState } from "react";
-import type { QuotaStatusResult } from "@zcode/services";
 import { Loader2 } from "lucide-react";
+import {
+  notifyNimbusAccountChanged,
+  refreshNimbusAccountState,
+  useNimbusAccountState,
+} from "./nimbusAccountState.js";
 import { NimbusQuotaOverview } from "./NimbusQuotaOverview.js";
 import { Alert, AlertDescription } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
@@ -101,33 +105,31 @@ export interface NimbusAccountDialogProps {
 export function NimbusAccountDialog({ open, onClose, onChanged }: NimbusAccountDialogProps) {
   const { intl } = useZCodeIntl();
   const { providerQuotaService } = useServices();
-  const [status, setStatus] = useState<QuotaStatusResult | null>(null);
-  const [loading, setLoading] = useState(true);
+  /**
+   * 面板登录态优先读共享快照（nimbusAccountState 单一数据源）：
+   * 侧边栏底部、设置页「我的额度」与这个弹窗看到的是同一份状态，
+   * 「一处已登录、另一处还显示登录表单」的分裂不会再出现。
+   * 本组件只保留登录表单自己的 error/busy（与账号快照无关的临时交互态）。
+   */
+  const shared = useNimbusAccountState();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setStatus(await providerQuotaService.getStatus());
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : String(loadError));
-    } finally {
-      setLoading(false);
-    }
-  }, [providerQuotaService]);
-
   useEffect(() => {
-    if (open) void refresh();
-  }, [open, refresh]);
+    if (!open) return;
+    // 打开即重校验：有缓存先渲染缓存，没有则等这一次结果；共享状态内部去重，不会重复打后端。
+    setError(null);
+    void refreshNimbusAccountState();
+  }, [open]);
 
   const handleLogin = useCallback(
     async (username: string, password: string) => {
       setBusy(true);
       setError(null);
       try {
-        setStatus(await providerQuotaService.login({ username, password }));
+        const status = await providerQuotaService.login({ username, password });
+        // 广播乐观快照：主界面（侧边栏/设置页/弹窗）立即同步，不等下一个获焦重校验。
+        notifyNimbusAccountChanged(status);
         onChanged?.();
       } catch (loginError) {
         setError(loginError instanceof Error ? loginError.message : String(loginError));
@@ -142,7 +144,7 @@ export function NimbusAccountDialog({ open, onClose, onChanged }: NimbusAccountD
     setBusy(true);
     try {
       await providerQuotaService.logout();
-      setStatus({ loggedIn: false });
+      notifyNimbusAccountChanged({ loggedIn: false });
       onChanged?.();
     } finally {
       setBusy(false);
@@ -151,10 +153,15 @@ export function NimbusAccountDialog({ open, onClose, onChanged }: NimbusAccountD
 
   const handleRefresh = useCallback(() => {
     setBusy(true);
-    void refresh().finally(() => setBusy(false));
-  }, [refresh]);
+    void refreshNimbusAccountState().finally(() => setBusy(false));
+  }, []);
 
+  const status = shared.status;
   const loggedIn = status?.loggedIn === true;
+  // 首屏 spinner 只在「没有任何快照」时出现；有缓存时后台重校验，不闪 loading。
+  const loading = status === null && shared.loading;
+  // 本地 error（登录表单提交失败）优先；没有快照时展示共享快照的刷新错误。
+  const displayError = error ?? (status === null ? shared.error : null);
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
@@ -170,10 +177,10 @@ export function NimbusAccountDialog({ open, onClose, onChanged }: NimbusAccountD
           <div className="flex h-24 items-center justify-center text-foreground-subtle">
             <Loader2 className="size-4 animate-spin" />
           </div>
-        ) : error ? (
+        ) : displayError ? (
           <div className="space-y-3">
             <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{displayError}</AlertDescription>
             </Alert>
             <Button
               type="button"
@@ -181,7 +188,7 @@ export function NimbusAccountDialog({ open, onClose, onChanged }: NimbusAccountD
               className="w-full"
               onClick={() => {
                 setError(null);
-                void refresh();
+                void refreshNimbusAccountState();
               }}
             >
               {intl.formatMessage({ id: "business.quota.retry" })}
@@ -199,7 +206,7 @@ export function NimbusAccountDialog({ open, onClose, onChanged }: NimbusAccountD
         ) : (
           <LoginBody
             busy={busy}
-            error={error}
+            error={displayError}
             onSubmit={(username, password) => void handleLogin(username, password)}
             intl={intl}
           />

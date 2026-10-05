@@ -39,6 +39,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { usePlatform } from "@/hooks/usePlatform.js";
+import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
@@ -46,6 +47,11 @@ import { normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import type { Theme } from "@/useTheme.js";
 import { WorkspaceWebRemoteControlTrigger } from "@/WorkspaceWebRemoteControlTrigger.js";
 import { WorkspaceSidebarFooterUsageSummaryContent } from "@/WorkspaceSidebarFooterUsageSummary.js";
+import {
+  notifyNimbusAccountChanged,
+  refreshNimbusAccountState,
+  useNimbusAccountState,
+} from "@/business/quota/nimbusAccountState.js";
 
 const DESKTOP_ZOOM_MIN_LEVEL = -3;
 const DESKTOP_ZOOM_MAX_LEVEL = 5;
@@ -123,16 +129,37 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const zoomOutShortcutLabel = useShortcutCommandLabel("zoomOut");
   const resetZoomShortcutLabel = useShortcutCommandLabel("resetZoom");
   const isRestoringOAuthSession = useZCodeStore((state) => state.isRestoringOAuthSession);
-  const profileBadge = getSidebarProfileBadge(user, intl.formatMessage);
-  const avatarFallbackText = getAvatarFallbackText(user);
-  const avatarKey = user?.avatarUrl ?? user?.id ?? "guest";
-  const showAuthRestoreLoading = !user && isRestoringOAuthSession;
+  const { providerQuotaService } = useServices();
+  // Nimbus（自有中转站）登录态走共享快照：与设置页「我的额度」、账号弹窗同一份数据源。
+  // 底部账号身份以它为准（上游 OAuth user 在 Polaris 已无官方账号通路，通常为空）。
+  const nimbusAccount = useNimbusAccountState();
+  const nimbusLoggedIn = nimbusAccount.loggedIn;
+  const nimbusUsername = nimbusAccount.username?.trim() ?? "";
+  const profileBadge = nimbusLoggedIn
+    ? nimbusUsername || getSidebarProfileName(user)
+    : getSidebarProfileBadge(user, intl.formatMessage);
+  const avatarFallbackText = nimbusLoggedIn
+    ? (nimbusUsername[0]?.toUpperCase() ?? "P")
+    : getAvatarFallbackText(user);
+  const avatarKey = nimbusLoggedIn
+    ? `nimbus:${nimbusUsername || "account"}`
+    : (user?.avatarUrl ?? user?.id ?? "guest");
+  const showAuthRestoreLoading = !user && !nimbusLoggedIn && isRestoringOAuthSession;
+  /** Nimbus 登出：清本地凭证后广播未登录快照；清理失败（罕见）则重拉真实登录态兜底。 */
+  const handleNimbusLogout = useCallback(() => {
+    void providerQuotaService.logout().then(
+      () => notifyNimbusAccountChanged({ loggedIn: false }),
+      () => refreshNimbusAccountState(),
+    );
+  }, [providerQuotaService]);
   const profileContent = (
     <>
       <Avatar key={avatarKey} size="default">
-        {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={profileBadge} /> : null}
+        {user?.avatarUrl && !nimbusLoggedIn ? (
+          <AvatarImage src={user.avatarUrl} alt={profileBadge} />
+        ) : null}
         <AvatarFallback className="bg-background text-foreground">
-          {user ? (
+          {nimbusLoggedIn || user ? (
             avatarFallbackText
           ) : showAuthRestoreLoading ? (
             <>
@@ -149,6 +176,14 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
       </Avatar>
       <div className="min-w-0 flex-1 overflow-hidden text-left">
         <div className="flex min-w-0 items-center gap-1.5">
+          {/* 已登录的在线点：状态色的唯一来源是共享快照的 loggedIn。 */}
+          {nimbusLoggedIn ? (
+            <span
+              className="size-1.5 shrink-0 rounded-full bg-emerald-500"
+              role="img"
+              aria-label={intl.formatMessage({ id: "business.quota.online" })}
+            />
+          ) : null}
           <span className="min-w-0 truncate text-ui-base font-semibold text-foreground">
             {profileBadge}
           </span>
@@ -331,7 +366,8 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
             ) : null}
             {/* 升级入口状态不再以菜单开关为生命周期边界。*/}
             <WorkspaceSidebarFooterUsageSummaryContent onUsageClick={usageButtonClick} />
-            {onLogin && !user ? (
+            {/* Nimbus 已登录时隐藏「连接使用」入口（已连接无需再连），登出改走 Nimbus 账号。 */}
+            {onLogin && !user && !nimbusLoggedIn ? (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={onLogin} data-testid={TID_LOGIN_MENU_ITEM}>
@@ -340,7 +376,15 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                 </DropdownMenuItem>
               </>
             ) : null}
-            {onLogout ? (
+            {nimbusLoggedIn ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleNimbusLogout} data-testid={TID_LOGOUT_BUTTON}>
+                  <LogOut className="size-4" />
+                  {intl.formatMessage({ id: "app.logout" })}
+                </DropdownMenuItem>
+              </>
+            ) : onLogout ? (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={onLogout} data-testid={TID_LOGOUT_BUTTON}>

@@ -18,16 +18,17 @@ import {
   UserIcon,
   XIcon,
 } from "lucide-react";
-import { useZCodeIntl } from "./i18n/IntlProvider.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { ZCodeAboutLogo } from "@/components/ui/ZCodeAboutLogo.js";
-import { ThemeHeroVisual } from "./openWorkspacePageThemeHero.js";
+import { ThemeHeroVisual } from "@/openWorkspacePageThemeHero.js";
 import { useServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 import {
   provisionNimbusProvider,
   resolveFirstModelPreference,
-} from "./business/quota/provisionNimbusProvider.js";
+} from "@/business/quota/provisionNimbusProvider.js";
+import { notifyNimbusAccountChanged } from "@/business/quota/nimbusAccountState.js";
 import { Alert, AlertDescription } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
@@ -123,6 +124,10 @@ function NimbusLoginCard({
         setError(intl.formatMessage({ id: "business.quota.summaryLoggedOut" }));
         return;
       }
+
+      // 广播登录成功：主界面各面（侧边栏底部 / 设置页「我的额度」）共用同一份快照，
+      // 进入主界面立即可见已登录，不用等下一个获焦/重校验事件。
+      notifyNimbusAccountChanged(status);
 
       // 登录成功 → 自动开通：复用账号已有的调用密钥 → 建/更新 Nimbus 供应商 → 置顶。
       // 开通是登录后的独立步骤，**不能反过来卡住登录**：凭据此时已经存好了，用户已经是

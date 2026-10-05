@@ -36,9 +36,15 @@ export interface IProviderQuotaService {
   getUsageDaily(days: number): Promise<readonly QuotaUsageDay[]>;
   /**
    * 确保存在一个可用的 sk- 调用密钥（聊天用；与登录 token 是两回事）。
-   * 已有则复用第一个，没有则自动创建。未登录抛 QuotaApiError(401)。
+   * 已有则复用第一个；**一把都没有则自动创建**（登录即可用，对齐 Lyra 自动认领）。
+   * 未登录抛 QuotaApiError(401)；创建失败抛服务端 detail（权限/限额/限流）。
    */
   ensureApiKey(): Promise<string>;
+  /**
+   * 本服务实际生效的 base URL（dev=本地 127.0.0.1:8000 / 打包=域名 / QUOTA_BASE_URL
+   * 可覆盖）。UI 装配 Nimbus 供应商时必须用它而不是编译期常量，保证与额度服务同源。
+   */
+  getBaseUrl(): Promise<string>;
   /** 用 sk- 密钥拉模型目录（OpenAI 兼容 /v1/models），返回模型 id 列表。 */
   getModelIds(apiKey: string): Promise<readonly string[]>;
 }

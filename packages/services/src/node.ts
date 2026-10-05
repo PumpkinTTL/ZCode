@@ -307,8 +307,7 @@ import { IHooksService } from "./hooks/hooks.js";
 import { IMemoryService } from "./memory/memory.js";
 import { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 import { IFeedbackService } from "./feedback/feedback.js";
-import { IProviderQuotaService } from "./business/quota/quota.js";
-import { createQuotaService, DEFAULT_QUOTA_BASE_URL } from "./business/quota/quotaService.js";
+import { createQuotaService, IProviderQuotaService } from "./business/index.js";
 import { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 import { createFileService } from "./file/fileService.js";
 import { createMediaPreviewService } from "./media-preview/mediaPreview.js";
@@ -2520,10 +2519,9 @@ export function createLocalServices(options: {
     )
     .register(
       IProviderQuotaService,
-      createQuotaService({
-        credentialService,
-        baseUrl: process.env["QUOTA_BASE_URL"]?.trim() || DEFAULT_QUOTA_BASE_URL,
-      }),
+      // base 解析统一收口在 quotaService.resolveQuotaBaseUrl：
+      // QUOTA_BASE_URL 覆盖 > 未打包(development) 本地 127.0.0.1:8000 > 打包域名。
+      createQuotaService({ credentialService }),
     )
     .register(IPromptAttachmentTransferService, createLocalPromptAttachmentTransferService());
 

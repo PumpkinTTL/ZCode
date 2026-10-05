@@ -1,5 +1,5 @@
 /**
- * 登录后的供应商自动开通：取账号已有调用密钥 → 拉模型目录 → 建/更新 Nimbus 供应商 → 置顶。
+ * 登录后的供应商自动开通：取账号可用调用密钥 → 拉模型目录 → 建/更新 Nimbus 供应商 → 置顶。
  *
  * 这是「登录 → 可用」的编排层：额度服务只负责 Nimbus API，
  * 供应商注册走 providerSettingsService（与手动添加供应商同一条通路）。
@@ -9,11 +9,10 @@
  * 远端同步三层，配置层缺模板时登录会被一句「Provider Template 不存在」打断。
  * 所以模板只在存在时用作首选配方，缺失时用下面这份等价配方自行建供应商。
  */
-import {
-  DEFAULT_QUOTA_BASE_URL,
-  type IProviderSettingsService,
-  type ModelSelectionView,
-  type ProviderSettingsProviderView,
+import type {
+  IProviderSettingsService,
+  ModelSelectionView,
+  ProviderSettingsProviderView,
 } from "@zcode/services";
 import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
 
@@ -30,14 +29,15 @@ export interface NimbusProvisionResult {
 }
 
 /**
- * 中转站的 OpenAI 兼容入口：地址与额度服务同源。
- * 换站只改 services 里的 DEFAULT_QUOTA_BASE_URL，这里跟随之。
+ * 中转站的 OpenAI 兼容入口：地址与额度服务同源，由服务实例给出（`getBaseUrl`）。
+ * 不再读编译期常量：dev（未打包）指向本地 127.0.0.1:8000、打包指向域名、QUOTA_BASE_URL
+ * 可覆盖 —— 供应商必须跟额度服务走同一个 base，否则会出现「额度在本地、聊天打线上」的分裂。
  */
-function resolveNimbusAccessRecipe(): {
+function resolveNimbusAccessRecipe(baseUrl: string): {
   readonly access: { readonly type: "api-key"; readonly apiKeyManagementUrl: string };
   readonly api: { readonly type: "openai-chat-completions"; readonly baseUrl: string };
 } {
-  const origin = DEFAULT_QUOTA_BASE_URL.trim().replace(/\/+$/u, "");
+  const origin = baseUrl.trim().replace(/\/+$/u, "");
   return {
     access: { type: "api-key", apiKeyManagementUrl: origin },
     api: { type: "openai-chat-completions", baseUrl: `${origin}/v1` },
@@ -59,19 +59,21 @@ function findNimbusProvider(
  *
  * 密钥策略（回答“拿登录的 key 还是手动配置 key”）：
  * - 聊天调用用的是中转站的调用密钥，不是登录 token；
- * - 登录 token 只用于额度查询与**读取**密钥列表：这里复用账号里已有的第一把密钥，
- *   绝不代替用户在门户创建新密钥（见 IProviderQuotaService.ensureApiKey）；
- * - 账号里没有可用密钥时 ensureApiKey 会抛可读错误，由调用方决定是否阻断；
+ * - 登录 token 用于额度查询与密钥读取；账号里一把可用密钥都没有时，
+ *   `ensureApiKey` 会自动创建一把（登录即可用，对齐 Lyra 自动认领），见 quotaService；
  * - 用户之后仍可在供应商编辑里手动换 key（覆盖自动值）。
  */
 export async function provisionNimbusProvider(deps: {
   readonly quota: {
     ensureApiKey(): Promise<string>;
+    getBaseUrl(): Promise<string>;
     getModelIds(apiKey: string): Promise<readonly string[]>;
   };
   readonly providerSettings: IProviderSettingsService;
   readonly logger?: { warn: (...args: unknown[]) => void };
 }): Promise<NimbusProvisionResult> {
+  // base 与额度服务同源（dev=本地/打包=域名/环境变量可覆盖），模型调用与密钥管理都指向它。
+  const baseUrl = await deps.quota.getBaseUrl();
   const apiKey = await deps.quota.ensureApiKey();
   const modelIds = await deps.quota.getModelIds(apiKey).catch((error: unknown) => {
     deps.logger?.warn("[nimbus] 拉取模型目录失败，先建供应商，模型可手动添加", error);
@@ -90,7 +92,7 @@ export async function provisionNimbusProvider(deps: {
     return { providerId: existing.providerId, modelCount: modelIds.length, reused: true };
   }
 
-  const recipe = resolveNimbusAccessRecipe();
+  const recipe = resolveNimbusAccessRecipe(baseUrl);
   const personalModelIds = modelIds.length > 0 ? { personalModelIds: [...modelIds] } : {};
   const templateAvailable = view.providerTemplates.some(
     (template) => template.templateId === NIMBUS_TEMPLATE_ID,

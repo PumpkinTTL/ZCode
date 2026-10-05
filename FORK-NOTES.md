@@ -54,11 +54,16 @@ npx -y pnpm@10.33.2 run dev:web           # 起 Web 开发版（前端 5173/后�
 3. **业务层**：官方账号入口（z.ai/Coding Plan/余额页）是可砍的 UI 入口；
    **provider 抽象层不能砍**——它正是第三方模型能接进来的地方
 4. **不克隆业务组件**：上游活跃迭代的组件只改样式/外挂，避免手工重移植
+5. **上游合并只合能力，不合业务**（所有者要求）：合并上游更新时只吸收"能力"（工具、协议、
+   组件、运行时、修复）；官方商业/业务功能（套餐计费、账号 OAuth、购买入口、推荐引导、
+   厂商遥测等）一律不合并，与本地砍除冲突时保持砍除结果。业务功能**只有经所有者审核后
+   明确指定**才允许引入；引入时按 `business/` 归类并记入 `POLARIS-RESIDUE-AUDIT.md`。
 
 ## 模型接入
 
 - **不登录账号也能用**：provider 的 `api-key` 通道与官方 OAuth 登录完全独立
-- 内置 20 条 provider 模板（见 `config/provider/zcode-builtin.json`），覆盖三类协议：
+- 内置 17 条 provider 模板（见 `config/provider/zcode-builtin.json`），覆盖三类协议：
   `anthropic-messages` / `openai-chat-completions` / `openai-responses`
 - **接自己的中转站**：在模板里加一条，`baseUrl` 指向自己的地址，协议二选一，配 `builtinModelIds`
-- 登录命令 `zcode login zai|bigmodel` 只服务官方套餐用户，企业版可整体不用
+- 官方登录命令 `zcode login` 已随官方账号体系移除（仅保留 `zcode logout`）；企业版登录走应用内
+  Nimbus 账号，或纯 api-key 直连不登录

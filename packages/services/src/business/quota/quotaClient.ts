@@ -6,7 +6,8 @@
  * - token 只放 Authorization Header，不放 URL query（会进访问日志）
  * - 错误响应统一形如 { detail: string }，detail 是给最终用户看的中文，可直接展示
  * - 401 = token 过期/登出 → 需重新登录；429 → 读 Retry-After
- * - 密钥只**读**不写：登录后复用账号里已有的调用密钥，不代替用户在门户创建新密钥。
+ * - 密钥「有则复用、无则创建」：登录后先用账号已有密钥；一把都没有时 createApiKey
+ *   自动建一把（登录即可用，与 Lyra claimAgentKey 同一精神）。
  */
 
 const LOGIN_PATH = "/api/v1/user/login";
@@ -121,6 +122,28 @@ export class QuotaApiClient {
       return (body as { data: unknown[] }).data as Array<Record<string, unknown>>;
     }
     return [];
+  }
+
+  /**
+   * 创建一把普通调用密钥（POST /api/v1/user/keys，JWT 鉴权）。
+   *
+   * 服务端契约（cbcn-cloud app/api/v1/user.py create_key）：body `{ name }`
+   * （1..64 字符，缺省 "default"），成功返回 `{ key: "sk-…", id, name }`，
+   * **明文仅此一次**（列表接口只回掩码 key_prefix）。刻意不传 via/client_id/device_id ——
+   * 设备绑定密钥（agent key）是 Lyra 的设备身份流程，不在本期范围。
+   */
+  async createApiKey(token: string, name: string, signal?: AbortSignal): Promise<{ key: string }> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${KEYS_PATH}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as { key?: unknown } | null;
+    const key = typeof body?.key === "string" ? body.key.trim() : "";
+    if (!key) throw new QuotaApiError(response.status, "创建调用密钥响应缺少 key");
+    return { key };
   }
 
   async listModelIds(apiKey: string, signal?: AbortSignal): Promise<string[]> {

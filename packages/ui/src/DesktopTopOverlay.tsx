@@ -1,8 +1,11 @@
 import type { IPlatformService, UpdateStatePayload } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
+import { Separator } from "@/components/ui/separator.js";
+import { getPathLeaf } from "@/lib/path.js";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  FolderIcon,
   MessageCirclePlus,
   PanelLeftClose,
   PanelLeftOpen,
@@ -10,10 +13,24 @@ import {
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { UpdateStatusButton } from "@/UpdateStatusButton.js";
 import { DesktopTopOverlayActionButton } from "@/DesktopTopOverlayActionButton.js";
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import {
   createWindowsCaptionControlsStyle,
   WINDOWS_CAPTION_CONTROLS_RIGHT_INSET_VAR,
 } from "@/windowCaptionControls.js";
+
+/**
+ * 顶栏工作区标签只取路径最后一段，完整路径交给 hover 提示。
+ * 未选中工作区（空路径）或取不到目录名的根路径（"/"、"C:\"）返回 null，标签整体不渲染，
+ * 避免出现一个只剩图标、看不出含义的空壳。
+ */
+function resolveWorkspaceLabel(workspaceAbsPath: string): string | null {
+  const leaf = getPathLeaf(workspaceAbsPath).trim();
+  if (!leaf || /^[\\/]+$/u.test(leaf) || /^[A-Za-z]:$/u.test(leaf)) {
+    return null;
+  }
+  return leaf;
+}
 
 interface DesktopTopOverlayProps {
   workspaceAbsPath: string;
@@ -46,7 +63,7 @@ interface DesktopTopOverlayProps {
 }
 
 export function DesktopTopOverlay({
-  workspaceAbsPath: _workspaceAbsPath,
+  workspaceAbsPath,
   isMacDesktop,
   isMacFullscreen,
   isWindowsDesktop,
@@ -85,6 +102,17 @@ export function DesktopTopOverlay({
   const taskBackTitle = intl.formatMessage({ id: "taskNav.back" });
   const taskForwardTitle = intl.formatMessage({ id: "taskNav.forward" });
   const isNewTaskButtonVisible = showNewTaskButton ?? !isSidebarVisible;
+  // 品牌区是桌面端左上角的平台化标识：Windows/Linux 用应用图标，macOS 沿用图标切换按钮。
+  const hasBrandControl = usesCustomCaptionArea || Boolean(isMacDesktop);
+  // 品牌区与操作区之间插一条细分隔符，把“应用标识”和“任务操作”分成两组。
+  const showBrandSeparator =
+    hasBrandControl && (!hideTaskNavigationButtons || isNewTaskButtonVisible);
+  // 字标与工作区标签只在侧栏展开态出现：这里的顶栏宽度就是侧栏宽度（264px 起），有地方排。
+  // 收起态顶栏宽度是按 Header 预留空间（pl-38 / pl-44）逐像素校对过的，再插文本块会顶进 Header。
+  const showBrandWordmark = usesCustomCaptionArea && isSidebarVisible;
+  // 工作区标签是桌面端顶栏新增的内容，web / 远控沿用原来的紧凑排布，不跟着变。
+  const workspaceLabel =
+    isDesktop && isSidebarVisible ? resolveWorkspaceLabel(workspaceAbsPath) : null;
   const macTopOverlayPaddingStyle =
     isMacDesktop && !isMacFullscreen && Number.isFinite(macWindowControlsLeftPaddingPx)
       ? { paddingLeft: `${Math.round(macWindowControlsLeftPaddingPx ?? 96)}px` }
@@ -128,9 +156,13 @@ export function DesktopTopOverlay({
             // 顶部浮层按钮虽然单个按钮打了 no-drag，但外层容器本身仍悬在窗口标题区上方。
             // Electron 在这类覆盖层上会优先按父级命中拖拽区域，导致点击被窗口拖动吞掉。
             // 这里把整块交互容器一起标成 no-drag，确保展开/收起和新建 task 都能稳定点击。
-            "pointer-events-auto flex items-center gap-1 shrink-0 [app-region:no-drag]",
+            // 交互容器本身必须可收缩（min-w-0）：侧栏展开时容器宽度被固定为侧栏宽度，
+            // 只有让整组参与收缩，末尾的工作区标签才会先截断，而不是把更新按钮顶到侧栏外面。
+            "pointer-events-auto flex min-w-0 items-center gap-1 [app-region:no-drag]",
           )}
         >
+          {/* 品牌区：桌面端左上角先交代“这是什么应用”，再进入任务操作，
+              避免整排只剩几个彼此孤立的图标按钮。 */}
           {usesCustomCaptionArea && (
             <DesktopTopOverlayActionButton
               title={toggleSidebarTitle}
@@ -159,6 +191,23 @@ export function DesktopTopOverlay({
               <SidebarToggleIcon className="size-4" />
             </DesktopTopOverlayActionButton>
           )}
+
+          {/* 字标紧挨 logo 按钮，把单个图标补成完整的品牌块；纯文本品牌名，不引入 i18n key。 */}
+          {showBrandWordmark ? (
+            <span className="select-none text-ui-sm font-semibold tracking-wide text-foreground-subtle">
+              Polaris
+            </span>
+          ) : null}
+
+          {/* 品牌区与导航区用细分隔符分组；收起态只保留分隔符本身（不额外加外边距），
+              避免把已经贴着 Header 预留边界的紧凑排布再顶出去。
+              Separator 竖排自带 self-stretch，直接传 h-4 会退化成顶端对齐；
+              这里用一层定高的 flex 容器承载，由整排的 items-center 负责垂直居中。 */}
+          {showBrandSeparator ? (
+            <span className={cn("flex h-4 shrink-0 items-center", isSidebarVisible && "mx-0.5")}>
+              <Separator orientation="vertical" />
+            </span>
+          ) : null}
 
           {/* 远程控制移动端左上角空间有限，任务前进/后退在这里会与主操作拥挤重叠。*/}
           {hideTaskNavigationButtons ? null : (
@@ -202,6 +251,17 @@ export function DesktopTopOverlay({
               <MessageCirclePlus className="size-4" />
             </DesktopTopOverlayActionButton>
           </div>
+
+          {/* 当前工作区标签：这里只显示目录名，完整路径交给 hover 提示；
+              它是整排里唯一可收缩的元素，侧栏变窄或更新按钮展开时先截断自己。 */}
+          {workspaceLabel ? (
+            <ControlHintTooltip title={workspaceAbsPath} side="bottom">
+              <span className="ml-0.5 inline-flex min-w-0 max-w-40 shrink items-center gap-1 overflow-hidden rounded-md py-1 pl-1.5 pr-2 text-ui-sm text-foreground-subtle select-none">
+                <FolderIcon className="size-3.5 shrink-0 text-foreground-subtlest" />
+                <span className="min-w-0 truncate">{workspaceLabel}</span>
+              </span>
+            </ControlHintTooltip>
+          ) : null}
 
           {/* <div className="flex items-center [app-region:no-drag]"> */}
           {/* 侧栏收起后，更新按钮之前会跟着“展开态的容器宽度阈值”一起被隐藏。

@@ -7,56 +7,47 @@
  *
  * 业务实现在 business/quota/，与上游组件隔离：删本目录 + services 的 business/ 即整体下线。
  */
-import { useCallback, useEffect, useState } from "react";
-import type { QuotaStatusResult } from "@zcode/services";
+import { useCallback, useState } from "react";
 import { Loader2, Settings2 } from "lucide-react";
 import { NimbusAccountDialog } from "./NimbusAccountDialog.js";
 import { NimbusQuotaOverview } from "./NimbusQuotaOverview.js";
+import {
+  notifyNimbusAccountChanged,
+  refreshNimbusAccountState,
+  useNimbusAccountState,
+} from "./nimbusAccountState.js";
 import { Button } from "@/components/ui/button.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-
-type SectionState =
-  | { readonly status: "loading" }
-  | { readonly status: "error"; readonly message: string }
-  | { readonly status: "ready"; readonly value: QuotaStatusResult };
 
 export function ProviderQuotaSection() {
   const { intl } = useZCodeIntl();
   const { providerQuotaService } = useServices();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [state, setState] = useState<SectionState>({ status: "loading" });
-
-  const load = useCallback(async () => {
-    try {
-      setState({ status: "ready", value: await providerQuotaService.getStatus() });
-    } catch (error) {
-      setState({
-        status: "error",
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }, [providerQuotaService]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  /**
+   * 「我的额度」渲染共享快照（nimbusAccountState 单一数据源），不再自己 getStatus：
+   * 侧边栏底部、设置页与账号弹窗必须同时是已登录/未登录，登录后也不必等下一次交互才刷新。
+   */
+  const shared = useNimbusAccountState();
 
   const handleRefresh = useCallback(() => {
     setBusy(true);
-    void load().finally(() => setBusy(false));
-  }, [load]);
+    void refreshNimbusAccountState().finally(() => setBusy(false));
+  }, []);
 
   const handleLogout = useCallback(() => {
     setBusy(true);
     void providerQuotaService
       .logout()
-      .then(() => setState({ status: "ready", value: { loggedIn: false } }))
+      .then(() => notifyNimbusAccountChanged({ loggedIn: false }))
       .finally(() => setBusy(false));
   }, [providerQuotaService]);
 
-  const loggedInStatus = state.status === "ready" && state.value.loggedIn ? state.value : null;
+  const status = shared.status;
+  const loggedInStatus = status?.loggedIn === true ? status : null;
+  // 首屏 spinner 只在没有任何快照时出现；有缓存时后台重校验，不闪 loading。
+  const loading = status === null && shared.loading;
 
   return (
     <div className="space-y-4" data-business="provider-quota">
@@ -74,13 +65,13 @@ export function ProviderQuotaSection() {
       ) : (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
           <span className="min-w-0 truncate text-ui-base text-foreground">
-            {state.status === "loading" ? (
+            {loading ? (
               <span className="inline-flex items-center gap-2 text-foreground-subtle">
                 <Loader2 className="size-4 animate-spin" />
                 {intl.formatMessage({ id: "business.quota.loading" })}
               </span>
-            ) : state.status === "error" ? (
-              state.message
+            ) : shared.error ? (
+              shared.error
             ) : (
               intl.formatMessage({ id: "business.quota.summaryLoggedOut" })
             )}
@@ -97,11 +88,8 @@ export function ProviderQuotaSection() {
         </div>
       )}
 
-      <NimbusAccountDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onChanged={() => void load()}
-      />
+      {/* 弹窗自己向共享快照 notify（登录/登出），本分区订阅同一份快照即可，无需 onChanged 回流。 */}
+      <NimbusAccountDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </div>
   );
 }

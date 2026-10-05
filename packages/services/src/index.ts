@@ -277,11 +277,12 @@ export { ICommandsService } from "./commands/commands.js";
 export { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 
 export { IFeedbackService } from "./feedback/feedback.js";
+// 业务面（Polaris 自有 quota 等）统一从 business barrel 转出；对外符号面保持不变。
 export {
   IProviderQuotaService,
   QUOTA_TOKEN_CREDENTIAL_KEY,
   QUOTA_USERNAME_CREDENTIAL_KEY,
-} from "./business/quota/quota.js";
+} from "./business/index.js";
 export type {
   QuotaStatusResult,
   QuotaStatus,
@@ -292,9 +293,9 @@ export type {
   QuotaPerCallSubscription,
   QuotaViewKind,
   QuotaUsageDay,
-} from "./business/quota/quotaTypes.js";
-export { createQuotaService, DEFAULT_QUOTA_BASE_URL } from "./business/quota/quotaService.js";
-export { QuotaApiError } from "./business/quota/quotaClient.js";
+} from "./business/index.js";
+export { createQuotaService, DEFAULT_QUOTA_BASE_URL } from "./business/index.js";
+export { QuotaApiError } from "./business/index.js";
 export type { FeedbackUploadProgress } from "./feedback/feedback.js";
 export { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 export type {

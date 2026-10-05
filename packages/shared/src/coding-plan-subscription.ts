@@ -316,19 +316,6 @@ export interface CodingPlanPaypalSupportResponse {
   isSupport?: boolean;
 }
 
-export interface CodingPlanPaypalSetupTokenRequest {
-  providerId?: CodingPlanSubscriptionProviderId;
-  returnUrl: string;
-  cancelUrl: string;
-}
-
-export interface CodingPlanPaypalSetupTokenResponse {
-  resultStatus?: string;
-  setupTokenId?: string;
-  approveUrl?: string;
-  paymentTokenStatus?: string;
-}
-
 export interface CodingPlanPaypalSubscribeRequest {
   providerId?: CodingPlanSubscriptionProviderId;
   productId: string;

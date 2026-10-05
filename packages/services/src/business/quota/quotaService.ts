@@ -7,6 +7,7 @@
  * 凭证：token / username 存 `ICredentialService`（与反馈服务的 JWT 同一存储），
  * 不落 settings.json，避免随设置同步被复制到别的机器。
  */
+import { resolveZCodeRuntimeEnv, type ZCodeRuntimeEnv } from "@zcode/shared";
 import type { ICredentialService } from "../../credential/credential.js";
 import {
   QuotaApiClient,
@@ -30,10 +31,55 @@ import type {
 } from "./quotaTypes.js";
 
 /**
- * 当前供应商的部署地址。换供应商时**只改这个常量**（或用 QUOTA_BASE_URL 环境变量覆盖），
- * 本业务层的代码与文件名都不用动。
+ * 打包（生产）版默认的供应商域名。换供应商时**只改这个常量**（或用 QUOTA_BASE_URL
+ * 环境变量覆盖），本业务层的代码与文件名都不用动。
  */
 export const DEFAULT_QUOTA_BASE_URL = "https://nimbus.bitlesu.com";
+
+/**
+ * 开发（未打包）运行时的本地联调后端：与 Lyra `resolveNimbusBase` / docs/nimbus-device-key.md §10
+ * 同一口径（dev 默认 127.0.0.1:8000，环境变量可覆盖，打包版永不命中）。
+ */
+export const DEV_QUOTA_BASE_URL = "http://127.0.0.1:8000";
+
+/** 显式覆盖 base 的环境变量名（开发/生产都生效）。 */
+export const QUOTA_BASE_URL_ENV_KEY = "QUOTA_BASE_URL";
+
+/** 登录后自动创建的调用密钥名（服务端 key 列表只回前缀，固定名字便于在门户里识别）。 */
+export const QUOTA_API_KEY_NAME = "Polaris";
+
+export interface ResolveQuotaBaseUrlOptions {
+  readonly env?: Record<string, string | undefined>;
+  /**
+   * 运行环境判据（"未打包" = development）。缺省从 `env.ZCODE_RUNTIME_ENV` 读：
+   * desktop main 只对未打包实例注入 `development`（见 desktopRuntimeEnv.ts 的
+   * desktopRuntimeEnv / buildHostProcessEnv），**不能**用 ZCODE_ENV —— dev:desktop
+   * 跑的就是 ZCODE_ENV=production 但未打包的形态。
+   */
+  readonly runtimeEnv?: ZCodeRuntimeEnv;
+}
+
+/**
+ * base URL 的唯一解析出口（host 装配与「告知 UI 实际 base」共用同一份逻辑）：
+ * 1. `QUOTA_BASE_URL` 显式覆盖优先（开发/生产都生效）——非法值直接抛错，
+ *    静默回退会把联调流量打进生产库，宁可启动即失败；
+ * 2. 未打包（ZCODE_RUNTIME_ENV=development）→ 本地 127.0.0.1:8000；
+ * 3. 其余（打包生产 / CLI / 测试）→ nimbus.bitlesu.com。
+ */
+export function resolveQuotaBaseUrl(options: ResolveQuotaBaseUrlOptions = {}): string {
+  const env = options.env ?? process.env;
+  const override = env[QUOTA_BASE_URL_ENV_KEY]?.trim();
+  if (override) {
+    if (!/^https?:\/\//iu.test(override)) {
+      throw new Error(
+        `环境变量 ${QUOTA_BASE_URL_ENV_KEY} 不合法：${override.slice(0, 200)}（应为 http(s):// 开头的完整地址）`,
+      );
+    }
+    return override.replace(/\/+$/u, "");
+  }
+  const runtimeEnv = options.runtimeEnv ?? resolveZCodeRuntimeEnv(env);
+  return runtimeEnv === "development" ? DEV_QUOTA_BASE_URL : DEFAULT_QUOTA_BASE_URL;
+}
 
 export interface CreateQuotaServiceOptions {
   readonly credentialService: ICredentialService;
@@ -92,7 +138,7 @@ function sortSubscriptions(subs: readonly QuotaSubscription[]): readonly QuotaSu
 }
 
 export function createQuotaService(options: CreateQuotaServiceOptions): IProviderQuotaService {
-  const baseUrl = options.baseUrl?.trim() || DEFAULT_QUOTA_BASE_URL;
+  const baseUrl = options.baseUrl?.trim() || resolveQuotaBaseUrl();
   const client = new QuotaApiClient({ baseUrl, fetchImpl: options.fetchImpl });
   const credentialService = options.credentialService;
 
@@ -201,19 +247,32 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
     },
 
     /**
-     * 取一个可用的调用密钥：**只复用账号里已有的密钥，不自动创建**。
+     * 取一个可用的调用密钥：优先复用账号里已有的密钥；**一把都没有时自动创建**
+     * （POST /api/v1/user/keys，JWT 鉴权，名字固定 QUOTA_API_KEY_NAME）。
      *
-     * 为什么不再创建：登录换取的是用户身份（token），调用模型用的是账号里**已经有**的
-     * 密钥。登录流程凭空多建一把密钥，既在用户门户里留下无法解释的条目，又让「登录」失败
-     * 在密钥创建接口上（权限/限额/限流），把用户按在登录页。账号里真没有可用密钥时，
-     * 给一句可读文案让用户去门户创建后重试。
+     * 为什么从「只读不建」改为「没有就建」：登录的终点是「可用」，不是「登录页放行」。
+     * 账号里没有 sk- 密钥时，旧的只读实现只能抛错，用户看到的是「登录成功但什么反应都没有」；
+     * 这与 Lyra 的自动认领（claimAgentKey：有则复用、无则创建）是同一精神。
+     * 名额上限 / 限流由服务端裁决（400/429 的 detail 直接透出），这里不预先拒绝。
+     *
+     * 范围决策：**不引入** Lyra 的设备身份流程（Ed25519 配对 + via='agent' 设备绑定密钥）——
+     * 那是另一期工作；本期只创建一把普通用户密钥，不占 agent key 的设备名额。
+     * 服务端密钥列表只回 key_prefix（掩码），明文仅创建响应返回一次：明文由调用方
+     * （provisionNimbusProvider）写进供应商配置持久化；下次登录若列表里读不到明文、
+     * 供应商配置又不可用，会自动再建一把（名字固定，便于在门户识别与清理）。
      */
     async ensureApiKey(): Promise<string> {
       const token = await requireToken();
       const keys = await client.listApiKeys(token);
       const existing = keys.map(readApiKeyValue).find((key) => key.length > 0);
       if (existing) return existing;
-      throw new QuotaApiError(400, "账号下没有可用的调用密钥，请先在门户创建一个 sk- 密钥后再登录");
+      const created = await client.createApiKey(token, QUOTA_API_KEY_NAME);
+      return created.key;
+    },
+
+    /** 本次会话实际生效的 base（供 UI 装配供应商时与额度服务保持同源）。 */
+    async getBaseUrl(): Promise<string> {
+      return baseUrl;
     },
 
     /** 用调用密钥拉模型目录（OpenAI 兼容 /v1/models），返回去重后的模型 id。 */

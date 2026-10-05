@@ -2,8 +2,9 @@
  * Polaris 自有业务：供应商账号与额度（余额 / 周期套餐 / 按次套餐 / 用量）。
  *
  * 这是**我们自己的业务层**，与上游（ZCode / Z.ai）无关：
- * - 供应商以部署地址为配置项（见 quotaService 的 DEFAULT_QUOTA_BASE_URL / QUOTA_BASE_URL），
- *   换供应商只改配置，不改这一层的代码与文件名；
+ * - 供应商以部署地址为配置项（见 quotaService 的 resolveQuotaBaseUrl：开发=本地
+ *   127.0.0.1:8000 / 打包=域名 / QUOTA_BASE_URL 可覆盖），换供应商只改配置，
+ *   不改这一层的代码与文件名；
  * - 与上游套餐体系的残留（model-provider-family、usageEntitlement 等）零依赖。
  *
  * 字段口径以当前供应商的调用文档为准（首发为 Nimbus 中转站，换供应商以新文档为准）。

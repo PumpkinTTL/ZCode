@@ -391,6 +391,11 @@ OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / J
 **保留**：`zcodeJwtInvalidRestartMarker.ts`（`Root.tsx` 仍 `consume`）、`providerFamilyDomainSettings.ts`
 （`useRootWorkspaceActions` / `ModelProviderSection` 仍用）。
 
+> **2026-10-05 更新（C 轮残留清理）：**`zcodeJwtInvalidRestartMarker.ts` 的写入方
+> （`markZcodeJwtInvalidRestart`）早已随官方登录链路移除、仅剩 `Root.tsx` 读取；已删除该文件与
+> Root 的 marker 初始化分支。`session-expired` 此后只剩 seam 路径 `handleReauthenticationRequired`
+> （`useRootOAuthEffects` 保留 props 签名，暂未调用）。
+
 验证：`pnpm typecheck` ✅ 0 错误；`pnpm lint` ✅ 0 errors（80 warnings 既有）。
 
 ---
@@ -1525,3 +1530,90 @@ tsx --test 复验       ✅ pluginMarketplaces 8/8
 ```
 
 已砍业务零复活核查：遥测文件、`mainMemoryDiagnostics`、codingPlan 系列、`bigmodel-oauth` 全部确认未回归。
+
+## 23. 终检：用户可见品牌面复核（2026-10-04）
+
+复核范围：桌面端（菜单/托盘/弹窗/窗口标题/启动壳/About/设置页/更新弹窗）、CLI（TUI/帮助文案/bin）、
+web 端（分享页/授权页）、打包美术（安装器/DMG/favicon）与内置 provider 配置。
+
+### 23a. 本轮补漏（3 处文字，均为漏网）
+
+| 位置                                                                      | 原文                                  | 改为                                                          |
+| ------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------- |
+| `packages/desktop/src/renderer/plugin-sandbox.html:6`                     | `<title>ZCode Plugin Sandbox</title>` | `<title>Polaris Plugin Sandbox</title>`                       |
+| `apps/zcode-cli/packages/core/src/tool/handlers/agent.ts:289`             | `...launching a ZCode subagent`       | `...launching a Polaris subagent`（同文件 :305 已是 Polaris） |
+| `apps/zcode-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts:107` | `...plan parameter in ZCode`          | `...plan parameter in Polaris`                                |
+
+**文字层结论：界面/弹窗/标题/CLI 文案已无 ZCode 品牌残留。** 剩余 `ZCode` 字样均为内部契约
+（协议名、包名、`ZCODE_*` 环境变量、渠道/进程标识、函数与类型名、代码注释、历史兼容常量
+如 `LEGACY_WORKFLOW_NAME`、`process-names` 窗口标题匹配集），按既定原则不改。
+
+其余已核实为 Polaris 的面（本轮无改动）：应用菜单与托盘文案、退出确认弹窗、CUA 操作浮窗
+（"Polaris 正在操作电脑"）、About 窗口（"关于 Polaris"/版权行）、启动壳 SVG、应用/托盘/安装
+成套图标中的 13 个（`30dc069` 覆盖）、`desktopRuntimeEnv` 应用名（Polaris/Polaris Dev/
+Polaris Preview）、i18n（zh-CN/en-US 约 90 处产品名全为 Polaris、0 处 ZCode）、web `index.html`
+标题、CLI i18n 文案与 `bin`（`polaris` + `zcode` 双名）、zcode-server-cli 运行时报错文案。
+
+### 23b. 美术素材残留（图片，待设计素材，本次未改动）
+
+`30dc069` 只重绘了应用图标/托盘/启动页 13 个文件；以下位图仍为上游图案，均为用户可见：
+
+| 素材                                                               | 现状                     | 可见位置                                                                 |
+| ------------------------------------------------------------------ | ------------------------ | ------------------------------------------------------------------------ |
+| `packages/desktop/build/dmg_background.png`（+`@2x`）              | 大字 `ZCODE` 字标 + 箭头 | macOS DMG 挂载背景                                                       |
+| `packages/desktop/build/icon_installer.icns`                       | 上游 `Z` 立方体          | macOS DMG 卷图标                                                         |
+| `packages/desktop/build/icon_installer.ico`                        | 上游 `Z` 立方体          | Windows 安装器/卸载器/头图                                               |
+| `packages/web/public/favicon.ico` + `index.html` 内嵌 base64       | 上游 `Z` 圆角方标        | 浏览器标签页（web 端，待部署）                                           |
+| `public/icon_512@2x.png`（仓库根）                                 | 上游 `Z` 圆角方标        | macOS Dock（`UpdateStatusDialog`）                                       |
+| `packages/ui/src/assets/provider-icons/model-provider-zai-app.png` | 旧 128px 应用图标副本    | 无现役模板引用（内置配置已无 `zai` 模板），暂不可见；素材表 `zai` 键保留 |
+
+修复方式：换图即可（可用 `build/icons/` 成套星标导出，或等正式设计稿统一替换）。
+
+### 23c. Nimbus 供应商图标缺口（我方自建面，待产品决定）
+
+`config/provider/zcode-builtin.json` 的 `nimbus` 模板声明 `logo: { type: "builtin", key: "nimbus" }`，
+但 `ProviderLogo.tsx` 的 `BUILTIN_PROVIDER_LOGO_ASSETS` 无 `nimbus` 键 → 设置页供应商导航/卡片与
+模板选择卡片回退方盒占位图标（模型选择器不受影响，走 `ModelBrandIcon`）。
+其余 10 个模板键（opencode/alibaba-model-studio/xiaomi-mimo/xai/openrouter/openai/moonshot-kimi/
+minimax/deepseek/anthropic）与素材表逐一比对全部命中。修法：素材表加 `nimbus` 键，素材二选一
+（`logo-polaris.svg` 或单独 Nimbus 标）。
+
+### 23d. 门禁
+
+```
+pnpm fmt:check   ✅ 2925 文件全通过
+pnpm lint        ✅ 0 errors / 92 warnings（与 §17e 基线一致，无新增）
+```
+
+## 24. CUA 溯源补证：官方自研、对齐 Codex 的 `cua`（2026-10-05）
+
+用户记忆：官方 Computer Use「好像是通过一个 28K 星的开源库做的」。查证结论：**28K 星库 =
+`trycua/cua`（GitHub 实测 28.0k★，MIT；driver/SDK 为 MIT，Spaces 部分 FSL-1.1-MIT），但官方
+CUA 与它无关——官方是自研实现，接口逆向对齐 OpenAI Codex 的 `cua`。**
+
+证据（全部取自本机官方安装 `E:\ZCode`）：
+
+1. 官方插件包 `resources/glm/packages/zcode-cua-plugin/scripts/computer-use-client.mjs`
+   （0.6.3，MIT）头部设计注释原文：「模型可见面与 Codex 的 `cua` 逐字同构（去掉 browser
+   半边）」；「逆向基线：`@oai/cua@0.2.4` 的 tinysky_alt/types.d.ts」；「codex 用的是裸
+   `cua` 全局」。→ API 源头是 Codex（`@oai` = OpenAI npm 作用域），不是 trycua。
+2. 全链路 grep `trycua|cua.ai|computer-server|lume`：插件包、`zcode.cjs`(15MB)、
+   `app.asar`(312MB)、`resources/tools/cua-helper` 全部零命中；zcode.cjs 里
+   robotjs/nut-js/uiohook 亦零命中，唯一命中的第三方原生库是 `koffi`（FFI 直调系统 API，
+   插件 node_modules 里同带 koffi+sharp）。
+3. 官方 Windows 运行时实物：`resources/tools/cua-helper/` = `dist/windows-helper.js`
+   （996KB，esbuild 打包、内置 zod）+ `build/Release/ax_native.node`（原生 addon）+ 自带
+   node_modules（express/body-parser/sharp 等）→ 自研自打包，非任何开源 CUA 框架。
+4. 星数交叉排除（2026-10-05 实测）：UI-TARS-desktop 39.2k、OmniParser 25.5k、
+   openai/codex 127.9k、sst/opencode 211.8k；28.0k 精确命中的只有 trycua/cua。
+5. 名字撞车根源：CUA = Computer-Use Agent 缩写；官方全链路用自名（`zcode-cua`、
+   `cua-helper`），其 "cua" 命名继承自 Codex；trycua 的项目名恰好也叫 `cua`。
+
+对「恢复 CUA」两件事的影响：
+
+- Step 1（让市场"有它"）来源确认：`E:\ZCode\resources\glm\packages\zcode-cua-plugin`
+  （0.6.3 完整版：docs/computer-use.md + skills/computer-use + SDK client + dist/mcp）。
+  单独取回只让市场"有它"；引擎缺失时仍 fail-closed（与现 placeholder 行为一致）。
+- Step 2（引擎）：没有可复用的开源底座。路线 A=基于 trycua/cua（MIT driver/SDK）写协议
+  适配层对接插件 SDK 期望的 broker 协议；B=自研 helper/原生 addon（照官方形态）；C=与上游
+  谈授权（用户层面的商业决策）。等用户拍板。
