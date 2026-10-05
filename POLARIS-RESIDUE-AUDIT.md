@@ -1764,3 +1764,46 @@ data 共 6 个）、分片文件 name 与 `plugins[].cachePath`（bundled 在 `m
 - dev 实测：重启后 `Windows Computer Use Helper ready`、插件/市场 RPC 正常、无刷新断言错误；
   缓存路径 = `cache/polaris-plugins-official/…`；lark-cli / computer-use 启用状态保持。
 - 维护：合并上游时按 AGENTS.md ④ 全仓 grep 复查该字面量。
+
+## 28. 同类残留普查与收尾（2026-10-06）
+
+承接 §27，按同一标准（用户可达处不出现 zcode）做全量普查，结果与处置如下。
+
+### 28a. 已改（本刀）
+
+- **管道名**：`zcode-cua-broker-*` / `zcode-node-repl-cua-*` → `polaris-*`（`broker.js`、
+  `cua-broker.ts`；两端同版本约定、无持久化，改名零兼容成本）。
+- **本地 CA 文件名**：`zcode-network-ca.pem/.key` → `polaris-network-ca.*`（`appCaCert.ts`；
+  证书 CN/Org 本来就是 "Polaris Network CA"/"Polaris"；未装入任何系统信任库，旧文件删除后
+  首次使用时自动重建）。
+- **运行时 Built-in provider 缓存名**：`zcode-builtin.json` / `zcode-builtin-refresh.json` →
+  `polaris-builtin.json` / `polaris-builtin-refresh.json`（cache-paths / registry-runtime /
+  materializer 三处；旧缓存删除后自动重建；仓库源文件 `config/provider/zcode-builtin.json`
+  与 provider-node 模块名保持不改——源码/包名属内部标识）。
+- **记忆文件**：`zcode-install-and-identity.md` / `zcode-prompt-assembly.md` → `polaris-*`
+  （frontmatter `name` 与 `MEMORY.md` 索引同步更新）。
+- **临时产物**：`%TEMP%/allzcode.txt`（此前会话的 grep 转储）已删。
+
+### 28b. 查证后保留（刻意不改）
+
+- `.zcode-plugin/`、`.zcode-plugin-seed.json`：**插件包格式契约**（上游 CDN zip、市场生态、
+  所有插件包同格式）——同 `package.json` 级别，改=与生态分叉，保留。
+- macOS Helper 标识（`dev.zcode.cua-helper` 等）：Windows 形态不可见（本 build 不发布
+  macOS Helper），保留。
+- 仓库源码/包名/协议键：`@zcode/*`、`ZCODE_*`、`config/provider/zcode-builtin.json`（源文件）、
+  SEA asset key、provider-node 模块名等内部标识按既定规则保留。
+- 日志/历史（`cli/log`、`rollout`、`v2/logs`、崩溃报告）：内容层，不清理。
+
+### 28c. 环境里非我方项（查证归属，未动）
+
+- `%APPDATA%\ZCode`（官方应用 userData，今天仍在写入）、`%TEMP%\ZCode-installer/uninstaller.log`
+  （官方安装器日志）：属官方 ZCode 安装，非我方产物。
+- `%APPDATA%\ZCode Dev`（2026-09-25）：**我方改名前的旧 dev userData**（缓存中含 bitlesu 痕迹、
+  此后无写入）——纯 Chromium 缓存/会话残留，建议删除；待机确认（删除属破坏性操作）。
+- `%APPDATA%\Polaris` / `Polaris Dev`：现役 Polaris userData ✓。
+
+### 28d. 验证
+
+- 门禁：root typecheck ✓ / CLI turbo typecheck 27/27 ✓ / lint 92-0 ✓ / fmt 2934 ✓。
+- dev 重启后：helper ready、新名运行时产物/证书自动重建；数据根扫描仅剩 `.zcode-plugin`
+  （格式契约）与日志历史（内容层）。

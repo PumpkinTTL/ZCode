@@ -36,8 +36,8 @@ export function resolveZCodeBuiltinCachePaths(
     endpointKey,
   );
   return {
-    activeFilePath: join(directory, "zcode-builtin.json"),
-    controlFilePath: join(directory, "zcode-builtin-refresh.json"),
+    activeFilePath: join(directory, "polaris-builtin.json"),
+    controlFilePath: join(directory, "polaris-builtin-refresh.json"),
   };
 }
 

@@ -182,9 +182,9 @@ export async function probeHelperHealth(socketPath, options = {}) {
 
 export function mintBrokerSocketPath(options = {}) {
   const token = randomUUID();
-  if (process.platform === "win32") return `\\\\.\\pipe\\zcode-cua-broker-${token}`;
+  if (process.platform === "win32") return `\\\\.\\pipe\\polaris-cua-broker-${token}`;
   const dir = typeof options.dir === "string" && options.dir !== "" ? options.dir : tmpdir();
-  return join(dir, `zcode-cua-broker-${token}.sock`);
+  return join(dir, `polaris-cua-broker-${token}.sock`);
 }
 
 export function resolveBrokerSocketPath(options = {}) {
