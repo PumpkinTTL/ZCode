@@ -1617,3 +1617,56 @@ CUA 与它无关——官方是自研实现，接口逆向对齐 OpenAI Codex �
 - Step 2（引擎）：没有可复用的开源底座。路线 A=基于 trycua/cua（MIT driver/SDK）写协议
   适配层对接插件 SDK 期望的 broker 协议；B=自研 helper/原生 addon（照官方形态）；C=与上游
   谈授权（用户层面的商业决策）。等用户拍板。
+
+## 25. CUA 恢复开工：MIT 插件包入库 + 复现可行性判定（2026-10-05）
+
+用户拍板：先判定「闭源部分能不能复现」，不行则走 trycua/cua 方案；并指示先提交全部代码、
+之后开始实现。据此落地：
+
+### 25a. 取回 MIT 插件包（市场恢复）
+
+- 来源：官方安装 `E:\ZCode\resources\glm\packages\zcode-cua-plugin`（0.6.3，MIT，
+  plugin.json author=Z.ai）。
+- 落点：`packages/zcode-cua-plugin`（12 文件 178K；`node_modules/` 不入库——与官方
+  `excludedOfficialPluginAssetNames` 口径一致，依赖由打包期 staging）。
+- 接线（三处，已验证）：
+  - `pnpm-workspace.yaml` 排除该目录（非 workspace 成员，避免其 `catalog:` 依赖与面向上游
+    仓的构建脚本参与本仓 pnpm 解析）；实测 `pnpm list -r` 成员列表中无它。
+  - `.oxlintrc.json` / `.oxfmtrc.json` 忽略（外来代码不参与门禁基线）。
+- 种子依据：`official-plugin-definitions.ts` 的 rootCandidates 首选 `packages/zcode-cua-plugin`；
+  requiredSeedPaths（docs/computer-use.md、scripts/computer-use-client.mjs、
+  skills/computer-use/SKILL.md）与包内容逐一命中；definition `version: "0.6.3"` 与包一致，
+  且与 placeholder `packages/zcode-cua@0.6.3` 同版。
+- 行为说明：市场将出现「Computer Use / 电脑控制」（definition 默认关闭）；启用时引擎缺失
+  仍 fail-closed（与 placeholder 行为一致），引擎为下一步实现对象。
+
+### 25b. 复现可行性判定：**能复现**（接口层已全在，原生层为工作量中心）
+
+闭源两件套 = ①`@zcode/zcode-cua` producer 内部实现（runtime 客户端/帧·状态管理等）
+②平台 Helper（Win: windows-helper.js + ax_native.node）。判定实证：
+
+- 会话协议完整可读（bridge↔broker 两侧文件都在仓）：`node-repl-host/src/cua-bridge.ts`
+  （`{id,token,method,input,context}` 行协议）与 `server.ts:377` + `cua-broker.ts`
+  （`runtime.execute({toolName,arguments,context,signal})→CallToolResult`）—— 上层与自研
+  runtime 的边界 = `ComputerUseRuntime` 接口（placeholder 的 `.d.ts` 已固化 API 面）。
+- Helper 生命周期/控制协议已开源在仓：`windowsCuaDevHelperHost.ts`（fork 参数
+  `--socket/--parent-pid`、`zcode-cua-windows-dev/v1` 控制消息 transport_ready/ready/error、
+  健康探针、代际管理）。
+- **官方留了正式开发接缝**：`ZCODE_CUA_DEV_ROOT` + 目录 package.json 契约
+  `zcodeCuaRuntime:{schema:1,windows:{entry,nativeAddon}}`（windowsCuaDevRuntime.ts）——
+  自研 runtime 可作为 dev 运行时被整套上层直接驱动，无需改任何既有接线；产品模式另有
+  `runtime-manifest.json`（entry/addon + sha256 + electronVersion 精确锁），为打包期自产清单。
+- 原生层第一版可借本机已装的 **cua-driver 0.33.3**（trycua/cua，MIT；Lyra 已实测 stdio
+  MCP 59 工具：截图/点击/键入/窗口/剪贴板；本机免登录）作后端；元素级保真缺口后续补。
+- 不可直接搬运官方产物：helper 二进制为闭源分发物、许可证非我方；产品清单亦为官方
+  electron 41.0.3 完整性锁。
+
+### 25c. 门禁（本轮改动后实测）
+
+```
+pnpm fmt:check   ✅ 2926 文件全通过（新目录按配置忽略）
+pnpm lint        ✅ 0 errors / 92 warnings（与基线一致）
+```
+
+实现方案（架构/接缝/保真度对照/里程碑 M1-M4）见 `POLARIS-CUA-PLAN.md`（同日）。
+下一步：M1 骨架——以真实现替换 `packages/zcode-cua` placeholder + Helper 进程。

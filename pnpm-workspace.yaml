@@ -1,5 +1,8 @@
 packages:
   - packages/*
+  # 官方分发的 computer-use 插件包（MIT, 0.6.3）以资源目录入库：市场 seed 与打包链按路径读取；
+  # 明确排除出 workspace，避免其 catalog: 依赖与面向上游仓的构建脚本参与本仓 pnpm 解析。
+  - "!packages/zcode-cua-plugin"
   - apps/zcode-cli
   - apps/zcode-cli/packages/*
   - apps/zcode-cli/tools/*
