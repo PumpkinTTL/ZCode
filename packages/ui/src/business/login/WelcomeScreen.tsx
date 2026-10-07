@@ -19,7 +19,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { ZCodeAboutLogo } from "@/components/ui/ZCodeAboutLogo.js";
+import { PolarisLogo } from "@/business/brand/PolarisLogo.js";
 import { ThemeHeroVisual } from "@/openWorkspacePageThemeHero.js";
 import { useServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
@@ -302,7 +302,7 @@ function LoginPanelLogo() {
       aria-label="Polaris"
       role="img"
     >
-      <ZCodeAboutLogo className="h-auto w-12" />
+      <PolarisLogo size={48} variant="badge" />
     </div>
   );
 }
