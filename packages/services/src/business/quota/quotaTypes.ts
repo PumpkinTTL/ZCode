@@ -122,6 +122,58 @@ export interface QuotaUsageDay {
   readonly cacheHitRate: number | null;
 }
 
+/** 注册开关预检（GET /api/v1/user/register-status，公开端点）。 */
+export interface QuotaRegisterStatus {
+  /** 是否开放公开注册（false 时登录页隐藏注册入口） */
+  readonly registerEnabled: boolean;
+  /** 注册是否必须邮箱验证码（true 时注册表单渲染「邮箱 + 验证码」必填组） */
+  readonly emailRequired: boolean;
+}
+
+/** 注册入参（POST /api/v1/user/register；emailCode 仅 emailRequired 时必传）。 */
+export interface QuotaRegisterParams {
+  readonly username: string;
+  readonly password: string;
+  /** 邀请码（可选；无效码服务端静默忽略，注册照常成功） */
+  readonly inviteCode?: string;
+  readonly email?: string;
+  readonly emailCode?: string;
+}
+
+/** 忘记密码重置入参（POST /api/v1/user/password/reset）。 */
+export interface QuotaPasswordResetParams {
+  readonly email: string;
+  /** 邮件里收到的 6 位数字重置码 */
+  readonly code: string;
+  readonly newPassword: string;
+}
+
+/** 充值下单回执（POST /api/v1/alipay/recharge 的投影）。 */
+export interface QuotaRechargeOrderCreated {
+  readonly orderNo: string;
+  /** 支付宝当面付二维码 URL（桌面端用系统外链打开唤起支付宝） */
+  readonly qrCode: string;
+  /** 原金额（元） */
+  readonly amount: number;
+  /** 实付金额（元；用优惠码时小于 amount） */
+  readonly payAmount: number;
+  /** 预计入账积分 */
+  readonly credits: number;
+  readonly creditsPerYuan: number;
+}
+
+/** 充值订单状态（GET /api/v1/alipay/orders/{order_no} 的投影）。 */
+export interface QuotaRechargeOrderStatus {
+  /** pending | paid | closed */
+  readonly status: string;
+  readonly payAmount: number;
+  readonly credits: number;
+  /** 二维码 URL（「重新打开支付页」兜底用；缺失为 null） */
+  readonly payUrl: string | null;
+  /** 支付完成时刻（毫秒；未知为 0） */
+  readonly paidAt: number;
+}
+
 /** 我的用量重置卡（GET /api/v1/user/reset-cards 的清单条目投影）。 */
 export interface QuotaResetCard {
   readonly id: number;

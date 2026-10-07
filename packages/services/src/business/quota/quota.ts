@@ -9,7 +9,16 @@
  */
 import { ServiceChannels } from "@zcode/shared";
 import { createServiceDescriptor } from "../../descriptors.js";
-import type { QuotaResetCard, QuotaStatusResult, QuotaUsageDay } from "./quotaTypes.js";
+import type {
+  QuotaPasswordResetParams,
+  QuotaRechargeOrderCreated,
+  QuotaRechargeOrderStatus,
+  QuotaRegisterParams,
+  QuotaRegisterStatus,
+  QuotaResetCard,
+  QuotaStatusResult,
+  QuotaUsageDay,
+} from "./quotaTypes.js";
 
 /** 登录 token 的凭证存储键（与反馈服务 JWT 同一存储，不落 settings.json）。 */
 export const QUOTA_TOKEN_CREDENTIAL_KEY = "provider-quota:token";
@@ -99,6 +108,32 @@ export interface IProviderQuotaService {
   listResetCards(): Promise<readonly QuotaResetCard[]>;
   /** 使用一张重置卡（POST /reset-cards/{id}/redeem）；失败抛 detail 中文。 */
   redeemResetCard(cardId: number): Promise<void>;
+  /**
+   * 注册开关预检（公开端点，无需登录）。登录页据此显隐注册入口与邮箱必填组；
+   * 查询失败抛 QuotaApiError（调用方降级为「入口未知，点击注册时再预检」）。
+   */
+  registerStatus(signal?: AbortSignal): Promise<QuotaRegisterStatus>;
+  /**
+   * 注册并登录：后端注册成功即签发 JWT，本方法落凭证后拉一次全量额度
+   * （返回形状与 login 完全一致，UI 复用登录完成流程）。失败抛 detail 中文，
+   * 凭证不落库。
+   */
+  register(params: QuotaRegisterParams): Promise<QuotaStatusResult>;
+  /** 发注册邮箱验证码（公开端点）；返回服务端提示文案，失败抛 detail。 */
+  sendRegisterCode(email: string, signal?: AbortSignal): Promise<string>;
+  /** 申请密码重置码（公开端点；防枚举恒成功），返回服务端提示文案。 */
+  forgotPassword(email: string, signal?: AbortSignal): Promise<string>;
+  /** 用重置码改密（公开端点）；成功后用户需用新密码登录，失败抛 detail。 */
+  resetPassword(params: QuotaPasswordResetParams): Promise<void>;
+  /**
+   * 创建充值订单（POST /alipay/recharge，金额 10-2000 元，后端硬闸）。
+   * 返回支付宝当面付二维码 URL，由 UI 用系统外链唤起支付宝。
+   */
+  createRechargeOrder(amount: number): Promise<QuotaRechargeOrderCreated>;
+  /** 查询充值订单状态（pending | paid | closed）；轮询节流由后端 3s 键兜底。 */
+  getRechargeOrder(orderNo: string): Promise<QuotaRechargeOrderStatus>;
+  /** 取消待支付订单（非 pending 单后端 400，detail 可直接展示）。 */
+  cancelRechargeOrder(orderNo: string): Promise<void>;
 }
 
 export const IProviderQuotaService = createServiceDescriptor<IProviderQuotaService>(

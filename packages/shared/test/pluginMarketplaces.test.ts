@@ -1,18 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
+  NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
   OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS,
   PLUGIN_MARKETPLACE_MIRRORS_ENV,
   PLUGIN_MARKETPLACE_SOURCES_ENV,
   POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
   PRESET_PLUGIN_MARKETPLACES,
-  ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
   isPresetMarketplaceAdded,
   normalizeMarketplaceSourceForCompare,
   parsePluginMarketplaceSourceList,
   resolveOfficialPluginMarketplaceMirrors,
   resolvePresetPluginMarketplaces,
 } from "../src/plugin-marketplaces.js";
+import { ZCODE_RUNTIME_ENV_KEY } from "../src/runtimeEnv.js";
 
 test("preset marketplace sources are unique, non-empty, and carry catalog identity", () => {
   const sources = new Set<string>();
@@ -102,28 +104,45 @@ test("source normalization is only for comparison, not for fetching", () => {
   );
 });
 
-test("official marketplace mirrors default to Polaris first, Z.ai as fallback", () => {
+test("official marketplace mirrors default to own backend first, Polaris static as fallback", () => {
   assert.deepEqual(
     [...OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS],
-    [POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL, ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL],
+    [NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL, POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL],
   );
+  // 未声明运行环境（打包生产 / CLI / 浏览器）→ 静态默认链，不回落本地。
   assert.deepEqual(resolveOfficialPluginMarketplaceMirrors({} as NodeJS.ProcessEnv), [
+    NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
     POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
-    ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
   ]);
 });
 
+test("unpacked development instances fall back to the local cbcn-cloud marketplace", () => {
+  assert.deepEqual(
+    resolveOfficialPluginMarketplaceMirrors({
+      [ZCODE_RUNTIME_ENV_KEY]: "development",
+    } as unknown as NodeJS.ProcessEnv),
+    [DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL, POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL],
+  );
+  // 打包生产（显式 production）不命中本地。
+  assert.deepEqual(
+    resolveOfficialPluginMarketplaceMirrors({
+      [ZCODE_RUNTIME_ENV_KEY]: "production",
+    } as unknown as NodeJS.ProcessEnv),
+    [...OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS],
+  );
+});
+
 test("the mirror env var fully overrides order, so priority is user-settable", () => {
-  const onlyZai = resolveOfficialPluginMarketplaceMirrors({
-    [PLUGIN_MARKETPLACE_MIRRORS_ENV]: ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
+  const onlyNimbus = resolveOfficialPluginMarketplaceMirrors({
+    [PLUGIN_MARKETPLACE_MIRRORS_ENV]: NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
   } as unknown as NodeJS.ProcessEnv);
-  assert.deepEqual(onlyZai, [ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL]);
+  assert.deepEqual(onlyNimbus, [NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL]);
 
   const reversed = resolveOfficialPluginMarketplaceMirrors({
-    [PLUGIN_MARKETPLACE_MIRRORS_ENV]: `${ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL},https://mirror.example.com/marketplace.json`,
+    [PLUGIN_MARKETPLACE_MIRRORS_ENV]: `${POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL},https://mirror.example.com/marketplace.json`,
   } as unknown as NodeJS.ProcessEnv);
   assert.deepEqual(reversed, [
-    ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
+    POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
     "https://mirror.example.com/marketplace.json",
   ]);
 

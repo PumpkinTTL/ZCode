@@ -2,17 +2,13 @@ import { basename, join } from "node:path";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 
 import type { ApiClient, FeedbackDeviceInfo } from "@zcode/shared";
-import {
-  buildRuntimeZCodeApiUrl,
-  ZCODE_BUILD_TIME,
-  ZCODE_COMMIT,
-  ZCODE_VERSION,
-} from "@zcode/shared";
+import { ZCODE_BUILD_TIME, ZCODE_COMMIT, ZCODE_VERSION } from "@zcode/shared";
 import { Emitter } from "@zcode/rpc";
 import { arch, platform, release, type as osType } from "node:os";
 
 import type { ICredentialService } from "../credential/credential.js";
 import type { IOAuthService } from "../oauth/oauth.js";
+import { resolveQuotaBaseUrl } from "../business/quota/quotaService.js";
 import type { FeedbackUploadProgress, IFeedbackService } from "./feedback.js";
 import { FeedbackHttpClient, FeedbackUploadCanceledError } from "./feedbackHttpClient.js";
 import { cleanupLogArchive, prepareCompactLogArchive } from "./compactLogArchive.js";
@@ -40,7 +36,10 @@ function resolveApiBaseUrl(explicit?: string): string {
   return (
     explicit?.trim() ||
     process.env.ZCODE_FEEDBACK_API_BASE?.trim() ||
-    buildRuntimeZCodeApiUrl(process.env, "/api/v1")
+    // 与额度/App 更新服务同源（quotaService.resolveQuotaBaseUrl：QUOTA_BASE_URL 覆盖 >
+    // 未打包(development) 本地 127.0.0.1:8000 > 打包域名）——反馈工单是 cbcn-cloud 的端点，
+    // 不再跟随官网 endpoint origin（polaris 静态站没有服务）。
+    `${resolveQuotaBaseUrl()}/api/v1`
   );
 }
 

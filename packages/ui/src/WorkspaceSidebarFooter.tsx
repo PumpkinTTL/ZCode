@@ -63,6 +63,7 @@ import { WorkspaceSidebarFooterUsageSummaryContent } from "@/WorkspaceSidebarFoo
 import { NimbusAppUpdateDialog } from "@/business/appUpdate/NimbusAppUpdateDialog.js";
 import {
   clearNimbusProviderAccess,
+  ensureOfficialDefaultModel,
   provisionNimbusProvider,
 } from "@/business/quota/provisionNimbusProvider.js";
 import { setPendingSettingsSection } from "@/lib/settingsNavigation.js";
@@ -150,7 +151,8 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const zoomOutShortcutLabel = useShortcutCommandLabel("zoomOut");
   const resetZoomShortcutLabel = useShortcutCommandLabel("resetZoom");
   const isRestoringOAuthSession = useZCodeStore((state) => state.isRestoringOAuthSession);
-  const { providerQuotaService, providerSettingsService, appUpdateService } = useServices();
+  const { providerQuotaService, providerSettingsService, appUpdateService, modelSelectionService } =
+    useServices();
   // Nimbus（自有中转站）登录态走共享快照：与设置页「我的额度」、账号弹窗同一份数据源。
   // 底部账号身份以它为准（上游 OAuth user 在 Polaris 已无官方账号通路，通常为空）。
   const nimbusAccount = useNimbusAccountState();
@@ -182,12 +184,22 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
     void provisionNimbusProvider({
       quota: providerQuotaService,
       providerSettings: providerSettingsService,
-    }).catch((error: unknown) => {
-      logger.warn("[WorkspaceSidebarFooter] 已登录会话补开通 Nimbus 供应商失败", {
-        error: error instanceof Error ? error.message : String(error),
+    })
+      .then((result) =>
+        // 官方默认模型兜底：WelcomeScreen 登录已即时写过一次；账号弹窗等间接登录路径
+        // 只走到这里。幂等（已有默认不覆盖），失败只记日志。
+        ensureOfficialDefaultModel({
+          providerId: result.providerId,
+          modelSelection: modelSelectionService,
+          logger,
+        }),
+      )
+      .catch((error: unknown) => {
+        logger.warn("[WorkspaceSidebarFooter] 已登录会话补开通 Nimbus 供应商失败", {
+          error: error instanceof Error ? error.message : String(error),
+        });
       });
-    });
-  }, [nimbusLoggedIn, providerQuotaService, providerSettingsService]);
+  }, [nimbusLoggedIn, providerQuotaService, providerSettingsService, modelSelectionService]);
   // 启动自愈：确认未登录时清掉历史残留的 Nimbus 覆盖层（旧版本登出未清理的存量）。
   useEffect(() => {
     if (nimbusLoggedIn || nimbusAccount.status === null) return;

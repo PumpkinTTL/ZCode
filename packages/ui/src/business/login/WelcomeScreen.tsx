@@ -1,13 +1,21 @@
 /**
  * WelcomeScreen —— 首启登录入口（Polaris 自有业务）
  *
- * 只做一件事：登录我们自己的中转站账号（用户名/密码）→ 自动取 sk- 密钥 →
- * 自动建 Nimbus 供应商并置顶，登录即可用。
+ * 做三件事，同一张卡内切换（账密登录 / 注册 / 忘记密码）：
+ * - 登录我们自己的中转站账号（用户名/密码）→ 自动取 sk- 密钥 → 自动建 Nimbus
+ *   供应商并置顶，登录即可用；
+ * - 注册新账号（开关与邮箱必填组由 GET /register-status 服务端下发，不硬编码；
+ *   注册成功后端直接签发 JWT → 走与登录相同的开通流程）；
+ * - 忘记密码（邮箱收 6 位重置码 → 设置新密码，成功后回落登录 Tab）。
+ *
+ * 三个形态各自成文件（max-lines 约束）：注册 RegisterForm.tsx、忘记密码
+ * ForgotPasswordForm.tsx、共享部件 welcomeAuthShared.tsx。
  *
  * 第三方模型（自带 API Key）不在这里配置：那是「设置 → 模型提供商」的职责，
  * 首启登录页不掺第二套供应商接入通道，避免一屏里出现两条互相不认识的登录路径。
  */
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { QuotaRegisterStatus } from "@zcode/services";
 import {
   EyeIcon,
   EyeOffIcon,
@@ -23,16 +31,12 @@ import { PolarisLogo } from "@/business/brand/PolarisLogo.js";
 import { ThemeHeroVisual } from "@/openWorkspacePageThemeHero.js";
 import { useServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
-import { useZCodeStore } from "@/store/StoreProvider.js";
-import {
-  provisionNimbusProvider,
-  resolveFirstModelPreference,
-} from "@/business/quota/provisionNimbusProvider.js";
-import { notifyNimbusAccountChanged } from "@/business/quota/nimbusAccountState.js";
+import { LoginTextField, useNimbusLoginCompletion, type LoginCompleteReason } from "./welcomeAuthShared.js";
+import { RegisterForm } from "./RegisterForm.js";
+import { ForgotPasswordForm } from "./ForgotPasswordForm.js";
 import { Alert, AlertDescription } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
-import { Label } from "@/components/ui/label.js";
 
 interface WelcomeScreenProps {
   onComplete: (reason: LoginCompleteReason) => void | Promise<void>;
@@ -46,7 +50,10 @@ interface WelcomeScreenProps {
   onClose?: () => void;
 }
 
-export type LoginCompleteReason = "login";
+export type { LoginCompleteReason };
+
+/** 登录卡内的三个形态：账密登录（默认）/ 注册 / 忘记密码。 */
+type AuthMode = "login" | "register" | "forgot";
 
 export function WelcomeScreen({ onComplete, onClose }: WelcomeScreenProps) {
   const { intl } = useZCodeIntl();
@@ -74,7 +81,7 @@ export function WelcomeScreen({ onComplete, onClose }: WelcomeScreenProps) {
       <section className="relative z-10 my-auto w-full max-w-md rounded-xl border border-card-border bg-card p-8 shadow-md sm:p-10">
         <div className="flex flex-col gap-7">
           <LoginHeader />
-          <NimbusLoginCard onComplete={onComplete} />
+          <NimbusAuthCard onComplete={onComplete} />
         </div>
       </section>
     </main>
@@ -98,15 +105,86 @@ function LoginHeader() {
   );
 }
 
-/** 主路径也是唯一路径：Nimbus 账号登录（用户名/密码 → 自动开通供应商）。 */
-function NimbusLoginCard({
+/**
+ * 登录卡的形态路由：登录 / 注册 / 忘记密码三选一渲染。
+ * 注册开关在挂载时预检一次（公开端点，很轻）：关闭时隐藏登录页的注册入口；
+ * 预检失败按「未知」处理（入口照常显示，点进注册 Tab 时再预检兜底）。
+ */
+function NimbusAuthCard({
   onComplete,
 }: {
   onComplete: (reason: LoginCompleteReason) => void | Promise<void>;
 }) {
+  const { providerQuotaService } = useServices();
+  const [mode, setMode] = useState<AuthMode>("login");
+  /** null = 预检未完成/失败（未知）；只在服务端明确关闭时隐藏注册入口。 */
+  const [registerStatus, setRegisterStatus] = useState<QuotaRegisterStatus | null>(null);
+
+  // 注册 Tab 渲染前先预检开关（公开端点，无需登录）。失败静默：注册提交侧
+  // 还有后端硬闸兜底，预检只是让「已关闭」在填表前就可见。
+  useEffect(() => {
+    let cancelled = false;
+    providerQuotaService
+      .registerStatus()
+      .then((status) => {
+        if (!cancelled) setRegisterStatus(status);
+      })
+      .catch((error) => {
+        logger.warn("[WelcomeScreen] 注册开关预检失败，注册入口按未知处理", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [providerQuotaService]);
+
+  // 进入注册 Tab 时重预检一次（拿最新的 email_required；开关也以最新值为准）。
+  const handleEnterRegister = useCallback(async () => {
+    setMode("register");
+    try {
+      setRegisterStatus(await providerQuotaService.registerStatus());
+    } catch {
+      // 保持旧值/未知：提交时后端硬闸兜底。
+    }
+  }, [providerQuotaService]);
+
+  const registrationClosed = registerStatus !== null && !registerStatus.registerEnabled;
+
+  return mode === "register" ? (
+    <RegisterForm
+      emailRequired={registerStatus?.emailRequired ?? false}
+      registrationClosed={registrationClosed}
+      onBackToLogin={() => setMode("login")}
+      onComplete={onComplete}
+    />
+  ) : mode === "forgot" ? (
+    <ForgotPasswordForm onBackToLogin={() => setMode("login")} />
+  ) : (
+    <LoginForm
+      onComplete={onComplete}
+      showRegisterEntry={!registrationClosed}
+      onEnterRegister={() => void handleEnterRegister()}
+      onEnterForgot={() => setMode("forgot")}
+    />
+  );
+}
+
+/** 主路径：Nimbus 账号登录（用户名/密码 → 自动开通供应商），附注册/忘记密码入口。 */
+function LoginForm({
+  onComplete,
+  showRegisterEntry,
+  onEnterRegister,
+  onEnterForgot,
+}: {
+  onComplete: (reason: LoginCompleteReason) => void | Promise<void>;
+  showRegisterEntry: boolean;
+  onEnterRegister: () => void;
+  onEnterForgot: () => void;
+}) {
   const { intl } = useZCodeIntl();
-  const { providerQuotaService, providerSettingsService, modelSelectionService } = useServices();
-  const markApiKeyLoginSuccess = useZCodeStore((state) => state.markApiKeyLoginSuccess);
+  const completeLogin = useNimbusLoginCompletion(onComplete);
+  const { providerQuotaService } = useServices();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -120,56 +198,14 @@ function NimbusLoginCard({
     setError(null);
     try {
       const status = await providerQuotaService.login({ username, password });
-      if (!status.loggedIn) {
-        setError(intl.formatMessage({ id: "business.quota.summaryLoggedOut" }));
-        return;
-      }
-
-      // 广播登录成功：主界面各面（侧边栏底部 / 设置页「我的额度」）共用同一份快照，
-      // 进入主界面立即可见已登录，不用等下一个获焦/重校验事件。
-      notifyNimbusAccountChanged(status);
-
-      // 登录成功 → 自动开通：复用账号已有的调用密钥 → 建/更新 Nimbus 供应商 → 置顶。
-      // 开通是登录后的独立步骤，**不能反过来卡住登录**：凭据此时已经存好了，用户已经是
-      // 登录态。过去这里开通失败就 return，把用户永久按在登录页上（没有关闭入口时更是
-      // 无法退出），这才是「登录不了」的直接原因。失败只记日志，登录照常收尾。
-      let providerId: string | null = null;
-      try {
-        providerId = (
-          await provisionNimbusProvider({
-            quota: providerQuotaService,
-            providerSettings: providerSettingsService,
-          })
-        ).providerId;
-      } catch (provisionError) {
-        logger.warn("[WelcomeScreen] 登录成功但供应商开通失败", {
-          error: provisionError instanceof Error ? provisionError.message : String(provisionError),
-        });
-      }
-
-      // 收尾：把新供应商的第一个模型设为偏好，进入主界面。
-      if (providerId) {
-        markApiKeyLoginSuccess(
-          resolveFirstModelPreference(await modelSelectionService.getView(), providerId),
-        );
-      }
-      await onComplete("login");
+      await completeLogin(status);
     } catch (loginError) {
       // QuotaApiError 的 detail 是服务端中文文案（含限流提示），直接展示。
       setError(loginError instanceof Error ? loginError.message : String(loginError));
     } finally {
       setBusy(false);
     }
-  }, [
-    username,
-    password,
-    providerQuotaService,
-    providerSettingsService,
-    modelSelectionService,
-    markApiKeyLoginSuccess,
-    onComplete,
-    intl,
-  ]);
+  }, [username, password, providerQuotaService, completeLogin]);
 
   return (
     <form
@@ -255,42 +291,34 @@ function NimbusLoginCard({
           {busy ? <Loader2Icon className="size-4 animate-spin" /> : null}
           {intl.formatMessage({ id: "business.quota.login" })}
         </Button>
+        <div className="flex items-center justify-between text-ui-sm">
+          {showRegisterEntry ? (
+            <button
+              type="button"
+              className="rounded-md text-foreground-subtle outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
+              disabled={busy}
+              onClick={onEnterRegister}
+            >
+              {intl.formatMessage({ id: "login.registerEntry" })}
+            </button>
+          ) : (
+            <span />
+          )}
+          <button
+            type="button"
+            className="rounded-md text-foreground-subtle outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
+            disabled={busy}
+            onClick={onEnterForgot}
+          >
+            {intl.formatMessage({ id: "login.forgotEntry" })}
+          </button>
+        </div>
         <p className="flex items-start justify-center gap-1.5 text-center text-ui-sm text-foreground-subtlest">
           <SettingsIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
           {intl.formatMessage({ id: "login.providerHint" })}
         </p>
       </div>
     </form>
-  );
-}
-
-/** 表单字段壳：标签 + 左侧图标槽 + 可选的尾部操作（如密码显隐）。 */
-function LoginTextField({
-  id,
-  label,
-  icon,
-  trailing,
-  children,
-}: {
-  id: string;
-  label: string;
-  icon: ReactNode;
-  trailing?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id} className="text-ui-sm text-foreground-subtle">
-        {label}
-      </Label>
-      <div className="relative">
-        <span className="pointer-events-none absolute left-3.5 top-1/2 flex -translate-y-1/2 text-foreground-subtlest">
-          {icon}
-        </span>
-        {children}
-        {trailing}
-      </div>
-    </div>
   );
 }
 

@@ -1,3 +1,5 @@
+import { resolveZCodeRuntimeEnv } from "./runtimeEnv.js";
+
 export interface DefaultPluginMarketplace {
   id: string;
   source: string;
@@ -9,7 +11,7 @@ export interface DefaultPluginMarketplace {
 
 export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "polaris-plugins-official";
 
-/** Polaris 自有官方目录地址（默认优先镜像）。 */
+/** Polaris 自有官方目录静态地址（静态清单镜像，排在自有后端动态端点之后）。 */
 export const POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL =
   "https://polaris.bitlesu.com/plugins/marketplace.json";
 
@@ -18,44 +20,55 @@ export const POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_DESCRIPTION =
   "Polaris plugins marketplace: built-in and community plugins for Polaris.";
 
 /**
- * Z.ai 官方目录原站（同一份官方清单的历史镜像；其 manifest 至今声明历史名
- * `zcode-plugins-official`）。
- *
- * 该历史名与现行官方保留 id 并列受守卫：**不能**作为普通用户源添加（会被保留 id 守卫拒绝），
- * 只能作为官方目录的镜像；镜像路径会把它归一化为本地官方 id。静态 URL 仅作源标识。
+ * cbcn-cloud 自有市场的公开端点（生产默认第一优先；与额度服务同域 nimbus）。
+ * 由后端代理 `GET /api/v1/public/plugin-marketplace.json` 提供，返回与静态清单
+ * 同构的 marketplace manifest。
  */
-export const ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL =
-  "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json";
+export const NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL =
+  "https://nimbus.bitlesu.com/api/v1/public/plugin-marketplace.json";
 
 /**
- * 官方目录（`polaris-plugins-official`）的镜像源，按优先级排序：靠前的先试，失败才降级到下一个。
- *
- * 默认：Polaris 自有地址优先，Z.ai 原站作兼容镜像。用户可用
- * {@link PLUGIN_MARKETPLACE_MIRRORS_ENV} 完全覆盖顺序（例如把 Z.ai 提到最前）。
+ * 开发（未打包）联调的本地 cbcn-cloud 市场端点：与额度 base 的 dev 口径一致
+ * （ZCODE_RUNTIME_ENV=development → 127.0.0.1:8000，打包生产永不命中本地）。
+ */
+export const DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL =
+  "http://127.0.0.1:8000/api/v1/public/plugin-marketplace.json";
+
+/**
+ * 官方目录（`polaris-plugins-official`）的镜像源（生产默认顺序），按优先级排序：
+ * 靠前的先试，失败才降级到下一个。实际取用请走
+ * {@link resolveOfficialPluginMarketplaceMirrors}（它会按运行环境替换第一优先，
+ * 并支持 {@link PLUGIN_MARKETPLACE_MIRRORS_ENV} 完全覆盖）。
  */
 export const OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS: readonly string[] = [
+  NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
   POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
-  ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
 ];
 
 /**
  * 覆盖官方目录镜像顺序的环境变量（逗号或换行分隔，靠前的优先）。
  *
- * 例：`POLARIS_PLUGIN_MARKETPLACE_MIRRORS=https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json`
- * 只保留 Z.ai 原站；或写一个自建镜像让它排最前。
+ * 例：`POLARIS_PLUGIN_MARKETPLACE_MIRRORS=https://nimbus.bitlesu.com/api/v1/public/plugin-marketplace.json`
+ * 只保留自有源；或写一个自建镜像让它排最前。
  */
 export const PLUGIN_MARKETPLACE_MIRRORS_ENV = "POLARIS_PLUGIN_MARKETPLACE_MIRRORS";
 
 /**
  * 解析官方目录镜像源顺序。环境变量非空时完全覆盖内置默认（顺序即优先级）；
- * 未配置时回到 {@link OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS}。
+ * 未配置时回到内置默认链，并按运行环境替换第一优先：未打包开发实例
+ * （ZCODE_RUNTIME_ENV=development，desktop main 注入口径与 resolveQuotaBaseUrl 一致）
+ * 回落本地 cbcn-cloud，其余（打包生产 / CLI / 浏览器）用静态默认链。
  */
 export function resolveOfficialPluginMarketplaceMirrors(env?: NodeJS.ProcessEnv): string[] {
   const resolvedEnv = env ?? (typeof process === "undefined" ? undefined : process.env);
   const overridden = parsePluginMarketplaceSourceList(
     resolvedEnv?.[PLUGIN_MARKETPLACE_MIRRORS_ENV],
   );
-  return overridden.length > 0 ? overridden : [...OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS];
+  if (overridden.length > 0) return overridden;
+  const runtimeEnv = resolvedEnv ? resolveZCodeRuntimeEnv(resolvedEnv) : "production";
+  return runtimeEnv === "development"
+    ? [DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL, POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL]
+    : [...OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS];
 }
 
 /** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */

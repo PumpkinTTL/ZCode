@@ -11,10 +11,11 @@
  */
 import type {
   IProviderSettingsService,
+  ModelSelection,
   ModelSelectionView,
   ProviderSettingsProviderView,
 } from "@zcode/services";
-import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import { completeNewModelSelection } from "@zcode/provider";
 import {
   NIMBUS_PROVIDER_LABEL,
   NIMBUS_TEMPLATE_ID,
@@ -194,16 +195,52 @@ export async function clearNimbusProviderAccess(deps: {
 }
 
 /**
- * 登录收尾用的默认模型偏好：取该供应商的第一个模型。
- * 供应商刚建好、用户还没选过模型，这是唯一无歧义的选择。
+ * 官方默认模型偏好：官方组里优先 DeepSeek（modelId 大小写不敏感匹配），否则第一个模型。
+ * 返回完整 ModelSelection（含最高推理档位，与全新草稿初始化同一构造规则）。
  */
-export function resolveFirstModelPreference(
+export function resolveOfficialModelPreference(
   view: ModelSelectionView,
   providerId: string,
-): string | null {
-  const firstModel = view.providers.find((provider) => provider.providerId === providerId)
-    ?.models[0]?.modelId;
-  return firstModel ? encodeCustomModelValue(providerId, firstModel) : null;
+): ModelSelection | null {
+  const models = view.providers.find((provider) => provider.providerId === providerId)?.models ?? [];
+  const chosen =
+    models.find((model) => /deepseek/i.test(model.modelId)) ?? (models.length > 0 ? models[0] : undefined);
+  if (!chosen) return null;
+  return completeNewModelSelection(view, { providerId, modelId: chosen.modelId }) ?? null;
+}
+
+/**
+ * 登录收尾：用户没有任何默认模型时，把官方偏好写入 configuredDefault。
+ *
+ * 覆盖判定用「已配置默认」而非「历史选过」：configuredDefault 是所有默认解析
+ * （草稿初始化/会话兜底）的唯一汇聚点，且解析层永远不会拿它覆盖草稿或最近提交
+ * 里的显式选择——写了也只会在「用户确实没选」的位置生效。
+ * 已有默认（含上次登录写入、用户手改配置文件）不覆盖。
+ * 返回最终生效的偏好（已存在时返回原值），供登录 UI 继续喂 store 记录。
+ */
+export async function ensureOfficialDefaultModel(deps: {
+  readonly providerId: string;
+  readonly modelSelection: {
+    getView(): Promise<ModelSelectionView>;
+    getConfiguredDefault(): Promise<ModelSelection | undefined>;
+    saveConfiguredDefault(selection: ModelSelection | undefined): Promise<void>;
+  };
+  readonly logger?: { warn: (...args: unknown[]) => void };
+}): Promise<ModelSelection | null> {
+  try {
+    const existing = await deps.modelSelection.getConfiguredDefault();
+    if (existing) return existing;
+    const preference = resolveOfficialModelPreference(
+      await deps.modelSelection.getView(),
+      deps.providerId,
+    );
+    if (preference) await deps.modelSelection.saveConfiguredDefault(preference);
+    return preference;
+  } catch (error) {
+    // 偏好写入是增强项：失败不阻断登录收尾（registry-fallback 兜底仍是官方第一个模型）。
+    deps.logger?.warn("[nimbus] 官方默认模型写入失败", error);
+    return null;
+  }
 }
 
 /** 把 Nimbus 排到个人供应商第一位（其余保持原有相对顺序）。 */

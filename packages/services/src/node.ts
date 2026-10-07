@@ -307,7 +307,11 @@ import { IHooksService } from "./hooks/hooks.js";
 import { IMemoryService } from "./memory/memory.js";
 import { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 import { IFeedbackService } from "./feedback/feedback.js";
-import { createQuotaService, IProviderQuotaService } from "./business/index.js";
+import {
+  createQuotaService,
+  IProviderQuotaService,
+  resolveQuotaBaseUrl,
+} from "./business/index.js";
 // App 更新检查 / 更新日志 / 在线心跳（cbcn-cloud app_release.py 契约）：与额度服务
 // 同源 base、共用设备身份；实现本身浏览器安全，经 business/index 转出。
 import {
@@ -507,7 +511,6 @@ import {
   zcodeProviderAccountAccessSchema,
   ZCODE_VERSION,
   ZCODE_ENV,
-  buildRuntimeZCodeApiUrl,
 } from "@zcode/shared";
 
 // 这些 conversation-share 实现依赖 Node 文件系统；仅通过 @zcode/services/node 暴露，
@@ -2345,7 +2348,10 @@ export function createLocalServices(options: {
     // 分享运行时始终走真实 API；测试/Mock 场景应在 service 单测或 Web fixture 中显式注入，
     // 不能让开发环境默认生成仅存在于进程内存的 mock-share 链接。
     apiClient,
-    baseUrl: buildRuntimeZCodeApiUrl(process.env, "/api/v1"),
+    // 与额度/App 更新服务同源（quotaService.resolveQuotaBaseUrl：QUOTA_BASE_URL 覆盖 >
+    // 未打包(development) 本地 127.0.0.1:8000 > 打包域名）——分享发布/读取是 cbcn-cloud
+    // 的端点，不跟随官网 endpoint origin（polaris 静态站没有服务）。
+    baseUrl: `${resolveQuotaBaseUrl()}/api/v1`,
     tokenProvider: async (): Promise<string | null> => {
       const activeProvider = await oauthCredentialRepo.getActiveProvider();
       if (!activeProvider) {
@@ -2413,10 +2419,13 @@ export function createLocalServices(options: {
     .register(ICodingPlanSubscriptionService, codingPlanSubscriptionService)
     .register(
       IClientConfigService,
+      // 公开客户端配置（/api/v1/client/configs）与额度服务同源
+      // （quotaService.resolveQuotaBaseUrl）：配置端点在 cbcn-cloud 上，
+      // 不跟随官网 endpoint origin（polaris 静态站没有该服务）。
       createClientConfigService({
         apiClient,
         resolveRequestContext: async () => ({
-          endpointOrigin: await resolveCurrentZCodeEndpointOrigin(),
+          endpointOrigin: resolveQuotaBaseUrl(),
           appVersion: ZCODE_VERSION,
           platform: `${process.platform}-${process.arch}`,
         }),

@@ -30,6 +30,11 @@ import {
   type QuotaLoginParams,
 } from "./quota.js";
 import type {
+  QuotaPasswordResetParams,
+  QuotaRechargeOrderCreated,
+  QuotaRechargeOrderStatus,
+  QuotaRegisterParams,
+  QuotaRegisterStatus,
   QuotaResetCard,
   QuotaStatus,
   QuotaStatusResult,
@@ -321,6 +326,46 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
     throw new QuotaApiError(409, "Nimbus 设备密钥认领冲突，请重新登录重试");
   }
 
+  /**
+   * 换到 token 后的公共收尾（login / register 共用）：落凭证 + 拉一次全量额度。
+   * 登录/注册成功但额度接口失败时不回滚凭证（用户已是登录态），先返回降级的
+   * 已登录态让 UI 走重试；401 才清凭证回落未登录。
+   */
+  async function saveSessionAndFetchStatus(
+    token: string,
+    username: string,
+  ): Promise<QuotaStatusResult> {
+    await credentialService.save(QUOTA_TOKEN_CREDENTIAL_KEY, token);
+    await credentialService.save(QUOTA_USERNAME_CREDENTIAL_KEY, username);
+    try {
+      return await fetchStatus(token);
+    } catch (error) {
+      if (isTokenInvalid(error)) {
+        await clearCredentials();
+        return { loggedIn: false };
+      }
+      options.logger?.warn("[quota] 登录/注册成功但拉取额度失败", error);
+      return {
+        loggedIn: true,
+        account: {
+          username,
+          emailMasked: null,
+          wallet: {
+            available: 0,
+            balance: 0,
+            creditsPerYuan: 0,
+            todaySpend: 0,
+            monthSpend: 0,
+            lowBalance: false,
+            rechargeEnabled: true,
+          },
+        },
+        subscriptions: [],
+        quota: { kind: "wallet", left: 0, total: null, notActivated: false },
+      };
+    }
+  }
+
   return {
     async getStatus(): Promise<QuotaStatusResult> {
       const token = await readToken();
@@ -338,36 +383,46 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
 
     async login(params: QuotaLoginParams): Promise<QuotaStatusResult> {
       const { token } = await client.login(params.username, params.password);
-      await credentialService.save(QUOTA_TOKEN_CREDENTIAL_KEY, token);
-      await credentialService.save(QUOTA_USERNAME_CREDENTIAL_KEY, params.username);
-      try {
-        return await fetchStatus(token);
-      } catch (error) {
-        // 登录成功但额度接口失败：凭证已存，先返回已登录态，让 UI 走重试。
-        if (isTokenInvalid(error)) {
-          await clearCredentials();
-          return { loggedIn: false };
-        }
-        options.logger?.warn("[quota] login 成功但拉取额度失败", error);
-        return {
-          loggedIn: true,
-          account: {
-            username: params.username,
-            emailMasked: null,
-            wallet: {
-              available: 0,
-              balance: 0,
-              creditsPerYuan: 0,
-              todaySpend: 0,
-              monthSpend: 0,
-              lowBalance: false,
-              rechargeEnabled: true,
-            },
-          },
-          subscriptions: [],
-          quota: { kind: "wallet", left: 0, total: null, notActivated: false },
-        };
-      }
+      return saveSessionAndFetchStatus(token, params.username);
+    },
+
+    async register(params: QuotaRegisterParams): Promise<QuotaStatusResult> {
+      // 后端注册成功即签发 JWT（注册即登录），落凭证后走与 login 相同的收尾。
+      const { token } = await client.register(params);
+      return saveSessionAndFetchStatus(token, params.username.trim());
+    },
+
+    async registerStatus(signal?: AbortSignal): Promise<QuotaRegisterStatus> {
+      return client.registerStatus(signal);
+    },
+
+    async sendRegisterCode(email: string, signal?: AbortSignal): Promise<string> {
+      return client.sendRegisterCode(email, signal);
+    },
+
+    async forgotPassword(email: string, signal?: AbortSignal): Promise<string> {
+      return client.forgotPassword(email, signal);
+    },
+
+    async resetPassword(params: QuotaPasswordResetParams): Promise<void> {
+      await client.resetPassword(params);
+    },
+
+    async createRechargeOrder(amount: number): Promise<QuotaRechargeOrderCreated> {
+      // 金额硬限（10-2000 元）在后端 RechargeIn 校验，超限 detail 可直接展示；
+      // 服务层透传不重复钳位，避免与后端口径漂移。
+      const token = await requireToken();
+      return client.createRechargeOrder(token, { amount });
+    },
+
+    async getRechargeOrder(orderNo: string): Promise<QuotaRechargeOrderStatus> {
+      const token = await requireToken();
+      return client.getRechargeOrder(token, orderNo);
+    },
+
+    async cancelRechargeOrder(orderNo: string): Promise<void> {
+      const token = await requireToken();
+      await client.cancelRechargeOrder(token, orderNo);
     },
 
     async logout(): Promise<void> {

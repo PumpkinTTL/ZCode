@@ -22,6 +22,7 @@ import { createServiceLogger } from "../logger/serviceLogger.js";
 
 export type {
   ProviderSettingsProviderView,
+  ModelSelection,
   ModelSelectionView,
   ModelSelectionViewInput,
   ProviderSettingsView,
@@ -95,11 +96,19 @@ export type ProviderSettingsConnectivityTester = (
 export interface IModelSelectionService {
   readonly onDidChange: Event<ModelSelectionView>;
   getView(input?: ModelSelectionViewInput): Promise<ModelSelectionView>;
+  /** 读用户已配置的默认模型（Personal 配置 defaultModelSelection 字段；未配置为 undefined）。 */
+  getConfiguredDefault(): Promise<ModelSelection | undefined>;
+  /**
+   * 写默认模型偏好。只在用户没有任何默认选择时由登录收尾写入（官方模型引导）；
+   * 它不会覆盖草稿/最近提交里的显式选择——解析层只在「全新草稿且无 recent」时消费它。
+   */
+  saveConfiguredDefault(selection: ModelSelection | undefined): Promise<void>;
 }
 
 export interface ModelSelectionConfiguredDefaultSource {
   read(): Promise<ModelSelection | undefined>;
   onDidChange?(listener: () => void): () => void;
+  saveConfiguredDefault?(selection: ModelSelection | undefined): Promise<unknown>;
 }
 
 export const IModelSelectionService = createServiceDescriptor<IModelSelectionService>(
@@ -253,6 +262,18 @@ export function createModelSelectionService(
       return { dispose: () => listeners.delete(listener) };
     },
     getView,
+    getConfiguredDefault: async () => {
+      await ensureReady();
+      if (disposed) throw new Error("ModelSelectionService 已 dispose");
+      return configuredDefaultSource?.read();
+    },
+    saveConfiguredDefault: async (selection) => {
+      await ensureReady();
+      if (disposed) throw new Error("ModelSelectionService 已 dispose");
+      // Source 未提供写入能力（如测试桩）时静默降级：偏好写入是增强项，不构成硬依赖。
+      if (!configuredDefaultSource?.saveConfiguredDefault) return;
+      await configuredDefaultSource.saveConfiguredDefault(selection);
+    },
     dispose() {
       if (disposed) return;
       disposed = true;

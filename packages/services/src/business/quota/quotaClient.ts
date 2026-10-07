@@ -21,6 +21,15 @@ const KEYS_PATH = "/api/v1/user/keys";
 const RESET_CARDS_PATH = "/api/v1/user/reset-cards";
 const DEVICES_REGISTER_PATH = "/api/v1/user/devices/register";
 const MODELS_PATH = "/v1/models";
+// 注册 / 忘记密码（公开端点，未登录可用；契约见 cbcn-cloud app/api/v1/user.py、passwd.py）
+const REGISTER_STATUS_PATH = "/api/v1/user/register-status";
+const REGISTER_PATH = "/api/v1/user/register";
+const REGISTER_SEND_CODE_PATH = "/api/v1/user/register/send-code";
+const PASSWORD_FORGOT_PATH = "/api/v1/user/password/forgot";
+const PASSWORD_RESET_PATH = "/api/v1/user/password/reset";
+// 充值（JWT 鉴权；契约见 cbcn-cloud app/api/v1/alipay.py）
+const RECHARGE_PATH = "/api/v1/alipay/recharge";
+const ALIPAY_ORDERS_PATH = "/api/v1/alipay/orders";
 
 /**
  * 一次待签名请求的描述（设备身份模块的 Ed25519 签名契约配套；签名串只取
@@ -421,6 +430,176 @@ export class QuotaApiClient {
     const body = (await parseJson(response)) as { items?: unknown } | null;
     return Array.isArray(body?.items) ? (body.items as Array<Record<string, unknown>>) : [];
   }
+
+  // ============ 注册 / 忘记密码（公开端点，未登录可用；契约 cbcn-cloud user.py / passwd.py） ============
+
+  /**
+   * 注册开关预检（GET /api/v1/user/register-status，公开端点）。
+   * 登录页据此决定是否渲染注册入口、注册表单是否带「邮箱 + 验证码」必填组——
+   * 开关由服务端下发，前端不硬编码。
+   */
+  async registerStatus(signal?: AbortSignal): Promise<QuotaRegisterStatus> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${REGISTER_STATUS_PATH}`, { signal });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as Record<string, unknown> | null;
+    return {
+      // 开关键缺失按开放兜底（与后端 is_feature_enabled 缺行默认 True 同口径）；
+      // 真正的硬闸在 POST /register，预检只是体验层。
+      registerEnabled: body?.register_enabled !== false,
+      emailRequired: body?.email_required === true,
+    };
+  }
+
+  /**
+   * 注册（POST /api/v1/user/register，公开端点）。后端注册成功即签发 JWT
+   * （响应 { token, id, role, username }），无需再走一次登录；失败抛
+   * QuotaApiError（detail 为可直接展示的中文：用户名/密码校验、邮箱占用、限流等）。
+   */
+  async register(input: QuotaRegisterParams, signal?: AbortSignal): Promise<{ token: string }> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${REGISTER_PATH}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: input.username,
+        password: input.password,
+        // 后端对空值容忍（invite_code 无效静默忽略；开关关闭时 email 一律忽略），
+        // 空串归一为 undefined，避免把「填了空白」当成「填了值」。
+        invite_code: input.inviteCode?.trim() || undefined,
+        email: input.email?.trim() || undefined,
+        email_code: input.emailCode?.trim() || undefined,
+      }),
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as { token?: unknown } | null;
+    const token = typeof body?.token === "string" ? body.token : "";
+    if (!token) throw new QuotaApiError(response.status, "注册响应缺少 token");
+    return { token };
+  }
+
+  /** 注册邮箱验证码（POST /api/v1/user/register/send-code，公开端点）。返回服务端提示文案。 */
+  async sendRegisterCode(email: string, signal?: AbortSignal): Promise<string> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${REGISTER_SEND_CODE_PATH}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as { message?: unknown } | null;
+    return readString(body?.message);
+  }
+
+  /**
+   * 申请密码重置（POST /api/v1/user/password/forgot，公开端点）。
+   * 后端防枚举：无论邮箱是否存在一律 200 同一句文案，message 可直接展示。
+   */
+  async forgotPassword(email: string, signal?: AbortSignal): Promise<string> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${PASSWORD_FORGOT_PATH}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as { message?: unknown } | null;
+    return readString(body?.message);
+  }
+
+  /** 重置密码（POST /api/v1/user/password/reset，公开端点）。失败抛 detail（码错/锁定/弱口令）。 */
+  async resetPassword(input: QuotaPasswordResetParams, signal?: AbortSignal): Promise<void> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${PASSWORD_RESET_PATH}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: input.email.trim(),
+        code: input.code.trim(),
+        new_password: input.newPassword,
+      }),
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+  }
+
+  // ============ 充值（JWT 鉴权；契约 cbcn-cloud alipay.py） ============
+
+  /**
+   * 创建充值订单（POST /api/v1/alipay/recharge）。金额单位为元，后端硬限 10-2000；
+   * 返回支付宝当面付二维码 URL（qr_code）——桌面端用系统外链打开即可唤起支付宝。
+   * 失败抛 QuotaApiError（403=充值已关闭 / 429=下单限流 / 502=支付宝下单失败）。
+   */
+  async createRechargeOrder(
+    token: string,
+    input: { amount: number; discountCode?: string },
+    signal?: AbortSignal,
+  ): Promise<QuotaRechargeOrderCreated> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${RECHARGE_PATH}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: input.amount,
+        ...(input.discountCode && input.discountCode.trim()
+          ? { discount_code: input.discountCode.trim() }
+          : {}),
+      }),
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as Record<string, unknown> | null;
+    const orderNo = readString(body?.order_no);
+    const qrCode = readString(body?.qr_code);
+    if (!orderNo || !qrCode) {
+      throw new QuotaApiError(response.status, "充值下单响应缺少订单号或支付码");
+    }
+    return {
+      orderNo,
+      qrCode,
+      amount: readNumberOr(body?.amount, input.amount),
+      payAmount: readNumberOr(body?.pay_amount, input.amount),
+      credits: readNumberOr(body?.credits, 0),
+      creditsPerYuan: readNumberOr(body?.credits_per_yuan, 0),
+    };
+  }
+
+  /**
+   * 查询充值订单状态（GET /api/v1/alipay/orders/{order_no}）。pending 单后端会
+   * 主动查支付宝并对超 15 分钟的单终态化；status ∈ pending | paid | closed。
+   * 后端对同一订单有 3 秒节流（60 次/分上限），前端轮询间隔取 3 秒正好贴住节流窗口。
+   */
+  async getRechargeOrder(
+    token: string,
+    orderNo: string,
+    signal?: AbortSignal,
+  ): Promise<QuotaRechargeOrderStatus> {
+    const pathWithQuery = `${ALIPAY_ORDERS_PATH}/${encodeURIComponent(orderNo)}`;
+    const response = await this.#fetchImpl(`${this.#baseUrl}${pathWithQuery}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as Record<string, unknown> | null;
+    return {
+      status: readString(body?.status) || "pending",
+      payAmount: readNumberOr(body?.pay_amount, 0),
+      credits: readNumberOr(body?.credits, 0),
+      payUrl: readString(body?.pay_url) || null,
+      paidAt: normalizeEpochMs(readNumber(body?.paid_at) ?? 0),
+    };
+  }
+
+  /**
+   * 取消待支付订单（POST /api/v1/alipay/orders/{order_no}/cancel）。
+   * 后端先关支付宝交易再关本地单；非 pending 单 400（状态不允许取消）。
+   */
+  async cancelRechargeOrder(token: string, orderNo: string, signal?: AbortSignal): Promise<void> {
+    const pathWithQuery = `${ALIPAY_ORDERS_PATH}/${encodeURIComponent(orderNo)}/cancel`;
+    const response = await this.#fetchImpl(`${this.#baseUrl}${pathWithQuery}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+  }
 }
 
 // ============ 响应 → 领域类型的投影（容错读法，字段名是当前供应商的口径） ============
@@ -463,7 +642,15 @@ function normalizeEpochMs(seconds: number): number {
  * 投影单个订阅（原始字段名为当前供应商口径）。
  * credits 与 per_call 两种计费模式的字段互斥，按 billing_mode 分支。
  */
-import type { QuotaResetCard, QuotaSubscription } from "./quotaTypes.js";
+import type {
+  QuotaPasswordResetParams,
+  QuotaRechargeOrderCreated,
+  QuotaRechargeOrderStatus,
+  QuotaRegisterParams,
+  QuotaRegisterStatus,
+  QuotaResetCard,
+  QuotaSubscription,
+} from "./quotaTypes.js";
 export function projectSubscription(raw: Record<string, unknown>):
   | QuotaSubscription
   | null

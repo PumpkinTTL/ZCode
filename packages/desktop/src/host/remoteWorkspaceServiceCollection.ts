@@ -36,6 +36,7 @@ import {
   ISettingsSyncService,
   IPromptAttachmentTransferService,
   type IServiceAccessor,
+  resolveQuotaBaseUrl,
 } from "@zcode/services";
 import {
   ConversationShareHttpClient,
@@ -60,9 +61,7 @@ import {
   createRemoteConversationShareArtifactSource,
 } from "@zcode/services/node";
 import {
-  buildRuntimeZCodeApiUrl,
   DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
-  type ProviderFamilyDomain,
   type ZCodeSessionRuntimePreferencesResult,
 } from "@zcode/shared";
 import { assertLegacyRemoteWorkspaceRpcContract } from "./legacyRemoteWorkspaceRpcContract.js";
@@ -114,7 +113,9 @@ export function createRemoteWorkspaceServiceCollection(params: {
   const conversationShareClient = new ConversationShareHttpClient({
     // 远端 workspace 的分享也必须使用真实 API；本地 Mock 仅用于单测，不生成无法跨进程访问的链接。
     apiClient: localApiClient,
-    baseUrl: buildRuntimeZCodeApiUrl(process.env, "/api/v1"),
+    // 与本地装配同源（quotaService.resolveQuotaBaseUrl）——分享端点在 cbcn-cloud 上，
+    // 不跟随官网 endpoint origin（polaris 静态站没有服务）。
+    baseUrl: `${resolveQuotaBaseUrl()}/api/v1`,
     tokenProvider: async () =>
       (await localCredentialService.load(ZCODE_JWT_TOKEN_KEY))?.trim() || null,
   });

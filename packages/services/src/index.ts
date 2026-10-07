@@ -4,6 +4,7 @@ export { ServiceCollection } from "./collection.js";
 export {
   IModelSelectionService,
   IProviderSettingsService,
+  type ModelSelection,
   type ModelSelectionView,
   type ModelSelectionViewInput,
   type ProviderSettingsProviderView,
@@ -294,8 +295,19 @@ export type {
   QuotaViewKind,
   QuotaUsageDay,
   QuotaResetCard,
+  QuotaRegisterStatus,
+  QuotaRegisterParams,
+  QuotaPasswordResetParams,
+  QuotaRechargeOrderCreated,
+  QuotaRechargeOrderStatus,
 } from "./business/index.js";
-export { createQuotaService, DEFAULT_QUOTA_BASE_URL } from "./business/index.js";
+// resolveQuotaBaseUrl：cbcn-cloud 同源 base 的唯一解析出口（quota/app-update/反馈/
+// 分享/闲时/客户端配置共用）；desktop host 的远端 workspace 分享装配也经这里取。
+export {
+  createQuotaService,
+  DEFAULT_QUOTA_BASE_URL,
+  resolveQuotaBaseUrl,
+} from "./business/index.js";
 export { QuotaApiError } from "./business/index.js";
 // App 更新检查 / 更新日志 / 在线心跳（cbcn-cloud app_release.py 契约）。
 export { IAppUpdateService, APP_UPDATE_CLIENT_ID, APP_UPDATE_CHANNEL } from "./business/index.js";

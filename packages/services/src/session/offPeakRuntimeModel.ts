@@ -3,12 +3,12 @@
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
   resolveOffPeakProviderId,
-  buildRuntimeZCodeApiUrl,
   type OffPeakCodingPlanKind,
   type OffPeakCodingPlanSupport,
   type OffPeakCodingPlanUnsupportedReason,
   type ZCodeAccountAccess,
 } from "@zcode/shared";
+import { resolveQuotaBaseUrl } from "../business/quota/quotaService.js";
 import { isOffPeakMockEnabled, startOffPeakMockGateway } from "./offPeakMockGateway.js";
 import type { ServiceLogger } from "../logger/serviceLogger.js";
 import { AccountRequestCredentialUnavailableError } from "../model-provider/accountRequestAuthService.js";
@@ -329,7 +329,10 @@ export function createOffPeakOriginResolver(deps: {
       if (!originPromise) {
         originPromise = (async () => {
           if (!isOffPeakMockEnabled(env)) {
-            return new URL(buildRuntimeZCodeApiUrl(env, "/")).origin;
+            // 与额度/App 更新服务同源（quotaService.resolveQuotaBaseUrl：QUOTA_BASE_URL
+            // 覆盖 > 未打包(development) 本地 127.0.0.1:8000 > 打包域名）——闲时网关
+            // 调度端点在 cbcn-cloud 上，不跟随官网 endpoint origin。
+            return resolveQuotaBaseUrl({ env });
           }
           const gateway = await startOffPeakMockGateway({
             logger: deps.logger,

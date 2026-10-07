@@ -9,8 +9,9 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QuotaStatusResult, QuotaUsageDay } from "@zcode/services";
-import { Loader2, LogOut, RefreshCw } from "lucide-react";
+import { Loader2, LogOut, Plus, RefreshCw } from "lucide-react";
 import { NimbusQuotaUsageChart, summarizeQuotaUsage } from "./NimbusQuotaUsageChart.js";
+import { NimbusRechargeDialog } from "./NimbusRechargeDialog.js";
 import { formatQuotaPlanName, percentOf } from "./quotaFormat.js";
 import { Alert, AlertDescription } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
@@ -40,6 +41,7 @@ export function NimbusQuotaOverview({
   const { providerQuotaService } = useServices();
   const [usage, setUsage] = useState<readonly QuotaUsageDay[] | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
+  const [rechargeOpen, setRechargeOpen] = useState(false);
 
   const loadUsage = useCallback(async () => {
     setUsageError(null);
@@ -160,6 +162,19 @@ export function NimbusQuotaOverview({
               ) : (
                 <span className="text-ui-sm text-foreground-subtle">钱包余额</span>
               )}
+              {/* 充值入口：总开关由后端 /user/me 下发（recharge_enabled），关闭时不渲染。 */}
+              {wallet.rechargeEnabled ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  onClick={() => setRechargeOpen(true)}
+                >
+                  <Plus className="size-3.5 mr-1" />
+                  {intl.formatMessage({ id: "business.quota.recharge" })}
+                </Button>
+              ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <Button
@@ -341,6 +356,13 @@ export function NimbusQuotaOverview({
           <NimbusQuotaUsageChart usage={usage} />
         )}
       </div>
+
+      {/* 充值弹窗：支付成功后在弹窗内部 toast + 刷新共享快照，余额卡随快照更新。 */}
+      <NimbusRechargeDialog
+        open={rechargeOpen}
+        onClose={() => setRechargeOpen(false)}
+        creditsPerYuan={wallet.creditsPerYuan}
+      />
     </div>
   );
 }

@@ -7,7 +7,8 @@
  * 用量窗口双列迷你卡（标签 + 百分比 + 细条 + 已用/上限）、border-t 附注行；全程单色强调。
  *
  * 与「我的额度」面板同源（useNimbusAccountState 单一数据源），只做只读投影：
- *   - 有周期套餐：套餐名 + 剩余/总量主条 + 5 小时窗/周窗两张迷你卡；
+ *   - 有周期套餐：套餐名 + 5 小时窗/周窗迷你卡 + 基本额度（钱包余额；后端 P6b 契约
+ *     已停发周期 remaining/credits_total，客户端不再渲染「剩余/总量」主数字）；
  *   - 有按次套餐：套餐名 + 剩余次数主条 + 有效期附注；
  *   - 未登录：不渲染（是否给登录引导由调用方决定），额度查询失败也不影响面板自身。
  */
@@ -40,8 +41,6 @@ function resolveEffectiveExpiresAt(expiresAt: number, hoursLeft: number): number
   }
   return 0;
 }
-
-
 
 /** 附注行（有效期 / 管理入口）：与官方面板同款 border-t 分隔。 */
 function SummaryFooter({
@@ -124,10 +123,7 @@ export function NimbusQuotaSummary({
       >
         <Gift aria-hidden="true" className="size-3" />
         <span>
-          {intl.formatMessage(
-            { id: "business.quota.resetCardBadge" },
-            { count: resetCardCount },
-          )}
+          {intl.formatMessage({ id: "business.quota.resetCardBadge" }, { count: resetCardCount })}
         </span>
       </button>
     ) : null;
@@ -192,12 +188,14 @@ export function NimbusQuotaSummary({
     );
   }
 
-  // 主条数值：周期套餐给「剩余/总量」，按次套餐给「剩余次数/总次数」。
-  const heroUsed = creditsSub
-    ? creditsSub.remaining
-    : (perCallSub?.remainingCalls ?? perCallSub?.remaining ?? 0);
-  const heroTotal = creditsSub ? creditsSub.creditsTotal : (perCallSub?.totalCalls ?? 0);
-  const heroUnit = creditsSub ? null : intl.formatMessage({ id: "business.quota.callsUnit" });
+  // 主条数值：仅按次套餐使用「剩余次数/总次数」。周期（credits）套餐的后端契约
+  // （P6b，cbcn-cloud plan_service.py 用户端订阅）已停发 remaining/credits_total
+  // （周期积分定价口径只归网页端套餐中心），客户端不再渲染该主数字——缺省 0
+  // 会被读成「剩余 0/总额 0」。周期套餐只展示 5h/周窗 +「基本额度=钱包余额」
+  // （与 compact 视图同一口径）。
+  const heroUsed = perCallSub?.remainingCalls ?? perCallSub?.remaining ?? 0;
+  const heroTotal = perCallSub?.totalCalls ?? 0;
+  const heroUnit = intl.formatMessage({ id: "business.quota.callsUnit" });
   const heroPercent = percentOf(heroUsed, heroTotal);
   const planName = creditsSub?.planName ?? perCallSub?.planName ?? "";
   const rawExpiresAt = creditsSub?.expiresAt ?? perCallSub?.expiresAt ?? 0;
@@ -370,11 +368,14 @@ export function NimbusQuotaSummary({
               color="var(--color-usage-chart-3, #9e77ed)"
             />
           ) : null}
+          {/* 基本额度 = 钱包积分余额（无总量概念，不给百分比与进度条）——与 compact
+              视图同一口径；周期套餐的 remaining/credits_total 已按后端 P6b 契约停发，
+              不再渲染「剩余/总额」主数字。 */}
           <QuotaMeterCell
             label={intl.formatMessage({ id: "business.quota.baseQuota" })}
-            value={`${Math.round(heroPercent)}%`}
-            subValue={formatSubCredits(heroUsed)}
-            percent={heroPercent}
+            value={formatSubCredits(status.account.wallet.available)}
+            subValue={creditsUnitLabel}
+            percent={null}
             color="var(--color-usage-chart-5, #e07b00)"
           />
         </QuotaMeterGrid>
@@ -446,4 +447,3 @@ export function NimbusQuotaSummaryAuto(props: { compact?: boolean; onManage?: ()
     />
   );
 }
-
