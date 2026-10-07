@@ -2006,6 +2006,7 @@ const zhCN: Record<string, string> = {
   "business.quota.resetCardNoun": "额度重置",
   "business.quota.resetCardCount": "{count} 张",
   "business.quota.resetCardExpires": "{date} 过期",
+  "business.quota.resetCardNeverExpires": "永久有效",
   "business.quota.resetAction": "重置",
   "business.quota.redeemed": "已重置",
   "business.quota.usageChartTitle": "近 {days} 天用量",
