@@ -112,16 +112,18 @@ export function NimbusQuotaSummary({
       </button>
     ) : null;
 
-  /** 重置卡徽章：官方样式「获得N次重置额度」，点击打开「可重置额度」弹窗（真实兑换）。 */
+  /** 重置卡徽章：官方样式「获得N次重置额度」，点击打开「可重置额度」弹窗（真实兑换）。
+   * 视觉规范：采用高质感翡翠玉润胶囊设计（rounded-full + 细翡翠微描边 + 温润半透明翡翠绿底色），
+   * 字体收敛为标准的 text-ui-xs，与「剩余额度」标题自然平衡，克制不花哨。 */
   const renderResetCardBadge = () =>
     resetCardCount > 0 ? (
       <button
         type="button"
         title={intl.formatMessage({ id: "business.quota.resetCardBadgeTitle" })}
-        className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/20 px-2 py-1 text-ui-sm font-medium leading-none text-emerald-700 dark:text-emerald-300 cursor-pointer"
+        className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-ui-xs font-medium leading-none text-emerald-700 transition-colors hover:border-emerald-500/35 hover:bg-emerald-500/15 active:bg-emerald-500/20 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 cursor-pointer select-none"
         onClick={() => setResetCardsOpen(true)}
       >
-        <Gift aria-hidden="true" className="size-3" />
+        <Gift aria-hidden="true" className="size-3 text-emerald-600 dark:text-emerald-400" />
         <span>
           {intl.formatMessage({ id: "business.quota.resetCardBadge" }, { count: resetCardCount })}
         </span>

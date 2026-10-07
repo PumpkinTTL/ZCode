@@ -61,13 +61,13 @@ import type { Theme } from "@/useTheme.js";
 import { WorkspaceWebRemoteControlTrigger } from "@/WorkspaceWebRemoteControlTrigger.js";
 import { WorkspaceSidebarFooterUsageSummaryContent } from "@/WorkspaceSidebarFooterUsageSummary.js";
 import { NimbusAppUpdateDialog } from "@/business/appUpdate/NimbusAppUpdateDialog.js";
+import { NimbusQuotaDialog } from "@/business/quota/NimbusQuotaDialog.js";
+import { NimbusAccountDialog } from "@/business/quota/NimbusAccountDialog.js";
 import {
   clearNimbusProviderAccess,
   ensureOfficialDefaultModel,
   provisionNimbusProvider,
 } from "@/business/quota/provisionNimbusProvider.js";
-import { setPendingSettingsSection } from "@/lib/settingsNavigation.js";
-import { useTabStore } from "@/store/TabStoreProvider.js";
 import { logger } from "@/logger.js";
 import {
   notifyNimbusAccountChanged,
@@ -284,12 +284,14 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
       : intl.formatMessage({ id: "settings.title" });
   const usageButtonClick = onUsageClick ?? onSettingsButtonClick;
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const openSettingsTab = useTabStore((state) => state.openSettingsTab);
-  /** 「用量额度」菜单项：直接跳设置页「用量额度」分区（不再开弹层）。 */
-  const openQuotaSettings = useCallback(() => {
-    setPendingSettingsSection("providerQuota");
-    openSettingsTab("providerQuota");
-  }, [openSettingsTab]);
+  /** 「用量额度」菜单项：就地弹额度面板弹窗（不再经设置页跳转链——该链路在设置 Tab
+   * 已存在时不重定位分区且整页挂载偏卡）。未登录直接转统一登录弹窗。 */
+  const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
+  const openQuotaPanel = useCallback(() => {
+    if (nimbusLoggedIn) setQuotaDialogOpen(true);
+    else setAccountDialogOpen(true);
+  }, [nimbusLoggedIn]);
   const [desktopZoomLevel, setDesktopZoomLevel] = useState(0);
   const runDesktopZoomCommand = useCallback(
     (command: (typeof DesktopCommandIds)["ZoomIn" | "ZoomOut" | "ResetZoom"]) => {
@@ -459,11 +461,11 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
             ) : null}
             {/* 升级入口状态不再以菜单开关为生命周期边界。*/}
             <WorkspaceSidebarFooterUsageSummaryContent onUsageClick={usageButtonClick} />
-            {/* 「用量额度」与「使用统计」同属用量分组：直接跳设置页「用量额度」分区
-                （登录/套餐/重置卡全在那一节），不再开弹层。 */}
+            {/* 「用量额度」：就地弹额度面板（登录/套餐/重置卡/签到全在弹窗里），
+                未登录转统一登录；不再跳设置页。 */}
             <DropdownMenuItem
               data-testid={TID_SIDEBAR_QUOTA_USAGE_BUTTON}
-              onSelect={openQuotaSettings}
+              onSelect={openQuotaPanel}
             >
               <Wallet className="size-4" />
               {intl.formatMessage({ id: "sidebar.usage.quota.open" })}
@@ -529,6 +531,8 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
         </div>
       </div>
       <NimbusAppUpdateDialog open={appUpdateOpen} onClose={() => setAppUpdateOpen(false)} />
+      <NimbusQuotaDialog open={quotaDialogOpen} onClose={() => setQuotaDialogOpen(false)} />
+      <NimbusAccountDialog open={accountDialogOpen} onClose={() => setAccountDialogOpen(false)} />
       {/* 登出确认：防误触（与上游 OAuth 登出同款交互模式）。 */}
       <AlertDialog open={nimbusLogoutConfirmOpen} onOpenChange={setNimbusLogoutConfirmOpen}>
         <AlertDialogContent>

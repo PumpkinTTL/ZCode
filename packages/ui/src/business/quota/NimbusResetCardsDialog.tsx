@@ -48,6 +48,19 @@ export function NimbusResetCardsDialog({
     [locale],
   );
 
+  const formatWindowResetTitle = (win: string) => {
+    if (win === "5h") {
+      return intl.formatMessage({ id: "business.quota.window5hResetTitle" });
+    }
+    if (win === "week") {
+      return intl.formatMessage({ id: "business.quota.windowWeeklyResetTitle" });
+    }
+    const label = intl.formatMessage({
+      id: WINDOW_LABEL_ID[win] ?? "business.quota.validity",
+    });
+    return `${label} ${intl.formatMessage({ id: "business.quota.resetCardNoun" })}`;
+  };
+
   const loadCards = useCallback(async () => {
     setError(null);
     try {
@@ -84,8 +97,8 @@ export function NimbusResetCardsDialog({
   );
 
   const usable = (cards ?? []).filter((card) => !card.expired);
-  // 每张卡都是独立的、各有自己的过期时间（用户反馈）：按窗口分组只为「窗口名 +
-  // 总数」只出现一次，组内一卡一行列出到期时间，各自持有重置按钮，用户自选核销哪张。
+  // 每张卡都是独立的、各有自己的过期时间：按窗口分组展示（1 行 1 窗口），
+  // 组内展示窗口标题、翡翠数量胶囊与最早到期时间，优先核销最早到期的卡。
   const windowGroups = useMemo(() => {
     const order: string[] = [];
     const grouped = new Map<string, QuotaResetCard[]>();
@@ -109,7 +122,7 @@ export function NimbusResetCardsDialog({
         {/* 三张额度卡：与面板同源同构 */}
         <NimbusQuotaSummary status={status} compact onManage={onManage} />
 
-        {/* 重置卡清单：窗口名与总数只在组头出现一次，组内一卡一行（各自过期时间 + 各自重置按钮） */}
+        {/* 重置卡清单：按窗口收敛为精致企业级卡片，展示标题、翡翠数量胶囊、到期提醒与重置操作 */}
         <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
           {cards === null ? (
             <div className="flex h-16 items-center justify-center text-foreground-subtle">
@@ -121,75 +134,88 @@ export function NimbusResetCardsDialog({
                 intl.formatMessage({ id: "business.quota.resetCardsEmpty" })}
             </p>
           ) : (
-            windowGroups.map(({ window, cards: groupCards }) => (
-              <div
-                className="rounded-xl border border-border/60 bg-surface"
-                data-nimbus-reset-card-row=""
-                key={window}
-              >
-                <div className="flex items-center justify-between gap-4 px-4 pb-1 pt-3">
-                  <span className="truncate text-ui-sm font-medium text-foreground">
-                    {intl.formatMessage({
-                      id: WINDOW_LABEL_ID[window] ?? "business.quota.validity",
-                    })}
-                    {intl.formatMessage({ id: "business.quota.resetCardNoun" })}
-                  </span>
-                  <span className="shrink-0 rounded-md bg-emerald-500/20 px-2 py-0.5 text-ui-sm font-medium leading-none text-emerald-700 dark:text-emerald-300">
-                    {intl.formatMessage(
-                      { id: "business.quota.resetCardCount" },
-                      { count: groupCards.length },
+            windowGroups.map(({ window, cards: groupCards }) => {
+              // 优先核销即将到期的可用卡；若无可用卡则取第一张
+              const unblockedCards = groupCards.filter((c) => !c.blockedReason);
+              const targetList = unblockedCards.length > 0 ? unblockedCards : groupCards;
+              const sorted = targetList.slice().sort((a, b) => {
+                if (a.expiresAt > 0 && b.expiresAt > 0) return a.expiresAt - b.expiresAt;
+                if (a.expiresAt > 0) return -1;
+                if (b.expiresAt > 0) return 1;
+                return 0;
+              });
+              const activeCard = sorted[0] ?? groupCards[0];
+              // 组由卡建成、恒非空，此守卫只为满足 noUncheckedIndexedAccess 的类型收窄。
+              if (!activeCard) return null;
+              const blocked = groupCards.every((c) => c.blockedReason.length > 0);
+              const busy = groupCards.some((c) => redeemingId === c.id);
+              const redeemed = redeemedWindow === window && redeemingId === null;
+
+              const subtext = (() => {
+                if (blocked) {
+                  return activeCard.blockedReason;
+                }
+                if (activeCard.expiresAt > 0) {
+                  return groupCards.length > 1
+                    ? intl.formatMessage(
+                        { id: "business.quota.resetCardEarliestExpires" },
+                        { date: dateFmt.format(activeCard.expiresAt) },
+                      )
+                    : intl.formatMessage(
+                        { id: "business.quota.resetCardExpires" },
+                        { date: dateFmt.format(activeCard.expiresAt) },
+                      );
+                }
+                return intl.formatMessage({ id: "business.quota.resetCardNeverExpires" });
+              })();
+
+              return (
+                <div
+                  className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-colors hover:border-border"
+                  data-nimbus-reset-card-row=""
+                  key={window}
+                >
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-ui-sm font-medium text-foreground">
+                        {formatWindowResetTitle(window)}
+                      </span>
+                      <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-ui-xs font-medium leading-none text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300">
+                        {intl.formatMessage(
+                          { id: "business.quota.resetCardCount" },
+                          { count: groupCards.length },
+                        )}
+                      </span>
+                    </div>
+                    <span
+                      className={
+                        blocked
+                          ? "min-w-0 truncate text-ui-xs text-warning"
+                          : "min-w-0 truncate text-ui-xs text-foreground-subtle"
+                      }
+                    >
+                      {subtext}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={blocked || redeemingId !== null}
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-ui-xs font-medium text-white transition-colors hover:bg-emerald-500 active:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer select-none"
+                    onClick={() => void handleRedeem(activeCard)}
+                  >
+                    {busy ? (
+                      <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                    ) : (
+                      <RotateCcw aria-hidden="true" className="size-3.5" />
                     )}
-                  </span>
+                    {redeemed && !blocked
+                      ? intl.formatMessage({ id: "business.quota.redeemed" })
+                      : intl.formatMessage({ id: "business.quota.resetAction" })}
+                  </button>
                 </div>
-                <div className="divide-y divide-border/40">
-                  {groupCards.map((card) => {
-                    const blocked = card.blockedReason.length > 0;
-                    const busy = redeemingId === card.id;
-                    const redeemed = redeemedWindow === window && redeemingId === null;
-                    return (
-                      <div
-                        className="flex items-center justify-between gap-4 px-4 py-2"
-                        key={card.id}
-                      >
-                        <span
-                          className={
-                            blocked
-                              ? "min-w-0 truncate text-ui-xs text-warning"
-                              : "min-w-0 truncate text-ui-xs text-foreground-subtle"
-                          }
-                        >
-                          {blocked
-                            ? card.blockedReason
-                            : card.expiresAt > 0
-                              ? intl.formatMessage(
-                                  { id: "business.quota.resetCardExpires" },
-                                  { date: dateFmt.format(card.expiresAt) },
-                                )
-                              : intl.formatMessage({
-                                  id: "business.quota.resetCardNeverExpires",
-                                })}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={blocked || redeemingId !== null}
-                          className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-emerald-700 px-2.5 py-1 text-ui-xs font-medium text-white shadow-xs transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
-                          onClick={() => void handleRedeem(card)}
-                        >
-                          {busy ? (
-                            <Loader2 aria-hidden="true" className="size-3 animate-spin" />
-                          ) : (
-                            <RotateCcw aria-hidden="true" className="size-3" />
-                          )}
-                          {redeemed && !blocked
-                            ? intl.formatMessage({ id: "business.quota.redeemed" })
-                            : intl.formatMessage({ id: "business.quota.resetAction" })}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
