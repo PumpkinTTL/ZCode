@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Polaris 应用标识（北极星四角星 + 轨道弧 + 翡翠从星）。
+  Polaris 应用标识（北极星四角星 + 轨道弧）。
   与 packages/desktop/build/icon.*（打包图标）及 PolarisLogo 徽章组件同设计。
   独立自着色文件：通过 <img src> 渲染，无法继承 currentColor。
 -->
@@ -17,10 +17,5 @@
     stroke-width="7"
     stroke-linecap="round"
     d="M58 172 Q128 214 198 170"
-  />
-  <!-- 翡翠从星（右上） -->
-  <path
-    fill="#34D399"
-    d="M196 42 Q199 57 214 60 Q199 63 196 78 Q193 63 178 60 Q193 57 196 42 Z"
   />
 </svg>

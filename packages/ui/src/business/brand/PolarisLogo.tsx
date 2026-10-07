@@ -46,7 +46,7 @@ export function PolarisLogo({
       className={cn(className)}
     >
       <rect width="100" height="100" rx="24" fill="#101012" />
-      {/* 北极星：主星（白）+ 弧线轨道（灰）+ 从星（小，翡翠点缀） */}
+      {/* 北极星：主星（白）+ 弧线轨道（灰） */}
       <path
         d="M50 16 Q54.5 46 84 50 Q54.5 54 50 84 Q45.5 54 16 50 Q45.5 46 50 16 Z"
         fill="#f7f8f8"
@@ -57,7 +57,6 @@ export function PolarisLogo({
         strokeWidth="2.5"
         strokeLinecap="round"
       />
-      <circle cx="78" cy="30" r="4" fill="#34d399" />
     </svg>
   );
 }
