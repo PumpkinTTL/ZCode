@@ -7,6 +7,7 @@ import {
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { ModelProviderNavItem } from "./constants.js";
 import { InlineEditableProviderCard } from "./InlineEditableProviderCard.js";
+import { NimbusProviderPlanCard } from "./NimbusProviderPlanCard.js";
 import { ModelProviderLoadingCard } from "./StatusCards.js";
 import type { SavePersonalModelDraftInput } from "@zcode/provider";
 import type { ModelConnectivityResult } from "@zcode/shared";
@@ -66,28 +67,33 @@ export function ModelProviderSectionDetail({
     ? getProviderFormApiKeyManagementUrl(customProvider)
     : undefined;
   return (
-    // 仅展示预设模板声明的入口，不根据地址猜测自定义 Provider 的 Key 控制台。
-    <InlineEditableProviderCard
-      provider={customProvider}
-      onSave={onSave}
-      {...modelEditingProps}
-      onDelete={() => onDelete(customProvider)}
-      onReorderModelIds={
-        onReorderProviderModels
-          ? (modelIds) => onReorderProviderModels(customProvider.providerId, modelIds)
-          : undefined
-      }
-      onTestModel={onTestModel}
-      presetApiKeyUrl={customApiKeyUrl}
-      readOnlyEndpoints={false}
-      nameEditable
-      onOpenPresetApiKey={
-        customApiKeyUrl
-          ? () => {
-              onOpenApiKeyUrl(customApiKeyUrl);
-            }
-          : undefined
-      }
-    />
+    <>
+      {/* Nimbus 供应商（Polaris 自有额度/套餐业务）在编辑表单上方挂套餐卡：
+          非 Nimbus 或登录态未知时组件自渲染 null，其它供应商零视觉变化。 */}
+      <NimbusProviderPlanCard provider={customProvider} />
+      {/* 仅展示预设模板声明的入口，不根据地址猜测自定义 Provider 的 Key 控制台。 */}
+      <InlineEditableProviderCard
+        provider={customProvider}
+        onSave={onSave}
+        {...modelEditingProps}
+        onDelete={() => onDelete(customProvider)}
+        onReorderModelIds={
+          onReorderProviderModels
+            ? (modelIds) => onReorderProviderModels(customProvider.providerId, modelIds)
+            : undefined
+        }
+        onTestModel={onTestModel}
+        presetApiKeyUrl={customApiKeyUrl}
+        readOnlyEndpoints={false}
+        nameEditable
+        onOpenPresetApiKey={
+          customApiKeyUrl
+            ? () => {
+                onOpenApiKeyUrl(customApiKeyUrl);
+              }
+            : undefined
+        }
+      />
+    </>
   );
 }

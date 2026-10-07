@@ -33,7 +33,7 @@ import { executionOutputPreviewSchema } from "../execution-output-preview.js";
 import { completeModelPropertiesDataSchema } from "../model-config.js";
 import { modelExecutionSchema } from "../model-execution.js";
 import { modelSelectionSchema } from "../model-selection.js";
-import { APP_USAGE_RANGES, appUsageSnapshotSchema } from "../usage-stats.js";
+import { APP_USAGE_RANGES } from "../usage-stats.js";
 import { errorAttributionSchema } from "../zcode-protocol-v4/snapshot.js";
 // 后台详情共享精简的只读响应 schema，不携带命令或计时元数据。
 export * from "../background-bash-output.js";
@@ -486,7 +486,6 @@ export const zcodeMcpResourceSampleSchema = z
   .strict();
 export type ZCodeMcpResourceSample = z.infer<typeof zcodeMcpResourceSampleSchema>;
 // 通知输入有界；main 另按每个上报窗口的 32 个 MCP 分组执行事件额度。
-export const zcodeMcpResourceSamplesSchema = z.array(zcodeMcpResourceSampleSchema).max(1_024);
 
 export const BASH_RESOURCE_SAMPLE_INTERVAL_MS = 15_000;
 export const BASH_RESOURCE_MAX_SAMPLES = 20;
@@ -572,7 +571,6 @@ export const zcodeProcessResourceSampleSchema = z
   .strict();
 export type ZCodeProcessResourceSample = z.infer<typeof zcodeProcessResourceSampleSchema>;
 
-export const zcodeProcessChildProcessesParamsSchema = z.object({}).strict();
 export const zcodeProcessChildProcessSchema = z
   .object({
     pid: z.number().int().positive(),
@@ -1861,7 +1859,6 @@ export const zcodeUsageStatsParamsSchema = z
     timeZone: z.string().optional(),
   })
   .strict();
-export const zcodeUsageStatsResultSchema = appUsageSnapshotSchema;
 export const zcodeTaskTokenUsageParamsSchema = z
   .object({
     sessionId: nonEmptyString,

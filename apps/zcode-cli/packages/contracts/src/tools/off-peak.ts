@@ -48,7 +48,6 @@ export const OffPeakTaskStatusSchema = z.enum([
   "failed",
   "cancelled",
 ]);
-export type OffPeakTaskStatus = z.infer<typeof OffPeakTaskStatusSchema>;
 
 /** 轮尾卡片与 OffPeakList 的最小任务快照：不暴露 serverTicketId / providerName。 */
 export const OffPeakTaskSummarySchema = z
@@ -73,7 +72,6 @@ export type OffPeakCreateOutput = z.infer<typeof OffPeakCreateOutputSchema>;
 export const OffPeakCreateOutputJsonSchema = toToolJsonSchema(OffPeakCreateOutputSchema);
 
 export const OffPeakListInputSchema = z.object({}).strict();
-export type OffPeakListInput = z.infer<typeof OffPeakListInputSchema>;
 export const OffPeakListInputJsonSchema = toToolJsonSchema(OffPeakListInputSchema);
 
 export const OffPeakListOutputSchema = z

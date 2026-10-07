@@ -1,14 +1,25 @@
 /* oxlint-disable eslint(max-lines) -- footer 聚合账户、主题、模式和快捷键菜单。 */
 import type { Locale, UserInfo } from "@zcode/shared";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   DesktopCommandIds,
   TID_LOGIN_MENU_ITEM,
   TID_LOGIN_TRIGGER,
   TID_LOGOUT_BUTTON,
+  TID_SIDEBAR_QUOTA_USAGE_BUTTON,
   TID_TASK_SETTINGS_BUTTON,
 } from "@zcode/shared";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog.js";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
@@ -34,7 +45,9 @@ import {
   Maximize,
   Palette,
   Settings,
+  History as HistoryIcon,
   User,
+  Wallet,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -47,6 +60,14 @@ import { normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import type { Theme } from "@/useTheme.js";
 import { WorkspaceWebRemoteControlTrigger } from "@/WorkspaceWebRemoteControlTrigger.js";
 import { WorkspaceSidebarFooterUsageSummaryContent } from "@/WorkspaceSidebarFooterUsageSummary.js";
+import { NimbusAppUpdateDialog } from "@/business/appUpdate/NimbusAppUpdateDialog.js";
+import {
+  clearNimbusProviderAccess,
+  provisionNimbusProvider,
+} from "@/business/quota/provisionNimbusProvider.js";
+import { setPendingSettingsSection } from "@/lib/settingsNavigation.js";
+import { useTabStore } from "@/store/TabStoreProvider.js";
+import { logger } from "@/logger.js";
 import {
   notifyNimbusAccountChanged,
   refreshNimbusAccountState,
@@ -129,7 +150,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const zoomOutShortcutLabel = useShortcutCommandLabel("zoomOut");
   const resetZoomShortcutLabel = useShortcutCommandLabel("resetZoom");
   const isRestoringOAuthSession = useZCodeStore((state) => state.isRestoringOAuthSession);
-  const { providerQuotaService } = useServices();
+  const { providerQuotaService, providerSettingsService, appUpdateService } = useServices();
   // Nimbus（自有中转站）登录态走共享快照：与设置页「我的额度」、账号弹窗同一份数据源。
   // 底部账号身份以它为准（上游 OAuth user 在 Polaris 已无官方账号通路，通常为空）。
   const nimbusAccount = useNimbusAccountState();
@@ -145,13 +166,67 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
     ? `nimbus:${nimbusUsername || "account"}`
     : (user?.avatarUrl ?? user?.id ?? "guest");
   const showAuthRestoreLoading = !user && !nimbusLoggedIn && isRestoringOAuthSession;
-  /** Nimbus 登出：清本地凭证后广播未登录快照；清理失败（罕见）则重拉真实登录态兜底。 */
+  // 已登录会话的补开通：登录动作在 WelcomeScreen 开通一次，但「先登录、后升级到带开通逻辑的
+  // 版本」或登录发生在别处时，供应商会缺席。footer 在登录后常驻，这里每次挂载补跑一次：
+  // 幂等（复用既有供应商 / 同源手工供应商 → 刷新密钥 → 置顶），失败只记日志，绝不打断 UI。
+  const provisionAttemptedRef = useRef(false);
+  useEffect(() => {
+    // 未登录（含刚登出）时复位补开通标记：登出会清掉覆盖层凭证，同一挂载内
+    // 重新登录必须再开通一次（key+基址+模型），否则模型在菜单里但调用无凭证。
+    if (!nimbusLoggedIn) {
+      provisionAttemptedRef.current = false;
+      return;
+    }
+    if (provisionAttemptedRef.current) return;
+    provisionAttemptedRef.current = true;
+    void provisionNimbusProvider({
+      quota: providerQuotaService,
+      providerSettings: providerSettingsService,
+    }).catch((error: unknown) => {
+      logger.warn("[WorkspaceSidebarFooter] 已登录会话补开通 Nimbus 供应商失败", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, [nimbusLoggedIn, providerQuotaService, providerSettingsService]);
+  // 启动自愈：确认未登录时清掉历史残留的 Nimbus 覆盖层（旧版本登出未清理的存量）。
+  useEffect(() => {
+    if (nimbusLoggedIn || nimbusAccount.status === null) return;
+    void clearNimbusProviderAccess({
+      quota: providerQuotaService,
+      providerSettings: providerSettingsService,
+      publicModelCatalog: appUpdateService ? () => appUpdateService.listPublicModelIds() : undefined,
+    }).catch(() => {
+      // 无覆盖层时是 no-op；异常不打断 UI。
+    });
+  }, [nimbusAccount.status, nimbusLoggedIn, providerQuotaService, providerSettingsService]);
+  /** Nimbus 登出：先弹确认，确认后才清本地凭证。 */
+  const [nimbusLogoutConfirmOpen, setNimbusLogoutConfirmOpen] = useState(false);
+  /** 更新日志弹窗（头像菜单入口）。 */
+  const [appUpdateOpen, setAppUpdateOpen] = useState(false);
   const handleNimbusLogout = useCallback(() => {
+    setNimbusLogoutConfirmOpen(true);
+  }, []);
+  const confirmNimbusLogout = useCallback(() => {
+    setNimbusLogoutConfirmOpen(false);
     void providerQuotaService.logout().then(
-      () => notifyNimbusAccountChanged({ loggedIn: false }),
+      async () => {
+        notifyNimbusAccountChanged({ loggedIn: false });
+        // 登出清内部凭证：删掉 Nimbus 覆盖层的 sk- 密钥与基址，保留模型目录
+        //（模型仍在选择菜单里、置灰锁定不可选）；失败只记日志（下次启动自愈会补清）。
+        try {
+          await clearNimbusProviderAccess({
+            quota: providerQuotaService,
+            providerSettings: providerSettingsService,
+          });
+        } catch (error) {
+          logger.warn("[WorkspaceSidebarFooter] 登出清理 Nimbus 供应商失败", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
       () => refreshNimbusAccountState(),
     );
-  }, [providerQuotaService]);
+  }, [providerQuotaService, providerSettingsService]);
   const profileContent = (
     <>
       <Avatar key={avatarKey} size="default">
@@ -197,6 +272,12 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
       : intl.formatMessage({ id: "settings.title" });
   const usageButtonClick = onUsageClick ?? onSettingsButtonClick;
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const openSettingsTab = useTabStore((state) => state.openSettingsTab);
+  /** 「用量额度」菜单项：直接跳设置页「用量额度」分区（不再开弹层）。 */
+  const openQuotaSettings = useCallback(() => {
+    setPendingSettingsSection("providerQuota");
+    openSettingsTab();
+  }, [openSettingsTab]);
   const [desktopZoomLevel, setDesktopZoomLevel] = useState(0);
   const runDesktopZoomCommand = useCallback(
     (command: (typeof DesktopCommandIds)["ZoomIn" | "ZoomOut" | "ResetZoom"]) => {
@@ -366,6 +447,15 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
             ) : null}
             {/* 升级入口状态不再以菜单开关为生命周期边界。*/}
             <WorkspaceSidebarFooterUsageSummaryContent onUsageClick={usageButtonClick} />
+            {/* 「用量额度」与「使用统计」同属用量分组：直接跳设置页「用量额度」分区
+                （登录/套餐/重置卡全在那一节），不再开弹层。 */}
+            <DropdownMenuItem
+              data-testid={TID_SIDEBAR_QUOTA_USAGE_BUTTON}
+              onSelect={openQuotaSettings}
+            >
+              <Wallet className="size-4" />
+              {intl.formatMessage({ id: "sidebar.usage.quota.open" })}
+            </DropdownMenuItem>
             {/* Nimbus 已登录时隐藏「连接使用」入口（已连接无需再连），登出改走 Nimbus 账号。 */}
             {onLogin && !user && !nimbusLoggedIn ? (
               <>
@@ -376,6 +466,14 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                 </DropdownMenuItem>
               </>
             ) : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => setAppUpdateOpen(true)}
+              data-testid="workspace-sidebar-app-update"
+            >
+              <HistoryIcon className="size-4" />
+              {intl.formatMessage({ id: "business.appUpdate.title" })}
+            </DropdownMenuItem>
             {nimbusLoggedIn ? (
               <>
                 <DropdownMenuSeparator />
@@ -418,6 +516,28 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           </ControlHintTooltip>
         </div>
       </div>
+      <NimbusAppUpdateDialog open={appUpdateOpen} onClose={() => setAppUpdateOpen(false)} />
+      {/* 登出确认：防误触（与上游 OAuth 登出同款交互模式）。 */}
+      <AlertDialog open={nimbusLogoutConfirmOpen} onOpenChange={setNimbusLogoutConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {intl.formatMessage({ id: "business.quota.logoutConfirmTitle" })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {intl.formatMessage({ id: "business.quota.logoutConfirmBody" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setNimbusLogoutConfirmOpen(false)}>
+              {intl.formatMessage({ id: "business.quota.logoutConfirmCancel" })}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmNimbusLogout}>
+              {intl.formatMessage({ id: "business.quota.logoutConfirmOk" })}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </footer>
   );
 });

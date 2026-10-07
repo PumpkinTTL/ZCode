@@ -54,7 +54,6 @@ export const updatePreparationResultSchema = z
     runningTaskCount: z.number().int().nonnegative(),
   })
   .strict();
-export type UpdatePreparationResult = z.infer<typeof updatePreparationResultSchema>;
 
 export function createStoppedServerStatus(
   version: string,
@@ -132,12 +131,6 @@ export const coreMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("fatal"), message: z.string().max(500) }),
   z.object({ type: z.literal("exit"), reason: z.string().max(500) }),
 ]);
-export type CoreMessage = z.infer<typeof coreMessageSchema>;
-
-export const coreCommandSchema = z.discriminatedUnion("command", [
-  z.object({ command: z.literal("shutdown") }),
-]);
-export type CoreCommand = z.infer<typeof coreCommandSchema>;
 
 export const releaseManifestSchema = z
   .object({
@@ -213,5 +206,4 @@ export const releaseCatalogSchema = z
     releases: z.array(releaseCatalogEntrySchema),
   })
   .strict();
-export type ReleaseCatalogEntry = z.infer<typeof releaseCatalogEntrySchema>;
 export type ReleaseCatalog = z.infer<typeof releaseCatalogSchema>;

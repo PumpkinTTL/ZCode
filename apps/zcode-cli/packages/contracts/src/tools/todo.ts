@@ -4,7 +4,7 @@
 // References: session todo and planning tool behavior
 
 import { z } from "zod";
-import type { ToolCallId, TraceId } from "../interfaces/shared.js";
+
 import { toToolJsonSchema } from "./json-schema.js";
 
 export const TodoStatus = {
@@ -32,7 +32,6 @@ export const TodoItemSchema = z.object({
 export type TodoItem = z.infer<typeof TodoItemSchema>;
 
 export const TodoReadInputSchema = z.object({}).strict();
-export type TodoReadInput = z.infer<typeof TodoReadInputSchema>;
 
 export const TodoReadInputJsonSchema = toToolJsonSchema(TodoReadInputSchema);
 
@@ -45,8 +44,6 @@ export const TodoReadOutputSchema = z
     todos: z.array(TodoItemSchema),
   })
   .strict();
-
-export type ParsedTodoReadOutput = z.infer<typeof TodoReadOutputSchema>;
 
 export const TodoReadOutputJsonSchema = toToolJsonSchema(TodoReadOutputSchema);
 
@@ -103,50 +100,7 @@ export const TodoWriteOutputSchema = z
   })
   .strict();
 
-export type ParsedTodoWriteOutput = z.infer<typeof TodoWriteOutputSchema>;
-
 export const TodoWriteOutputJsonSchema = toToolJsonSchema(TodoWriteOutputSchema);
-
-export interface TodoReadToolCall {
-  id: ToolCallId;
-  name: "TodoRead";
-  input: TodoReadInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export interface TodoWriteToolCall {
-  id: ToolCallId;
-  name: "TodoWrite";
-  input: TodoWriteInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export function isTodoToolName(value: string | undefined): value is "TodoRead" | "TodoWrite" {
-  return value === "TodoRead" || value === "TodoWrite";
-}
-
-export function todoItemsFromToolResultContent(content: string): TodoItem[] | undefined {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    return undefined;
-  }
-
-  const readResult = TodoReadOutputSchema.safeParse(parsed);
-  if (readResult.success) {
-    return cloneTodos(readResult.data.todos);
-  }
-
-  const writeResult = TodoWriteOutputSchema.safeParse(parsed);
-  if (writeResult.success) {
-    return cloneTodos(writeResult.data.todos);
-  }
-
-  return undefined;
-}
 
 export function formatTodoStateForModel(todos: readonly TodoItem[]): string {
   if (todos.length === 0) {
@@ -159,8 +113,4 @@ export function formatTodoStateForModel(todos: readonly TodoItem[]): string {
       (todo, index) => `${index + 1}. [${todo.status}][${todo.priority}] ${todo.content}`,
     ),
   ].join("\n");
-}
-
-function cloneTodos(todos: readonly TodoItem[]): TodoItem[] {
-  return todos.map((todo) => ({ ...todo }));
 }

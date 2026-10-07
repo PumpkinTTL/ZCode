@@ -2351,6 +2351,12 @@ export function SessionPane({
       }
 
       if (!(await ensureDraftModelReadyForSend())) {
+        // 无可用模型的首发拒绝原先只在草稿横幅呈现，发送键（已禁用/Enter）容易无反馈；
+        // 这里补一条与 Composer 拦截同 dedupeKey 的警示提示，门禁本身不动。
+        toast(intl.formatMessage({ id: "chat.toolbar.model.selectModelRequired" }), {
+          variant: "warning",
+          dedupeKey: "chat.toolbar.model.selectModelRequired",
+        });
         return "blocked" as const;
       }
 
@@ -2702,6 +2708,12 @@ export function SessionPane({
             // UI 预检查与 Host getClient 之间 registry 仍可能失效。竞态命中时收敛成
             // 同一个正常等待态，不走异常发送路径，也不清空 composer。
             markDraftProviderNotReady();
+            // 登出后残留的官方模型（锁定/无凭证）也走这里：只出草稿横幅用户看不出原因，
+            // 补一条与 UI 预检查同 dedupeKey 的提示（模型选择被拒只弹一条）。
+            toast(intl.formatMessage({ id: "chat.toolbar.model.selectModelRequired" }), {
+              variant: "warning",
+              dedupeKey: "chat.toolbar.model.selectModelRequired",
+            });
             return "blocked" as const;
           }
           throw error;
@@ -2712,6 +2724,7 @@ export function SessionPane({
       configCommandBarrier,
       createSubmissionFromComposer,
       dispatchSendTextAfterConfig,
+      intl,
       markDraftProviderNotReady,
       sessionId,
       workspacePath,

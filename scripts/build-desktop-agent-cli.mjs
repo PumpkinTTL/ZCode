@@ -2,7 +2,10 @@ import { cpSync, existsSync } from "node:fs";
 import { access } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { stageAgentBundle } from "../packages/desktop/scripts/stage-agent-bundle.mjs";
+import {
+  stageAgentBundle,
+  stageBundledSkillPack,
+} from "../packages/desktop/scripts/stage-agent-bundle.mjs";
 import { runCommand } from "./spawn-command.mjs";
 
 // adapters tsc 在内存受限机器上会 OOM（exit 134），给整条构建链路提高堆上限。
@@ -18,6 +21,9 @@ const useBootstrapWithRemoteBuild = process.env.ZCODE_BOOTSTRAP_WITH_REMOTE === 
 const pnpmRunEnv = {
   ...process.env,
   ZCODE_ENV: await resolveBuiltinProviderBuildEnvironment({ root: repoRoot }),
+  // 同 dev 链路：上游机器残留的 ZCODE_BUILTIN_PROVIDER_CONFIG_FILE 会让 staging
+  // 把 rev-30 旧快照拷进 cli/dist/provider——staging 源一律仓库 config 文件。
+  ZCODE_BUILTIN_PROVIDER_CONFIG_FILE: undefined,
   // pnpm 11 的 verify-deps-before-run 会在 apps/zcode-cli 子 workspace
   // 执行每个 run 前触发 pnpm install；子 workspace 运行时依赖根仓库 @zcode/shared，
   // 自动 install 无法解析根 workspace 包，导致 dev:desktop:test 和 E2E onPrepare 失败。
@@ -142,6 +148,11 @@ function stageDevAgentBundle() {
     platformKey: `${process.platform}-${process.arch}`,
   });
   stageDevOfficialPlugins();
+  // 内置技能包（bundled-skills）与官方插件同因：agent 侧只在入口目录旁找根，而 stageAgentBundle
+  // 会清空 glm。漏掉它，dev 的 /workflow 会展开成「先加载 dynamic-workflows 技能」而技能文件
+  // 不存在 —— 打包链（prepare-agent-node-bundle.mjs）一直有这一步，dev 因此长期测不出。
+  // 清单与实现与打包链共用 stage-agent-bundle.mjs，两边不可能再各自漂移。
+  stageBundledSkillPack({ repoRoot, platformKey: `${process.platform}-${process.arch}` });
 }
 
 async function runBootstrapWithRemoteBuild() {

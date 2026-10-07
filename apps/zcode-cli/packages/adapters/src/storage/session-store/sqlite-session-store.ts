@@ -581,6 +581,7 @@ export class SqliteSessionStore
     return sessionRepository.updateSession(this.db, input);
   }
 
+
   async getSession(sessionID: SessionId): Promise<SessionInfo | null> {
     return sessionRepository.getSession(this.db, sessionID);
   }

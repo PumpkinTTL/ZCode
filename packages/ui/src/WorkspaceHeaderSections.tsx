@@ -377,6 +377,49 @@ export function WorkspaceHeaderTitleSection({
       });
   };
 
+  const handleDeleteTask = async () => {
+    if (!resolvedTaskActionTaskId) {
+      return;
+    }
+    const confirmed = await confirmDialog({
+      title: intl.formatMessage({ id: "taskList.deleteConfirmTitle" }),
+      description: intl.formatMessage(
+        { id: "taskList.deleteConfirmBody" },
+        {
+          title:
+            activeTaskMeta?.title?.trim() ||
+            activeTaskTitle?.trim() ||
+            intl.formatMessage({ id: "taskList.untitled" }),
+        },
+      ),
+      confirmLabel: intl.formatMessage({ id: "taskList.deleteConfirmOk" }),
+    });
+    if (!confirmed) {
+      return;
+    }
+    handleCancelRenameTask();
+    void services.zcodeTaskService
+      .deleteTask({
+        taskId: resolvedTaskActionTaskId,
+        workspacePath: workspaceAbsPath,
+        ...(workspaceIdentity ? { workspaceIdentity } : {}),
+      })
+      .then(() => {
+        removeTaskState(workspaceAbsPath, resolvedTaskActionTaskId, workspaceIdentity);
+        if (workspaceIdentity) {
+          useRemotePinnedTaskStore
+            .getState()
+            .removeTask(workspaceAbsPath, resolvedTaskActionTaskId, workspaceIdentity);
+          useRemoteTimelineTaskStore
+            .getState()
+            .removeTask(workspaceAbsPath, resolvedTaskActionTaskId, workspaceIdentity);
+        }
+      })
+      .catch(() => {
+        toast(intl.formatMessage({ id: "taskList.deleteFailed" }));
+      });
+  };
+
   return (
     <div
       className={cn(
@@ -634,6 +677,9 @@ export function WorkspaceHeaderTitleSection({
                 onStartRenameTask={handleStartRenameTask}
                 onArchiveTask={() => {
                   void handleArchiveTask();
+                }}
+                onDeleteTask={() => {
+                  void handleDeleteTask();
                 }}
                 onMarkTaskAsUnread={() => {
                   if (!resolvedTaskActionTaskId) {

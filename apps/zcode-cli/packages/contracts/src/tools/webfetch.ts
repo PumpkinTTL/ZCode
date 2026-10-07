@@ -3,7 +3,7 @@
 // ============================================================
 
 import { z } from "zod";
-import type { ToolCallId, TraceId } from "../interfaces/shared.js";
+
 import { toToolJsonSchema } from "./json-schema.js";
 
 // -----------------------------------------------
@@ -72,25 +72,6 @@ export const WebFetchOutputSchema = z
   .strict();
 
 export const WebFetchOutputJsonSchema = toToolJsonSchema(WebFetchOutputSchema);
-
-// -----------------------------------------------
-// Tool Call Structure
-// -----------------------------------------------
-
-export interface WebFetchToolCall {
-  id: ToolCallId;
-  name: "WebFetch";
-  input: WebFetchInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export interface WebFetchToolResult {
-  toolCallId: ToolCallId;
-  output: WebFetchOutput;
-  traceId: TraceId;
-  durationMs: number;
-}
 
 // -----------------------------------------------
 // WebFetch Errors

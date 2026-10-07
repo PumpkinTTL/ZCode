@@ -4,7 +4,7 @@
 // Reference: glob-style file matching tool
 
 import { z } from "zod";
-import type { ToolCallId, TraceId } from "../interfaces/shared.js";
+
 import { toToolJsonSchema } from "./json-schema.js";
 
 // -----------------------------------------------
@@ -52,25 +52,6 @@ export const GlobOutputSchema = z
   .strict();
 
 export const GlobOutputJsonSchema = toToolJsonSchema(GlobOutputSchema);
-
-// -----------------------------------------------
-// Tool Call Structure
-// -----------------------------------------------
-
-export interface GlobToolCall {
-  id: ToolCallId;
-  name: "Glob";
-  input: GlobInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export interface GlobToolResult {
-  toolCallId: ToolCallId;
-  output: GlobOutput;
-  traceId: TraceId;
-  durationMs: number;
-}
 
 // -----------------------------------------------
 // Glob Errors

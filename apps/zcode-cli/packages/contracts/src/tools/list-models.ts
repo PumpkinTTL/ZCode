@@ -21,8 +21,6 @@ export const ListModelsInputSchema = z
   // 一张几十行的表，多一个旋钮就多一处让模型以为"没列全"的地方。
   .strict();
 
-export type ListModelsInput = z.infer<typeof ListModelsInputSchema>;
-
 export const ListModelsInputJsonSchema = toToolJsonSchema(ListModelsInputSchema);
 
 /** 目录里的一行。`id` 是可以**逐字**填进 `subagent_model` 的规范形。 */
@@ -43,8 +41,6 @@ export const ListModelsEntrySchema = z
     disabledReason: z.string().optional(),
   })
   .strict();
-
-export type ListModelsEntry = z.infer<typeof ListModelsEntrySchema>;
 
 export const ListModelsOutputSchema = z
   .object({

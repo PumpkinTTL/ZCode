@@ -142,6 +142,18 @@ export class CuaHelperLifecycleManager {
     if (typeof options?.isAdmitted === "function" && !options.isAdmitted()) {
       return undefined;
     }
+    // 产品 lifecycle 契约：既有 current 且策略要求保留时直接复用，绝不静默替换 current。
+    // 替换的后果不是"多一个 helper"，而是并发的另一调用方持有 not-current 句柄——它的
+    // spawn env 拿不到 broker 凭据（resolveSpawnEnv 落入空 env 分支），而 helper 进程却是活的。
+    // 首启竞争实测：default workspace 的首个 agent 全程 Computer Use 不可用，即这条路径。
+    if (
+      this.#current &&
+      !this.#disposed &&
+      typeof options?.shouldRetainCurrent === "function" &&
+      options.shouldRetainCurrent(this.#current) !== false
+    ) {
+      return this.#current;
+    }
     const managed = options?.create?.();
     this.#current = managed;
     return managed;

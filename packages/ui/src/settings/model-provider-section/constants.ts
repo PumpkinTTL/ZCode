@@ -20,7 +20,7 @@ export type ModelProviderNavItem = {
   statusActive: boolean;
 };
 
-export type ModelProviderNavGroupId = "custom";
+export type ModelProviderNavGroupId = "nimbus" | "custom";
 
 export interface ModelProviderNavGroup {
   id: ModelProviderNavGroupId;

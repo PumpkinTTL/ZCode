@@ -705,6 +705,42 @@ export function WorkspacePinnedTasksSection({
                   });
                 });
             }}
+            onDeleteTask={() => {
+              void contextMenuServices.zcodeTaskService
+                .deleteTask({
+                  taskId: contextMenuItem.taskId,
+                  workspacePath: contextMenuItem.workspacePath,
+                  ...(contextMenuItem.workspaceIdentity
+                    ? { workspaceIdentity: contextMenuItem.workspaceIdentity }
+                    : {}),
+                })
+                .then(() => {
+                  removeTaskState(
+                    contextMenuItem.workspacePath,
+                    contextMenuItem.taskId,
+                    contextMenuItem.workspaceIdentity,
+                  );
+                  if (contextMenuItem.workspaceIdentity) {
+                    useRemotePinnedTaskStore
+                      .getState()
+                      .removeTask(
+                        contextMenuItem.workspacePath,
+                        contextMenuItem.taskId,
+                        contextMenuItem.workspaceIdentity,
+                      );
+                    useRemoteTimelineTaskStore
+                      .getState()
+                      .removeTask(
+                        contextMenuItem.workspacePath,
+                        contextMenuItem.taskId,
+                        contextMenuItem.workspaceIdentity,
+                      );
+                  }
+                })
+                .catch(() => {
+                  toast(intl.formatMessage({ id: "taskList.deleteFailed" }));
+                });
+            }}
             onMarkTaskAsUnread={() => {
               void contextMenuServices.zcodeTaskService
                 .setTaskUnread({

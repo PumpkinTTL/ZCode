@@ -4,7 +4,7 @@
 // Reference: grep-style search tool
 
 import { z } from "zod";
-import type { ToolCallId, TraceId } from "../interfaces/shared.js";
+
 import { toToolJsonSchema } from "./json-schema.js";
 
 export const GrepOutputMode = {
@@ -146,25 +146,6 @@ export const GrepOutputSchema = z
   .strict();
 
 export const GrepOutputJsonSchema = toToolJsonSchema(GrepOutputSchema);
-
-// -----------------------------------------------
-// Tool Call Structure
-// -----------------------------------------------
-
-export interface GrepToolCall {
-  id: ToolCallId;
-  name: "Grep";
-  input: GrepInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export interface GrepToolResult {
-  toolCallId: ToolCallId;
-  output: GrepOutput;
-  traceId: TraceId;
-  durationMs: number;
-}
 
 // -----------------------------------------------
 // Grep Errors

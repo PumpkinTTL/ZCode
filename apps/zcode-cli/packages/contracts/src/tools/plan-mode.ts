@@ -13,7 +13,6 @@ export const EXIT_PLAN_MODE_TOOL_NAME = "ExitPlanMode";
 export const PLAN_MODE_MAX_PLAN_CHARS = 20_000;
 
 export const EnterPlanModeInputSchema = z.object({}).strict();
-export type EnterPlanModeInput = z.infer<typeof EnterPlanModeInputSchema>;
 export const EnterPlanModeInputJsonSchema = toToolJsonSchema(EnterPlanModeInputSchema);
 
 export const EnterPlanModeOutputSchema = z
@@ -38,7 +37,6 @@ export const ExitPlanModeAllowedPromptSchema = z
       .describe('Semantic description of the action, e.g. "run tests", "install dependencies"'),
   })
   .strict();
-export type ExitPlanModeAllowedPrompt = z.infer<typeof ExitPlanModeAllowedPromptSchema>;
 
 // plan file 需要保存最终批准的原始字符串；空白校验只看 trim 后内容，不在 schema transform 阶段改写 plan。
 const ExitPlanModePlanSchema = z

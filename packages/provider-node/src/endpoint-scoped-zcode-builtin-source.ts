@@ -16,7 +16,12 @@ export interface EndpointScopedZCodeBuiltinSourceOptions {
   readonly platform: string;
   readonly appVersion: string;
   readonly resolveEndpointOrigin: () => string | Promise<string>;
-  readonly fetchRelease: ZCodeBuiltinRemoteSynchronizerOptions["fetchRelease"];
+  /**
+   * 远端发布拉取（上游 CDN 分发通道）。**Polaris 已砍**：内置配置以仓库 bundled 为
+   * 唯一事实源，不再从任何远端拉取——缺省不传，源只做本地物化（active 缓存）。
+   * 保留类型形参是为了让「上游形态」的调用方仍可编译（传了才建同步器）。
+   */
+  readonly fetchRelease?: ZCodeBuiltinRemoteSynchronizerOptions["fetchRelease"];
   readonly onRefreshResult?: ZCodeBuiltinRemoteSynchronizerOptions["onRefreshResult"];
   readonly watch?: boolean;
 }
@@ -47,7 +52,13 @@ export class EndpointScopedZCodeBuiltinSource implements ProviderSource<Provider
   }
 
   async refresh(options?: { readonly force?: boolean }): Promise<ZCodeBuiltinRefreshResult> {
-    return (await this.#ensureCurrent()).synchronizer.refresh(options);
+    // 远端同步已砍：无 fetchRelease 时刷新是显式 no-op（"skipped"），绝不出网。
+    return (await this.#ensureCurrent()).synchronizer?.refresh(options) ?? "skipped";
+  }
+
+  /** 远端同步是否启用（Polaris 已砍=false）：宿主据此决定是否建周期检查定时器。 */
+  get remoteEnabled(): boolean {
+    return this.#options.fetchRelease !== undefined;
   }
 
   /** 返回当前 Environment Endpoint 对应、已完成物化的 Active Config 路径。 */
@@ -91,20 +102,23 @@ export class EndpointScopedZCodeBuiltinSource implements ProviderSource<Provider
       watch: this.#options.watch,
     });
     const sourceDispose = source.onDidChange((reason) => this.#emit(reason));
-    const synchronizer = new ZCodeBuiltinRemoteSynchronizer({
-      source,
-      controlFilePath: paths.controlFilePath,
-      resolveEndpointKey: async () =>
-        normalizeZCodeBuiltinEndpointOrigin(await this.#options.resolveEndpointOrigin()),
-      fetchRelease: this.#options.fetchRelease,
-      onRefreshResult: this.#options.onRefreshResult,
-    });
+    // Polaris：未提供 fetchRelease = 远端同步已砍，不建同步器（control file 也不再写）。
+    const synchronizer = this.#options.fetchRelease
+      ? new ZCodeBuiltinRemoteSynchronizer({
+          source,
+          controlFilePath: paths.controlFilePath,
+          resolveEndpointKey: async () =>
+            normalizeZCodeBuiltinEndpointOrigin(await this.#options.resolveEndpointOrigin()),
+          fetchRelease: this.#options.fetchRelease,
+          onRefreshResult: this.#options.onRefreshResult,
+        })
+      : null;
     try {
       await source.read();
       this.#assertNotDisposed();
     } catch (error) {
       sourceDispose();
-      synchronizer.dispose();
+      synchronizer?.dispose();
       source.dispose();
       throw error;
     }
@@ -136,13 +150,13 @@ class CurrentEndpointSource {
   constructor(
     readonly activeFilePath: string,
     readonly source: NodeZCodeBuiltinProviderConfigSource,
-    readonly synchronizer: ZCodeBuiltinRemoteSynchronizer,
+    readonly synchronizer: ZCodeBuiltinRemoteSynchronizer | null,
     readonly sourceDispose: () => void,
   ) {}
 
   dispose(): void {
     this.sourceDispose();
-    this.synchronizer.dispose();
+    this.synchronizer?.dispose();
     this.source.dispose();
   }
 }

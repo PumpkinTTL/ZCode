@@ -24,6 +24,8 @@ export interface NimbusAccountState {
   readonly loggedIn: boolean;
   /** 已登录时的展示名（服务端 nickname/username）。 */
   readonly username: string | null;
+  /** 已登录时「我的可用重置卡」数量（查询失败保持 0，不影响主状态）。 */
+  readonly resetCardCount: number;
   /** 有 getStatus 在途（首次加载或获焦重校验）。 */
   readonly loading: boolean;
   /** 最近一次刷新失败的错误文案；不影响已缓存的 status 展示。 */
@@ -33,6 +35,7 @@ export interface NimbusAccountState {
 /** 状态模块只依赖 getStatus 这一个方法，便于测试注入与跨服务实例复用。 */
 export interface NimbusAccountServiceLike {
   getStatus(): Promise<QuotaStatusResult>;
+  getResetCardCount?(): Promise<number>;
 }
 
 let boundService: NimbusAccountServiceLike | null = null;
@@ -40,6 +43,7 @@ let state: NimbusAccountState = {
   status: null,
   loggedIn: false,
   username: null,
+  resetCardCount: 0,
   loading: false,
   error: null,
 };
@@ -50,12 +54,15 @@ function toState(
   status: QuotaStatusResult | null,
   loading: boolean,
   error: string | null,
+  resetCardCount = state.resetCardCount,
 ): NimbusAccountState {
   const loggedIn = status !== null && status.loggedIn;
   return {
     status,
     loggedIn,
     username: status !== null && status.loggedIn ? status.account.username : null,
+    // 未登录时清零，避免登出后徽章残留上一账号的数量。
+    resetCardCount: loggedIn ? resetCardCount : 0,
     loading,
     error,
   };
@@ -102,6 +109,18 @@ export function refreshNimbusAccountState(): Promise<void> {
     .getStatus()
     .then((status) => {
       update(toState(status, false, null));
+      // 已登录才补拉重置卡数量：纯展示数据，失败静默保持原值（不覆盖主状态、不重抛）。
+      if (status !== null && status.loggedIn && typeof service.getResetCardCount === "function") {
+        void service
+          .getResetCardCount()
+          .then((count) => {
+            // 主状态可能已翻页（登出/换账号），只在与快照一致的登录态上补写数量。
+            if (state.status === status) {
+              update(toState(status, state.loading, state.error, count));
+            }
+          })
+          .catch(() => {});
+      }
     })
     .catch((error: unknown) => {
       update({

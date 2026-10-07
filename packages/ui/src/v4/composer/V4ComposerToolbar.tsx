@@ -50,6 +50,11 @@ import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { logger } from "@/logger.js";
 import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
 import { buildRegistryModelSelectGroups } from "@/lib/modelSelectionGroups.js";
+import { provisionNimbusProvider } from "@/business/quota/provisionNimbusProvider.js";
+import { toast } from "@/components/ui/toast.js";
+import { useServices } from "@/hooks/useServices.js";
+import { useNimbusAccountState } from "@/business/quota/nimbusAccountState.js";
+import { CloudDownload } from "lucide-react";
 import {
   resolveDraftDisplayedConfig,
   resolveDraftModelThoughtOption,
@@ -190,15 +195,91 @@ function V4ComposerModelControlsImpl({
     });
   }, [draftMode, effectiveConfig, modelSelectionView?.revision]);
 
+  const { providerQuotaService, providerSettingsService } = useServices();
+  const nimbusAccount = useNimbusAccountState();
+  // 官方（Nimbus）模型目录手动同步：入口在菜单里官方分组标题行的图标（CloudDownload，
+  // 同步中转圈），不弹任何独立面板。幂等开通（key/基址/模型目录以远端为准）。
+  const [officialSyncing, setOfficialSyncing] = useState(false);
+  const syncOfficialModels = useCallback(() => {
+    if (officialSyncing) return;
+    setOfficialSyncing(true);
+    provisionNimbusProvider({
+      quota: providerQuotaService,
+      providerSettings: providerSettingsService,
+    })
+      .then(() => {
+        toast(intl.formatMessage({ id: "chat.toolbar.model.officialModelsSynced" }));
+      })
+      .catch((error: unknown) => {
+        toast(
+          intl.formatMessage(
+            { id: "chat.toolbar.model.officialModelsSyncFailed" },
+            {
+              detail: error instanceof Error ? error.message : String(error),
+            },
+          ),
+          { variant: "warning" },
+        );
+      })
+      .finally(() => {
+        setOfficialSyncing(false);
+      });
+  }, [intl, officialSyncing, providerQuotaService, providerSettingsService]);
+
+  // 登出后的官方组可见性：Registry 准入要求凭证完整，登出（已清凭证）后官方供应商
+  // 不在 ModelSelectionView 里，选择菜单会整组消失。这里从设置层视图（凭证无关，
+  // 登出后模型名单仍在）取官方供应商的模型列表，合成「登录时同形」的扁平分组补进
+  // 菜单：项由 isModelOptionLocked 置灰、悬浮提示「登录 Nimbus 账号后可用」。
+  const [lockedOfficialProvider, setLockedOfficialProvider] = useState<{
+    providerId: string;
+    providerName: string;
+    models: readonly { modelId: string; displayName: string | null }[];
+  } | null>(null);
   const modelSelectGroups = useMemo<ModelSelectGroup[]>(() => {
     if (!modelSelectionView) return [];
-    return buildRegistryModelSelectGroups(displayProvider, modelSelectionView, {
+    const registryGroups = buildRegistryModelSelectGroups(displayProvider, modelSelectionView, {
       apiKeyLabel: intl.formatMessage({ id: "settings.modelProvider.apiKey" }),
       apiKeyBadgeLabel: intl.formatMessage({
         id: "settings.modelProvider.connectionMode.apiKeyBadge",
       }),
+      officialBadgeLabel: intl.formatMessage({ id: "settings.modelProvider.officialBadge" }),
+      officialHeaderAction: {
+        icon: CloudDownload,
+        label: intl.formatMessage({ id: "chat.toolbar.model.syncOfficialModels" }),
+        spinning: officialSyncing,
+        onSelect: syncOfficialModels,
+      },
     });
-  }, [displayProvider, intl, modelSelectionView]);
+    // 合成组只在 Registry 缺失该官方供应商时出现（登录时走真实分组，天然互斥）；
+    // 登出态不给同步图标（没有凭证，同步必然失败）。
+    if (
+      lockedOfficialProvider !== null &&
+      !registryGroups.some((group) => group.key === `registry-provider:${lockedOfficialProvider.providerId}`)
+    ) {
+      const synthesized: ModelSelectGroup = {
+        key: `registry-provider:${lockedOfficialProvider.providerId}`,
+        label: lockedOfficialProvider.providerName,
+        labelBadge: intl.formatMessage({ id: "settings.modelProvider.officialBadge" }),
+        directItems: true,
+        items: lockedOfficialProvider.models.map((model) => ({
+          key: `registry-provider:${lockedOfficialProvider.providerId}:${model.modelId}`,
+          value: encodeCustomModelValue(lockedOfficialProvider.providerId, model.modelId),
+          name: model.displayName?.trim() || model.modelId,
+          iconModelId: model.modelId,
+          iconProviderId: lockedOfficialProvider.providerId,
+        })),
+      };
+      return [synthesized, ...registryGroups];
+    }
+    return registryGroups;
+  }, [
+    displayProvider,
+    intl,
+    modelSelectionView,
+    lockedOfficialProvider,
+    officialSyncing,
+    syncOfficialModels,
+  ]);
 
   // 修复：恢复「管理模型」入口（老版 onManageModels = 打开设置页并定位模型供应商区）。
   const handleOpenModelProviderSettings = useCallback(() => {
@@ -260,6 +341,22 @@ function V4ComposerModelControlsImpl({
     normalizedModelValue,
     triggerDisplay.placeholder,
   ]);
+
+  // 当前模型所属供应商（上下文弹窗的 Nimbus 额度块判定输入）：直接从目标 Host 的
+  // ModelSelectionView 取有效配置，零额外 IPC；不是 Nimbus 时组件自渲染 null。
+  const currentModelProvider = useMemo(() => {
+    const providerId = effectiveConfig?.provider;
+    if (!providerId || !modelSelectionView) return null;
+    const provider = modelSelectionView.providers.find(
+      (candidate) => candidate.providerId === providerId,
+    );
+    if (!provider) return null;
+    return {
+      providerName: provider.providerName,
+      templateId: provider.templateId,
+      api: provider.config.api,
+    };
+  }, [effectiveConfig?.provider, modelSelectionView]);
   const handleModelValueChange = useCallback(
     (value: string) => {
       const decoded = decodeCustomModelValue(value);
@@ -405,7 +502,92 @@ function V4ComposerModelControlsImpl({
   // 改绑后按钮提示即时跟随（不能用硬编码文案）。
   const modelShortcutLabel = useShortcutCommandLabel("openModelMenu");
   const thoughtShortcutLabel = useShortcutCommandLabel("cycleThoughtLevel");
-  const isModelOptionLocked = useCallback(() => false, []);
+  // 官方（Nimbus）供应商 id：登出后用它做「官方模型置灰」的判定锚点。
+  // Registry 里没有（登出态）时回落到合成组的 providerId，保证合成项同样被锁定。
+  const nimbusProviderId = useMemo(
+    () =>
+      modelSelectionView?.providers.find((provider) => provider.config.group === "nimbus")
+        ?.providerId ??
+      lockedOfficialProvider?.providerId ??
+      null,
+    [modelSelectionView, lockedOfficialProvider],
+  );
+  // 账号明确未登录（status=null 首屏加载中不算）→ 官方模型置灰、禁止选择；面板结构不动。
+  const officialModelsLocked = nimbusAccount.status !== null && !nimbusAccount.loggedIn;
+  const isModelOptionLocked = useCallback(
+    (candidateValue: string) => {
+      if (!officialModelsLocked || nimbusProviderId === null) return false;
+      return decodeCustomModelValue(candidateValue)?.providerId === nimbusProviderId;
+    },
+    [officialModelsLocked, nimbusProviderId],
+  );
+  const modelLockReasonMessage = officialModelsLocked
+    ? intl.formatMessage({ id: "chat.toolbar.model.officialLoginRequired" })
+    : intl.formatMessage({ id: "chat.toolbar.modelSwitch.lockedByRunningTask" });
+
+  // 登出（确认未登录）时从设置层视图拉官方供应商的模型名单做合成组；
+  // 重新登录立即清空（Registry 恢复后走真实分组）。失败静默保持现状。
+  useEffect(() => {
+    if (!officialModelsLocked) {
+      setLockedOfficialProvider(null);
+      return;
+    }
+    let cancelled = false;
+    void providerSettingsService
+      .getView()
+      .then((view) => {
+        if (cancelled) return;
+        const provider = view.providers.find(
+          (candidate) => candidate.effectiveConfig.group === "nimbus",
+        );
+        if (!provider) {
+          setLockedOfficialProvider(null);
+          return;
+        }
+        setLockedOfficialProvider({
+          providerId: provider.providerId,
+          providerName: provider.providerName?.trim() || provider.providerId,
+          models: provider.models.map((model) => ({
+            modelId: model.modelId,
+            displayName: model.effectiveConfig.displayName ?? null,
+          })),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setLockedOfficialProvider(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [officialModelsLocked, providerSettingsService, nimbusAccount.status]);
+
+  // 登出后的选择收敛：确认未登录且当前选择仍挂在官方供应商上时，自动切换到
+  // 用户自己配置的模型（优先 personal 供应商，其次任一非官方供应商的第一个模型）。
+  // 条件幂等：切换成功后 provider 不再等于官方 id，效应自然停。
+  useEffect(() => {
+    if (!officialModelsLocked || nimbusProviderId === null) return;
+    if (effectiveConfig?.provider !== nimbusProviderId) return;
+    const providers = modelSelectionView?.providers ?? [];
+    const personal = providers.find(
+      (provider) => provider.config.group === "standard-personal" && provider.models.length > 0,
+    );
+    const fallbackProvider =
+      personal ?? providers.find((provider) => provider.providerId !== nimbusProviderId && provider.models.length > 0);
+    const fallbackModel = fallbackProvider?.models[0]?.modelId;
+    if (!fallbackProvider || !fallbackModel) return;
+    logger.info("[v4-toolbar] Nimbus 已登出，当前选择自动切换到用户自配模型", {
+      fromProvider: nimbusProviderId,
+      toProvider: fallbackProvider.providerId,
+      toModel: fallbackModel,
+    });
+    handleModelValueChange(encodeCustomModelValue(fallbackProvider.providerId, fallbackModel));
+  }, [
+    officialModelsLocked,
+    nimbusProviderId,
+    effectiveConfig?.provider,
+    modelSelectionView,
+    handleModelValueChange,
+  ]);
 
   // 键盘热键（旧 useToolbarShortcutBindings）：Ctrl+M 打开模型菜单、Ctrl+T 循环思考深度。
   // 模式循环（Ctrl+Shift+M）由 V4ComposerModeSwitch 单独绑定（modeOption 在彼处）。
@@ -456,6 +638,7 @@ function V4ComposerModelControlsImpl({
       <ChatContextUsage
         taskUsage={taskUsage}
         selectedProvider={displayProvider}
+        currentModelProvider={currentModelProvider}
         intl={intl}
         locale={locale}
         onSendCompressionCommand={onSendCompressionCommand}
@@ -490,9 +673,7 @@ function V4ComposerModelControlsImpl({
           showManageModelsAction={showManageModelsAction}
           manageModelsLabel={manageModelsLabel}
           onManageModels={handleOpenModelProviderSettings}
-          lockReasonMessage={intl.formatMessage({
-            id: "chat.toolbar.modelSwitch.lockedByRunningTask",
-          })}
+          lockReasonMessage={modelLockReasonMessage}
           isItemLocked={isModelOptionLocked}
           onValueChange={handleModelValueChange}
           disabled={disabled || recoveryPending || modelSelectionState.status !== "ready"}

@@ -44,10 +44,13 @@ const EMPTY_CODING_PLAN_SUBSCRIPTION_SERVICE = {
   getStaticTeamProducts: async () => ({}),
   getStartPlanPreview: async () => null,
   getOffPeakClientConfig: async () => EMPTY_OFF_PEAK_CLIENT_CONFIG,
-  // 远端灰度已随官方计费一并移除：只保留本地覆盖（ZCODE_DYNAMIC_WORKFLOW_MODE），
-  // 缺省 fail-closed 为 disabled，因此不会给建会话路径引入任何等待。
+  // 远端灰度随官方计费一并移除后，本地覆盖是唯一来源；但不能因此回落到 fail-closed 的
+  // `disabled`：打包 production 的 buildHostProcessEnv 会删掉 ZCODE_DYNAMIC_WORKFLOW_MODE
+  // （防本机环境变量自行开灰度），桌面端于是永久关闭——十个工具不注册、`/workflow` 不展开、
+  // dynamic-workflows 技能被剔除。核心能力不随计费一起砍：以「我方服务端恒下发 alwaysOn」
+  // 的姿态喂 remote，本地覆盖仍可显式降级（优先级 override > remote > default）。
   getDynamicWorkflowClientConfig: async () =>
-    resolveDynamicWorkflowClientConfig({ remote: undefined, env: process.env }),
+    resolveDynamicWorkflowClientConfig({ remote: { mode: "alwaysOn" }, env: process.env }),
   // 兼容接口：固定返回 preflight-v1，不读取远端配置或缓存。
   getModelContextBudgetStrategy: async () => DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
   getForceUpdateConfig: async () => null,

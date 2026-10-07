@@ -9,12 +9,52 @@
  */
 import { ServiceChannels } from "@zcode/shared";
 import { createServiceDescriptor } from "../../descriptors.js";
-import type { QuotaStatusResult, QuotaUsageDay } from "./quotaTypes.js";
+import type { QuotaResetCard, QuotaStatusResult, QuotaUsageDay } from "./quotaTypes.js";
 
 /** 登录 token 的凭证存储键（与反馈服务 JWT 同一存储，不落 settings.json）。 */
 export const QUOTA_TOKEN_CREDENTIAL_KEY = "provider-quota:token";
 /** 登录用户名的凭证存储键（回显用）。 */
 export const QUOTA_USERNAME_CREDENTIAL_KEY = "provider-quota:username";
+/** 设备身份（含 Ed25519 私钥）的凭证存储键。 */
+export const NIMBUS_DEVICE_CREDENTIAL_KEY = "provider-quota:device-identity";
+/** 本设备 agent key 明文的凭证存储键（创建响应仅回一次，本地延续靠它）。 */
+export const NIMBUS_AGENT_KEY_CREDENTIAL_KEY = "provider-quota:agent-key";
+/** agent key 归属的客户端 ID（后端 apps 表主键，运维侧预插行）。 */
+export const NIMBUS_CLIENT_ID = "polaris";
+/** agent key 显示名（不占用户手建 key 名额，固定名字便于在门户识别）。 */
+export const NIMBUS_AGENT_KEY_NAME = "Polaris";
+
+/**
+ * 本机设备身份。deviceId=null 表示尚未配对；私钥只进凭证存储（与 token 同一
+ * 加密边界），绝不进日志/设置文件。
+ */
+export interface NimbusDeviceIdentity {
+  readonly deviceId: string | null;
+  readonly publicKeyPem: string;
+  readonly privateKeyPem: string;
+  readonly keyId: string | number | null;
+  readonly keyPrefix: string | null;
+}
+
+/**
+ * 设备密钥能力（Ed25519 配对 + 请求签名）。生产实现用 node:crypto，由宿主
+ * 组合根注入（见 nimbusDeviceIdentity.ts）；接口放契约层是为了让 quotaService
+ * 只做 `import type`，渲染层 bundle 不引入 node 内建模块。
+ */
+export interface NimbusDeviceKeyProvider {
+  /** 取（或首次生成并落盘）本机身份；注册失败也不丢密钥对。 */
+  loadOrCreate(): Promise<NimbusDeviceIdentity>;
+  /** 持久化身份（配对/认领回执写回）。 */
+  save(identity: NimbusDeviceIdentity): Promise<void>;
+  /** 为身份构造请求签名器（未配对时设备头填占位值）。 */
+  createSigner(identity: NimbusDeviceIdentity): (
+    descriptor: { method: string; pathWithQuery: string; body: string | null },
+  ) => Record<string, string>;
+  /** 注册上报的公钥形态：base64 裸 32 字节。 */
+  publicKeyRawBase64(publicKeyPem: string): string;
+  /** 注册上报的设备信息。 */
+  deviceReport(): { readonly name: string; readonly platform: string; readonly appVersion: string };
+}
 
 export interface QuotaLoginParams {
   readonly username: string;
@@ -35,9 +75,12 @@ export interface IProviderQuotaService {
   /** 按天用量（N=1..90，钳位）；未登录返回空数组。 */
   getUsageDaily(days: number): Promise<readonly QuotaUsageDay[]>;
   /**
-   * 确保存在一个可用的 sk- 调用密钥（聊天用；与登录 token 是两回事）。
-   * 已有则复用第一个；**一把都没有则自动创建**（登录即可用，对齐 Lyra 自动认领）。
-   * 未登录抛 QuotaApiError(401)；创建失败抛服务端 detail（权限/限额/限流）。
+   * 确保拿到本设备可用的 sk- 调用密钥（聊天用；与登录 token 是两回事）。
+   *
+   * 设备专属 agent key 方案（与 Lyra 同一后端契约）：首次登录自动注册设备
+   * （Ed25519 配对）并认领 `via='agent'` 的设备绑定密钥——**不占用户手建 key
+   * 名额**，每设备限一把，多端互不影响；已有则复用（明文存本机凭证库），
+   * 明文断链（重装/在别处更换）时自动吊销旧 key 重签发。未登录抛 QuotaApiError(401)。
    */
   ensureApiKey(): Promise<string>;
   /**
@@ -47,6 +90,15 @@ export interface IProviderQuotaService {
   getBaseUrl(): Promise<string>;
   /** 用 sk- 密钥拉模型目录（OpenAI 兼容 /v1/models），返回模型 id 列表。 */
   getModelIds(apiKey: string): Promise<readonly string[]>;
+  /**
+   * 我的可用重置卡数量（GET /api/v1/user/reset-cards：已发放绑定本账号、
+   * 未使用的用量重置卡）。未登录或查询失败返回 0（纯展示数据，不抛错）。
+   */
+  getResetCardCount(): Promise<number>;
+  /** 重置卡全量清单（含窗口与可用性预检）；未登录抛 QuotaApiError(401)。 */
+  listResetCards(): Promise<readonly QuotaResetCard[]>;
+  /** 使用一张重置卡（POST /reset-cards/{id}/redeem）；失败抛 detail 中文。 */
+  redeemResetCard(cardId: number): Promise<void>;
 }
 
 export const IProviderQuotaService = createServiceDescriptor<IProviderQuotaService>(

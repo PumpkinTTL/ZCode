@@ -128,6 +128,7 @@ function SettingsSidebarButton({
 }
 
 export function SettingsPage({
+  initialSectionOverride,
   isDesktop,
   isWindowsDesktop,
   isMacDesktop,
@@ -141,6 +142,7 @@ export function SettingsPage({
   onLogout,
   user,
 }: {
+  initialSectionOverride?: SettingsSectionId;
   isDesktop?: boolean;
   isWindowsDesktop?: boolean;
   isMacDesktop?: boolean;
@@ -168,7 +170,8 @@ export function SettingsPage({
   const usesInlineWindowControls = Boolean(isWindowsDesktop || isLinuxDesktop);
   const platform = usePlatform();
   const [activeSection, setActiveSection] = useState<SettingsSectionId>(() => {
-    const initialSection = consumeInitialSettingsSection("general");
+    const initialSection =
+      initialSectionOverride ?? consumeInitialSettingsSection("general");
     const visibleInitialSection = resolveSettingsSectionForPlatform(
       initialSection,
       settingsSections,
@@ -324,6 +327,18 @@ export function SettingsPage({
     useState<ZCodeInteractionBehavior>("queue");
   const [defaultHomeDir, setDefaultHomeDir] = useState("");
   const [hostPlatform, setHostPlatform] = useState("");
+
+  // Tab 直连通道：openSettingsTab(section) 写进 Tab 状态的初始分区在这里消费。
+  // 覆盖 pending/event 两条旧通道之外的第三条兜底，三通道任一可达即落位。
+  useEffect(() => {
+    if (initialSectionOverride) {
+      setActiveSection((current) =>
+        resolveSettingsSectionForPlatform(initialSectionOverride, settingsSections) === current
+          ? current
+          : initialSectionOverride,
+      );
+    }
+  }, [initialSectionOverride, settingsSections]);
 
   useEffect(
     () =>
@@ -652,18 +667,6 @@ export function SettingsPage({
   );
   const handleCodePreviewSettingsChange = useCallback(
     (patch: Parameters<typeof setCodePreviewSettings>[0]) => {
-      const [key] = Object.keys(patch);
-      const action =
-        key === "lightTheme"
-          ? "change_code_light_theme"
-          : key === "darkTheme"
-            ? "change_code_dark_theme"
-            : key === "showLineNumbers"
-              ? "toggle_code_line_numbers"
-              : key === "wrapLongLines"
-                ? "toggle_code_line_wrap"
-                : "change_code_font_size";
-      const value = Object.values(patch)[0];
       return setCodePreviewSettings(patch);
     },
     [setCodePreviewSettings],

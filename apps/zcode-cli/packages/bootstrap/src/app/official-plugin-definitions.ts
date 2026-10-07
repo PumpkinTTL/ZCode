@@ -390,6 +390,13 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       "../zcode-cua-plugin",
       "../../zcode-cua-plugin",
       "../../../zcode-cua-plugin",
+      // monorepo 布局：其他官方插件的源码在 apps/zcode-cli/packages/ 下（上面几条 1-2 层
+      // 相对路径即可命中），而 CUA 插件源码在**仓库根** packages/ 下。dev 的 app-server 入口是
+      // apps/zcode-cli/packages/cli/dist/zcode.cjs（不是 glm 副本），从那里到仓库根差 5 层；
+      // 缺这两条时 dev 的 filesystem seed 源永远找不到 CUA 根：catalog 被重写成不含 computer-use
+      // 的三条，discovery 里插件整体缺席（连 off 都不是），CUA 注入门因此全程关闭。
+      "../../../../packages/zcode-cua-plugin",
+      "../../../../../packages/zcode-cua-plugin",
     ],
     requiredSeedPaths: OFFICIAL_CUA_REQUIRED_SEED_PATHS,
     // 当前 CUA 为不可用占位包，无需复制 native runtime；避免把本地旧依赖继续带入缓存。

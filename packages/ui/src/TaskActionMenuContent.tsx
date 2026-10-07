@@ -6,6 +6,10 @@ interface TaskActionMenuItemProps {
   disabled?: boolean;
   onSelect?: () => void;
   title?: string;
+  /** 破坏性操作（删除）用仓库统一的 destructive 红；缺省 default。 */
+  variant?: "default" | "destructive";
+  /** 追加类：删除项用红字但不吃 destructive 的整块红底高亮。 */
+  className?: string;
 }
 
 interface TaskActionMenuSeparatorProps {
@@ -29,6 +33,7 @@ export function TaskActionMenuContent({
   onTogglePinTask,
   onStartRenameTask,
   onArchiveTask,
+  onDeleteTask,
   onMarkTaskAsUnread,
   onOpenInSplitPane,
   openInSplitPaneDisabled = false,
@@ -62,6 +67,8 @@ export function TaskActionMenuContent({
   onTogglePinTask: () => void;
   onStartRenameTask: () => void;
   onArchiveTask: () => void;
+  /** 真删（不可恢复）；缺省不渲染删除入口。 */
+  onDeleteTask?: () => void;
   onMarkTaskAsUnread: () => void;
   /** 「在分屏打开」（仅桌面 shell 传入；手机远控不显示该入口）。 */
   onOpenInSplitPane?: () => void;
@@ -123,6 +130,20 @@ export function TaskActionMenuContent({
       >
         {intl.formatMessage({ id: "taskList.markAsUnread" })}
       </Item>
+      {onDeleteTask ? (
+        <Item
+          disabled={taskTargetActionsDisabled}
+          title={disabledReason}
+          className="text-destructive data-[highlighted]:text-destructive"
+          onSelect={() => {
+            if (!taskTargetActionsDisabled) {
+              onDeleteTask();
+            }
+          }}
+        >
+          {intl.formatMessage({ id: "taskList.delete" })}
+        </Item>
+      ) : null}
       {onOpenInSplitPane ? (
         <Item
           data-testid={TID_V4_TASK_OPEN_IN_SPLIT}

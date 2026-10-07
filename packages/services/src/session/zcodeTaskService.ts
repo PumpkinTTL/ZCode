@@ -360,6 +360,7 @@ export interface IZCodeTaskService {
   /** 关闭 task（优先 session/close；当 workspace 下最后一个 task 结束时再回收共享进程） */
   closeTask(params: { taskId: string }): Promise<void>;
 
+
   /** 恢复已有 task（复用 workspace 级 agent 进程，如无则创建，再执行 session/load） */
   resumeTask(params: {
     taskId: string;

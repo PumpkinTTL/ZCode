@@ -232,7 +232,6 @@ export type CronUpdateInput = z.infer<typeof CronUpdateInputSchema>;
 export const CronUpdateInputJsonSchema = toToolJsonSchema(CronUpdateInputObjectSchema);
 
 export const CronListInputSchema = z.object({}).strict();
-export type CronListInput = z.infer<typeof CronListInputSchema>;
 export const CronListInputJsonSchema = toToolJsonSchema(CronListInputSchema);
 
 export const CronDeleteInputSchema = z
@@ -263,7 +262,6 @@ export const CronAutomationScheduleRuleSchema = z
     monthlyMode: z.enum(["date", "weekday"]).optional(),
   })
   .strict();
-export type CronAutomationScheduleRule = z.infer<typeof CronAutomationScheduleRuleSchema>;
 
 export const CronAutomationSchema = z
   .object({

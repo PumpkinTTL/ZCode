@@ -20,15 +20,8 @@ export {
 // 文件服务
 export { useReaddir } from "./useFileService.js";
 
-// 文件监视服务
-export { useWatchedReaddir } from "./useFileWatcherService.js";
-
 // 系统服务
-export { useSystemInfo, useIntranetProbe } from "./useSystemService.js";
 export { useWorkspaceHomePath } from "./useWorkspaceHomePath.js";
-
-// 终端服务
-export { useTerminal } from "./useTerminalService.js";
 
 // 设置服务
 export { useSettings, useRecentProjects } from "./useSettingService.js";
@@ -40,16 +33,13 @@ export { useOnboardingRecordService } from "./useOnboardingRecordService.js";
 
 // 通用确认弹窗
 export { useConfirmDialog } from "./useConfirmDialog.js";
-export { useAlertDialog } from "./useAlertDialog.js";
 
-// 凭据服务
-export { useCredentials, useAuthToken } from "./useCredentials.js";
+// Agent 服务
 export { useZCodeAgentService } from "./useZCodeAgentService.js";
 
 // Git pane
 export { useGitAutoRefresh } from "./useGitAutoRefresh.js";
 export { useGitRepository } from "./useGitRepository.js";
-export { useGitActions } from "./useGitActions.js";
 // workspace provider 配置路径
 export { useTaskNativeSessionLogFile } from "./useTaskNativeSessionLogFile.js";
 export { useTaskSessionFilePath } from "./useTaskSessionFilePath.js";

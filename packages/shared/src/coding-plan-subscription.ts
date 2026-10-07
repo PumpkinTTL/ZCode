@@ -11,7 +11,6 @@ export type CodingPlanSubscriptionProviderId =
   | typeof BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan
   | typeof BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan
   | typeof BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan;
-export const CODING_PLAN_SYSTEM_BUSY = "coding_plan_system_busy" as const;
 
 export type CodingPlanUnavailableReason = "not_authenticated" | "request_failed";
 

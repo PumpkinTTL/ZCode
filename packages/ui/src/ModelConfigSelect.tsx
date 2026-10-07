@@ -33,7 +33,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip.js";
-import { AlertCircle, CheckIcon, ChevronDownIcon, LoaderIcon } from "lucide-react";
+import { AlertCircle, CheckIcon, ChevronDownIcon, LoaderIcon, type LucideIcon } from "lucide-react";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -71,11 +71,21 @@ export interface ModelSelectConnectionOption {
   disabled?: boolean;
 }
 
+/** 分组标题行内的图标动作（官方组的「从端点同步」入口；spinning=执行中转圈）。 */
+export interface ModelSelectGroupHeaderAction {
+  icon: LucideIcon;
+  label: string;
+  spinning?: boolean;
+  onSelect: () => void;
+}
+
 export interface ModelSelectGroup {
   key: string;
   label: string;
   labelBadge?: string;
   directItems?: boolean;
+  /** directItems 扁平分组的标题行右侧图标按钮（带 stopPropagation，点击不关菜单）。 */
+  headerAction?: ModelSelectGroupHeaderAction;
   selectedOptionKey?: string;
   connectionOptions?: ModelSelectConnectionOption[];
   items: ModelSelectGroupItem[];
@@ -607,6 +617,28 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
                           data-model-provider-key={group.key}
                         >
                           {renderGroupLabel(group)}
+                          {group.headerAction ? (
+                            <button
+                              type="button"
+                              aria-label={group.headerAction.label}
+                              title={group.headerAction.label}
+                              className="ml-auto inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-foreground-subtle transition-colors hover:text-foreground"
+                              onClick={(event) => {
+                                // 挡住冒泡与默认行为：同步进行中菜单保持打开，转圈可见。
+                                event.preventDefault();
+                                event.stopPropagation();
+                                group.headerAction?.onSelect();
+                              }}
+                            >
+                              <group.headerAction.icon
+                                aria-hidden="true"
+                                className={cn(
+                                  "size-3.5",
+                                  group.headerAction.spinning && "animate-spin",
+                                )}
+                              />
+                            </button>
+                          ) : null}
                         </DropdownMenuLabel>
                         {renderProviderConnectionHeader(group)}
                         <DropdownMenuRadioGroup value={normalizedValue}>

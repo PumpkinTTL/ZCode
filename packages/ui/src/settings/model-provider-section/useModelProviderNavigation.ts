@@ -28,6 +28,11 @@ export function useModelProviderNavigation({
   setSelectedNodeKey,
   intl,
 }: UseModelProviderNavigationOptions) {
+  const nimbusProviders = useMemo(() => {
+    // Polaris 自有内置供应商（Nimbus 分区）：置顶展示，未登录也在（官方"智谱"分区的自有版）。
+    return modelProviders.filter((provider) => provider.config.group === "nimbus");
+  }, [modelProviders]);
+
   const customProviders = useMemo(() => {
     const allCustomProviders = modelProviders.filter(
       (provider) => provider.config.group === "standard-personal",
@@ -38,6 +43,17 @@ export function useModelProviderNavigation({
 
   const navigationGroups = useMemo<ModelProviderNavGroup[]>(() => {
     return [
+      {
+        id: "nimbus",
+        title: intl.formatMessage({ id: "settings.modelProvider.nimbusTitle" }),
+        items: nimbusProviders.map((provider) => ({
+          key: createCustomProviderNodeKey(provider.providerId),
+          type: "custom" as const,
+          label: getProviderFormLabel(provider),
+          provider,
+          statusActive: provider.executable === true,
+        })),
+      },
       {
         id: "custom",
         title: intl.formatMessage({ id: "settings.modelProvider.customTitle" }),
@@ -52,7 +68,7 @@ export function useModelProviderNavigation({
     ];
     // 左侧导航分组标题在这个 memo 内格式化。
     // 语言切换时 provider 引用可能不变，必须依赖 intl 才能刷新旧 locale 的文案。
-  }, [customProviders, intl]);
+  }, [customProviders, intl, nimbusProviders]);
 
   const navigationItems = useMemo(
     () => navigationGroups.flatMap((group) => group.items),

@@ -4893,6 +4893,7 @@ export function createZCodeAgentService(
       return result.closed ?? true;
     },
 
+
     async setModel(params: ZCodeAgentSetModelParams) {
       const startedAt = Date.now();
       const client = await getClient(params);

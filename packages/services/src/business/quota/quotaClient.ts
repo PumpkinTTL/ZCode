@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- 同一供应商的用户侧 HTTP 契约集中一处（登录/额度/套餐/密钥/设备/重置卡），
+   拆文件会让 409/404 冲突契约与签名头注入口径散落多处；先集中维护协议边界。 */
 /**
  * 供应商额度 HTTP 客户端（纯函数，无状态；供应商差异只在 baseUrl 配置）。
  *
@@ -16,7 +18,21 @@ const ME_PATH = "/api/v1/user/me";
 const PLANS_PATH = "/api/v1/user/plans";
 const USAGE_DAILY_PATH = "/api/v1/user/usage/daily";
 const KEYS_PATH = "/api/v1/user/keys";
+const RESET_CARDS_PATH = "/api/v1/user/reset-cards";
+const DEVICES_REGISTER_PATH = "/api/v1/user/devices/register";
 const MODELS_PATH = "/v1/models";
+
+/**
+ * 一次待签名请求的描述（设备身份模块的 Ed25519 签名契约配套；签名串只取
+ * path 不含 query）。签名器由宿主注入，本文件不感知 node:crypto。
+ */
+export interface QuotaSignDescriptor {
+  readonly method: string;
+  readonly pathWithQuery: string;
+  readonly body: string | null;
+}
+
+export type QuotaRequestSigner = (descriptor: QuotaSignDescriptor) => Record<string, string>;
 
 /** 非 2xx 时抛出；message 为可直接展示的中文文案。 */
 export class QuotaApiError extends Error {
@@ -106,20 +122,37 @@ export class QuotaApiClient {
     }
   }
 
-  async listApiKeys(token: string, signal?: AbortSignal): Promise<Array<Record<string, unknown>>> {
-    const response = await this.#fetchImpl(`${this.#baseUrl}${KEYS_PATH}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal,
+  /**
+   * 列出调用密钥。可按客户端 + 设备过滤（agent key 认领用）。
+   *
+   * 形状容错：当前后端返回 `{ items: [...] }`（旧实现只认数组/keys/data，
+   * 对 items 恒解析成空 → 每次登录都误判「没有密钥」；本修复同时是
+   * agent key 认领的前置条件）。
+   */
+  async listApiKeys(
+    token: string,
+    options?: {
+      signal?: AbortSignal;
+      clientId?: string;
+      deviceId?: string;
+      sign?: QuotaRequestSigner;
+    },
+  ): Promise<Array<Record<string, unknown>>> {
+    const query = new URLSearchParams();
+    if (options?.clientId) query.set("client_id", options.clientId);
+    if (options?.deviceId) query.set("device_id", options.deviceId);
+    const pathWithQuery = query.size > 0 ? `${KEYS_PATH}?${query.toString()}` : KEYS_PATH;
+    const signed = options?.sign?.({ method: "GET", pathWithQuery, body: null }) ?? {};
+    const response = await this.#fetchImpl(`${this.#baseUrl}${pathWithQuery}`, {
+      headers: { Authorization: `Bearer ${token}`, ...signed },
+      signal: options?.signal,
     });
     if (!response.ok) throw await toApiError(response);
     const body = (await parseJson(response)) as unknown;
-    // 容错：不同部署可能返回数组或 {keys: [...]} / {data: [...]}
     if (Array.isArray(body)) return body;
-    if (Array.isArray((body as { keys?: unknown })?.keys)) {
-      return (body as { keys: unknown[] }).keys as Array<Record<string, unknown>>;
-    }
-    if (Array.isArray((body as { data?: unknown })?.data)) {
-      return (body as { data: unknown[] }).data as Array<Record<string, unknown>>;
+    for (const field of ["items", "keys", "data"] as const) {
+      const list = (body as Record<string, unknown>)?.[field];
+      if (Array.isArray(list)) return list as Array<Record<string, unknown>>;
     }
     return [];
   }
@@ -146,6 +179,151 @@ export class QuotaApiClient {
     return { key };
   }
 
+  /**
+   * 注册设备（POST /api/v1/user/devices/register，JWT + 设备签名双鉴权）。
+   *
+   * 服务端契约：client_id 必须是 apps 表已有行；public_key 为 base64 裸 32 字节；
+   * 同 (user, client_id, public_key) 重复注册幂等返回既有行；撤销过的同公钥重注册
+   * = 复活原行。成功回执兼容 {id} / {device_id} / {deviceId} 三种形态；撞设备上限
+   * 默认 evict_oldest（自动淘汰最早设备并在回执带 evicted_device_id）。
+   */
+  async registerDevice(
+    token: string,
+    input: {
+      clientId: string;
+      publicKeyRawBase64: string;
+      name: string;
+      platform: string;
+      appVersion: string;
+    },
+    sign?: QuotaRequestSigner,
+    signal?: AbortSignal,
+  ): Promise<{ deviceId: string; evictedDeviceId: string | null }> {
+    const body = JSON.stringify({
+      client_id: input.clientId,
+      public_key: input.publicKeyRawBase64,
+      name: input.name,
+      platform: input.platform,
+      app_version: input.appVersion,
+    });
+    const signed = sign?.({ method: "POST", pathWithQuery: DEVICES_REGISTER_PATH, body }) ?? {};
+    const response = await this.#fetchImpl(`${this.#baseUrl}${DEVICES_REGISTER_PATH}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...signed,
+      },
+      body,
+      signal,
+    });
+    if (!response.ok && response.status !== 409) throw await toApiError(response);
+    const parsed = (await parseJson(response)) as Record<string, unknown> | null;
+    const levels: Array<Record<string, unknown> | null> = [parsed];
+    const detail = parsed?.detail;
+    if (typeof detail === "object" && detail !== null) levels.push(detail as Record<string, unknown>);
+    for (const level of levels) {
+      const raw =
+        level?.device_id ?? level?.deviceId ?? (typeof level?.id === "number" ? level.id : undefined);
+      const deviceId = typeof raw === "number" ? String(raw) : typeof raw === "string" ? raw : null;
+      if (deviceId) {
+        const evictedRaw = levels.flatMap((l) =>
+          l ? [l.evicted_device_id ?? l.evictedDeviceId] : [],
+        )[0];
+        const evictedDeviceId =
+          typeof evictedRaw === "number"
+            ? String(evictedRaw)
+            : typeof evictedRaw === "string" && evictedRaw
+              ? evictedRaw
+              : null;
+        return { deviceId, evictedDeviceId };
+      }
+    }
+    throw new QuotaApiError(response.status, "设备注册响应缺少 device_id，请稍后重试");
+  }
+
+  /**
+   * 认领设备专属 agent key（每 (user, client_id, device) 限一把 active）：
+   * POST /api/v1/user/keys + `via='agent'` 三件套，**不占用户手建 key 名额**。
+   *
+   * 服务端契约：成功返回 `{ key, id }`（明文仅此一次）；该设备已有 active 时 409，
+   * detail 里带 existing_key_id / key_prefix（明文不可再取，靠本地延续或轮换）。
+   * 设备被撤销时 403（detail「设备已撤销」→ 调用方重新注册设备）。
+   */
+  async createAgentKey(
+    token: string,
+    input: { name: string; clientId: string; deviceId: string },
+    sign?: QuotaRequestSigner,
+    signal?: AbortSignal,
+  ): Promise<
+    | { created: true; key: string; keyId: number | string | null }
+    | { created: false; existingKeyId: number | string | null; keyPrefix: string | null }
+  > {
+    const body = JSON.stringify({
+      name: input.name,
+      via: "agent",
+      client_id: input.clientId,
+      device_id: Number(input.deviceId),
+    });
+    const signed = sign?.({ method: "POST", pathWithQuery: KEYS_PATH, body }) ?? {};
+    const response = await this.#fetchImpl(`${this.#baseUrl}${KEYS_PATH}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...signed,
+      },
+      body,
+      signal,
+    });
+    if (response.status === 409) {
+      const parsed = (await parseJson(response)) as Record<string, unknown> | null;
+      const detail = parsed?.detail;
+      const level =
+        typeof detail === "object" && detail !== null ? (detail as Record<string, unknown>) : parsed;
+      const existingKeyId =
+        (typeof level?.existing_key_id === "number" ? level.existing_key_id : undefined) ??
+        (typeof level?.existing_key_id === "string" && level.existing_key_id
+          ? level.existing_key_id
+          : null);
+      const keyPrefix =
+        typeof level?.key_prefix === "string" && level.key_prefix ? level.key_prefix : null;
+      return { created: false, existingKeyId, keyPrefix };
+    }
+    if (!response.ok) throw await toApiError(response);
+    const parsed = (await parseJson(response)) as Record<string, unknown> | null;
+    const key = typeof parsed?.key === "string" ? parsed.key.trim() : "";
+    if (!key) throw new QuotaApiError(response.status, "agent key 创建响应缺少明文 key");
+    const keyId =
+      typeof parsed?.id === "number"
+        ? parsed.id
+        : typeof parsed?.id === "string" && parsed.id
+          ? parsed.id
+          : null;
+    return { created: true, key, keyId };
+  }
+
+  /**
+   * 吊销一把密钥（DELETE /api/v1/user/keys/{id}，软删语义）。用于 agent key
+   * 明文断链时的自动轮换——只动本设备这一把，多端其他设备不受影响。
+   * 404 = 已被吊销/不存在，幂等成功。
+   */
+  async revokeApiKey(
+    token: string,
+    keyId: number | string,
+    sign?: QuotaRequestSigner,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const pathWithQuery = `${KEYS_PATH}/${encodeURIComponent(String(keyId))}`;
+    const signed = sign?.({ method: "DELETE", pathWithQuery, body: null }) ?? {};
+    const response = await this.#fetchImpl(`${this.#baseUrl}${pathWithQuery}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}`, ...signed },
+      signal,
+    });
+    if (!response.ok && response.status !== 404) throw await toApiError(response);
+  }
+
   async listModelIds(apiKey: string, signal?: AbortSignal): Promise<string[]> {
     const response = await this.#fetchImpl(`${this.#baseUrl}${MODELS_PATH}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
@@ -157,6 +335,58 @@ export class QuotaApiClient {
     return items
       .map((item) => (typeof item.id === "string" ? item.id : ""))
       .filter((id) => id.length > 0);
+  }
+
+  /**
+   * 我的重置卡（GET /api/v1/user/reset-cards）：已发放绑定本账号、未使用的
+   * 用量重置卡（5h / 周 / 周期窗口）。返回清单条数（面板礼物徽章的数量口径）。
+   */
+  async countResetCards(token: string, signal?: AbortSignal): Promise<number> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${RESET_CARDS_PATH}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as unknown;
+    const items =
+      typeof body === "object" && body !== null && Array.isArray((body as { items?: unknown }).items)
+        ? ((body as { items: unknown[] }).items as unknown[])
+        : [];
+    return items.length;
+  }
+
+  /** 我的重置卡全量清单（含窗口/可用性预检），供「可重置额度」弹窗渲染。 */
+  async listResetCards(
+    token: string,
+    signal?: AbortSignal,
+  ): Promise<Array<Record<string, unknown>>> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${RESET_CARDS_PATH}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as unknown;
+    const items =
+      typeof body === "object" && body !== null && Array.isArray((body as { items?: unknown }).items)
+        ? ((body as { items: unknown[] }).items as Array<Record<string, unknown>>)
+        : [];
+    return items;
+  }
+
+  /**
+   * 使用一张重置卡（POST /api/v1/user/reset-cards/{id}/redeem）。
+   * 失败抛 QuotaApiError（detail 为可直接展示的中文：冷却中/达日限/无套餐/过期等）。
+   */
+  async redeemResetCard(token: string, cardId: number, signal?: AbortSignal): Promise<void> {
+    const response = await this.#fetchImpl(
+      `${this.#baseUrl}${RESET_CARDS_PATH}/${encodeURIComponent(String(cardId))}/redeem`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+      },
+    );
+    if (!response.ok) throw await toApiError(response);
   }
 
   async getMe(token: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
@@ -221,10 +451,19 @@ export function projectEmailMasked(me: Record<string, unknown>): string | null {
 }
 
 /**
+ * 后端 expires_at 是 Unix **秒**（32 位 Integer 列）；前端 Date/Intl 一律要毫秒。
+ * 容错：若上游某天改发毫秒（>1e12），原样保留，避免二次放大。
+ */
+function normalizeEpochMs(seconds: number): number {
+  if (seconds <= 0) return 0;
+  return seconds > 1e12 ? seconds : seconds * 1000;
+}
+
+/**
  * 投影单个订阅（原始字段名为当前供应商口径）。
  * credits 与 per_call 两种计费模式的字段互斥，按 billing_mode 分支。
  */
-import type { QuotaSubscription } from "./quotaTypes.js";
+import type { QuotaResetCard, QuotaSubscription } from "./quotaTypes.js";
 export function projectSubscription(raw: Record<string, unknown>):
   | QuotaSubscription
   | null
@@ -242,6 +481,8 @@ export function projectSubscription(raw: Record<string, unknown>):
       limit5h: number | null;
       usedWeekly: number | null;
       limitWeekly: number | null;
+      next5hRefreshAt: number;
+      nextWeekResetAt: number;
       hoursLeft: number;
       expiresAt: number;
       periodDays: number | null;
@@ -254,7 +495,9 @@ export function projectSubscription(raw: Record<string, unknown>):
   const billingMode = readString(raw.billing_mode);
   const status = readString(raw.status) || "active";
   const planName = readString(raw.plan_name) || "套餐";
-  const expiresAt = readNumber(raw.expires_at) ?? 0;
+  const expiresAt = normalizeEpochMs(readNumber(raw.expires_at) ?? 0);
+  const next5hRefreshAt = normalizeEpochMs(readNumber(raw.next_5h_refresh_at) ?? 0);
+  const nextWeekResetAt = normalizeEpochMs(readNumber(raw.next_week_reset_at) ?? 0);
 
   if (billingMode === "per_call") {
     const totalCalls = readNumber(raw.total_calls) ?? 0;
@@ -273,6 +516,8 @@ export function projectSubscription(raw: Record<string, unknown>):
       limit5h: null,
       usedWeekly: null,
       limitWeekly: null,
+      next5hRefreshAt: 0,
+      nextWeekResetAt: 0,
       hoursLeft: readNumber(raw.hours_left) ?? 0,
       expiresAt,
       periodDays: readNumber(raw.period_days),
@@ -295,6 +540,8 @@ export function projectSubscription(raw: Record<string, unknown>):
     limit5h: readNumber(raw.limit_5h),
     usedWeekly: readNumber(raw.used_weekly),
     limitWeekly: readNumber(raw.limit_weekly),
+    next5hRefreshAt,
+    nextWeekResetAt,
     hoursLeft: readNumber(raw.hours_left) ?? 0,
     expiresAt,
     periodDays: null,
@@ -309,5 +556,21 @@ export function projectUsageDay(raw: Record<string, unknown>) {
     requests: readNumber(raw.requests),
     charged: readNumber(raw.charged),
     cacheHitRate: readNumber(raw.cache_hit_rate),
+  };
+}
+
+/** 重置卡清单条目投影（坏形状丢弃返回 null）。 */
+export function projectResetCard(raw: Record<string, unknown>): QuotaResetCard | null {
+  const id = readNumber(raw.id);
+  if (id === null) return null;
+  return {
+    id,
+    window: readString(raw.window),
+    expiresAt: normalizeEpochMs(readNumber(raw.expires_at) ?? 0),
+    expired: raw.expired === true,
+    blockedReason: readString(raw.blocked_reason),
+    cooldownLeftMin: readNumberOr(raw.cooldown_left_min, 0),
+    dailyUsed: readNumberOr(raw.daily_used, 0),
+    dailyLimit: readNumber(raw.daily_limit),
   };
 }

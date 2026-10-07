@@ -10,6 +10,9 @@ export const providerGroupDataSchema = z.enum([
   "standard-personal",
   "zai-family",
   "bigmodel-family",
+  // Polaris 自有内置供应商分区（Nimbus）：官方三组之外我们自己的内置规则组，
+  // 用于「未登录也在模型设置置顶展示」的内置条目（见 config/provider/zcode-builtin.json）。
+  "nimbus",
 ]);
 export const zhipuAccountModeDataSchema = z.enum([
   "start-plan",

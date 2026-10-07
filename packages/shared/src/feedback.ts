@@ -205,8 +205,6 @@ export const FEEDBACK_TICKET_TYPES: { value: FeedbackTicketType; label: string }
   { value: "performance", label: "性能问题" },
 ];
 
-export const FEEDBACK_TICKET_SEVERITIES: FeedbackTicketSeverity[] = ["P1-高", "P2-中", "P3-低"];
-
 export const DEFAULT_FEEDBACK_TICKET_FRAMEWORK: FeedbackTicketFramework = "zcode-agent";
 
 export const FEEDBACK_TICKET_FRAMEWORK_OPTIONS: {

@@ -1,11 +1,10 @@
 /**
- * 草稿态空态问候：时间问候语 + ZCode Logo。
+ * 草稿态空态问候：时间问候语 + Polaris 北极星标识。
  * 自旧版 ChatView/ChatViewEmptyState.tsx 恢复（该组件随旧 ChatView 删除，
  * i18n key `chat.empty.greeting.*` 一直保留）；边界时刻自动换档逻辑保真。
  * 手机远控复用同一组件，但继续保留 20px 紧凑标题；桌面草稿首页才按标题自身宽度适配。
  */
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
-import darkEmptyStateLogoUrl from "@/assets/Z.svg";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
@@ -181,7 +180,7 @@ export function ConversationDraftEmptyState({ className }: { className?: string 
           "-translate-x-1/2 -translate-y-1/2 text-foreground-subtlest",
         )}
       >
-        <ZCodeEmptyStateLogo className="h-full w-full" />
+        <PolarisCosmicLogo className="h-full w-full" />
       </div>
       <p
         ref={greetingContainerRef}
@@ -209,18 +208,27 @@ export function ConversationDraftEmptyState({ className }: { className?: string 
   );
 }
 
-function ZCodeEmptyStateLogo({ className }: { className?: string }) {
+function PolarisCosmicLogo({ className }: { className?: string }) {
+  // 宇宙场景水印：行星地平线 + 大气层弧 + 环形山月球 + 散落星点。
+  // 浅色 = currentColor 线稿；深色 = 蓝→紫渐变描边。底部随渐隐遮罩自然淡出。
+  const stars: Array<[number, number, number]> = [
+    [60, 70, 2],
+    [118, 42, 1.6],
+    [258, 46, 2],
+    [352, 128, 1.8],
+    [42, 150, 1.5],
+    [168, 92, 1.4],
+  ];
   return (
     <>
-      {/* 夜间资源已自带渐变和透明度，公共容器叠加遮罩会让它重复变淡；渐隐效果只属于浅色线框。*/}
       <svg
         aria-hidden="true"
         className={cn(
           className,
           "opacity-70 dark:hidden",
-          "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,transparent_70%,transparent_100%)]",
+          "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)]",
           "[-webkit-mask-repeat:no-repeat] [-webkit-mask-size:100%_100%]",
-          "[mask-image:linear-gradient(to_bottom,black_0%,transparent_70%,transparent_100%)]",
+          "[mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)]",
           "[mask-repeat:no-repeat] [mask-size:100%_100%]",
         )}
         width="400"
@@ -229,19 +237,48 @@ function ZCodeEmptyStateLogo({ className }: { className?: string }) {
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <path
-          d="M398.97 0.5L147.576 319.5H1.03027L37.5996 273.081L120.167 169.603L120.171 169.598L215.342 47.5605L215.343 47.5615L252.424 0.5H398.97ZM264.544 273.271H372.527L336.082 319.498H189.886L202.642 303.307C217.584 284.34 240.398 273.271 264.544 273.271ZM209.164 0.5L202.786 8.58887C183.782 32.6885 154.782 46.752 124.091 46.752H25.9805L62.4268 0.5H209.164Z"
-          stroke="currentColor"
-        />
+        <g stroke="currentColor" fill="none">
+          {/* 行星地平线压在问候语以下（峰值 y≈305），不与文字交叠 */}
+          <path d="M 0 341 A 580 580 0 0 1 400 341" strokeOpacity="0.55" />
+          {/* 月球 + 环形山 */}
+          <circle cx="312" cy="92" r="26" strokeOpacity="0.5" />
+          <circle cx="303" cy="83" r="5" strokeOpacity="0.4" />
+          <circle cx="320" cy="101" r="3.5" strokeOpacity="0.4" />
+          {/* 散落星点 + 一颗小闪星 */}
+          {stars.map(([x, y, r]) => (
+            <circle key={`d${x}-${y}`} cx={x} cy={y} r={r} />
+          ))}
+          <path d="M150 50 Q152 58 160 60 Q152 62 150 70 Q148 62 140 60 Q148 58 150 50 Z" />
+        </g>
       </svg>
-      {/* 深色资源包含专用渐变与模糊效果，不能通过 currentColor 复刻；主题类保证两套 Logo 互斥显示。 */}
-      <img
+      <svg
         aria-hidden="true"
         className={cn(className, "hidden dark:block")}
         data-v4-draft-logo="dark"
-        src={darkEmptyStateLogoUrl}
-        alt=""
-      />
+        width="400"
+        height="320"
+        viewBox="0 0 400 320"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="polaris-cosmos-dark" x1="0" y1="40" x2="400" y2="260" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#4099ff" />
+            <stop offset="0.5" stopColor="#9e77ed" />
+            <stop offset="1" stopColor="#4099ff" stopOpacity="0.25" />
+          </linearGradient>
+        </defs>
+        <g stroke="url(#polaris-cosmos-dark)" fill="none">
+          <path d="M 0 341 A 580 580 0 0 1 400 341" strokeOpacity="0.8" />
+          <circle cx="312" cy="92" r="26" strokeOpacity="0.7" />
+          <circle cx="303" cy="83" r="5" strokeOpacity="0.5" />
+          <circle cx="320" cy="101" r="3.5" strokeOpacity="0.5" />
+          {stars.map(([x, y, r]) => (
+            <circle key={`d${x}-${y}`} cx={x} cy={y} r={r} />
+          ))}
+          <path d="M150 50 Q152 58 160 60 Q152 62 150 70 Q148 62 140 60 Q148 58 150 50 Z" />
+        </g>
+      </svg>
     </>
   );
 }

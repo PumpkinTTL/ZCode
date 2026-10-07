@@ -7,7 +7,6 @@ import { z } from "zod";
 import { toToolJsonSchema } from "./json-schema.js";
 
 export const ASK_USER_QUESTION_TOOL_NAME = "AskUserQuestion";
-export const ASK_USER_QUESTION_TOOL_CHIP_WIDTH = 12;
 
 const HTML_PREVIEW_MARKER_PATTERN = /<!doctype\b|<!--|<\/?\s*[a-z][a-z0-9:-]*(?:\s[^<>]*)?>/i;
 const HTML_PREVIEW_TAG_PATTERN = /<\/?\s*[a-z][a-z0-9:-]*(?:\s[^<>]*)?>/i;

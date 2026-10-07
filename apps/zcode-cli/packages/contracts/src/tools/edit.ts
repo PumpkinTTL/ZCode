@@ -4,7 +4,7 @@
 // Reference: file edit input / output shape
 
 import { z } from "zod";
-import { ToolCallId, TraceId } from "../interfaces/shared.js";
+
 import { toToolJsonSchema } from "./json-schema.js";
 import { ToolExecutionTelemetrySchema } from "./performance.js";
 
@@ -152,25 +152,6 @@ export const EditOutputSchema = z
   .strict();
 
 export const EditOutputJsonSchema = toToolJsonSchema(EditOutputSchema);
-
-// -----------------------------------------------
-// Tool Call Structure
-// -----------------------------------------------
-
-export interface EditToolCall {
-  id: ToolCallId;
-  name: "Edit";
-  input: EditInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export interface EditToolResult {
-  toolCallId: ToolCallId;
-  output: EditOutput;
-  traceId: TraceId;
-  durationMs: number;
-}
 
 // -----------------------------------------------
 // Edit Errors

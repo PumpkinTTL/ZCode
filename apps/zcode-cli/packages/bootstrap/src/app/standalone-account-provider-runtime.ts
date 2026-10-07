@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { SharedZCodeCredentialStore } from "@zcode/adapters/auth";
 import type { ProviderRuntimeHeadersPort } from "@zcode/core";
 import {
@@ -19,12 +18,6 @@ interface StandaloneCodingPlanProvider {
   readonly family: ProviderFamilyDomain;
   readonly modelId: string;
   readonly providerId: string;
-}
-
-export async function readStandaloneCodingPlanProviders(
-  env: Readonly<Record<string, string | undefined>>,
-): Promise<readonly StandaloneCodingPlanProvider[]> {
-  return (await readStandaloneCodingPlanCatalog(env)).providers;
 }
 
 async function readStandaloneCodingPlanCatalog(
@@ -64,21 +57,6 @@ async function readStandaloneCodingPlanCatalog(
   }
 }
 
-export async function resolveStandaloneCodingPlanProvider(
-  family: ProviderFamilyDomain,
-  env: Readonly<Record<string, string | undefined>>,
-): Promise<StandaloneCodingPlanProvider> {
-  const matches = (await readStandaloneCodingPlanProviders(env)).filter(
-    (provider) => provider.family === family,
-  );
-  if (matches.length !== 1) {
-    throw new Error(
-      `ZCode Built-in Config 必须为 ${family} 声明唯一 Individual Coding Plan Provider`,
-    );
-  }
-  return matches[0]!;
-}
-
 export function standaloneAccountIdentityCredentialKey(providerId: string): string {
   const normalized = providerId.trim();
   if (!normalized) throw new Error("Standalone Account Provider ID 不能为空");
@@ -95,13 +73,6 @@ export function standaloneAccountProviderCredentialKey(input: {
   if (!providerId) throw new Error("Standalone Account Provider ID 不能为空");
   if (!accountIdentity) throw new Error("Standalone Account Identity 不能为空");
   return `account-provider:coding-plan:${providerId}:account:${encodeURIComponent(accountIdentity)}:api-key`;
-}
-
-/** 没有账号 Profile 的手工 Key 登录使用稳定、不可逆的连接身份。 */
-export function createStandaloneAccountIdentityFromSecret(secret: string): string {
-  const normalized = secret.trim();
-  if (!normalized) throw new Error("Standalone Account Secret 不能为空");
-  return `key-${createHash("sha256").update(normalized).digest("hex").slice(0, 24)}`;
 }
 
 export async function readStandaloneAccountProviderConfigSnapshot(
@@ -153,17 +124,6 @@ export async function readStandaloneAccountProviderConfigSnapshot(
     }),
   );
   return createAccountProviderConfigSnapshot(catalog.zcodeBuiltinRevision, providers);
-}
-
-export async function hasStandaloneCodingPlanAccess(
-  credentialStore: Pick<SharedZCodeCredentialStore, "loadMany">,
-  env: Readonly<Record<string, string | undefined>>,
-): Promise<boolean> {
-  return (await readStandaloneAccountProviderConfigSnapshot(credentialStore, env)).providers
-    .entries()
-    .some(([, provider]) =>
-      provider.access?.type === "zhipu-account" ? provider.access.entitled === true : false,
-    );
 }
 
 export function createStandaloneProviderRuntimeHeadersPort(

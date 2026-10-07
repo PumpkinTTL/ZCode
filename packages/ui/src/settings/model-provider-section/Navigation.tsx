@@ -23,6 +23,7 @@ import { ProviderStatusIndicator } from "./ProviderStatusIndicator.js";
 import { TID_MODEL_PROVIDER_NAV_ITEM, testId } from "@zcode/shared";
 import { useCallback, useMemo, type KeyboardEvent } from "react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { ModelProviderNavGroup, ModelProviderNavItem } from "./constants.js";
 import { useOptimisticReorder } from "./useOptimisticReorder.js";
 import { renderModelProviderNavIcon } from "./utils.js";
@@ -72,6 +73,7 @@ function ModelProviderNavigationButton({
   onSelectNavItem: (item: ModelProviderNavItem) => void;
   showIcon?: boolean;
 }) {
+  const { intl } = useZCodeIntl();
   const isSelected = item.key === selectedNodeKey;
   const inactiveItemClassName = "border-transparent text-foreground hover:border-border-hover/60";
 
@@ -95,6 +97,14 @@ function ModelProviderNavigationButton({
         ) : null}
         <span className="flex min-w-0 flex-1 items-center gap-1.5 max-md:sr-only">
           <span className="min-w-0 truncate">{label}</span>
+          {item.provider.config.group === "nimbus" ? (
+            <span
+              data-provider-official-badge=""
+              className="shrink-0 rounded-full border border-border bg-surface px-1.5 py-0.5 text-[0.625rem] leading-none font-medium text-foreground-subtle"
+            >
+              {intl.formatMessage({ id: "settings.modelProvider.officialBadge" })}
+            </span>
+          ) : null}
         </span>
         <ProviderStatusIndicator provider={item.provider} />
       </button>

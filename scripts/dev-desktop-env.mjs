@@ -23,11 +23,18 @@ function run(command, args) {
     const child = spawn(command, spawnArgs, {
       cwd: repoRoot,
       env: withPinnedNodePath(
-        {
-          ...process.env,
-          ZCODE_ENV: requestedEnv,
-          ZCODE_DESKTOP_AGENT_BYTECODE: agentBytecode ? "1" : "0",
-        },
+        (() => {
+  // 上游机器可能残留 ZCODE_BUILTIN_PROVIDER_CONFIG_FILE（指向 .zcode 下 rev-30 旧快照），
+  // 会让 dev 全链（host/staging/agent）把「上游旧快照」当 bundled——fork 的 bundled
+  // 一律是仓库 config/provider/zcode-builtin.json，dev 链路对该变量免疫。
+          const env = {
+            ...process.env,
+            ZCODE_ENV: requestedEnv,
+            ZCODE_DESKTOP_AGENT_BYTECODE: agentBytecode ? "1" : "0",
+          };
+          delete env.ZCODE_BUILTIN_PROVIDER_CONFIG_FILE;
+          return env;
+        })(),
         process.execPath,
       ),
       stdio: "inherit",

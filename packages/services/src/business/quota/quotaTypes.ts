@@ -46,8 +46,13 @@ export interface QuotaCreditsSubscription {
   /** 周窗口：已用 / 上限 */
   readonly usedWeekly: number | null;
   readonly limitWeekly: number | null;
+  /** 5h 窗下次重置时刻（毫秒；后端口径=窗口内最早用量滚出时刻，空窗为 0） */
+  readonly next5hRefreshAt: number;
+  /** 周窗下次重置时刻（毫秒；未锚定为 0 = 首次使用后开新窗） */
+  readonly nextWeekResetAt: number;
   /** 距到期小时数（过期/取消为 0） */
   readonly hoursLeft: number;
+  /** 到期时间戳（毫秒；后端 expires_at 的 Unix 秒已在 client 投影层归一，未激活为 0） */
   readonly expiresAt: number;
   /** 超限后是否回退钱包计费 */
   readonly fallbackToWallet: boolean;
@@ -65,7 +70,7 @@ export interface QuotaPerCallSubscription {
   readonly remainingCalls: number;
   readonly totalCalls: number;
   readonly callsUsed: number;
-  /** 未激活（首次使用才起算）时为 0 */
+  /** 未激活（首次使用才起算）时为 0；毫秒时间戳（同上已归一） */
   readonly expiresAt: number;
   /** 距到期小时数（未激活为 0） */
   readonly hoursLeft: number;
@@ -115,4 +120,21 @@ export interface QuotaUsageDay {
   readonly charged: number | null;
   /** 缓存命中率 % */
   readonly cacheHitRate: number | null;
+}
+
+/** 我的用量重置卡（GET /api/v1/user/reset-cards 的清单条目投影）。 */
+export interface QuotaResetCard {
+  readonly id: number;
+  /** 作用窗口：'5h' | 'week' | 'period'（per_call 订阅下核销侧映射为 'calls'） */
+  readonly window: string;
+  /** 到期时间戳（毫秒；0 = 永久） */
+  readonly expiresAt: number;
+  readonly expired: boolean;
+  /** 空串 = 可用；否则为不可用原因（冷却中/达日限/无套餐/过期/被禁用） */
+  readonly blockedReason: string;
+  /** 窗口冷却剩余分钟（0 = 不在冷却） */
+  readonly cooldownLeftMin: number;
+  /** 近 24h 已用次数 / 上限（null = 不限） */
+  readonly dailyUsed: number;
+  readonly dailyLimit: number | null;
 }

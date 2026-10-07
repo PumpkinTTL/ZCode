@@ -49,10 +49,6 @@ export const FileSystemExecutionTelemetrySchema = z
   })
   .strict();
 
-export type FileSystemExecutionTelemetry = z.infer<
-  typeof FileSystemExecutionTelemetrySchema
->;
-
 export const PatchExecutionTelemetrySchema = z
   .object({
     matchMs: z.number().int().nonnegative().optional(),
@@ -60,8 +56,6 @@ export const PatchExecutionTelemetrySchema = z
     matchAttempts: z.number().int().nonnegative().optional(),
   })
   .strict();
-
-export type PatchExecutionTelemetry = z.infer<typeof PatchExecutionTelemetrySchema>;
 
 export const ToolExecutionTelemetryDetailSchema = z.discriminatedUnion("kind", [
   z
@@ -84,10 +78,6 @@ export const ToolExecutionTelemetryDetailSchema = z.discriminatedUnion("kind", [
     })
     .strict(),
 ]);
-
-export type ToolExecutionTelemetryDetail = z.infer<
-  typeof ToolExecutionTelemetryDetailSchema
->;
 
 /**
  * 工具执行结果摘要，随 ToolCallResult 事件落本地存储；命令专属字段只能进入判别 detail，

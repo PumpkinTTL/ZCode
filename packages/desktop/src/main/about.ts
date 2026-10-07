@@ -220,7 +220,9 @@ export async function showAboutDialog(
 ): Promise<MessageBoxReturnValue> {
   const { app, BrowserWindow } = await import("electron");
   const snapshot = createAboutSnapshot({
-    appVersion: app.getVersion(),
+    // 开发态 app.getVersion() 回落的是 Electron 运行时版本（41.x），不是产品版本——
+    // 这里与编译期注入的产品版本（根 package.json）优先，彻底摆脱上游版本噪音。
+    appVersion: ZCODE_VERSION || app.getVersion(),
     buildMetadata: readBuildMetadata(),
   });
   const aboutMessages = getAboutMessages(locale);

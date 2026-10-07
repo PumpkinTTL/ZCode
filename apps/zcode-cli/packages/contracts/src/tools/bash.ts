@@ -4,7 +4,7 @@
 // Reference: shell tool input / output shape
 
 import { z } from "zod";
-import { ToolCallId, TraceId } from "../interfaces/shared.js";
+
 import { toToolJsonSchema } from "./json-schema.js";
 import { ToolExecutionTelemetrySchema } from "./performance.js";
 
@@ -265,25 +265,6 @@ export const BashOutputSchema = z
 export const BashOutputJsonSchema = toToolJsonSchema(BashOutputSchema);
 
 // -----------------------------------------------
-// Tool Call Structure
-// -----------------------------------------------
-
-export interface BashToolCall {
-  id: ToolCallId;
-  name: "Bash";
-  input: BashInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export interface BashToolResult {
-  toolCallId: ToolCallId;
-  output: BashOutput;
-  traceId: TraceId;
-  durationMs: number;
-}
-
-// -----------------------------------------------
 // Background Task
 // -----------------------------------------------
 
@@ -298,43 +279,4 @@ export interface BackgroundTask {
   stderrPersistedOutputPath?: string;
   stdoutPersistedOutputPath?: string;
   completedAt?: Date;
-}
-
-// -----------------------------------------------
-// Bash Errors
-// -----------------------------------------------
-
-export const BashErrorCode = {
-  COMMAND_NOT_PARSABLE: "bash_command_not_parsable",
-  COMMAND_TOO_COMPLEX: "bash_command_too_complex",
-  COMMAND_INJECTION_RISK: "bash_command_injection_risk",
-  READONLY_CHECK_FAILED: "bash_readonly_check_failed",
-  UNC_PATH_BLOCKED: "bash_unc_path_blocked",
-  HIGH_RISK_COMBINATION: "bash_high_risk_combination",
-  SANDBOX_VIOLATION: "bash_sandbox_violation",
-  TIMEOUT: "bash_timeout",
-  USER_INTERRUPTED: "bash_user_interrupted",
-  PROCESS_START_FAILED: "bash_process_start_failed",
-  NON_ZERO_EXIT: "bash_non_zero_exit",
-  OUTPUT_TOO_LARGE: "bash_output_too_large",
-  PERMISSION_DENIED: "bash_permission_denied",
-} as const;
-
-export type BashErrorCode = (typeof BashErrorCode)[keyof typeof BashErrorCode];
-
-// -----------------------------------------------
-// Shell Permission Types
-// -----------------------------------------------
-
-export type ShellPermissionRule = {
-  type: "allow" | "deny";
-  pattern: string;
-  description?: string;
-};
-
-export interface ShellPermissionPolicy {
-  rules: ShellPermissionRule[];
-  allowReadonly: boolean;
-  sandboxEnabled: boolean;
-  dangerousDisableSandboxAllowed: boolean;
 }

@@ -129,10 +129,19 @@ if (process.platform === "darwin" && existsSync(electronBinary)) {
   console.log(`[dev] Prepared macOS ZCode Dev bundle: ${devBundle.appPath}`);
 }
 
+const electronEnv = {
+  ...process.env,
+  ELECTRON_RENDERER_URL: rendererUrl,
+};
+  // 上游机器可能残留 ZCODE_BUILTIN_PROVIDER_CONFIG_FILE（指向 .zcode 下 rev-30 旧快照），
+  // 会让 dev 全链（host/staging/agent）把「上游旧快照」当 bundled——fork 的 bundled
+  // 一律是仓库 config/provider/zcode-builtin.json，dev 链路对该变量免疫。
+delete electronEnv.ZCODE_BUILTIN_PROVIDER_CONFIG_FILE;
+
 const electron = spawn(electronCommand, ["."], {
   cwd: root,
   stdio: "inherit",
-  env: { ...process.env, ELECTRON_RENDERER_URL: rendererUrl },
+  env: electronEnv,
   windowsHide: true,
   detached: process.platform !== "win32",
 });

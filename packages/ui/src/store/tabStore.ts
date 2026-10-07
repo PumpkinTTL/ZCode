@@ -29,6 +29,11 @@ export interface SettingsTabState {
   id: typeof SETTINGS_TAB_ID;
   kind: "settings";
   label: "settings";
+  /**
+   * 打开/聚焦设置 Tab 时希望落在的分区（一次性意图）。
+   * SettingsPage 挂载或本值变化时消费；消费后保留无害（同分区重复跳转无副作用）。
+   */
+  initialSection?: string;
 }
 
 export interface WorkspaceTabState extends TabState {
@@ -120,7 +125,7 @@ export interface TabStoreState {
   /** 仅按 workspace 子序列重排，保留设置页等非 workspace tab 的位置槽位 */
   reorderWorkspaceTabs: (fromIndex: number, toIndex: number) => void;
   /** 打开设置标签页（窗口内唯一） */
-  openSettingsTab: () => void;
+  openSettingsTab: (initialSection?: string) => void;
   /** 通过 workspace 路径激活 tab（跨窗口 focus 用），返回是否找到 */
   activateTabByPath: (path: string, options?: { workspaceIdentity?: string }) => boolean;
   /** 切换 workspace 的展开/收起态 */
@@ -192,11 +197,12 @@ function normalizeRestorableWorkspaceTab(
   return tab;
 }
 
-function createSettingsTab(): SettingsTabState {
+function createSettingsTab(initialSection?: string): SettingsTabState {
   return {
     id: SETTINGS_TAB_ID,
     kind: "settings",
     label: "settings",
+    ...(initialSection ? { initialSection } : {}),
   };
 }
 
@@ -489,14 +495,20 @@ export function createTabStore(storage: StorageLike | null | undefined = undefin
       });
     },
 
-    openSettingsTab: () => {
+    openSettingsTab: (initialSection?: string) => {
       const existing = get().tabs.find(isSettingsTab);
       if (existing) {
-        set({ activeTabId: existing.id });
+        // 已开的设置 Tab 也要更新初始分区意图：聚焦后 SettingsPage 依赖本值落到目标分区。
+        set({
+          activeTabId: existing.id,
+          tabs: get().tabs.map((tab) =>
+            isSettingsTab(tab) ? { ...tab, initialSection } : tab,
+          ),
+        });
         return;
       }
 
-      const settingsTab = createSettingsTab();
+      const settingsTab = createSettingsTab(initialSection);
       set((state) => ({
         tabs: [...state.tabs, settingsTab],
         activeTabId: settingsTab.id,

@@ -53,19 +53,13 @@ export {
   useSelectDirectory,
   useConnectRemote,
   useReaddir,
-  useSystemInfo,
-  useIntranetProbe,
-  useTerminal,
   useSettings,
   useRecentProjects,
   useConfirmDialog,
-  useCredentials,
-  useAuthToken,
   useGitRepository,
-  useGitActions,
 } from "./hooks/index.js";
 
-export { ZCodeIntlProvider, useZCodeIntl, LocaleSwitcher } from "./i18n/index.js";
+export { ZCodeIntlProvider, useZCodeIntl } from "./i18n/index.js";
 export { ResourceManagerApp } from "./resource-manager/ResourceManagerApp.js";
 export type {
   ResourceManagerAppProps,

@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { VIDEO_INPUT_MAX_BYTES } from "@zcode/shared";
-import type { ToolCallId, TraceId } from "../interfaces/shared.js";
+
 import { toToolJsonSchema } from "./json-schema.js";
 import { getReadPdfPagesValidationFailure, READ_PDF_PAGES_DESCRIPTION } from "./read-pdf.js";
 
@@ -374,22 +374,3 @@ export const ReadOutputSchema = z.union([
 ]);
 
 export const ReadOutputJsonSchema = toToolJsonSchema(ReadOutputSchema);
-
-// -----------------------------------------------
-// Tool Call Structure
-// -----------------------------------------------
-
-export interface ReadToolCall {
-  id: ToolCallId;
-  name: "Read";
-  input: ReadInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export interface ReadToolResult {
-  toolCallId: ToolCallId;
-  output: ReadOutput;
-  traceId: TraceId;
-  durationMs: number;
-}

@@ -663,6 +663,38 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     ],
   );
 
+  const handleDeleteTask = useCallback(
+    async (taskId: string) => {
+      if (readOnlyReason) {
+        return;
+      }
+      // 复用归档视图同款删除语义（zcodeTaskService.deleteTask）：从列表移除、
+      // 会话内容保留；task_deleted 事件由宿主广播，这里只做本地缓存收敛。
+      await zcodeTaskService.deleteTask({
+        taskId,
+        workspacePath: tab.workspacePath,
+        ...(tab.workspaceIdentity ? { workspaceIdentity: tab.workspaceIdentity } : {}),
+      });
+      removeTaskState(tab.workspacePath, taskId, tab.workspaceIdentity);
+      if (tab.workspaceIdentity) {
+        useRemoteTimelineTaskStore
+          .getState()
+          .removeTask(tab.workspacePath, taskId, tab.workspaceIdentity);
+        useRemotePinnedTaskStore
+          .getState()
+          .removeTask(tab.workspacePath, taskId, tab.workspaceIdentity);
+      }
+    },
+    [
+      removeTaskState,
+      readOnlyReason,
+      tab.workspaceIdentity,
+      tab.workspacePath,
+      findCurrentTaskItem,
+      zcodeTaskService,
+    ],
+  );
+
   const handleSetTaskUnread = useCallback(
     async (taskId: string, unread: boolean) => {
       if (readOnlyReason) {
@@ -1131,6 +1163,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
             onRenameTask={handleRenameTask}
             onSetTaskPinned={handleSetTaskPinned}
             onArchiveTask={handleArchiveTask}
+            onDeleteTask={handleDeleteTask}
             onSetTaskUnread={handleSetTaskUnread}
             readOnlyReason={readOnlyReason}
           />

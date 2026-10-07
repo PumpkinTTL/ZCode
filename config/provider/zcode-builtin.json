@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": 33,
+  "revision": 35,
   "config": {
     "providerConfigRules": {
       "templateRules": [
@@ -572,7 +572,29 @@
           }
         }
       ],
-      "providerRules": []
+      "providerRules": [
+        {
+          "providerId": "nimbus",
+          "templateId": "nimbus",
+          "providerName": "Nimbus",
+          "config": {
+            "group": "nimbus",
+            "builtinModelIds": [],
+            "access": {
+              "type": "api-key",
+              "apiKeyManagementUrl": "https://nimbus.bitlesu.com"
+            },
+            "api": {
+              "type": "openai-chat-completions",
+              "baseUrl": "https://nimbus.bitlesu.com/v1"
+            },
+            "logo": {
+              "type": "builtin",
+              "key": "nimbus"
+            }
+          }
+        }
+      ]
     },
     "modelConfigRules": {
       "modelRules": [

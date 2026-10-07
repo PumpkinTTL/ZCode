@@ -293,9 +293,27 @@ export type {
   QuotaPerCallSubscription,
   QuotaViewKind,
   QuotaUsageDay,
+  QuotaResetCard,
 } from "./business/index.js";
 export { createQuotaService, DEFAULT_QUOTA_BASE_URL } from "./business/index.js";
 export { QuotaApiError } from "./business/index.js";
+// App 更新检查 / 更新日志 / 在线心跳（cbcn-cloud app_release.py 契约）。
+export { IAppUpdateService, APP_UPDATE_CLIENT_ID, APP_UPDATE_CHANNEL } from "./business/index.js";
+export {
+  createAppUpdateService,
+  APP_UPDATE_HEARTBEAT_INTERVAL_MS,
+  resolveAppUpdatePlatform,
+} from "./business/index.js";
+export { AppUpdateApiError } from "./business/index.js";
+export type {
+  AppReleaseFile,
+  AppReleaseHistoryEntry,
+  AppReleaseVersion,
+  AppUpdateCheck,
+  AppUpdateCheckResult,
+  AppUpdateServiceHandle,
+  CreateAppUpdateServiceOptions,
+} from "./business/index.js";
 export type { FeedbackUploadProgress } from "./feedback/feedback.js";
 export { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 export type {

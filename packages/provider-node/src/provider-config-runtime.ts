@@ -114,7 +114,8 @@ export class NodeProviderConfigRuntime {
       // Managed Worker 无下载配置也无恢复 owner，不建立周期任务。
       if (
         this.#remoteSynchronizer ||
-        this.#zcodeBuiltinSource instanceof EndpointScopedZCodeBuiltinSource ||
+        (this.#zcodeBuiltinSource instanceof EndpointScopedZCodeBuiltinSource &&
+          this.#zcodeBuiltinSource.remoteEnabled) ||
         this.#checkListeners.size > 0
       ) {
         this.#checkTimer = setInterval(() => {

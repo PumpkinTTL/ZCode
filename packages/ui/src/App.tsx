@@ -950,7 +950,7 @@ export function App({
   useAppKeyboard({
     openCommandCenter: handleOpenQuickPick,
     // 打开设置页：与设置入口按钮共用 tabStore.openSettingsTab；默认 ⌘,/Ctrl+,（系统惯例）
-    openSettings: openSettingsTab,
+    openSettings: () => openSettingsTab(),
     findInTask: handleOpenTaskFind,
     toggleSidebar: () => runVisibleWorkspaceCommand(handleToggleSidebar),
     switchTheme: handleSwitchTheme,
@@ -1017,7 +1017,7 @@ export function App({
         handlers: {
           createTask: () => runVisibleWorkspaceCommand(() => handleCreateTaskIfWritable()),
           openWorkspace: () => runVisibleWorkspaceCommand(onOpenWorkspace),
-          openSettings: openSettingsTab,
+          openSettings: () => openSettingsTab(),
           openSkillsSettings: () => {
             setPendingSettingsPluginIntent("skills");
             openSettingsTab();

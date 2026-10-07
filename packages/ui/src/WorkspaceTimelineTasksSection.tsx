@@ -861,6 +861,42 @@ export function WorkspaceTimelineTasksSection({
                   });
                 });
             }}
+            onDeleteTask={() => {
+              void contextMenuWorkspaceServices.services.zcodeTaskService
+                .deleteTask({
+                  taskId: contextMenuItem.taskId,
+                  workspacePath: contextMenuItem.workspacePath,
+                  ...(contextMenuItem.workspaceIdentity
+                    ? { workspaceIdentity: contextMenuItem.workspaceIdentity }
+                    : {}),
+                })
+                .then(() => {
+                  removeTaskState(
+                    contextMenuItem.workspacePath,
+                    contextMenuItem.taskId,
+                    contextMenuItem.workspaceIdentity,
+                  );
+                  if (contextMenuItem.workspaceIdentity) {
+                    useRemoteTimelineTaskStore
+                      .getState()
+                      .removeTask(
+                        contextMenuItem.workspacePath,
+                        contextMenuItem.taskId,
+                        contextMenuItem.workspaceIdentity,
+                      );
+                    useRemotePinnedTaskStore
+                      .getState()
+                      .removeTask(
+                        contextMenuItem.workspacePath,
+                        contextMenuItem.taskId,
+                        contextMenuItem.workspaceIdentity,
+                      );
+                  }
+                })
+                .catch(() => {
+                  toast(intl.formatMessage({ id: "taskList.deleteFailed" }));
+                });
+            }}
             onMarkTaskAsUnread={() => {
               void contextMenuWorkspaceServices.services.zcodeTaskService
                 .setTaskUnread({

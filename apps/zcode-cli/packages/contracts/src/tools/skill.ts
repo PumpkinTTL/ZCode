@@ -3,7 +3,7 @@
 // ============================================================
 
 import { z } from "zod";
-import type { ToolCallId, TraceId } from "../interfaces/shared.js";
+
 import { toToolJsonSchema } from "./json-schema.js";
 
 const SkillCurrentInputSchema = z.object({
@@ -51,18 +51,3 @@ export const SkillStructuredOutputSchema = z
 export const SkillOutputSchema = z.union([z.string(), SkillStructuredOutputSchema]);
 
 export const SkillOutputJsonSchema = toToolJsonSchema(SkillOutputSchema);
-
-export interface SkillToolCall {
-  id: ToolCallId;
-  name: "Skill";
-  input: SkillInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export interface SkillToolResult {
-  toolCallId: ToolCallId;
-  output: SkillOutput;
-  traceId: TraceId;
-  durationMs: number;
-}

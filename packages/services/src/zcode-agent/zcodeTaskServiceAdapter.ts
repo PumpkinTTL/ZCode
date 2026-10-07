@@ -2287,6 +2287,7 @@ export function createZCodeTaskServiceAdapter(
       emitWorkspaceTaskListChanged(target, undefined, "task_meta_changed");
     },
 
+
     async resumeTask(params): Promise<ZCodeTaskMeta> {
       // v4 侧 resume 已走 subscribe 冷恢复钩子
       // （CLI cold-resume），但 replayable resumeTask 还承担 model/thoughtLevel 回填与

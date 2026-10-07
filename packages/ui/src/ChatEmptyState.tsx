@@ -46,10 +46,6 @@ import {
   type RemoteWorkspaceSessionEntry,
   type WorkspacePurpose,
 } from "@zcode/shared";
-export {
-  getScratchWorkspaceLocationHint,
-  getScratchWorkspaceNameErrorKind,
-} from "@/ChatEmptyScratchWorkspaceDialog.js";
 
 // ---------------------------------------------------------------------------
 // Workspace 路径工具函数

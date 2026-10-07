@@ -1,229 +1,28 @@
 /**
- * 「我的额度」已登录面板：账户头 + 剩余额度进度 + 指标卡 + 套餐进度 + 近 30 天用量图表。
+ * 「我的额度」已登录面板：账户头 + 剩余额度主卡（含账户概览行）+ 套餐卡 + 近 30 天用量图表。
  *
- * 之前这里只有几行文字（账号 / 钱包 / 套餐），要点开弹窗才看得到，而且没有任何图形。
+ * 视觉语言与官方计划面板同源：标题行（左标题 + 右等宽数值）、单色进度条
+ * （主条 h-2.5，窗口迷你卡内细条 h-1.5）、「圆点 + 标签 + 右对齐数值」行式概览、
+ * border-t 附注行。层级只有「主条 → 窗口迷你卡 → 附注」一层，不做彩色分栏与多卡堆叠。
+ *
  * 面板本体是数据驱动的只读视图，登录/登出仍由 NimbusAccountDialog 负责。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type {
-  QuotaCreditsSubscription,
-  QuotaPerCallSubscription,
-  QuotaStatusResult,
-  QuotaSubscription,
-  QuotaUsageDay,
-} from "@zcode/services";
+import type { QuotaStatusResult, QuotaUsageDay } from "@zcode/services";
 import { Loader2, LogOut, RefreshCw } from "lucide-react";
 import { NimbusQuotaUsageChart, summarizeQuotaUsage } from "./NimbusQuotaUsageChart.js";
+import { formatQuotaPlanName, percentOf } from "./quotaFormat.js";
 import { Alert, AlertDescription } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
 import { Progress } from "@/components/ui/progress.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-
-type Intl = ReturnType<typeof useZCodeIntl>["intl"];
 type LoggedInStatus = Extract<QuotaStatusResult, { loggedIn: true }>;
 const USAGE_DAYS = 30;
 
-/** 积分 → 元（汇率从 /user/me 实时读，禁止写死）。 */
-export function creditsToYuan(credits: number, creditsPerYuan: number): string {
-  if (creditsPerYuan <= 0) return "—";
-  return (credits / creditsPerYuan).toFixed(2);
-}
-
-export function formatCredits(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
-}
-
-function percentOf(part: number, total: number | null | undefined): number {
-  if (total === null || total === undefined || total <= 0) return 0;
-  return Math.min(Math.max((part / total) * 100, 0), 100);
-}
-
-function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-lg border border-border p-3" data-quota-metric-card="">
-      <div className="text-ui-sm text-foreground-subtle">{label}</div>
-      <div className="mt-1 text-ui-lg font-medium tabular-nums text-foreground" title={hint}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function QuotaMetricRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 py-1" data-quota-metric-row="">
-      <span className="text-ui-base text-foreground-subtle">{label}</span>
-      <span className="text-ui-base font-medium tabular-nums text-foreground" title={hint}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-/** 带进度条的用量行：右侧显示 used/total，条本身给出肉眼可比的占比。 */
-function QuotaWindowRow({
-  label,
-  used,
-  limit,
-}: {
-  label: string;
-  used: number | null;
-  limit: number | null;
-}) {
-  if (used === null || limit === null || limit <= 0) return null;
-  const percent = percentOf(used, limit);
-  return (
-    <div className="space-y-1 py-1.5" data-quota-window-row="">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-ui-base text-foreground-subtle">{label}</span>
-        <span className="text-ui-base font-medium tabular-nums text-foreground">
-          {formatCredits(used)} / {formatCredits(limit)}
-        </span>
-      </div>
-      <Progress value={percent} />
-    </div>
-  );
-}
-
-function CreditsSubscriptionCard({
-  sub,
-  creditsPerYuan,
-  intl,
-}: {
-  sub: QuotaCreditsSubscription;
-  creditsPerYuan: number;
-  intl: Intl;
-}) {
-  return (
-    <div className="rounded-lg border border-border p-3" data-quota-subscription-kind="credits">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-ui-base font-medium text-foreground">{sub.planName}</span>
-        <span className="text-ui-sm text-foreground-subtle">
-          {intl.formatMessage({ id: "business.quota.credits" })}
-        </span>
-      </div>
-      <QuotaWindowRow
-        label={intl.formatMessage({ id: "business.quota.remaining" })}
-        used={sub.remaining}
-        limit={sub.creditsTotal}
-      />
-      <QuotaWindowRow
-        label={intl.formatMessage({ id: "business.quota.window5h" })}
-        used={sub.used5h}
-        limit={sub.limit5h}
-      />
-      <QuotaWindowRow
-        label={intl.formatMessage({ id: "business.quota.windowWeekly" })}
-        used={sub.usedWeekly}
-        limit={sub.limitWeekly}
-      />
-      <QuotaMetricRow
-        label={intl.formatMessage({ id: "business.quota.remainingYuan" })}
-        value={`¥${creditsToYuan(sub.remaining, creditsPerYuan)}`}
-        hint={intl.formatMessage({ id: "business.quota.rateHint" })}
-      />
-    </div>
-  );
-}
-
-function PerCallSubscriptionCard({ sub, intl }: { sub: QuotaPerCallSubscription; intl: Intl }) {
-  // 未激活（expires_at=0）：有效期从首次成功调用起算，不烧时间。
-  const notActivated = sub.expiresAt === 0;
-  return (
-    <div className="rounded-lg border border-border p-3" data-quota-subscription-kind="per_call">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-ui-base font-medium text-foreground">{sub.planName}</span>
-        <span className="text-ui-sm text-foreground-subtle">
-          {intl.formatMessage({ id: "business.quota.perCall" })}
-        </span>
-      </div>
-      <QuotaWindowRow
-        label={intl.formatMessage({ id: "business.quota.remainingCalls" })}
-        used={sub.callsUsed}
-        limit={sub.totalCalls}
-      />
-      <QuotaMetricRow
-        label={intl.formatMessage({ id: "business.quota.remainingCalls" })}
-        value={`${sub.remainingCalls ?? sub.remaining} / ${sub.totalCalls}`}
-      />
-      <QuotaMetricRow
-        label={intl.formatMessage({ id: "business.quota.validity" })}
-        value={
-          notActivated
-            ? intl.formatMessage({ id: "business.quota.notActivated" })
-            : intl.formatMessage({ id: "business.quota.hoursLeft" }, { hours: sub.hoursLeft })
-        }
-      />
-    </div>
-  );
-}
-
-function SubscriptionCard({
-  sub,
-  creditsPerYuan,
-  intl,
-}: {
-  sub: QuotaSubscription;
-  creditsPerYuan: number;
-  intl: Intl;
-}) {
-  return sub.kind === "per_call" ? (
-    <PerCallSubscriptionCard sub={sub} intl={intl} />
-  ) : (
-    <CreditsSubscriptionCard sub={sub} creditsPerYuan={creditsPerYuan} intl={intl} />
-  );
-}
-
-/** 剩余额度主卡：把"还能用多少"做成整块进度，而不是一行小字。 */
-function QuotaHeroCard({ status, intl }: { status: LoggedInStatus; intl: Intl }) {
-  const wallet = status.account.wallet;
-  const quota = status.quota;
-  // 钱包视图没有"总量"，用账面余额当分母；余额为 0 时不给条，只给数字。
-  const total = quota.total ?? (wallet.balance > 0 ? wallet.balance : null);
-  const percent = percentOf(quota.left, total);
-  const unit =
-    quota.kind === "per_call"
-      ? intl.formatMessage({ id: "business.quota.callsUnit" })
-      : intl.formatMessage({ id: "business.quota.credits" });
-
-  return (
-    <div className="rounded-xl border border-border p-4" data-quota-hero="">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-ui-base text-foreground-subtle">
-          {intl.formatMessage({ id: "business.quota.remaining" })}
-        </span>
-        <span className="text-ui-base font-medium tabular-nums text-foreground">
-          {formatCredits(quota.left)}
-          {total !== null ? ` / ${formatCredits(total)}` : ""}
-          {` · ${unit}`}
-        </span>
-      </div>
-      {total !== null ? (
-        <Progress
-          className="mt-3 h-2"
-          value={percent}
-          indicatorClassName={wallet.lowBalance ? "bg-warning" : undefined}
-        />
-      ) : null}
-      <div className="mt-3 flex items-center justify-between text-ui-sm text-foreground-subtle">
-        <span>
-          {intl.formatMessage(
-            { id: "business.quota.perYuan" },
-            { credits: formatCredits(wallet.creditsPerYuan) },
-          )}
-        </span>
-        {quota.notActivated ? (
-          <span>{intl.formatMessage({ id: "business.quota.notActivated" })}</span>
-        ) : null}
-      </div>
-      {wallet.lowBalance ? (
-        <p className="mt-2 text-ui-sm text-warning">
-          {intl.formatMessage({ id: "business.quota.lowBalance" })}
-        </p>
-      ) : null}
-    </div>
-  );
+function formatInt(v: number) {
+  // 用户要求裸数字：不加千分位逗号（705174，而不是 705,174）。
+  return String(Math.round(v));
 }
 
 export function NimbusQuotaOverview({
@@ -237,7 +36,7 @@ export function NimbusQuotaOverview({
   onRefresh: () => void;
   onLogout: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl, locale } = useZCodeIntl();
   const { providerQuotaService } = useServices();
   const [usage, setUsage] = useState<readonly QuotaUsageDay[] | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
@@ -247,7 +46,6 @@ export function NimbusQuotaOverview({
     try {
       setUsage(await providerQuotaService.getUsageDaily(USAGE_DAYS));
     } catch (error) {
-      // 用量是补充信息：拿不到不影响额度与套餐的展示，只降级成一行说明。
       setUsageError(error instanceof Error ? error.message : String(error));
       setUsage([]);
     }
@@ -258,95 +56,274 @@ export function NimbusQuotaOverview({
   }, [loadUsage]);
 
   const summary = useMemo(() => summarizeQuotaUsage(usage ?? []), [usage]);
+
   const wallet = status.account.wallet;
+  const creditsSub = status.subscriptions.find((s) => s.kind === "credits");
+  const perCallSub = status.subscriptions.find((s) => s.kind === "per_call");
+
   const averageCacheHitRate =
     summary.averageCacheHitRate === null ? "—" : `${summary.averageCacheHitRate.toFixed(1)}%`;
 
+  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+
+  const activeSub = creditsSub ?? perCallSub;
+  const rawExpiresAt = activeSub?.expiresAt ?? 0;
+  const hoursLeft = activeSub?.hoursLeft ?? 0;
+  const effectiveExpiresAt =
+    rawExpiresAt > 1577836800000
+      ? rawExpiresAt
+      : hoursLeft > 0
+        ? Date.now() + hoursLeft * 3600 * 1000
+        : 0;
+
+  // 5 小时窗配额
+  const remaining5h =
+    creditsSub?.limit5h !== null && creditsSub?.limit5h !== undefined && creditsSub.limit5h > 0
+      ? Math.max(0, creditsSub.limit5h - (creditsSub.used5h ?? 0))
+      : null;
+  const percent5h =
+    remaining5h !== null && creditsSub?.limit5h ? percentOf(remaining5h, creditsSub.limit5h) : 100;
+
+  // 周配额
+  const remainingWeekly =
+    creditsSub?.limitWeekly !== null &&
+    creditsSub?.limitWeekly !== undefined &&
+    creditsSub.limitWeekly > 0
+      ? Math.max(0, creditsSub.limitWeekly - (creditsSub.usedWeekly ?? 0))
+      : null;
+  const percentWeekly =
+    remainingWeekly !== null && creditsSub?.limitWeekly
+      ? percentOf(remainingWeekly, creditsSub.limitWeekly)
+      : 100;
+
+  // 重置时刻（绝对时间，官方同款「10/14 21:46」口径）；0 = 空窗/未锚定不显示。
+  const formatResetMoment = (resetAtMs: number): string => {
+    if (!(resetAtMs > 0)) return "";
+    return new Intl.DateTimeFormat(undefined, {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(resetAtMs);
+  };
+
+  // 套餐到期倒计时（天）；0/未配置 = 不显示。
+  const daysLeft =
+    effectiveExpiresAt > 0
+      ? Math.max(0, Math.ceil((effectiveExpiresAt - Date.now()) / 86400000))
+      : null;
+
+  // 用户头像简写
+  const userInitials = (status.account.username || "AD").slice(0, 2).toUpperCase();
+
   return (
     <div className="space-y-4" data-quota-overview="">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-ui-base font-medium text-foreground">
-            {status.account.username}
-          </div>
-          {status.account.emailMasked ? (
-            <div className="truncate text-ui-sm text-foreground-subtle">
-              {status.account.emailMasked}
+      {/* 1. 顶部账户卡：身份 + 钱包余额（合入）+ 操作。周期总额度不再展示。 */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-ui-sm font-semibold text-primary">
+              {userInitials}
             </div>
-          ) : null}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-ui-base font-semibold text-foreground">
+                  {status.account.username}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-ui-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="size-1.5 rounded-full bg-emerald-500" />
+                  {intl.formatMessage({ id: "business.quota.online" })}
+                </span>
+                {activeSub ? (
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-ui-xs font-medium text-primary">
+                    {formatQuotaPlanName(activeSub.planName)}
+                  </span>
+                ) : null}
+              </div>
+              {status.account.emailMasked ? (
+                <div className="mt-0.5 truncate text-ui-xs text-foreground-subtle">
+                  {status.account.emailMasked}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-semibold tabular-nums text-foreground tracking-tight">
+                {formatInt(wallet.available)}
+              </span>
+              {wallet.lowBalance ? (
+                <span className="text-ui-xs font-medium text-amber-500">
+                  {intl.formatMessage({ id: "business.quota.lowBalance" })}
+                </span>
+              ) : (
+                <span className="text-ui-sm text-foreground-subtle">钱包余额</span>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                className="cursor-pointer"
+                onClick={() => {
+                  onRefresh();
+                  void loadUsage();
+                }}
+              >
+                {busy ? (
+                  <Loader2 className="size-3.5 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="size-3.5 mr-1" />
+                )}
+                {intl.formatMessage({ id: "business.quota.refresh" })}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                className="cursor-pointer text-foreground-subtle hover:text-foreground"
+                onClick={onLogout}
+              >
+                <LogOut className="size-3.5 mr-1" />
+                {intl.formatMessage({ id: "business.quota.logout" })}
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            onClick={() => {
-              onRefresh();
-              void loadUsage();
-            }}
-          >
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-            {intl.formatMessage({ id: "business.quota.refresh" })}
-          </Button>
-          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onLogout}>
-            <LogOut className="size-4" />
-            {intl.formatMessage({ id: "business.quota.logout" })}
-          </Button>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-t border-border/60 pt-3 text-ui-xs">
+          <span className="text-foreground-subtle">
+            {intl.formatMessage({ id: "business.quota.todaySpend" })}{" "}
+            <span className="font-medium tabular-nums text-foreground">
+              {formatInt(wallet.todaySpend)}
+            </span>
+          </span>
+          <span className="text-foreground-subtle">
+            {intl.formatMessage({ id: "business.quota.monthSpend" })}{" "}
+            <span className="font-medium tabular-nums text-foreground">
+              {formatInt(wallet.monthSpend)}
+            </span>
+          </span>
+          <span className="text-foreground-subtle">
+            {intl.formatMessage({ id: "business.quota.avgCacheHitRate" })}{" "}
+            <span className="font-medium tabular-nums text-foreground">
+              {averageCacheHitRate}
+            </span>
+          </span>
         </div>
       </div>
 
-      <QuotaHeroCard status={status} intl={intl} />
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <MetricCard
-          label={intl.formatMessage({ id: "business.quota.available" })}
-          value={`¥${creditsToYuan(wallet.available, wallet.creditsPerYuan)}`}
-          hint={intl.formatMessage({ id: "business.quota.rateHint" })}
-        />
-        <MetricCard
-          label={intl.formatMessage({ id: "business.quota.todaySpend" })}
-          value={formatCredits(wallet.todaySpend)}
-        />
-        <MetricCard
-          label={intl.formatMessage({ id: "business.quota.monthSpend" })}
-          value={formatCredits(wallet.monthSpend)}
-        />
-        <MetricCard
-          label={intl.formatMessage({ id: "business.quota.avgCacheHitRate" })}
-          value={averageCacheHitRate}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <div className="text-ui-sm font-medium text-foreground-subtle">
-          {intl.formatMessage({ id: "business.quota.subscriptions" })}
+      {/* 2. 我的套餐：滚动调用窗口与重置时间。周期总额度不再向用户展示。 */}
+      <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h4 className="text-ui-sm font-semibold text-foreground">
+            {intl.formatMessage({ id: "business.quota.subscriptions" })}
+          </h4>
+          <span className="text-ui-xs text-foreground-subtle">
+            {effectiveExpiresAt > 0
+              ? `${intl.formatMessage(
+                  { id: "business.quota.validUntil" },
+                  { date: dateFmt.format(effectiveExpiresAt) },
+                )}${daysLeft !== null ? ` · ${intl.formatMessage({ id: "business.quota.daysLeft" }, { days: daysLeft })}` : ""}`
+              : "滚动调用限额"}
+          </span>
         </div>
-        {status.subscriptions.length > 0 ? (
-          status.subscriptions.map((sub) => (
-            <SubscriptionCard
-              key={sub.id}
-              sub={sub}
-              creditsPerYuan={wallet.creditsPerYuan}
-              intl={intl}
+
+        {creditsSub ? (
+          <div className="space-y-3.5">
+            {remaining5h !== null && creditsSub.limit5h !== null ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-ui-sm">
+                  <span className="flex items-center gap-1.5 text-foreground">
+                    5 小时调用窗口
+                    <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-ui-xs font-medium leading-none text-emerald-600 dark:text-emerald-400">
+                      重置
+                    </span>
+                  </span>
+                  <span className="tabular-nums text-foreground">
+                    <span className="font-medium">{formatInt(remaining5h)}</span> /{" "}
+                    {formatInt(creditsSub.limit5h)}{" "}
+                    <span className="text-foreground-subtle text-ui-xs">
+                      ({Math.round(percent5h)}%)
+                    </span>
+                  </span>
+                </div>
+                <Progress
+                  className="h-1.5 rounded-full bg-surface-hover/80"
+                  value={percent5h}
+                  indicatorClassName="bg-[#0b7fff] dark:bg-[#4099ff] rounded-full"
+                />
+                {creditsSub.next5hRefreshAt > 0 ? (
+                  <p className="text-ui-xs text-foreground-subtle">
+                    {formatResetMoment(creditsSub.next5hRefreshAt)} 重置 5 小时额度
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {remainingWeekly !== null && creditsSub.limitWeekly !== null ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-ui-sm">
+                  <span className="text-foreground">本周调用窗口</span>
+                  <span className="tabular-nums text-foreground">
+                    <span className="font-medium">{formatInt(remainingWeekly)}</span> /{" "}
+                    {formatInt(creditsSub.limitWeekly)}{" "}
+                    <span className="text-foreground-subtle text-ui-xs">
+                      ({Math.round(percentWeekly)}%)
+                    </span>
+                  </span>
+                </div>
+                <Progress
+                  className="h-1.5 rounded-full bg-surface-hover/80"
+                  value={percentWeekly}
+                  indicatorClassName="bg-[#9e77ed] rounded-full"
+                />
+                {creditsSub.nextWeekResetAt > 0 ? (
+                  <p className="text-ui-xs text-foreground-subtle">
+                    {formatResetMoment(creditsSub.nextWeekResetAt)} 重置本周额度
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : perCallSub ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-ui-sm">
+              <span className="text-foreground">剩余调用次数</span>
+              <span className="font-medium tabular-nums text-foreground">
+                {perCallSub.remainingCalls ?? perCallSub.remaining} / {perCallSub.totalCalls} 次
+              </span>
+            </div>
+            <Progress
+              className="h-1.5 rounded-full bg-surface-hover/80"
+              value={percentOf(
+                perCallSub.remainingCalls ?? perCallSub.remaining,
+                perCallSub.totalCalls,
+              )}
+              indicatorClassName="bg-[#0b7fff] dark:bg-[#4099ff] rounded-full"
             />
-          ))
+          </div>
         ) : (
-          <p className="text-ui-base text-foreground-subtle">
+          <p className="text-ui-xs text-foreground-subtle">
             {intl.formatMessage({ id: "business.quota.noSubscription" })}
           </p>
         )}
       </div>
 
-      <div className="space-y-2 rounded-xl bg-surface p-4">
+      {/* 3. 近 30 天用量趋势 */}
+      <div className="space-y-3 rounded-xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-ui-base font-medium text-foreground">
+          <span className="text-ui-sm font-semibold text-foreground">
             {intl.formatMessage({ id: "business.quota.usageChartTitle" }, { days: USAGE_DAYS })}
           </span>
-          <span className="text-ui-sm tabular-nums text-foreground-subtle">
+          <span className="text-ui-xs tabular-nums text-foreground-subtle">
             {intl.formatMessage(
               { id: "business.quota.usageTotal" },
-              { value: formatCredits(summary.totalCharged) },
+              { value: formatInt(summary.totalCharged) },
             )}
           </span>
         </div>

@@ -74,6 +74,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { Spinner } from "@/components/ui/spinner.js";
+import { toast } from "@/components/ui/toast.js";
 import { ImagePreviewDialog } from "@/components/ai-elements/image-preview-dialog.js";
 import {
   ChatMediaAttachmentPreviewDialog,
@@ -1153,6 +1154,28 @@ function ConversationComposerImpl({
       let cleanupRevision = contentRevisionRef.current;
       const submission = createSubmissionFromComposer?.() ?? null;
       const submittedAttachmentIds = attachmentsApi.attachments.map((item) => item.id);
+      // 有内容但模型闸门未过（未选择模型/选择已失效）时底下是静默 return，
+      // 表现为快捷键发送“毫无反应”；补一条提示，不改变拦截本身。
+      // dedupeKey 与首发门禁（SessionPane）共用：连点/多路拦截只保留最新一条。
+      const hasSubmittableContent =
+        Boolean(trimmed) ||
+        hasPendingAttachments ||
+        hasPendingCodeCommentContexts ||
+        hasPendingWebElementContexts ||
+        hasPendingPptxElementReferences ||
+        hasPendingConversationSelections ||
+        hasPendingPluginUiContexts ||
+        Boolean(submittedShareContext);
+      if (
+        hasSubmittableContent &&
+        (!submissionReady ||
+          (createSubmissionFromComposer !== undefined && submission === null))
+      ) {
+        toast(intl.formatMessage({ id: "chat.toolbar.model.selectModelRequired" }), {
+          variant: "warning",
+          dedupeKey: "chat.toolbar.model.selectModelRequired",
+        });
+      }
       if (
         (!trimmed &&
           !hasPendingAttachments &&
@@ -1351,6 +1374,7 @@ function ConversationComposerImpl({
       createSubmissionFromComposer,
       submissionReady,
       getCodeCommentContexts,
+      intl,
       modelSelectionView,
       onSendText,
       pendingShareContext,

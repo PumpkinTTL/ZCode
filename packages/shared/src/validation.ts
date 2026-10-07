@@ -10,12 +10,12 @@ import { zcodeProviderSchema } from "./providers.js";
 import { zcodeAgentProviderSchema } from "./zcode-agent-policy.js";
 import { modelSelectionSchema } from "./model-selection.js";
 import { zcodeProcessDiagnosticSchema } from "./process-diagnostic.js";
-import { PROCESS_RESOURCE_CLI_LANES } from "./processResourceTelemetry.js";
+
 import { providerProvisioningTriggerSchema } from "./provider-provisioning.js";
 import { zcodeTaskModeSchema } from "./zcode-task-mode-schema.js";
-import { PROTOCOL_V4_LIMITS } from "./zcode-protocol-v4/core.js";
+
 import { errorAttributionSchema } from "./zcode-protocol-v4/snapshot.js";
-import { sessionWorkflowActivitySchema } from "./zcode-protocol-v4/sessions-index-workflow-activity.js";
+
 import {
   taskOwnerCommandDeliverySchema,
   taskOwnerCommandRequestSchema,
@@ -30,12 +30,6 @@ import {
   taskStreamMirrorTargetSchema,
 } from "./task-realtime-core.js";
 import { wslUserSchema } from "./wslUserValidation.js";
-import {
-  zcodeMcpResourceSamplesSchema,
-  zcodeMcpTelemetryEventSchema,
-  zcodeProcessResourceSampleSchema,
-  zcodeToolExecResourceSchema,
-} from "./zcode-protocol/index.js";
 
 export {
   appSettingsOccupationEnum,
@@ -1120,10 +1114,6 @@ export const zcodeTaskGoalChangedPatchSchema = z.object({
   target: zcodeTaskGoalSchema.nullable(),
   previousTarget: zcodeTaskGoalSchema.nullable().optional(),
 });
-
-export const zcodeTaskTargetStatusSchema = zcodeTaskGoalStatusSchema;
-export const zcodeTaskTargetSchema = zcodeTaskGoalSchema;
-export const zcodeTaskTargetChangedPatchSchema = zcodeTaskGoalChangedPatchSchema;
 
 export const zcodeTaskMetaSchema = z.object({
   taskId: nonEmptyStringSchema,

@@ -308,6 +308,16 @@ import { IMemoryService } from "./memory/memory.js";
 import { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 import { IFeedbackService } from "./feedback/feedback.js";
 import { createQuotaService, IProviderQuotaService } from "./business/index.js";
+// App 更新检查 / 更新日志 / 在线心跳（cbcn-cloud app_release.py 契约）：与额度服务
+// 同源 base、共用设备身份；实现本身浏览器安全，经 business/index 转出。
+import {
+  APP_UPDATE_HEARTBEAT_INTERVAL_MS,
+  createAppUpdateService,
+  IAppUpdateService,
+} from "./business/index.js";
+// 设备密钥能力（Ed25519 配对 + 请求签名）依赖 node:crypto，只在宿主组合根实例化，
+// 不经 business/index 转出——渲染层 bundle 不引入 node 内建模块。
+import { createNodeNimbusDeviceKeyProvider } from "./business/quota/nimbusDeviceIdentity.js";
 import { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 import { createFileService } from "./file/fileService.js";
 import { createMediaPreviewService } from "./media-preview/mediaPreview.js";
@@ -341,7 +351,6 @@ import { OAuthCredentialRepo } from "./oauth/repo/oauthCredentialRepo.js";
 import { readLegacyZCodeConfigProviders } from "./model-provider/legacyZCodeConfigProviderReader.js";
 import { createAccountProviderConfigSource } from "./model-provider/accountProviderConnectionResolver.js";
 import { createProviderConfigRuntime } from "./model-provider/providerConfigRuntime.js";
-import { fetchZCodeBuiltinRemoteRelease } from "./model-provider/zcodeBuiltinRemoteConfig.js";
 import {
   createProviderRuntimeFromConfigRuntime,
   type ProviderRuntime,
@@ -1442,19 +1451,9 @@ export function createLocalServices(options: {
       platform: clientConfigPlatform,
       appVersion: ZCODE_VERSION,
       resolveEndpointOrigin: resolveCurrentZCodeEndpointOrigin,
-      onRefreshResult: (event) => {
-        if (event.result === "updated")
-          providerConfigLog.info(undefined, "Polaris Built-in CDN 配置已更新", event);
-        else providerConfigLog.debug(undefined, "Polaris Built-in 刷新检查", event);
-      },
-      fetchRelease: (endpointOrigin, signal) =>
-        fetchZCodeBuiltinRemoteRelease({
-          apiClient,
-          endpointOrigin,
-          signal,
-          appVersion: ZCODE_VERSION,
-          platform: clientConfigPlatform,
-        }),
+      // Polaris：内置配置的远端同步已砍——仓库 bundled 是唯一事实源，
+      // 不从任何 CDN/上游拉取（zai 业务残留清除）。resolveEndpointOrigin 仅用于
+      // 本地 active 缓存目录键控。
     },
     onZCodeBuiltinRefreshError: (error) => {
       // 自有后端未就绪 / CDN 不可达属预期状态：Bundled/LKG 配置继续生效，这里只留诊断线索。
@@ -2127,6 +2126,21 @@ export function createLocalServices(options: {
         cuaProductHelperEnv = {
           [BROKER_UNAVAILABLE_ENV]: "broker_unavailable: helper lifecycle is disposed",
         };
+      } else if (cuaPluginEnabled) {
+        // 首个 spawn 与 helper 冷启竞争（或准入未通过）时，这里此前保持空 env：agent 既没有
+        // broker 凭据、也没有 unavailable 标记，故障在日志与进程 env 里都不可见，而该 agent 会
+        // 服务整个 app 生命周期（首启竞争实测：default workspace 首个 agent 全程 CUA 不可用）。
+        // buildCuaProductHelperAgentEnv 的既有契约是「broker 未就绪必须 BROKER_UNAVAILABLE，
+        // 绝不返回空 env」，这里是同一契约在 spawn 兜底分支上的补齐。
+        createServiceLogger("cua-product-helper").warn(
+          undefined,
+          "Computer Use Helper was not obtainable at this agent spawn; marking broker_unavailable",
+          { platform: process.platform, workspaceKey: context.workspaceKey },
+        );
+        cuaProductHelperEnv = {
+          [BROKER_UNAVAILABLE_ENV]:
+            "broker_unavailable: CUA helper was not obtainable at this agent spawn",
+        };
       }
       const telemetryEnv = getCapturedZCodeAgentTelemetryEnv();
       const telemetryConfigured = Boolean(
@@ -2354,6 +2368,14 @@ export function createLocalServices(options: {
   // 注册链上的懒工厂（如 OffPeak）会各自创建 tasks-index sqlite repo；先收集到本数组，
   // services 集合建好后在 return 前统一登记进 sharedSqliteRepos 侧表
   const sqliteReposToClose: Array<{ close(): void }> = [];
+  // 本机设备身份（Ed25519）唯一实例：额度（agent key 注册/签名）与 App 在线心跳
+  // （device 去重）共用，避免两个 provider 各自 loadOrCreate 在首启竞态下写出
+  // 两套密钥对（服务端登记的与本机留存的公钥不一致 → 后续签名验不过）。
+  // appVersion = 编译期产品版本：设备注册上报的 app_version 用它（此前缺省 "dev"）。
+  const nimbusDeviceKeyProvider = createNodeNimbusDeviceKeyProvider({
+    credentialService,
+    appVersion: ZCODE_VERSION,
+  });
   const services = new ServiceCollection()
     .register(IFileService, fileService)
     .register(IMediaPreviewService, mediaPreviewService)
@@ -2521,7 +2543,24 @@ export function createLocalServices(options: {
       IProviderQuotaService,
       // base 解析统一收口在 quotaService.resolveQuotaBaseUrl：
       // QUOTA_BASE_URL 覆盖 > 未打包(development) 本地 127.0.0.1:8000 > 打包域名。
-      createQuotaService({ credentialService }),
+      // deviceKeys：设备专属 agent key（Ed25519 配对 + 签名，与 Lyra 同一后端契约）。
+      createQuotaService({
+        credentialService,
+        deviceKeys: nimbusDeviceKeyProvider,
+      }),
+    )
+    .register(
+      IAppUpdateService,
+      // App 更新检查 / 版本目录（更新日志）+ 在线心跳（公开端点，无需登录）：
+      // base 与额度服务同源（resolveQuotaBaseUrl）；设备身份与额度共用同一实例
+      // （心跳 device 用于后端在线去重，未配对时传空 → 后端回落 IP+UA 哈希）。
+      // 定时心跳：host 进程存在 ≈ 客户端在运行；定时器 unref，不阻塞进程退出；
+      // 后端 Redis 5 分钟窗口内按 device 去重，多窗口/多 host 不重复计在线。
+      createAppUpdateService({
+        appVersion: ZCODE_VERSION,
+        deviceKeys: nimbusDeviceKeyProvider,
+        heartbeatIntervalMs: APP_UPDATE_HEARTBEAT_INTERVAL_MS,
+      }).service,
     )
     .register(IPromptAttachmentTransferService, createLocalPromptAttachmentTransferService());
 

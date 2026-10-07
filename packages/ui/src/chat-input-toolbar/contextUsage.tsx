@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- context 面板聚合 Context windows 与 Coding Plan 展示；后续拆分需要单独梳理弹层状态边界。 */
-import { useCallback, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useMemo, useState, type CSSProperties } from "react";
 import {
   TID_CHAT_CONTEXT_USAGE_TRIGGER,
   type ZCodeContextUsageBreakdownItem,
@@ -13,6 +13,8 @@ import {
 } from "@/components/ai-elements/context.js";
 import { cn } from "@/components/lib/utils.js";
 import { Progress } from "@/components/ui/progress.js";
+import type { NimbusProviderLike } from "@/business/quota/nimbusProviderMatch.js";
+import { NimbusContextQuotaBlock } from "./NimbusContextQuotaBlock.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { formatCompactTokenNumber } from "@/lib/tokenNumberFormat.js";
 
@@ -25,11 +27,12 @@ interface ContextUsageBreakdownSegment {
 }
 
 const CONTEXT_PROGRESS_TONE_COLORS = [
-  "var(--color-usage-chart-1)",
-  "color-mix(in oklab, var(--color-usage-chart-1) 78%, var(--color-surface))",
-  "color-mix(in oklab, var(--color-usage-chart-1) 58%, var(--color-surface))",
-  "color-mix(in oklab, var(--color-usage-chart-1) 42%, var(--color-surface))",
-  "color-mix(in oklab, var(--color-usage-chart-1) 28%, var(--color-surface))",
+  "var(--color-usage-chart-1, #0b7fff)",
+  "#38bdf8",
+  "#60a5fa",
+  "#93c5fd",
+  "#bfdbfe",
+  "#94a3b8",
 ] as const;
 const PERCENT_MAX = 100;
 const CACHE_HIT_RATE_DISPLAY_THRESHOLD = 0.78;
@@ -180,6 +183,7 @@ export function getContextCompressionCommand(_provider: ZCodeProvider): string {
 export function ChatContextUsage({
   taskUsage,
   selectedProvider: _selectedProvider,
+  currentModelProvider,
   intl,
   locale,
 }: {
@@ -190,6 +194,11 @@ export function ChatContextUsage({
     breakdown?: ZCodeContextUsageBreakdownItem[];
   } | null;
   selectedProvider: ZCodeProvider;
+  /**
+   * 当前模型所属供应商（Nimbus 额度块的判定输入；缺省 = 不渲染该块，旧调用方零变化）。
+   * 由 composer 工具栏从 modelSelectionView 的有效配置里解析传入。
+   */
+  currentModelProvider?: NimbusProviderLike | null;
   intl: ReturnType<typeof useZCodeIntl>["intl"];
   locale: string;
   onSendCompressionCommand?: (command: string) => void;
@@ -294,23 +303,22 @@ export function ChatContextUsage({
         side="top"
         sideOffset={2}
       >
-        <ContextContentBody className="space-y-3">
+        <ContextContentBody className="space-y-3.5">
           {/* 默认 ai-elements Header 会硬编码标题并把摘要拆到独立头部。
           工具栏上下文 hover 只需要一块紧凑信息面板，摘要和明细统一放在 body 里。 */}
           {renderableTaskUsage && compactTokenUsageLabel ? (
             <div className="space-y-2">
-              <div className="flex min-w-0 mb-3 items-center gap-3">
+              <div className="mb-2.5 flex min-w-0 items-center justify-between gap-3">
                 <span className="shrink-0 text-ui-base font-medium text-foreground">
                   {intl.formatMessage({ id: "chat.contextUsage.title" })}
                 </span>
-                <span className="ml-auto shrink-0 text-right font-mono text-ui-sm text-foreground-subtle">
+                <span className="shrink-0 text-right text-ui-sm text-foreground-subtle">
                   {compactTokenUsageLabel}
                 </span>
               </div>
               <Progress
-                className="h-2 bg-surface"
-                indicatorClassName="min-w-2"
-                segments={progressSegments}
+                className="h-2 overflow-hidden rounded-full bg-surface-hover/80"
+                indicatorClassName="bg-[#0b7fff] dark:bg-[#4099ff] rounded-full"
                 value={usagePercent * PERCENT_MAX}
               />
             </div>
@@ -327,12 +335,12 @@ export function ChatContextUsage({
                   <div className="grid gap-1.5">
                     {breakdownSegments.map((segment, index) => (
                       <div
-                        className="flex min-w-0 items-center gap-2 text-ui-sm"
+                        className="flex min-w-0 items-center gap-2 py-0.5 text-ui-sm"
                         key={segment.source}
                       >
                         <span
                           aria-hidden="true"
-                          className="size-2 shrink-0 rounded-sm border border-border"
+                          className="size-2 shrink-0 rounded-full"
                           style={getBreakdownToneStyle(index)}
                         />
                         <span className="min-w-0 truncate text-foreground-subtle">
@@ -341,7 +349,7 @@ export function ChatContextUsage({
                           })}
                         </span>
                         {/* breakdown 行只展示占比，分项 token 数会和顶部总量口径混在一起造成误读。*/}
-                        <span className="ml-auto min-w-10 shrink-0 text-right font-mono text-ui-sm tabular-nums text-foreground">
+                        <span className="ml-auto min-w-10 shrink-0 text-right text-ui-sm tabular-nums text-foreground">
                           {percentageFormatter.format(segment.percent)}
                         </span>
                       </div>
@@ -353,7 +361,7 @@ export function ChatContextUsage({
                 <div
                   className={cn(
                     "flex items-center justify-between gap-3 text-ui-sm",
-                    breakdownSegments.length > 0 && "border-t border-border pt-3",
+                    breakdownSegments.length > 0 && "border-t border-border/60 pt-2.5",
                   )}
                 >
                   <span className="text-foreground-subtle">
@@ -361,11 +369,14 @@ export function ChatContextUsage({
                       id: "chat.contextUsage.cacheHitRate",
                     })}
                   </span>
-                  <span className="font-mono text-ui-sm text-foreground">{cacheHitRateLabel}</span>
+                  <span className="text-ui-sm font-medium text-foreground">{cacheHitRateLabel}</span>
                 </div>
               ) : null}
             </>
           ) : null}
+          {/* 官方原版同款：选中我们自己的（Nimbus）模型时，弹窗底部给剩余额度块；
+              未登录或非 Nimbus 供应商时组件自渲染 null。 */}
+          <NimbusContextQuotaBlock provider={currentModelProvider ?? null} />
         </ContextContentBody>
       </ContextContent>
     </Context>

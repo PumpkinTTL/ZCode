@@ -185,10 +185,21 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
       }
       const membershipBaseline =
         builtin ?? resolveTemplateBaseline(zcodeBuiltin, current.providers, providerId);
+      // 成员资格按字段合并：本次传了的字段以传入为准（远端目录同步 / 表单全量保存），
+      // 未传的字段继承旧覆盖（设置页表单刻意剥离 personalModelIds —— 模型走独立增删接口，
+      // 改名/启停/改基址这些保存不得碰模型名单）。之前整份传 currentPersonal，首次同步
+      // （无旧覆盖）恒返回 undefined，传入的 personalModelIds 被无条件丢弃 —— 内置供应商
+      // 的模型目录永远同步不下来。
+      const membershipSource =
+        normalized.builtinModelIds === undefined &&
+        normalized.personalModelIds === undefined &&
+        normalized.modelOrder === undefined
+          ? currentPersonal
+          : normalized;
       const next = normalized.withModelMembershipFrom(
         // 普通 Provider 保存也保留动态成员顺序；不能改名称时又按静态名单删掉已保存的调序。
         normalizePersonalProviderMembership(
-          currentPersonal,
+          membershipSource,
           membershipBaseline,
           membership?.inheritedModelIds,
         ),

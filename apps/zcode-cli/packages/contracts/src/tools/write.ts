@@ -4,7 +4,7 @@
 // Reference: file write input / output shape
 
 import { z } from "zod";
-import type { ToolCallId, TraceId } from "../interfaces/shared.js";
+
 import { toToolJsonSchema } from "./json-schema.js";
 import { ToolExecutionTelemetrySchema } from "./performance.js";
 
@@ -32,37 +32,6 @@ export const WriteInputJsonSchema = toToolJsonSchema(WriteInputSchema);
 // -----------------------------------------------
 // Output Types
 // -----------------------------------------------
-
-export interface WriteOutput {
-  /**
-   * Whether a new file was created or an existing file was updated
-   */
-  type: "create" | "update";
-  /**
-   * The path to the file that was written
-   */
-  filePath: string;
-  /**
-   * The content that was written to the file
-   */
-  content: string;
-  /**
-   * Diff patch showing the changes
-   */
-  structuredPatch: DiffHunk[];
-  /**
-   * The original file content before the write (null for new files)
-   */
-  originalFile: string | null;
-  /**
-   * Git diff information (for remote scenarios)
-   */
-  gitDiff?: GitDiff;
-  /**
-   * True when the user edited the proposed content in the permission dialog before accepting
-   */
-  userModified?: boolean;
-}
 
 export interface DiffHunk {
   oldStart: number;
@@ -121,25 +90,6 @@ export const WriteOutputSchema = z
   .strict();
 
 export const WriteOutputJsonSchema = toToolJsonSchema(WriteOutputSchema);
-
-// -----------------------------------------------
-// Tool Call Structure
-// -----------------------------------------------
-
-export interface WriteToolCall {
-  id: ToolCallId;
-  name: "Write";
-  input: WriteInput;
-  traceId: TraceId;
-  startedAt: Date;
-}
-
-export interface WriteToolResult {
-  toolCallId: ToolCallId;
-  output: WriteOutput;
-  traceId: TraceId;
-  durationMs: number;
-}
 
 // -----------------------------------------------
 // Write Errors

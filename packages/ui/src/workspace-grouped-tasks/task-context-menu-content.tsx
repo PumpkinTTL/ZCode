@@ -8,6 +8,11 @@ import {
   ContextMenuSubTrigger,
 } from "@/components/ui/context-menu.js";
 import { TaskGroupColorDot } from "@/workspace-grouped-tasks/colors.js";
+import { useServices } from "@/hooks/useServices.js";
+import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useRemotePinnedTaskStore } from "@/store/remotePinnedTaskStore.js";
+import { useRemoteTimelineTaskStore } from "@/store/remoteTimelineTaskStore.js";
+import { toast } from "@/components/ui/toast.js";
 import type { TaskGroupMenuItem } from "@/workspace-grouped-tasks/types.js";
 
 export function GroupedTaskContextMenuContent({
@@ -47,6 +52,33 @@ export function GroupedTaskContextMenuContent({
   onOpenTaskFeedback: () => void;
   disabledReason?: string;
 }) {
+  const { zcodeTaskService } = useServices();
+  const removeTaskState = useZCodeSessionStore((state) => state.removeTaskState);
+  // 分组视图的删除与归档区同语义（zcodeTaskService.deleteTask：从列表移除、
+  // 会话内容保留）；这里自取服务内联，避免把 props 穿过四层分组组件链。
+  const handleDeleteTask = () => {
+    if (disabledReason) return;
+    void zcodeTaskService
+      .deleteTask({
+        taskId: task.taskId,
+        workspacePath: task.workspacePath,
+        ...(task.workspaceIdentity ? { workspaceIdentity: task.workspaceIdentity } : {}),
+      })
+      .then(() => {
+        removeTaskState(task.workspacePath, task.taskId, task.workspaceIdentity);
+        if (task.workspaceIdentity) {
+          useRemotePinnedTaskStore
+            .getState()
+            .removeTask(task.workspacePath, task.taskId, task.workspaceIdentity);
+          useRemoteTimelineTaskStore
+            .getState()
+            .removeTask(task.workspacePath, task.taskId, task.workspaceIdentity);
+        }
+      })
+      .catch(() => {
+        toast(intl.formatMessage({ id: "taskList.deleteFailed" }));
+      });
+  };
   return (
     <ContextMenuContent className="w-56">
       <ContextMenuSub>
@@ -127,6 +159,14 @@ export function GroupedTaskContextMenuContent({
         }}
       >
         {intl.formatMessage({ id: "taskList.markAsUnread" })}
+      </ContextMenuItem>
+      <ContextMenuItem
+        disabled={Boolean(disabledReason)}
+        title={disabledReason}
+        className="text-destructive data-[highlighted]:text-destructive"
+        onSelect={handleDeleteTask}
+      >
+        {intl.formatMessage({ id: "taskList.delete" })}
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem
