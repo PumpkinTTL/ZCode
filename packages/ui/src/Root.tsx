@@ -20,6 +20,7 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { SSHDialog } from "@/SSHDialog.js";
 import { SettingsPage } from "@/SettingsPage.js";
 import { WelcomeScreen, type LoginCompleteReason } from "@/business/login/WelcomeScreen.js";
+import { useSystemGrayscaleEffect } from "@/business/quota/noticeState.js";
 import { setDefaultFileDisplayBasePath } from "@/lib/fileDisplay.js";
 import { countAllUnreadTasks } from "@/lib/unreadTaskCount.js";
 import {
@@ -158,6 +159,10 @@ function RootInner({
   // 放在 app 级 ServiceProvider 这一层取一次，自动化页与 run 面板只读。消费方可能位于
   // 工作区级 ServiceProvider 内（远程 Host 的 accessor），由它们取数会拿到另一台 Host 的答案。
   useDynamicWorkflowAvailabilityLoader(services.codingPlanSubscriptionService);
+
+  // 全站灰纪念模式挂点：跟随公开端点 /user/notice 的 grayscale.active 开或关
+  // （登录页与已登录主界面都要生效，所以必须在 RootInner 顶层挂，任何早退分支都覆盖）。
+  useSystemGrayscaleEffect();
 
   const { intl, locale } = useZCodeIntl();
   const theme = useZCodeStore((state) => state.theme);

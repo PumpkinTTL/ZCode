@@ -10,6 +10,7 @@
 import { useCallback, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { NimbusQuotaOverview } from "./NimbusQuotaOverview.js";
+import { NimbusNoticeBar } from "./NimbusNoticeBar.js";
 import {
   notifyNimbusAccountChanged,
   refreshNimbusAccountState,
@@ -62,6 +63,8 @@ export function ProviderQuotaSection() {
 
   return (
     <div className="space-y-4" data-business="provider-quota">
+      {/* 系统公告条（免登录端点）：与登录页同一组件、同一份已读记忆；无公告不占位。 */}
+      <NimbusNoticeBar />
       {loggedInStatus ? (
         <NimbusQuotaOverview
           status={loggedInStatus}

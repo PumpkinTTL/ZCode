@@ -9,9 +9,10 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QuotaStatusResult, QuotaUsageDay } from "@zcode/services";
-import { Loader2, LogOut, Plus, RefreshCw } from "lucide-react";
+import { Loader2, LogOut, Plus, RefreshCw, SquareArrowOutUpRight } from "lucide-react";
 import { NimbusQuotaUsageChart, summarizeQuotaUsage } from "./NimbusQuotaUsageChart.js";
 import { NimbusRechargeDialog } from "./NimbusRechargeDialog.js";
+import { NimbusCheckinCard } from "./NimbusCheckinCard.js";
 import { formatQuotaPlanName, percentOf } from "./quotaFormat.js";
 import { Alert, AlertDescription } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
@@ -42,6 +43,23 @@ export function NimbusQuotaOverview({
   const [usage, setUsage] = useState<readonly QuotaUsageDay[] | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [rechargeOpen, setRechargeOpen] = useState(false);
+  // Web 门户引用：完整用量明细/流水在网页端看，APP 只留核心数据（与额度服务同源）。
+  const [portalUsageUrl, setPortalUsageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void providerQuotaService
+      .getBaseUrl()
+      .then((base) => {
+        if (alive) setPortalUsageUrl(`${base.trim().replace(/\/+$/u, "")}/usage`);
+      })
+      .catch(() => {
+        // 拿不到 base 就不渲染引用行，静默即可。
+      });
+    return () => {
+      alive = false;
+    };
+  }, [providerQuotaService]);
 
   const loadUsage = useCallback(async () => {
     setUsageError(null);
@@ -232,6 +250,9 @@ export function NimbusQuotaOverview({
         </div>
       </div>
 
+      {/* 1.5 每日签到：连签天数 + 今日签到入口；状态/失败降级由卡片自隐藏。 */}
+      <NimbusCheckinCard />
+
       {/* 2. 我的套餐：滚动调用窗口与重置时间。周期总额度不再向用户展示。 */}
       <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
@@ -356,6 +377,21 @@ export function NimbusQuotaOverview({
           <NimbusQuotaUsageChart usage={usage} />
         )}
       </div>
+
+      {/* 网页端引用：用量明细/流水等完整数据引导去 Web 门户，APP 保持精简。 */}
+      {portalUsageUrl ? (
+        <div className="flex justify-end">
+          <a
+            href={portalUsageUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-ui-sm text-foreground-subtle transition-colors hover:text-foreground"
+          >
+            {intl.formatMessage({ id: "business.quota.webPortalUsage" })}
+            <SquareArrowOutUpRight className="size-3.5" />
+          </a>
+        </div>
+      ) : null}
 
       {/* 充值弹窗：支付成功后在弹窗内部 toast + 刷新共享快照，余额卡随快照更新。 */}
       <NimbusRechargeDialog

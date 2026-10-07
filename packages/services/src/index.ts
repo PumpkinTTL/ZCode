@@ -300,6 +300,9 @@ export type {
   QuotaPasswordResetParams,
   QuotaRechargeOrderCreated,
   QuotaRechargeOrderStatus,
+  QuotaNotice,
+  QuotaCheckinStatus,
+  QuotaCheckinResult,
 } from "./business/index.js";
 // resolveQuotaBaseUrl：cbcn-cloud 同源 base 的唯一解析出口（quota/app-update/反馈/
 // 分享/闲时/客户端配置共用）；desktop host 的远端 workspace 分享装配也经这里取。

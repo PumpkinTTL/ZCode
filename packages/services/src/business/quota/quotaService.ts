@@ -1,3 +1,6 @@
+/* eslint-disable max-lines -- 供应商额度服务的单一装配点：凭证生命周期 + 响应投影 +
+   推荐额度视图 + 登录/注册/充值/签到等用户侧动作集中一处，与 quotaClient.ts 的
+   max-lines 豁免同一理由（拆文件会让凭证收尾与 401 回落口径散落多处）。 */
 /**
  * 供应商额度服务实现：登录态管理 + 额度聚合。
  *
@@ -30,6 +33,9 @@ import {
   type QuotaLoginParams,
 } from "./quota.js";
 import type {
+  QuotaCheckinResult,
+  QuotaCheckinStatus,
+  QuotaNotice,
   QuotaPasswordResetParams,
   QuotaRechargeOrderCreated,
   QuotaRechargeOrderStatus,
@@ -406,6 +412,23 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
 
     async resetPassword(params: QuotaPasswordResetParams): Promise<void> {
       await client.resetPassword(params);
+    },
+
+    /** 系统公告 + 全站灰状态：公开端点免登录，直接透传（失败由调用方静默降级）。 */
+    async getNotice(signal?: AbortSignal): Promise<QuotaNotice> {
+      return client.getNotice(signal);
+    },
+
+    /** 每日签到状态：JWT 鉴权；功能关闭时后端 403 detail「签到未开启」原样上抛。 */
+    async getCheckinStatus(): Promise<QuotaCheckinStatus> {
+      const token = await requireToken();
+      return client.getCheckinStatus(token);
+    },
+
+    /** 每日签到：成功返回本次奖励；重复签到等失败把后端 detail 原样上抛给 UI。 */
+    async checkin(): Promise<QuotaCheckinResult> {
+      const token = await requireToken();
+      return client.checkin(token);
     },
 
     async createRechargeOrder(amount: number): Promise<QuotaRechargeOrderCreated> {

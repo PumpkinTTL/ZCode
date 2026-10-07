@@ -10,6 +10,9 @@
 import { ServiceChannels } from "@zcode/shared";
 import { createServiceDescriptor } from "../../descriptors.js";
 import type {
+  QuotaCheckinResult,
+  QuotaCheckinStatus,
+  QuotaNotice,
   QuotaPasswordResetParams,
   QuotaRechargeOrderCreated,
   QuotaRechargeOrderStatus,
@@ -125,6 +128,21 @@ export interface IProviderQuotaService {
   forgotPassword(email: string, signal?: AbortSignal): Promise<string>;
   /** 用重置码改密（公开端点）；成功后用户需用新密码登录，失败抛 detail。 */
   resetPassword(params: QuotaPasswordResetParams): Promise<void>;
+  /**
+   * 系统公告 + 全站灰纪念模式状态（GET /user/notice，公开端点免登录）。
+   * 登录页与「我的额度」共用；查询失败抛 QuotaApiError（调用方静默降级不渲染）。
+   */
+  getNotice(signal?: AbortSignal): Promise<QuotaNotice>;
+  /**
+   * 每日签到状态（GET /user/checkin/status，JWT 鉴权）。功能关闭抛
+   * QuotaApiError(403)「签到未开启」，UI 据此整体隐藏签到卡。
+   */
+  getCheckinStatus(): Promise<QuotaCheckinStatus>;
+  /**
+   * 每日签到（POST /user/checkin，JWT 鉴权）。成功返回本次奖励积分与连签天数；
+   * 失败（重复签到等）抛 QuotaApiError，detail 为可直接展示的服务端中文。
+   */
+  checkin(): Promise<QuotaCheckinResult>;
   /**
    * 创建充值订单（POST /alipay/recharge，金额 10-2000 元，后端硬闸）。
    * 返回支付宝当面付二维码 URL，由 UI 用系统外链唤起支付宝。

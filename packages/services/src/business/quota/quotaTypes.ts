@@ -174,6 +174,50 @@ export interface QuotaRechargeOrderStatus {
   readonly paidAt: number;
 }
 
+/**
+ * 全站灰纪念模式状态（GET /api/v1/user/notice 的 grayscale 嵌套对象）。
+ * start/end 为服务器本地 "YYYY-MM-DD HH:mm" 原样透出；active 由后端按当前时间
+ * 算好（前端零时区/解析逻辑），true 才挂全站灰阶。
+ */
+export interface QuotaNoticeGrayscale {
+  readonly enabled: boolean;
+  readonly start: string;
+  readonly end: string;
+  readonly active: boolean;
+}
+
+/**
+ * 系统公告 + 全站灰纪念模式（GET /api/v1/user/notice，公开端点免登录）。
+ * enabled=false 时 content 无意义；公告无独立 id，客户端以 content 哈希作版本标识。
+ */
+export interface QuotaNotice {
+  readonly enabled: boolean;
+  readonly content: string;
+  readonly grayscale: QuotaNoticeGrayscale;
+}
+
+/**
+ * 每日签到状态（GET /api/v1/user/checkin/status，JWT 鉴权）。
+ * streak：已签今天则含今天；未签则为截至昨天的连签（今天签到后 +1）。
+ * tomorrowCredits：保持连签的下一笔奖励；今天未签时恰等于今天签到可得的奖励。
+ * 功能关闭（checkin_base_credits=0）时后端 403「签到未开启」。
+ */
+export interface QuotaCheckinStatus {
+  readonly checkedInToday: boolean;
+  readonly streak: number;
+  readonly base: number;
+  readonly streakBonus: number;
+  readonly tomorrowCredits: number;
+}
+
+/** 签到回执（POST /api/v1/user/checkin，JWT 鉴权）；重复签到后端 409「今日已签到」。 */
+export interface QuotaCheckinResult {
+  /** 本次入账积分（base + 连签加成，已按封顶口径计算） */
+  readonly credits: number;
+  readonly streak: number;
+  readonly tomorrowCredits: number;
+}
+
 /** 我的用量重置卡（GET /api/v1/user/reset-cards 的清单条目投影）。 */
 export interface QuotaResetCard {
   readonly id: number;

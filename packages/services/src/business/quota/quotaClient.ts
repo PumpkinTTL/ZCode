@@ -30,6 +30,11 @@ const PASSWORD_RESET_PATH = "/api/v1/user/password/reset";
 // 充值（JWT 鉴权；契约见 cbcn-cloud app/api/v1/alipay.py）
 const RECHARGE_PATH = "/api/v1/alipay/recharge";
 const ALIPAY_ORDERS_PATH = "/api/v1/alipay/orders";
+// 系统公告 + 全站灰纪念模式（公开端点，免登录——登录页也要能看；契约 cbcn-cloud user.py）
+const NOTICE_PATH = "/api/v1/user/notice";
+// 每日签到（JWT 鉴权；契约见 cbcn-cloud app/api/v1/perks.py）
+const CHECKIN_PATH = "/api/v1/user/checkin";
+const CHECKIN_STATUS_PATH = "/api/v1/user/checkin/status";
 
 /**
  * 一次待签名请求的描述（设备身份模块的 Ed25519 签名契约配套；签名串只取
@@ -398,6 +403,75 @@ export class QuotaApiClient {
     if (!response.ok) throw await toApiError(response);
   }
 
+  /**
+   * 系统公告 + 全站灰纪念模式（GET /api/v1/user/notice，公开端点免登录）。
+   * 登录页与已登录主界面共用；grayscale.active 由后端按当前时间算好，前端拿到
+   * true 直接挂灰阶，不做任何时区/时间窗解析。失败抛 QuotaApiError（调用方静默降级）。
+   */
+  async getNotice(signal?: AbortSignal): Promise<QuotaNotice> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${NOTICE_PATH}`, { signal });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as Record<string, unknown> | null;
+    const rawGrayscale =
+      typeof body?.grayscale === "object" && body?.grayscale !== null
+        ? (body.grayscale as Record<string, unknown>)
+        : null;
+    return {
+      enabled: body?.enabled === true,
+      content: readString(body?.content),
+      grayscale: {
+        enabled: rawGrayscale?.enabled === true,
+        start: readString(rawGrayscale?.start),
+        end: readString(rawGrayscale?.end),
+        active: rawGrayscale?.active === true,
+      },
+    };
+  }
+
+  /**
+   * 每日签到状态（GET /api/v1/user/checkin/status，JWT 鉴权）。功能关闭抛
+   * QuotaApiError(403)「签到未开启」，调用方据此整体隐藏签到卡。
+   */
+  async getCheckinStatus(token: string, signal?: AbortSignal): Promise<QuotaCheckinStatus> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${CHECKIN_STATUS_PATH}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as Record<string, unknown> | null;
+    return {
+      checkedInToday: body?.checked_in_today === true,
+      streak: readNumberOr(body?.streak, 0),
+      base: readNumberOr(body?.base, 0),
+      streakBonus: readNumberOr(body?.streak_bonus, 0),
+      tomorrowCredits: readNumberOr(body?.tomorrow_credits, 0),
+    };
+  }
+
+  /**
+   * 每日签到（POST /api/v1/user/checkin，JWT 鉴权）。成功返回本次入账积分与
+   * 连签天数；失败抛 QuotaApiError，detail 为可直接展示的中文
+   * （409「今日已签到」/ 403「签到未开启」「请先在控制台「绑定邮箱」…」）。
+   */
+  async checkin(token: string, signal?: AbortSignal): Promise<QuotaCheckinResult> {
+    const response = await this.#fetchImpl(`${this.#baseUrl}${CHECKIN_PATH}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as Record<string, unknown> | null;
+    const credits = readNumber(body?.credits);
+    if (credits === null) {
+      throw new QuotaApiError(response.status, "签到响应缺少奖励积分");
+    }
+    return {
+      credits,
+      streak: readNumberOr(body?.streak, 0),
+      tomorrowCredits: readNumberOr(body?.tomorrow_credits, 0),
+    };
+  }
+
   async getMe(token: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
     const response = await this.#fetchImpl(`${this.#baseUrl}${ME_PATH}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -643,6 +717,9 @@ function normalizeEpochMs(seconds: number): number {
  * credits 与 per_call 两种计费模式的字段互斥，按 billing_mode 分支。
  */
 import type {
+  QuotaCheckinResult,
+  QuotaCheckinStatus,
+  QuotaNotice,
   QuotaPasswordResetParams,
   QuotaRechargeOrderCreated,
   QuotaRechargeOrderStatus,

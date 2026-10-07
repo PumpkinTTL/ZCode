@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { PolarisLogo } from "@/business/brand/PolarisLogo.js";
+import { NimbusNoticeBar } from "@/business/quota/NimbusNoticeBar.js";
 import { ThemeHeroVisual } from "@/openWorkspacePageThemeHero.js";
 import { useServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
@@ -77,13 +78,17 @@ export function WelcomeScreen({ onComplete, onClose }: WelcomeScreenProps) {
         登录卡是页面上唯一的一层容器：hero 渐变 → 卡片 → 字段。字段刻意用 bg-background
         而不是 bg-input，因为两个内置主题里 --color-input 与 --color-card 完全同色
         （深色都是 #2b2b2b、浅色都是 #ffffff），照默认写法字段会和卡片糊成一片。
+        公告条在卡片上方：与卡片同宽同列，无公告时 NimbusNoticeBar 返回 null 不占位。
       */}
-      <section className="relative z-10 my-auto w-full max-w-md rounded-xl border border-card-border bg-card p-8 shadow-md sm:p-10">
-        <div className="flex flex-col gap-7">
-          <LoginHeader />
-          <NimbusAuthCard onComplete={onComplete} />
-        </div>
-      </section>
+      <div className="relative z-10 my-auto flex w-full max-w-md flex-col gap-3">
+        <NimbusNoticeBar />
+        <section className="w-full rounded-xl border border-card-border bg-card p-8 shadow-md sm:p-10">
+          <div className="flex flex-col gap-7">
+            <LoginHeader />
+            <NimbusAuthCard onComplete={onComplete} />
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
