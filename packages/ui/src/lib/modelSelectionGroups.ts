@@ -36,8 +36,8 @@ export function buildRegistryModelSelectGroups(
     }
 
     // 官方（Nimbus）模型目录来自远端 /v1/models 动态同步：菜单里不做二级折叠，
-    // 直出扁平列表（对齐原版官方模型不折叠的做法）。分组标题直接用「官方」文案，
-    // 不再展示 Nimbus 品牌名；标题与徽章合一，视觉最简。
+    // 直出扁平列表（对齐原版官方模型不折叠的做法）。分组标题用「官方」文案渲染成
+    // 小巧的 tag 徽章（labelTag），不再展示 Nimbus 品牌名，也不占大字标题位。
     const isOfficial = provider.config.group === "nimbus";
     const officialLabel = labels.officialBadgeLabel?.trim();
     return [
@@ -45,9 +45,9 @@ export function buildRegistryModelSelectGroups(
         key: `registry-provider:${provider.providerId}`,
         label:
           isOfficial && officialLabel
-            ? `✦ ${officialLabel}`
+            ? officialLabel
             : (provider.providerName?.trim() || provider.providerId),
-        ...(isOfficial ? { directItems: true } : {}),
+        ...(isOfficial ? { directItems: true, labelTag: true } : {}),
         ...(isOfficial && labels.officialHeaderAction
           ? { headerAction: labels.officialHeaderAction }
           : {}),

@@ -83,6 +83,8 @@ export interface ModelSelectGroup {
   key: string;
   label: string;
   labelBadge?: string;
+  /** 标题渲染成小 tag 徽章而非大字文本（官方组用：紧凑胶囊，对齐模型行的视觉/徽章风格）。 */
+  labelTag?: boolean;
   directItems?: boolean;
   /** directItems 扁平分组的标题行右侧图标按钮（带 stopPropagation，点击不关菜单）。 */
   headerAction?: ModelSelectGroupHeaderAction;
@@ -414,15 +416,27 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
   const renderGroupLabel = useCallback(
     (group: ModelSelectGroup, options: { mutedLabel?: boolean } = {}) => (
       <span className="min-w-0 flex-1 items-center gap-1.5 text-left inline-flex">
-        <span
-          className={cn(
-            "min-w-0 whitespace-normal break-words text-ui-base",
-            options.mutedLabel && "text-foreground-subtle",
-          )}
-          title={group.label}
-        >
-          {group.label}
-        </span>
+        {group.labelTag ? (
+          <span
+            title={group.label}
+            className={cn(
+              MODEL_CONFIG_SELECT_BADGE_CLASS_NAME,
+              "cursor-default border border-border px-1.5 py-0.5 text-foreground-subtle",
+            )}
+          >
+            {group.label}
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "min-w-0 whitespace-normal break-words text-ui-base",
+              options.mutedLabel && "text-foreground-subtle",
+            )}
+            title={group.label}
+          >
+            {group.label}
+          </span>
+        )}
         {group.labelBadge ? (
           <span className={MODEL_CONFIG_SELECT_BADGE_CLASS_NAME}>{group.labelBadge}</span>
         ) : null}
