@@ -2016,6 +2016,7 @@ const enUS: Record<string, string> = {
   "settings.migration.reason.session_not_found_or_workspace_mismatch":
     "The source session was not found, or it no longer matches the current workspace filter.",
   "settings.usageTitle": "Usage stats",
+  "business.quota.loginRequiredHint": "Sign in to Nimbus to view balance and plan quota",
   "business.quota.description": "Sign in to your Nimbus account to view balance and plan quota",
   "business.quota.username": "Username",
   "business.quota.password": "Password",

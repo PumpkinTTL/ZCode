@@ -276,7 +276,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   /** 「用量额度」菜单项：直接跳设置页「用量额度」分区（不再开弹层）。 */
   const openQuotaSettings = useCallback(() => {
     setPendingSettingsSection("providerQuota");
-    openSettingsTab();
+    openSettingsTab("providerQuota");
   }, [openSettingsTab]);
   const [desktopZoomLevel, setDesktopZoomLevel] = useState(0);
   const runDesktopZoomCommand = useCallback(

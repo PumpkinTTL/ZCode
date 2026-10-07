@@ -910,11 +910,17 @@ function RootInner({
     previousRemoteConnectionInProgressRef.current = remoteConnectionInProgress;
   }, [remoteConnectionInProgress, resetRemoteConnectionLogs]);
 
+  // 设置 Tab 携带的初始分区意图（openSettingsTab(section) 写入）：焦点回到设置页时直落目标分区。
+  const settingsTabInitialSection =
+    activeTab && isSettingsTab(activeTab)
+      ? (activeTab.initialSection as import("@/lib/settingsNavigation.js").SettingsSectionId | undefined)
+      : undefined;
   const settingsLayerProps = {
     isDesktop,
     isMacDesktop,
     isWindowsDesktop,
     captionWorkspacePath: activeWorkspacePath,
+    initialSectionOverride: settingsTabInitialSection,
     onBack: activeWorkspacePath ? handleBackFromSettings : undefined,
     onCreateTask: handleCreateTask,
     onOpenWorkspace: handleOpenWorkspace,

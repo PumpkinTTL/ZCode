@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useNimbusAccountState } from "@/business/quota/nimbusAccountState.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { getPathLeaf } from "@/lib/path.js";
 import {
@@ -364,6 +365,16 @@ export function SettingsPage({
       }),
     [activeSection, setActiveSettingsSection],
   );
+
+  // 「我的额度」未登录时不渲染内嵌登录表单：进入该分区即自动弹统一登录
+  // （WelcomeScreen，Root 的 onLogin=handleOpenLoginEntry）。登录完成后本 effect
+  // 不再触发，直接落回已登录的额度面板。关闭登录窗未登录 → 分区显示极简提示。
+  const nimbusAccount = useNimbusAccountState();
+  useEffect(() => {
+    if (activeSection !== "providerQuota") return;
+    if (nimbusAccount.loggedIn || nimbusAccount.loading || nimbusAccount.status === null) return;
+    onLogin?.();
+  }, [activeSection, nimbusAccount.loggedIn, nimbusAccount.loading, onLogin]);
 
   useEffect(() => {
     services.settingService

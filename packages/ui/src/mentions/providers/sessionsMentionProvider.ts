@@ -2,7 +2,7 @@
 // 店面切到 v4 sessions-index（useWorkspaceSessionsIndexItems，侧栏同源）。
 // 旧店面在 v4 shell 下不再被会话列表填充，继续读会得到空面板；序列化与排序语义不变
 // （collectSessionMentionItems 保留，供单测与聚合复用）。
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { IServiceAccessor } from "@zcode/services";
 import type { ZCodeProvider, ZCodeTaskMeta } from "@zcode/shared";
 import { buildSessionMentionMarkdown } from "@/mentions/mentionMarkdown.js";
@@ -20,13 +20,38 @@ import {
 } from "@/lib/workspaceServiceResolver.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
+import { subscribeTaskLifecycle } from "@/lib/taskLifecycleEvents.js";
 import { isWorkspaceTab, type WorkspaceTabState } from "@/store/tabStore.js";
 import {
   useWorkspaceSessionsIndexItems,
   type WorkspaceSessionsIndexScope,
 } from "@/v4/useWorkspaceSessionsIndexItems.js";
+import { useTaskListMembershipVersion } from "@/v4/taskListMembershipVersion.js";
 
 const HASH_SESSION_MENTION_LIMIT_PER_WORKSPACE = 20;
+
+/**
+ * 已删除会话的 taskKey 集合：删除/归档删除事件写入，@ 候选聚合据此排除——
+ * 否则 sessions-index 的 tombstone join 之外，@ 提及仍会捞到已删会话（用户实测）。
+ */
+const deletedTaskKeys = new Set<string>();
+
+function taskKeyOf(task: { workspacePath: string; workspaceIdentity?: string; taskId: string }) {
+  return buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity) + ':' + task.taskId;
+}
+
+// 删除事件 → 记录；归档事件 → 移出（归档可恢复，恢复后应能重新被 @）。
+subscribeTaskLifecycle((event) => {
+  // 生命周期事件自带 workspaceKey（构建时已含 identity 归一），直接拼 taskId。
+  const key = event.workspaceKey + ':' + event.taskId;
+  if (event.type === 'deleted') {
+    deletedTaskKeys.add(key);
+  } else {
+    deletedTaskKeys.delete(key);
+  }
+});
+
+const EMPTY_DELETED_TASK_IDS: ReadonlySet<string> = new Set();
 
 interface SessionMentionItem extends MentionItem {
   /** 只在候选聚合阶段分桶，不写入 Lexical node 或 canonical mention。 */
@@ -96,6 +121,10 @@ function collectSessionMentionItems(
   const taskBySessionId = new Map<string, ZCodeTaskMeta>();
   for (const task of tasks) {
     if (task.migrationSource) {
+      continue;
+    }
+    // 已删除（软删 tombstone）的会话不得出现在 @ 提及候选里。
+    if (deletedTaskKeys.has(taskKeyOf(task))) {
       continue;
     }
     const sessionId = task.taskId;
@@ -260,13 +289,66 @@ export function useSessionsMentionProvider(
   ]);
   const { items: indexMetas, hydratingEndpointKeys } = useWorkspaceSessionsIndexItems(scopes);
 
+  // 已删除会话（tasks-index tombstone）必须与侧栏任务列表同口径在查询层剔除：
+  // sessions-index 的种子来自 CLI session store，删除任务只写 tasks.deleted=1，
+  // store 不会随之移除；不过滤会让 @/# 提及搜到并选中已删会话。
+  // membershipVersion 驱动重拉：删除/恢复 mutation 后候选即时收敛。
+  const membershipVersion = useTaskListMembershipVersion();
+  const [deletedTaskIds, setDeletedTaskIds] = useState<ReadonlySet<string>>(
+    () => EMPTY_DELETED_TASK_IDS,
+  );
+  useEffect(() => {
+    if (!enabled || scopes.length === 0) {
+      setDeletedTaskIds(EMPTY_DELETED_TASK_IDS);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const merged = new Set<string>();
+      await Promise.all(
+        scopes.map(async (scope) => {
+          const resolved = resolveWorkspaceServices(
+            {
+              workspacePath: scope.workspacePath,
+              ...(scope.workspaceIdentity ? { workspaceIdentity: scope.workspaceIdentity } : {}),
+              ...(scope.endpointKey ? { remoteSessionId: scope.endpointKey } : {}),
+            },
+            baseServices,
+            serviceResolverState,
+          );
+          // 与 sessions-index scope 同一 authority 约束：解析不到（远端未连接）不回退本机。
+          if (!resolved) return;
+          try {
+            const deleted = await resolved.services.zcodeTaskService.listDeletedTaskIds({
+              workspacePath: scope.workspacePath,
+              ...(scope.workspaceIdentity ? { workspaceIdentity: scope.workspaceIdentity } : {}),
+            });
+            if (cancelled) return;
+            for (const taskId of deleted) merged.add(taskId);
+          } catch {
+            // tombstone 读取失败按空集降级（与侧栏 membership 读取 listOrEmpty 同口径）。
+            return;
+          }
+        }),
+      );
+      if (!cancelled) setDeletedTaskIds(merged);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [baseServices, enabled, membershipVersion, scopes, serviceResolverState]);
+
   const allItems = useMemo(
     () =>
-      collectSessionMentionItems(indexMetas, provider, {
-        workspacePath,
-        workspaceIdentity,
-      }),
-    [indexMetas, provider, workspaceIdentity, workspacePath],
+      collectSessionMentionItems(
+        indexMetas.filter((task) => !deletedTaskIds.has(task.taskId)),
+        provider,
+        {
+          workspacePath,
+          workspaceIdentity,
+        },
+      ),
+    [deletedTaskIds, indexMetas, provider, workspaceIdentity, workspacePath],
   );
 
   const items = useMemo(() => {

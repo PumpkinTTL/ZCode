@@ -9,7 +9,6 @@
  */
 import { useCallback, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { NimbusAccountDialog, NimbusLoginForm } from "./NimbusAccountDialog.js";
 import { NimbusQuotaOverview } from "./NimbusQuotaOverview.js";
 import {
   notifyNimbusAccountChanged,
@@ -23,9 +22,7 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 export function ProviderQuotaSection() {
   const { intl } = useZCodeIntl();
   const { providerQuotaService, providerSettingsService, appUpdateService } = useServices();
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
   /**
    * 「我的额度」渲染共享快照（nimbusAccountState 单一数据源），不再自己 getStatus：
    * 侧边栏底部、设置页与账号弹窗必须同时是已登录/未登录，登录后也不必等下一次交互才刷新。
@@ -58,22 +55,6 @@ export function ProviderQuotaSection() {
       .finally(() => setBusy(false));
   }, [providerQuotaService, providerSettingsService]);
 
-  const handleInlineLogin = useCallback(
-    async (username: string, password: string) => {
-      setBusy(true);
-      setLoginError(null);
-      try {
-        const status = await providerQuotaService.login({ username, password });
-        notifyNimbusAccountChanged(status);
-      } catch (error) {
-        setLoginError(error instanceof Error ? error.message : String(error));
-      } finally {
-        setBusy(false);
-      }
-    },
-    [providerQuotaService],
-  );
-
   const status = shared.status;
   const loggedInStatus = status?.loggedIn === true ? status : null;
   // 首屏 spinner 只在没有任何快照时出现；有缓存时后台重校验，不闪 loading。
@@ -94,26 +75,11 @@ export function ProviderQuotaSection() {
           <span className="text-ui-base">{intl.formatMessage({ id: "business.quota.loading" })}</span>
         </div>
       ) : (
-        <div className="max-w-md rounded-xl border border-border bg-card p-6 shadow-xs">
-          <div className="mb-5 space-y-1">
-            <h3 className="text-ui-base font-semibold text-foreground">
-              {intl.formatMessage({ id: "business.quota.connect" })} Nimbus
-            </h3>
-            <p className="text-ui-sm text-foreground-subtle">
-              {intl.formatMessage({ id: "business.quota.description" })}
-            </p>
-          </div>
-          <NimbusLoginForm
-            busy={busy}
-            error={loginError ?? shared.error}
-            onSubmit={handleInlineLogin}
-            intl={intl}
-          />
+        <div className="flex h-40 items-center justify-center text-ui-sm text-foreground-subtle">
+          {intl.formatMessage({ id: "business.quota.loginRequiredHint" })}
         </div>
       )}
 
-      {/* 弹窗备用：在其他快捷入口触发时开启 */}
-      <NimbusAccountDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </div>
   );
 }

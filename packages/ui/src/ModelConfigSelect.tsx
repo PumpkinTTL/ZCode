@@ -352,7 +352,8 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
                     <AlertCircle className="size-4" />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent side="right" align="center" sideOffset={6}>
+                {/* 菜单本体是 z-[60]，锁定提示 tooltip 必须浮在菜单之上，否则被面板压住。 */}
+                <TooltipContent side="right" align="center" sideOffset={6} className="z-[80]">
                   {lockReasonMessage}
                 </TooltipContent>
               </Tooltip>
