@@ -1,10 +1,10 @@
 /**
  * 「可重置额度」弹窗：礼物徽章的点击落点（官方同款交互）。
  *
- * 结构对齐官方：三张额度卡（5 小时/周/基本额度）+ 每张可用重置卡一行
- * （窗口名 + 剩余张数 + 到期 + 绿色「重置」按钮）。「重置」真实调用
- * POST /reset-cards/{id}/redeem，成功后刷新额度状态并重拉清单。
- * 不可用的卡按钮置灰并展示原因（冷却中/达日限/无套餐）。
+ * 结构对齐官方：三张额度卡（5 小时/周/基本额度）+ 重置卡按窗口合并成一行
+ * （窗口名 + 总数徽章「N 张」+ 到期提示 + 绿色「重置」按钮）。「重置」真实调用
+ * POST /reset-cards/{id}/redeem（自动核销该窗口最先到期的可用卡），
+ * 成功后刷新额度状态并重拉清单。整组不可用则按钮置灰并展示原因（冷却中/达日限/无套餐）。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QuotaResetCard, QuotaStatusResult } from "@zcode/services";
@@ -84,7 +84,41 @@ export function NimbusResetCardsDialog({
   );
 
   const usable = (cards ?? []).filter((card) => !card.expired);
-  const byWindow = (window: string) => usable.filter((card) => card.window === window);
+  // 按窗口合并成一行（用户反馈：一卡一行「几张几张」重复难看）——徽章给统计总数，
+  // 重置按钮核销该窗口里最先到期的可用卡（先消耗临期卡，永久卡沉底）。
+  const windowGroups = useMemo(() => {
+    const order: string[] = [];
+    const grouped = new Map<string, QuotaResetCard[]>();
+    for (const card of usable) {
+      if (!grouped.has(card.window)) {
+        grouped.set(card.window, []);
+        order.push(card.window);
+      }
+      grouped.get(card.window)!.push(card);
+    }
+    return order.map((window) => {
+      const group = grouped.get(window)!;
+      const redeemable = group
+        .filter((card) => card.blockedReason.length === 0)
+        .sort((a, b) => (a.expiresAt || Number.POSITIVE_INFINITY) - (b.expiresAt || Number.POSITIVE_INFINITY));
+      const next = redeemable[0] ?? null;
+      const first = group[0];
+      if (!first) return { window, count: 0, redeemCard: null, note: null };
+      return {
+        window,
+        count: group.length,
+        redeemCard: next,
+        note: next
+          ? next.expiresAt > 0
+            ? intl.formatMessage(
+                { id: "business.quota.resetCardExpires" },
+                { date: dateFmt.format(next.expiresAt) },
+              )
+            : null
+          : first.blockedReason,
+      };
+    });
+  }, [usable, intl, dateFmt]);
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
@@ -96,7 +130,7 @@ export function NimbusResetCardsDialog({
         {/* 三张额度卡：与面板同源同构 */}
         <NimbusQuotaSummary status={status} compact onManage={onManage} />
 
-        {/* 重置卡清单：按窗口分组，一行一卡 + 绿色重置按钮 */}
+        {/* 重置卡清单：按窗口合并，一行 = 窗口名 + 总数徽章 + 重置按钮 */}
         <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
           {cards === null ? (
             <div className="flex h-16 items-center justify-center text-foreground-subtle">
@@ -108,48 +142,41 @@ export function NimbusResetCardsDialog({
                 intl.formatMessage({ id: "business.quota.resetCardsEmpty" })}
             </p>
           ) : (
-            usable.map((card) => {
-              const blocked = card.blockedReason.length > 0;
-              const sameWindow = redeemedWindow === card.window;
+            windowGroups.map(({ window, count, redeemCard, note }) => {
+              const sameWindow = redeemedWindow === window;
+              const busy = redeemCard !== null && redeemingId === redeemCard.id;
               return (
                 <div
                   className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-surface px-4 py-3"
                   data-nimbus-reset-card-row=""
-                  key={card.id}
+                  key={window}
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-ui-sm font-medium text-foreground">
                         {intl.formatMessage({
-                          id: WINDOW_LABEL_ID[card.window] ?? "business.quota.validity",
+                          id: WINDOW_LABEL_ID[window] ?? "business.quota.validity",
                         })}
                         {intl.formatMessage({ id: "business.quota.resetCardNoun" })}
                       </span>
                       <span className="shrink-0 rounded-md bg-emerald-500/20 px-2 py-0.5 text-ui-sm font-medium leading-none text-emerald-700 dark:text-emerald-300">
                         {intl.formatMessage(
                           { id: "business.quota.resetCardCount" },
-                          { count: byWindow(card.window).length },
+                          { count },
                         )}
                       </span>
                     </div>
                     <div className="mt-0.5 truncate text-ui-xs text-foreground-subtle">
-                      {blocked
-                        ? card.blockedReason
-                        : card.expiresAt > 0
-                          ? intl.formatMessage(
-                              { id: "business.quota.resetCardExpires" },
-                              { date: dateFmt.format(card.expiresAt) },
-                            )
-                          : null}
+                      {note}
                     </div>
                   </div>
                   <button
                     type="button"
-                    disabled={blocked || redeemingId !== null}
+                    disabled={redeemCard === null || redeemingId !== null}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-emerald-700 px-3.5 py-2 text-ui-sm font-medium text-white shadow-xs transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    onClick={() => void handleRedeem(card)}
+                    onClick={() => redeemCard && void handleRedeem(redeemCard)}
                   >
-                    {redeemingId === card.id ? (
+                    {busy ? (
                       <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
                     ) : (
                       <RotateCcw aria-hidden="true" className="size-3.5" />
