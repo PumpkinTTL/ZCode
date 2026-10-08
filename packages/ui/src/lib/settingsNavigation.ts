@@ -69,6 +69,10 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
     value === "skill" ||
     value === "plugins" ||
     value === "usage" ||
+    // 曾经漏掉这一行：providerQuota 在类型联合与分区表里都有，但运行时白名单没有，
+    // sessionStorage 与 CustomEvent 两条跳转通道对它双双静默失效——「点用量额度
+    // 跳不到设置页」翻车多次的根因就是它。
+    value === "providerQuota" ||
     value === "subagents" ||
     value === "commands" ||
     value === "hooks" ||
