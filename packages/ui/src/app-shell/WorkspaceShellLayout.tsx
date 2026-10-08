@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- workspace shell 当前集中编排 sidebar、chat、terminal 和 browser pane 的布局联动，先保持单文件收口，避免为满足行数限制打散关键布局状态。*/
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -37,15 +37,29 @@ import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { GitBranchSwitcher } from "@/GitBranchSwitcher.js";
 import { ScopedErrorBoundary } from "@/ErrorBoundary.js";
 
-import { AUTOMATIONS_TOAST_ANCHOR_ID, AutomationsSection } from "@/settings/AutomationsSection.js";
+import { AUTOMATIONS_TOAST_ANCHOR_ID } from "@/settings/AutomationsSection.js";
+// 重型面板懒加载：自动化设置、插件商店、任务查找、终端栈（xterm 全家）都不在首屏
+// 必需路径上，静态 import 会把整条依赖图拖进首屏 bundle 与常驻内存。
+const AutomationsSection = lazy(async () => ({
+  default: (await import("@/settings/AutomationsSection.js")).AutomationsSection,
+}));
+const PluginStorePage = lazy(async () => ({
+  default: (await import("@/settings/PluginStorePage.js")).PluginStorePage,
+}));
+const TaskFindDialog = lazy(async () => ({
+  default: (await import("@/quickpick/TaskFindDialog.js")).TaskFindDialog,
+}));
+const AnimatedTerminalPanel = lazy(async () => ({
+  default: (await import("@/app-shell/AnimatedTerminalPanel.js")).AnimatedTerminalPanel,
+}));
 import type {
   SavedWorkflowLaunchTarget,
   SavedWorkflowsOpenArtifactParams,
   SavedWorkflowsOpenRunParams,
 } from "@/settings/saved-workflows/SavedWorkflowsSection.js";
 import { AutomationsMainBreadcrumbFrame } from "@/settings/AutomationsMainBreadcrumbFrame.js";
-import { PluginStorePage } from "@/settings/PluginStorePage.js";
-import { TaskFindDialog } from "@/quickpick/TaskFindDialog.js";
+
+
 import { WorkspaceHeader } from "@/WorkspaceHeader.js";
 import { WorkspaceSidebar, type SidebarFileTreeOpenRequest } from "@/WorkspaceSidebar.js";
 import { AnimatedSidePanePanel } from "@/app-shell/AnimatedSidePanePanel.js";
@@ -53,7 +67,7 @@ import {
   findScreenshotSurfaceTabForRender,
   useBrowserScreenshotSurfaceRequest,
 } from "@/browser-use/useBrowserScreenshotSurfaceRequest.js";
-import { AnimatedTerminalPanel } from "@/app-shell/AnimatedTerminalPanel.js";
+
 import { SIDE_PANE_DEFAULT_EXPANDED_SIZE } from "@/app-shell/sidePaneLayout.js";
 import { useAnimatedResizablePanel } from "@/app-shell/useAnimatedResizablePanel.js";
 import { ensureTaskNavigationWorkspace } from "@/app-shell/taskNavigationWorkspace.js";
@@ -729,7 +743,11 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
     );
     return activeWorkspaceKey === requestWorkspaceKey ? searchResultHighlightRequest : null;
   }, [activeTaskId, searchResultHighlightRequest, workspaceAbsPath, workspaceIdentity]);
-  const renderChatFindDialog = () => <TaskFindDialog {...taskFindDialogProps} placement="chat" />;
+  const renderChatFindDialog = () => (
+    <Suspense fallback={null}>
+      <TaskFindDialog {...taskFindDialogProps} placement="chat" />
+    </Suspense>
+  );
   const gitDirtyFileCount = useMemo(() => {
     // 关键业务逻辑：同一个文件可能同时出现在 staged / unstaged。
     // 这里按 path 去重后再统计，避免入口里“未提交更改文件数”被重复计算。
@@ -1767,6 +1785,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                                 className="min-h-full"
                               >
                                 <div className="mx-auto flex w-full max-w-5xl flex-col px-4 py-4 md:px-6 md:py-6">
+                                  <Suspense fallback={null}>
                                   <AutomationsSection
                                     workspacePath={workspaceAbsPath}
                                     workspaceIdentity={workspaceIdentity}
@@ -1789,6 +1808,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                                       )
                                     }
                                   />
+                                  </Suspense>
                                 </div>
                               </ScopedErrorBoundary>
                             </div>
@@ -1807,6 +1827,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                           >
                             <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
                               <div className="mx-auto flex w-full max-w-4xl flex-col px-4 py-4 md:px-6 md:py-6">
+                                <Suspense fallback={null}>
                                 <PluginStorePage
                                   key={`plugin-store:${pluginStoreOpenVersion}`}
                                   workspacePath={workspaceAbsPath}
@@ -1814,6 +1835,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                                   onCreateTask={handleCreateTaskInChat}
                                   onManageInstalled={handleManageInstalledPlugins}
                                 />
+                                </Suspense>
                               </div>
                             </div>
                           </AutomationsMainBreadcrumbFrame>
@@ -1897,6 +1919,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                   </section>
                 </ResizablePanel>
                 {workspaceMainView !== "automations" && workspaceMainView !== "plugin-store" ? (
+                  <Suspense fallback={null}>
                   <AnimatedTerminalPanel
                     frameClassName={cn(
                       isSidePaneVisible
@@ -1923,6 +1946,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                     onClose={() => setIsTerminalOpen(false)}
                     onOpenBrowserUrl={handleOpenBrowserUrl}
                   />
+                  </Suspense>
                 ) : null}
               </ResizablePanelGroup>
             </ResizablePanel>

@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- Root 当前集中编排启动和 workspace shell wiring，先保持入口收口避免跨层状态拆散。 */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, lazy, useMemo, useRef, useState } from "react";
 import { LucideProvider, RefreshCw } from "lucide-react";
 import {
   APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
@@ -16,8 +16,12 @@ import { DirectoryBrowser } from "@/DirectoryBrowser.js";
 import { useTabPersistence } from "@/hooks/useTabPersistence.js";
 import { useWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { SSHDialog } from "@/SSHDialog.js";
-import { SettingsPage } from "@/SettingsPage.js";
+// 重型面板懒加载：设置页（含 recharts 图表链）与 SSH 远程连接对话框都不在首屏路径上，
+// 静态 import 会把它们连abhängig依赖图整个拖进首屏 bundle 与常驻内存。
+const SSHDialog = lazy(async () => ({ default: (await import("@/SSHDialog.js")).SSHDialog }));
+const SettingsPage = lazy(async () => ({
+  default: (await import("@/SettingsPage.js")).SettingsPage,
+}));
 import { WelcomeScreen, type LoginCompleteReason } from "@/business/login/WelcomeScreen.js";
 import { useSystemGrayscaleEffect } from "@/business/quota/noticeState.js";
 import { setDefaultFileDisplayBasePath } from "@/lib/fileDisplay.js";
@@ -860,7 +864,8 @@ function RootInner({
   }, []);
 
   const remoteConnectionDialog = allowRemoteWorkspace ? (
-    <SSHDialog
+    <Suspense fallback={null}>
+      <SSHDialog
       onConnect={handleConnectRemote}
       onSelectProject={handleSelectRemoteProject}
       onCancelSession={handleCancelRemoteProject}
@@ -875,6 +880,7 @@ function RootInner({
       preferredWslDistro={remoteConnectionOpenPreference?.preferredWslDistro}
       hideTriggerWhenClosed
     />
+    </Suspense>
   ) : null;
   const directoryBrowserDialog = directoryBrowserOpen ? (
     <ScopedErrorBoundary
@@ -986,7 +992,9 @@ function RootInner({
               variant="panel"
               className="h-full"
             >
-              <SettingsPage {...settingsLayerProps} />
+              <Suspense fallback={<div className="h-full" />}>
+                <SettingsPage {...settingsLayerProps} />
+              </Suspense>
             </ScopedErrorBoundary>
           ) : (
             <ScopedErrorBoundary scope="no-workspace-recovery" variant="silent" className="h-full">

@@ -94,12 +94,10 @@ export function DesktopTopOverlay({
   // 品牌区与操作区之间插一条细分隔符，把“应用标识”和“任务操作”分成两组。
   const showBrandSeparator =
     hasBrandControl && (!hideTaskNavigationButtons || isNewTaskButtonVisible);
-  // 字标与工作区标签只在侧栏展开态出现：这里的顶栏宽度就是侧栏宽度（264px 起），有地方排。
+  // 字标与版本号标签只在侧栏展开态出现：这里的顶栏宽度就是侧栏宽度（264px 起），有地方排。
   // 收起态顶栏宽度是按 Header 预留空间（pl-38 / pl-44）逐像素校对过的，再插文本块会顶进 Header。
   const showBrandWordmark = usesCustomCaptionArea && isSidebarVisible;
-  // 工作区标签是桌面端顶栏新增的内容，web / 远控沿用原来的紧凑排布，不跟着变。
-  const workspaceLabel =
-    isDesktop && isSidebarVisible ? resolveWorkspaceLabel(workspaceAbsPath) : null;
+  const displayVersion = ZCODE_VERSION.startsWith("v") ? ZCODE_VERSION : `v${ZCODE_VERSION}`;
   const macTopOverlayPaddingStyle =
     isMacDesktop && !isMacFullscreen && Number.isFinite(macWindowControlsLeftPaddingPx)
       ? { paddingLeft: `${Math.round(macWindowControlsLeftPaddingPx ?? 96)}px` }
@@ -144,28 +142,36 @@ export function DesktopTopOverlay({
             // Electron 在这类覆盖层上会优先按父级命中拖拽区域，导致点击被窗口拖动吞掉。
             // 这里把整块交互容器一起标成 no-drag，确保展开/收起和新建 task 都能稳定点击。
             // 交互容器本身必须可收缩（min-w-0）：侧栏展开时容器宽度被固定为侧栏宽度，
-            // 只有让整组参与收缩，末尾的工作区标签才会先截断，而不是把更新按钮顶到侧栏外面。
+            // 只有让整组参与收缩，末尾的版本标签才会先截断，而不是把更新按钮顶到侧栏外面。
             "pointer-events-auto flex min-w-0 items-center gap-1 [app-region:no-drag]",
           )}
         >
-          {/* 品牌区：桌面端左上角先交代“这是什么应用”，再进入任务操作，
-              避免整排只剩几个彼此孤立的图标按钮。 */}
+          {/* 品牌区：桌面端左上角应用标识 */}
           {usesCustomCaptionArea && (
-            <DesktopTopOverlayActionButton
-              title={toggleSidebarTitle}
-              shortcut={toggleSidebarShortcutLabel}
-              ariaLabel={toggleSidebarTitle}
-              buttonClassName="group relative overflow-hidden rounded-lg"
-              onClick={onToggleSidebar}
-            >
-              <img
-                src={appLogoUrl}
-                alt="Polaris"
-                className="size-5 transition-opacity duration-150 group-hover:opacity-0"
-                draggable={false}
-              />
-              <SidebarToggleIcon className="absolute inset-0 m-auto size-4 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
-            </DesktopTopOverlayActionButton>
+            <div className="flex items-center gap-1.5">
+              <DesktopTopOverlayActionButton
+                title={toggleSidebarTitle}
+                shortcut={toggleSidebarShortcutLabel}
+                ariaLabel={toggleSidebarTitle}
+                size="icon-md"
+                buttonClassName="group relative size-7 overflow-hidden rounded-md transition-colors hover:bg-surface-hover"
+                onClick={onToggleSidebar}
+              >
+                <img
+                  src={appLogoUrl}
+                  alt="Polaris"
+                  className="size-5 transition-opacity duration-150 group-hover:opacity-0"
+                  draggable={false}
+                />
+                <SidebarToggleIcon className="absolute inset-0 m-auto size-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 text-foreground-muted" />
+              </DesktopTopOverlayActionButton>
+
+              {showBrandWordmark ? (
+                <span className="select-none text-ui-sm font-semibold tracking-tight text-foreground/90 pl-0.5">
+                  Polaris
+                </span>
+              ) : null}
+            </div>
           )}
 
           {isMacDesktop && (
@@ -173,52 +179,48 @@ export function DesktopTopOverlay({
               title={toggleSidebarTitle}
               shortcut={toggleSidebarShortcutLabel}
               ariaLabel={toggleSidebarTitle}
+              size="icon-md"
+              buttonClassName="size-7 rounded-md"
               onClick={onToggleSidebar}
             >
               <SidebarToggleIcon className="size-4" />
             </DesktopTopOverlayActionButton>
           )}
 
-          {/* 字标紧挨 logo 按钮，把单个图标补成完整的品牌块；纯文本品牌名，不引入 i18n key。 */}
-          {showBrandWordmark ? (
-            <span className="select-none text-ui-sm font-semibold tracking-wide text-foreground-subtle">
-              Polaris
-            </span>
-          ) : null}
-
-          {/* 品牌区与导航区用细分隔符分组；收起态只保留分隔符本身（不额外加外边距），
-              避免把已经贴着 Header 预留边界的紧凑排布再顶出去。
-              Separator 竖排自带 self-stretch，直接传 h-4 会退化成顶端对齐；
-              这里用一层定高的 flex 容器承载，由整排的 items-center 负责垂直居中。 */}
+          {/* 品牌区与导航区精致细分隔符 */}
           {showBrandSeparator ? (
-            <span className={cn("flex h-4 shrink-0 items-center", isSidebarVisible && "mx-0.5")}>
-              <Separator orientation="vertical" />
+            <span className={cn("flex h-3.5 shrink-0 items-center", isSidebarVisible ? "mx-1" : "mx-0.5")}>
+              <Separator orientation="vertical" className="bg-border-subtle/70" />
             </span>
           ) : null}
 
-          {/* 远程控制移动端左上角空间有限，任务前进/后退在这里会与主操作拥挤重叠。*/}
+          {/* 任务历史导航键组 */}
           {hideTaskNavigationButtons ? null : (
-            <>
+            <div className="flex items-center gap-0.5">
               <DesktopTopOverlayActionButton
                 title={taskBackTitle}
                 shortcut={goBackShortcutLabel}
                 ariaLabel={taskBackTitle}
                 testId="desktop-top-nav-back"
+                size="icon-sm"
                 disabled={!canTaskNavBack}
                 onClick={onGoBack}
+                buttonClassName="rounded-md text-foreground-subtle hover:text-foreground hover:bg-surface-hover transition-colors disabled:opacity-25"
               >
-                <ArrowLeftIcon className="size-4" />
+                <ArrowLeftIcon className="size-3.5" />
               </DesktopTopOverlayActionButton>
               <DesktopTopOverlayActionButton
                 title={taskForwardTitle}
                 shortcut={goForwardShortcutLabel}
                 ariaLabel={taskForwardTitle}
+                size="icon-sm"
                 disabled={!canTaskNavForward}
                 onClick={onGoForward}
+                buttonClassName="rounded-md text-foreground-subtle hover:text-foreground hover:bg-surface-hover transition-colors disabled:opacity-25"
               >
-                <ArrowRightIcon className="size-4" />
+                <ArrowRightIcon className="size-3.5" />
               </DesktopTopOverlayActionButton>
-            </>
+            </div>
           )}
 
           <div
@@ -232,21 +234,25 @@ export function DesktopTopOverlay({
               title={newTaskDisabledReason ?? newTaskTitle}
               shortcut={newTaskShortcutLabel}
               ariaLabel={newTaskTitle}
+              size="icon-sm"
               disabled={Boolean(newTaskDisabledReason)}
               onClick={onCreateTask}
+              buttonClassName="rounded-md text-foreground-subtle hover:text-foreground hover:bg-surface-hover transition-colors disabled:opacity-25"
             >
-              <MessageCirclePlus className="size-4" />
+              <MessageCirclePlus className="size-3.5" />
             </DesktopTopOverlayActionButton>
           </div>
 
-          {/* 当前工作区标签：这里只显示目录名，完整路径交给 hover 提示；
-              它是整排里唯一可收缩的元素，侧栏变窄或更新按钮展开时先截断自己。 */}
-          {workspaceLabel ? (
-            <ControlHintTooltip title={workspaceAbsPath} side="bottom">
-              <span className="ml-0.5 inline-flex min-w-0 max-w-40 shrink items-center gap-1 overflow-hidden rounded-md py-1 pl-1.5 pr-2 text-ui-sm text-foreground-subtle select-none">
-                <FolderIcon className="size-3.5 shrink-0 text-foreground-subtlest" />
-                <span className="min-w-0 truncate">{workspaceLabel}</span>
-              </span>
+          {/* 应用版本徽标：替换原工作区标签，简洁精致并具备清晰视觉层次 */}
+          {isDesktop && isSidebarVisible ? (
+            <ControlHintTooltip
+              title={workspaceAbsPath ? `Polaris ${displayVersion} • ${workspaceAbsPath}` : `Polaris ${displayVersion}`}
+              side="bottom"
+            >
+              <div className="ml-1 inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-subtle/50 bg-surface-subtle/50 px-2 py-0.5 text-ui-xs font-mono font-medium text-foreground-subtle select-none transition-colors hover:bg-surface-hover/80 hover:text-foreground">
+                <Tag className="size-3 shrink-0 text-foreground-subtlest" />
+                <span>{displayVersion}</span>
+              </div>
             </ControlHintTooltip>
           ) : null}
 
