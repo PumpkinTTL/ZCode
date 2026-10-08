@@ -64,6 +64,14 @@ export function collectRuntimeModuleClosureEntries(moduleNames, moduleLookupRoot
       return;
     }
 
+    // 纯类型包（@types/*、undici-types）运行时永远不会被 require，闭包按 package.json
+    // 递归时会把它们当普通依赖拷进 app.asar（protobufjs 的历史遗留声明了 @types/node）。
+    // 在 visit 入口剪枝：不收集、不递归。
+    if (moduleName.startsWith("@types/") || moduleName === "undici-types") {
+      visited.add(moduleName);
+      return;
+    }
+
     const runtimePackage = readRuntimePackage(moduleLookupRoots, moduleName, parentPackagePath);
     if (!runtimePackage && optional) {
       return;

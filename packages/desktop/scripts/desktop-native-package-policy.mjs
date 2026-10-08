@@ -28,6 +28,9 @@ export function createDesktopNativePackagePrunePatterns(targetPlatformKey) {
     ...(targetPlatformKey.startsWith("darwin")
       ? []
       : ["!node_modules/@fiahfy/icns/**", "!node_modules/pngjs/**"]),
+    // 飞书 SDK 的 types/ 目录（16MB）只有编辑器消费；运行时 dynamic import 只解析
+    // exports 指向的 lib/es 产物。SDK 本体保留（bots 功能），类型目录全平台裁掉。
+    "!node_modules/@larksuiteoapi/node-sdk/types/**",
     // 桌面运行时统一使用目标 prebuild，禁止把安装机现场编译物或 ABI bin 缓存带进跨平台包。
     "!node_modules/node-pty/build/**",
     "!node_modules/node-pty/bin/**",
