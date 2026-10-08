@@ -18,9 +18,9 @@ export const BUILTIN_ZCODE_SLASH_COMMAND_HELP_ENTRIES: readonly BuiltinZCodeSlas
       usage: "/help [command]",
     },
     {
-      details: ["Deletes Z.ai OAuth credentials from the shared Polaris credential store."],
+      details: ["Deletes locally saved login credentials and signs out."],
       name: "logout",
-      summary: "Remove the shared Z.ai login credentials.",
+      summary: "Remove the locally saved login credentials.",
       usage: "/logout",
     },
     {

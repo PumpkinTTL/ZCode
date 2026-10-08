@@ -84,7 +84,7 @@ export function resolveDesktopArtifactSuffix(env = process.env) {
  */
 export function resolveWindowsAppUserModelIdForFlavor(flavor, runtime = { isPackaged: true }) {
   if (runtime.isPackaged === false) {
-    return "cn.aminer.zcode";
+    return "com.bitlesu.polaris.dev";
   }
   return desktopProductIdentities[flavor === "preview" ? "preview" : "production"].appId;
 }

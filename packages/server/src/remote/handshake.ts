@@ -46,7 +46,7 @@ export function performHandshake(
     };
 
     const timeout = setTimeout(() => {
-      rejectWithDiagnostics("Handshake timeout: no zcode-hello received within timeout");
+      rejectWithDiagnostics("Handshake timeout: no handshake greeting received within timeout");
     }, timeoutMs);
 
     const onData = (chunk: Buffer) => {
@@ -94,7 +94,7 @@ export function performHandshake(
               "type" in rawValue &&
               (rawValue as { type?: unknown }).type === "zcode-hello"
             ) {
-              rejectWithDiagnostics(`Invalid zcode-hello: ${formatZodError(result.error)}`);
+              rejectWithDiagnostics(`Invalid handshake greeting: ${formatZodError(result.error)}`);
               return;
             }
           } catch {

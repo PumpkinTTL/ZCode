@@ -361,7 +361,7 @@ async function injectHoistedRuntimeModulesIntoAsar(context) {
   // CI 会把 TMPDIR 指到项目内 .tmp，GitLab get_sources/clean 可能在脚本启动前清掉该目录。
   // afterPack 里重写 app.asar 同样依赖 mkdtempSync，必须自己兜底创建父目录，避免后续签名阶段只看到 .app 消失。
   mkdirSync(tmpdir(), { recursive: true });
-  const stagingDir = mkdtempSync(resolve(tmpdir(), "zcode-app-asar-"));
+  const stagingDir = mkdtempSync(resolve(tmpdir(), "polaris-app-asar-"));
   try {
     runTimedSync("afterPack:asar-extract", () =>
       runAsarCommand(["extract", appAsarPath, stagingDir]),

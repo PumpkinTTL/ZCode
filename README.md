@@ -81,23 +81,23 @@ ZCODE_SERVER_WORKSPACE=/path/to/project pnpm dev:web
 
 Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服务。需要验证完整发行包时，按下方“命令行版”打包章节解压运行。
 
-### 命令行版（命令名 `zcode`）
+### 命令行版（命令名 `polaris`）
 
-命令行发行包包含 TUI、Web 和 Agent，统一使用 `zcode` 启动：无参数进入 TUI；第一个参数为 `--web` 时启动 Web；其他参数交给现有 Agent CLI 处理。两种模式都在本机运行，无需 Electron。
+命令行发行包包含 TUI、Web 和 Agent，统一使用 `polaris` 启动：无参数进入 TUI；第一个参数为 `--web` 时启动 Web；其他参数交给现有 Agent CLI 处理。两种模式都在本机运行，无需 Electron。
 
 ```bash
 # 默认进入终端交互界面
-zcode
+polaris
 
 # 启动 Web 界面
-zcode --web
+polaris --web
 
 # 指定项目和端口，不自动打开浏览器
-zcode --web --workspace /path/to/project --port 3030 --no-open
+polaris --web --workspace /path/to/project --port 3030 --no-open
 
 # 查看 CLI 或 Web 参数
-zcode --help
-zcode --web --help
+polaris --help
+polaris --web --help
 ```
 
 Web 模式默认工作目录为当前目录，监听 `127.0.0.1`，默认不启用访问令牌，自动选择空闲端口并打开浏览器。访问终端输出的地址，按 `Ctrl+C` 停止服务。局域网访问可使用 `--host 0.0.0.0`；监听非本机地址时默认生成访问令牌，使用终端输出的带令牌链接。可通过 `--token` 指定令牌或 `--no-token` 关闭令牌认证。

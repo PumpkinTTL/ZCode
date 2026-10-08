@@ -7,12 +7,12 @@ export const enUS: ZCodeCopy = {
       localeUnsupported: (value) =>
         `Unsupported --locale value: ${value}. Supported locales: en-US, zh-CN, auto.`,
     },
-    help: (version) => `zcode ${version}
+    help: (version) => `polaris ${version}
 
 Usage:
-  zcode [command] [options]
+  polaris [command] [options]
 
-With no command, zcode opens the full-screen TUI.
+With no command, polaris opens the full-screen TUI.
 
 Commands:
   app-server Run the Polaris Protocol stdio app server
