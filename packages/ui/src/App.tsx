@@ -97,7 +97,6 @@ export function App({
   onSelectRemoteProject,
   onCancelRemoteProject,
   onReconnectRemoteWorkspace,
-  onLogout,
   onLogin,
   user,
   reconnectingRemoteWorkspaceKeys,
@@ -1031,7 +1030,6 @@ export function App({
           openCommunity: handleOpenCommunity,
           openProductDocs: handleOpenProductDocs,
           login: onLogin,
-          logout: onLogout,
           toggleSidebar: () => runVisibleWorkspaceCommand(handleToggleSidebar),
           toggleTerminal: () => runVisibleWorkspaceCommand(handleToggleTerminalIfWritable),
           togglePreview: () => runVisibleWorkspaceCommand(handleToggleBrowser),
@@ -1060,7 +1058,6 @@ export function App({
       newTaskShortcutLabel,
       handleCreateTaskIfWritable,
       onLogin,
-      onLogout,
       onOpenWorkspace,
       runVisibleWorkspaceCommand,
       openSettingsTab,
@@ -1143,7 +1140,6 @@ export function App({
           onSelectRemoteProject={onSelectRemoteProject}
           onCancelRemoteProject={onCancelRemoteProject}
           onReconnectRemoteWorkspace={onReconnectRemoteWorkspace}
-          onLogout={onLogout}
           onLogin={onLogin}
           user={user}
           reconnectingRemoteWorkspaceKeys={reconnectingRemoteWorkspaceKeys}

@@ -10,7 +10,6 @@ import {
   normalizeZCodeEndpointOrigin,
   PlatformChannels,
   resolveHelpAppConfig,
-  resolveRuntimeZCodeEndpointOrigin,
   resolveZCodeEndpointOrigin,
   ZCODE_ENV,
   ZCODE_PRODUCT_FLAVOR,
@@ -609,14 +608,6 @@ export async function executeDesktopCommand(options: {
     case DesktopCommandIds.SetZCodeEndpointProduction:
       await setZCodeEndpointOverride({
         value: DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-        settingService: options.settingService,
-        onZCodeEndpointChanged: options.onZCodeEndpointChanged,
-        logger: options.logger,
-      });
-      return;
-    case DesktopCommandIds.SetZCodeEndpointTest:
-      await setZCodeEndpointOverride({
-        value: options.zcodeEndpointEnvBaseOrigin ?? resolveRuntimeZCodeEndpointOrigin(),
         settingService: options.settingService,
         onZCodeEndpointChanged: options.onZCodeEndpointChanged,
         logger: options.logger,

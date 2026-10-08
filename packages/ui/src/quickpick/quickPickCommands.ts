@@ -8,7 +8,6 @@ export type QuickPickCommandIcon =
   | "feedback"
   | "folder"
   | "login"
-  | "logout"
   | "message"
   | "mcp"
   | "settings"
@@ -58,7 +57,6 @@ interface QuickPickCommandHandlers {
   openCommunity: () => void | Promise<void>;
   openProductDocs: () => void | Promise<void>;
   login?: () => void | Promise<void>;
-  logout?: () => void | Promise<void>;
   toggleSidebar: () => void;
   toggleTerminal: () => void;
   togglePreview: () => void;
@@ -273,16 +271,7 @@ export function createQuickPickCommands({
     run: handlers.openProductDocs,
   });
 
-  if (isLoggedIn && handlers.logout) {
-    commands.push({
-      id: "logout",
-      sectionId: "app",
-      titleId: "quickPick.command.logout",
-      icon: "logout",
-      keywords: ["disconnect", "logout", "sign out", "断开连接", "登出"],
-      run: handlers.logout,
-    });
-  } else if (!isLoggedIn && handlers.login) {
+  if (!isLoggedIn && handlers.login) {
     commands.push({
       id: "login",
       sectionId: "app",

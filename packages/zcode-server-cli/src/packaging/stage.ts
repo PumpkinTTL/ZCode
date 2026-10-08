@@ -284,7 +284,6 @@ async function copyDirectoryIfPresent(
   )
     .filter((entry) => entry.isDirectory() && entry.name.endsWith("-plugin"))
     .map((entry) => entry.name)
-    .filter((name) => name !== "superpowers-plugin")
     .sort();
   for (const name of names) {
     await copyPackageDir(join(sourceDir, name), join(targetDir, name));

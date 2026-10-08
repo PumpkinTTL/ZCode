@@ -16,7 +16,6 @@ export function WorkspaceSettingsLayer({
   onOpenWorkspace,
   allowOpenWorkspace,
   onLogin,
-  onLogout,
   user,
 }: WorkspaceSettingsLayerProps) {
   useEffect(() => {
@@ -41,7 +40,6 @@ export function WorkspaceSettingsLayer({
             onOpenWorkspace={onOpenWorkspace}
             allowOpenWorkspace={allowOpenWorkspace}
             onLogin={onLogin}
-            onLogout={onLogout}
             user={user}
           />
         </ServiceProvider>
@@ -57,7 +55,6 @@ export function WorkspaceSettingsLayer({
           onOpenWorkspace={onOpenWorkspace}
           allowOpenWorkspace={allowOpenWorkspace}
           onLogin={onLogin}
-          onLogout={onLogout}
           user={user}
         />
       )}

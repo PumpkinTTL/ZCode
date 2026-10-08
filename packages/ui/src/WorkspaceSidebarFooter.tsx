@@ -116,7 +116,6 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   onSettingsButtonClick,
   onUsageClick,
   onLogin,
-  onLogout,
   settingsButtonMode = "settings",
   user,
   workspacePath,
@@ -133,7 +132,6 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   onSettingsButtonClick?: () => void;
   onUsageClick?: () => void;
   onLogin?: () => void;
-  onLogout?: () => void;
   settingsButtonMode?: "settings" | "back";
   user?: UserInfo | null;
   workspacePath?: string;
@@ -491,14 +489,6 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={handleNimbusLogout} data-testid={TID_LOGOUT_BUTTON}>
-                  <LogOut className="size-4" />
-                  {intl.formatMessage({ id: "app.logout" })}
-                </DropdownMenuItem>
-              </>
-            ) : onLogout ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={onLogout} data-testid={TID_LOGOUT_BUTTON}>
                   <LogOut className="size-4" />
                   {intl.formatMessage({ id: "app.logout" })}
                 </DropdownMenuItem>

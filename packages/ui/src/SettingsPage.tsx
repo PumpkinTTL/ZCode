@@ -45,7 +45,6 @@ import {
 import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
 import { UsageStatsSection } from "@/settings/UsageStatsSection.js";
 import { SubagentsSection } from "@/settings/SubagentsSection.js";
-import { AutomationsSection } from "@/settings/AutomationsSection.js";
 import { PluginsSection } from "@/settings/PluginsSection.js";
 import { HooksSection } from "@/settings/HooksSection.js";
 import { WorkspaceFileSearchSection } from "@/settings/WorkspaceFileSearchSection.js";
@@ -54,7 +53,6 @@ import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
 import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
 import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
 import { ShortcutSettingsSection } from "@/settings/ShortcutSettingsSection.js";
-import { MigrationSection } from "@/settings/MigrationSection.js";
 import { SETTINGS_FRAME_CONTENT_CLASSNAME } from "@/settings/SettingsPageParts.js";
 import {
   SettingsBreadcrumbProvider,
@@ -140,7 +138,6 @@ export function SettingsPage({
   onOpenWorkspace,
   allowOpenWorkspace = true,
   onLogin,
-  onLogout,
   user,
 }: {
   initialSectionOverride?: SettingsSectionId;
@@ -154,7 +151,6 @@ export function SettingsPage({
   onOpenWorkspace?: () => void;
   allowOpenWorkspace?: boolean;
   onLogin?: () => void;
-  onLogout?: () => void;
   user?: UserInfo | null;
 }) {
   const { intl, localePreference, setLocalePreference } = useZCodeIntl();
@@ -856,7 +852,6 @@ export function SettingsPage({
                   onSettingsButtonClick={onBack}
                   onUsageClick={handleOpenUsageSettings}
                   onLogin={onLogin}
-                  onLogout={onLogout}
                   settingsButtonMode="back"
                   user={user}
                   // 头像菜单是 WorkspaceSidebarFooter 的共享菜单，Settings 场景不能丢失桌面平台能力。
@@ -1137,22 +1132,11 @@ export function SettingsPage({
                               onBack?.();
                             }}
                           />
-                        ) : activeSection === "migration" ? (
-                          <MigrationSection
-                            workspacePath={activeWorkspacePath}
-                            workspaceIdentity={activeWorkspaceIdentity}
-                            isDesktop={isDesktop}
-                          />
                         ) : activeSection === "usage" ? (
                           <UsageStatsSection />
                         ) : activeSection === "subagents" ? (
                           <SubagentsSection
                             onManageModels={handleOpenModelProviderSettings}
-                            workspacePath={activeWorkspacePath}
-                            workspaceIdentity={activeWorkspaceIdentity}
-                          />
-                        ) : activeSection === "automations" ? (
-                          <AutomationsSection
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                           />
