@@ -9,11 +9,13 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QuotaStatusResult, QuotaUsageDay } from "@zcode/services";
-import { Loader2, LogOut, Plus, RefreshCw, SquareArrowOutUpRight } from "lucide-react";
+import { Gift, Loader2, LogOut, Plus, RefreshCw, RotateCcw, SquareArrowOutUpRight } from "lucide-react";
 import { NimbusQuotaUsageChart, summarizeQuotaUsage } from "./NimbusQuotaUsageChart.js";
 import { NimbusRechargeDialog } from "./NimbusRechargeDialog.js";
+import { NimbusResetCardsDialog } from "./NimbusResetCardsDialog.js";
 import { NimbusCheckinCard } from "./NimbusCheckinCard.js";
 import { formatQuotaPlanName, percentOf } from "./quotaFormat.js";
+import { useNimbusAccountState } from "./nimbusAccountState.js";
 import { Alert, AlertDescription } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
 import { Progress } from "@/components/ui/progress.js";
@@ -40,9 +42,13 @@ export function NimbusQuotaOverview({
 }) {
   const { intl, locale } = useZCodeIntl();
   const { providerQuotaService } = useServices();
+  const accountState = useNimbusAccountState();
+  const resetCardCount = accountState.resetCardCount;
+
   const [usage, setUsage] = useState<readonly QuotaUsageDay[] | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [rechargeOpen, setRechargeOpen] = useState(false);
+  const [resetCardsOpen, setResetCardsOpen] = useState(false);
   // Web 门户引用：完整用量明细/流水在网页端看，APP 只留核心数据（与额度服务同源）。
   const [portalUsageUrl, setPortalUsageUrl] = useState<string | null>(null);
 
@@ -138,221 +144,261 @@ export function NimbusQuotaOverview({
 
   return (
     <div className="space-y-4" data-quota-overview="">
-      {/* 1. 顶部账户卡：身份 + 钱包余额（合入）+ 操作。周期总额度不再展示。 */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-ui-sm font-semibold text-primary">
-              {userInitials}
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="truncate text-ui-base font-semibold text-foreground">
-                  {status.account.username}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-ui-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                  {intl.formatMessage({ id: "business.quota.online" })}
-                </span>
-                {activeSub ? (
-                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-ui-xs font-medium text-primary">
-                    {formatQuotaPlanName(activeSub.planName)}
+      {/* 1. 一体化账户与额度总看板：身份资产 + 套餐配额 + 每日签到权益 */}
+      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
+        {/* 第一部分：身份与钱包资产 */}
+        <div className="p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* 左侧：用户信息与当前状态 */}
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-surface text-ui-sm font-semibold text-foreground select-none">
+                {userInitials}
+              </div>
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="truncate text-ui-base font-semibold text-foreground">
+                    {status.account.username}
                   </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-ui-xs font-medium leading-none text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                    {intl.formatMessage({ id: "business.quota.online" })}
+                  </span>
+                  {activeSub ? (
+                    <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-ui-xs font-medium leading-none text-primary">
+                      {formatQuotaPlanName(activeSub.planName)}
+                    </span>
+                  ) : null}
+                </div>
+                {status.account.emailMasked ? (
+                  <div className="truncate text-ui-xs text-foreground-subtle">
+                    {status.account.emailMasked}
+                  </div>
                 ) : null}
               </div>
-              {status.account.emailMasked ? (
-                <div className="mt-0.5 truncate text-ui-xs text-foreground-subtle">
-                  {status.account.emailMasked}
-                </div>
-              ) : null}
             </div>
-          </div>
 
-          <div className="flex items-center gap-6">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-semibold tabular-nums text-foreground tracking-tight">
-                {formatInt(wallet.available)}
-              </span>
-              {wallet.lowBalance ? (
-                <span className="text-ui-xs font-medium text-amber-500">
-                  {intl.formatMessage({ id: "business.quota.lowBalance" })}
+            {/* 右侧：余额展示与操作（平展开阔，无多余嵌套小框） */}
+            <div className="flex flex-wrap items-center gap-4 shrink-0">
+              <div className="flex items-baseline gap-2">
+                <span className="text-ui-xs text-foreground-subtle">钱包余额</span>
+                <span className="text-ui-xl font-semibold tabular-nums text-foreground tracking-tight">
+                  {formatInt(wallet.available)}
                 </span>
-              ) : (
-                <span className="text-ui-sm text-foreground-subtle">钱包余额</span>
-              )}
-              {/* 充值入口：总开关由后端 /user/me 下发（recharge_enabled），关闭时不渲染。 */}
-              {wallet.rechargeEnabled ? (
+                <span className="text-ui-xs text-foreground-subtle">积分</span>
+                {wallet.lowBalance ? (
+                  <span className="text-ui-xs font-medium text-amber-500">
+                    {intl.formatMessage({ id: "business.quota.lowBalance" })}
+                  </span>
+                ) : null}
+                {wallet.rechargeEnabled ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 rounded-md px-2.5 text-ui-xs font-medium cursor-pointer ml-1"
+                    onClick={() => setRechargeOpen(true)}
+                  >
+                    <Plus className="size-3 mr-1" />
+                    {intl.formatMessage({ id: "business.quota.recharge" })}
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className="flex items-center gap-1.5">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="cursor-pointer"
-                  onClick={() => setRechargeOpen(true)}
+                  disabled={busy}
+                  className="h-8 rounded-lg px-2.5 text-ui-xs cursor-pointer"
+                  onClick={() => {
+                    onRefresh();
+                    void loadUsage();
+                  }}
                 >
-                  <Plus className="size-3.5 mr-1" />
-                  {intl.formatMessage({ id: "business.quota.recharge" })}
+                  {busy ? (
+                    <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                  ) : (
+                    <RefreshCw className="size-3.5 mr-1.5" />
+                  )}
+                  {intl.formatMessage({ id: "business.quota.refresh" })}
                 </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  className="h-8 rounded-lg px-2.5 text-ui-xs text-foreground-subtle hover:text-foreground cursor-pointer"
+                  onClick={onLogout}
+                >
+                  <LogOut className="size-3.5 mr-1.5" />
+                  {intl.formatMessage({ id: "business.quota.logout" })}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* 指标行：平展自然，不切生硬格子 */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-2 text-ui-xs">
+            <div className="flex items-baseline gap-2">
+              <span className="text-foreground-subtle">
+                {intl.formatMessage({ id: "business.quota.todaySpend" })}
+              </span>
+              <span className="font-medium tabular-nums text-foreground">
+                {formatInt(wallet.todaySpend)}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-foreground-subtle">
+                {intl.formatMessage({ id: "business.quota.monthSpend" })}
+              </span>
+              <span className="font-medium tabular-nums text-foreground">
+                {formatInt(wallet.monthSpend)}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-foreground-subtle">
+                {intl.formatMessage({ id: "business.quota.avgCacheHitRate" })}
+              </span>
+              <span className="font-medium tabular-nums text-foreground">
+                {averageCacheHitRate}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 第二部分：套餐配额与滚动调用窗口 */}
+        <div className="border-t border-border/60 p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h4 className="text-ui-sm font-semibold text-foreground">
+                {intl.formatMessage({ id: "business.quota.subscriptions" })}
+              </h4>
+              {resetCardCount > 0 ? (
+                <button
+                  type="button"
+                  title={intl.formatMessage({ id: "business.quota.resetCardBadgeTitle" })}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-ui-xs font-medium leading-none text-emerald-700 transition-colors hover:border-emerald-500/35 hover:bg-emerald-500/15 active:bg-emerald-500/20 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 cursor-pointer select-none"
+                  onClick={() => setResetCardsOpen(true)}
+                >
+                  <Gift aria-hidden="true" className="size-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>
+                    {intl.formatMessage(
+                      { id: "business.quota.resetCardBadge" },
+                      { count: resetCardCount },
+                    )}
+                  </span>
+                </button>
               ) : null}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="text-ui-xs text-foreground-subtle">
+                {effectiveExpiresAt > 0
+                  ? `${intl.formatMessage(
+                      { id: "business.quota.validUntil" },
+                      { date: dateFmt.format(effectiveExpiresAt) },
+                    )}${daysLeft !== null ? ` · ${intl.formatMessage({ id: "business.quota.daysLeft" }, { days: daysLeft })}` : ""}`
+                  : "滚动调用限额"}
+              </span>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={busy}
-                className="cursor-pointer"
-                onClick={() => {
-                  onRefresh();
-                  void loadUsage();
-                }}
+                className="h-6 rounded-md px-2 text-ui-xs cursor-pointer gap-1 text-foreground-subtle hover:text-foreground"
+                onClick={() => setResetCardsOpen(true)}
               >
-                {busy ? (
-                  <Loader2 className="size-3.5 animate-spin mr-1" />
-                ) : (
-                  <RefreshCw className="size-3.5 mr-1" />
+                <RotateCcw className="size-3" />
+                <span>{intl.formatMessage({ id: "business.quota.resetCardsTitle" })}</span>
+              </Button>
+            </div>
+          </div>
+
+          {creditsSub ? (
+            /* 平展舒展布局，去除所有内嵌边框方块 */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 pt-1">
+              {remaining5h !== null && creditsSub.limit5h !== null ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-ui-sm">
+                    <span className="font-medium text-foreground">5 小时调用窗口</span>
+                    <span className="tabular-nums">
+                      <span className="font-medium text-foreground">{formatInt(remaining5h)}</span>
+                      <span className="text-foreground-subtle text-ui-xs">
+                        {" "}/ {formatInt(creditsSub.limit5h)} ({Math.round(percent5h)}%)
+                      </span>
+                    </span>
+                  </div>
+                  <Progress
+                    className="h-2 rounded-full bg-surface-hover/80"
+                    value={percent5h}
+                    indicatorClassName="bg-blue-600 dark:bg-blue-500 rounded-full"
+                  />
+                  <div className="flex items-center justify-between text-ui-xs text-foreground-subtle">
+                    <span>
+                      {creditsSub.next5hRefreshAt > 0
+                        ? `${formatResetMoment(creditsSub.next5hRefreshAt)} 重置 5 小时额度`
+                        : "滚动更新"}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+
+              {remainingWeekly !== null && creditsSub.limitWeekly !== null ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-ui-sm">
+                    <span className="font-medium text-foreground">本周调用窗口</span>
+                    <span className="tabular-nums">
+                      <span className="font-medium text-foreground">{formatInt(remainingWeekly)}</span>
+                      <span className="text-foreground-subtle text-ui-xs">
+                        {" "}/ {formatInt(creditsSub.limitWeekly)} ({Math.round(percentWeekly)}%)
+                      </span>
+                    </span>
+                  </div>
+                  <Progress
+                    className="h-2 rounded-full bg-surface-hover/80"
+                    value={percentWeekly}
+                    indicatorClassName="bg-indigo-600 dark:bg-indigo-500 rounded-full"
+                  />
+                  <div className="flex items-center justify-between text-ui-xs text-foreground-subtle">
+                    <span>
+                      {creditsSub.nextWeekResetAt > 0
+                        ? `${formatResetMoment(creditsSub.nextWeekResetAt)} 重置本周额度`
+                        : "按周更新"}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : perCallSub ? (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between text-ui-sm">
+                <span className="font-medium text-foreground">剩余调用次数</span>
+                <span className="font-semibold tabular-nums text-foreground">
+                  {perCallSub.remainingCalls ?? perCallSub.remaining} / {perCallSub.totalCalls} 次
+                </span>
+              </div>
+              <Progress
+                className="h-2 rounded-full bg-surface-hover/80"
+                value={percentOf(
+                  perCallSub.remainingCalls ?? perCallSub.remaining,
+                  perCallSub.totalCalls,
                 )}
-                {intl.formatMessage({ id: "business.quota.refresh" })}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={busy}
-                className="cursor-pointer text-foreground-subtle hover:text-foreground"
-                onClick={onLogout}
-              >
-                <LogOut className="size-3.5 mr-1" />
-                {intl.formatMessage({ id: "business.quota.logout" })}
-              </Button>
+                indicatorClassName="bg-blue-600 dark:bg-blue-500 rounded-full"
+              />
             </div>
-          </div>
+          ) : (
+            <p className="text-ui-xs text-foreground-subtle">
+              {intl.formatMessage({ id: "business.quota.noSubscription" })}
+            </p>
+          )}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-t border-border/60 pt-3 text-ui-xs">
-          <span className="text-foreground-subtle">
-            {intl.formatMessage({ id: "business.quota.todaySpend" })}{" "}
-            <span className="font-medium tabular-nums text-foreground">
-              {formatInt(wallet.todaySpend)}
-            </span>
-          </span>
-          <span className="text-foreground-subtle">
-            {intl.formatMessage({ id: "business.quota.monthSpend" })}{" "}
-            <span className="font-medium tabular-nums text-foreground">
-              {formatInt(wallet.monthSpend)}
-            </span>
-          </span>
-          <span className="text-foreground-subtle">
-            {intl.formatMessage({ id: "business.quota.avgCacheHitRate" })}{" "}
-            <span className="font-medium tabular-nums text-foreground">
-              {averageCacheHitRate}
-            </span>
-          </span>
-        </div>
+        {/* 第三部分：每日签到通栏底栏（无缝嵌入主卡，消除单独多余方盒） */}
+        <NimbusCheckinCard embedded />
       </div>
 
-      {/* 1.5 每日签到：连签天数 + 今日签到入口；状态/失败降级由卡片自隐藏。 */}
-      <NimbusCheckinCard />
-
-      {/* 2. 我的套餐：滚动调用窗口与重置时间。周期总额度不再向用户展示。 */}
-      <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-xs">
-        <div className="flex items-center justify-between">
-          <h4 className="text-ui-sm font-semibold text-foreground">
-            {intl.formatMessage({ id: "business.quota.subscriptions" })}
-          </h4>
-          <span className="text-ui-xs text-foreground-subtle">
-            {effectiveExpiresAt > 0
-              ? `${intl.formatMessage(
-                  { id: "business.quota.validUntil" },
-                  { date: dateFmt.format(effectiveExpiresAt) },
-                )}${daysLeft !== null ? ` · ${intl.formatMessage({ id: "business.quota.daysLeft" }, { days: daysLeft })}` : ""}`
-              : "滚动调用限额"}
-          </span>
-        </div>
-
-        {creditsSub ? (
-          <div className="space-y-3.5">
-            {remaining5h !== null && creditsSub.limit5h !== null ? (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-ui-sm">
-                  <span className="flex items-center gap-1.5 text-foreground">
-                    5 小时调用窗口
-                    <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-ui-xs font-medium leading-none text-emerald-600 dark:text-emerald-400">
-                      重置
-                    </span>
-                  </span>
-                  <span className="tabular-nums text-foreground">
-                    <span className="font-medium">{formatInt(remaining5h)}</span> /{" "}
-                    {formatInt(creditsSub.limit5h)}{" "}
-                    <span className="text-foreground-subtle text-ui-xs">
-                      ({Math.round(percent5h)}%)
-                    </span>
-                  </span>
-                </div>
-                <Progress
-                  className="h-1.5 rounded-full bg-surface-hover/80"
-                  value={percent5h}
-                  indicatorClassName="bg-[#0b7fff] dark:bg-[#4099ff] rounded-full"
-                />
-                {creditsSub.next5hRefreshAt > 0 ? (
-                  <p className="text-ui-xs text-foreground-subtle">
-                    {formatResetMoment(creditsSub.next5hRefreshAt)} 重置 5 小时额度
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-
-            {remainingWeekly !== null && creditsSub.limitWeekly !== null ? (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-ui-sm">
-                  <span className="text-foreground">本周调用窗口</span>
-                  <span className="tabular-nums text-foreground">
-                    <span className="font-medium">{formatInt(remainingWeekly)}</span> /{" "}
-                    {formatInt(creditsSub.limitWeekly)}{" "}
-                    <span className="text-foreground-subtle text-ui-xs">
-                      ({Math.round(percentWeekly)}%)
-                    </span>
-                  </span>
-                </div>
-                <Progress
-                  className="h-1.5 rounded-full bg-surface-hover/80"
-                  value={percentWeekly}
-                  indicatorClassName="bg-[#9e77ed] rounded-full"
-                />
-                {creditsSub.nextWeekResetAt > 0 ? (
-                  <p className="text-ui-xs text-foreground-subtle">
-                    {formatResetMoment(creditsSub.nextWeekResetAt)} 重置本周额度
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        ) : perCallSub ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-ui-sm">
-              <span className="text-foreground">剩余调用次数</span>
-              <span className="font-medium tabular-nums text-foreground">
-                {perCallSub.remainingCalls ?? perCallSub.remaining} / {perCallSub.totalCalls} 次
-              </span>
-            </div>
-            <Progress
-              className="h-1.5 rounded-full bg-surface-hover/80"
-              value={percentOf(
-                perCallSub.remainingCalls ?? perCallSub.remaining,
-                perCallSub.totalCalls,
-              )}
-              indicatorClassName="bg-[#0b7fff] dark:bg-[#4099ff] rounded-full"
-            />
-          </div>
-        ) : (
-          <p className="text-ui-xs text-foreground-subtle">
-            {intl.formatMessage({ id: "business.quota.noSubscription" })}
-          </p>
-        )}
-      </div>
-
-      {/* 3. 近 30 天用量趋势 */}
-      <div className="space-y-3 rounded-xl border border-border bg-card p-5 shadow-xs">
-        <div className="flex items-baseline justify-between gap-3">
+      {/* 2. 近 30 天用量趋势 */}
+      <div className="space-y-3.5 rounded-xl border border-border bg-card p-5 shadow-xs">
+        <div className="flex items-center justify-between gap-3">
           <span className="text-ui-sm font-semibold text-foreground">
             {intl.formatMessage({ id: "business.quota.usageChartTitle" }, { days: USAGE_DAYS })}
           </span>
@@ -378,14 +424,14 @@ export function NimbusQuotaOverview({
         )}
       </div>
 
-      {/* 网页端引用：用量明细/流水等完整数据引导去 Web 门户，APP 保持精简。 */}
+      {/* 网页端引用：用量明细/流水等完整数据引导去 Web 门户，APP 保持精简 */}
       {portalUsageUrl ? (
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <a
             href={portalUsageUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-ui-sm text-foreground-subtle transition-colors hover:text-foreground"
+            className="inline-flex items-center gap-1.5 text-ui-xs text-foreground-subtle transition-colors hover:text-foreground"
           >
             {intl.formatMessage({ id: "business.quota.webPortalUsage" })}
             <SquareArrowOutUpRight className="size-3.5" />
@@ -393,11 +439,18 @@ export function NimbusQuotaOverview({
         </div>
       ) : null}
 
-      {/* 充值弹窗：支付成功后在弹窗内部 toast + 刷新共享快照，余额卡随快照更新。 */}
+      {/* 充值弹窗：支付成功后在弹窗内部 toast + 刷新共享快照，余额卡随快照更新 */}
       <NimbusRechargeDialog
         open={rechargeOpen}
         onClose={() => setRechargeOpen(false)}
         creditsPerYuan={wallet.creditsPerYuan}
+      />
+
+      {/* 重置卡弹窗：官方同款额度重置入口 */}
+      <NimbusResetCardsDialog
+        open={resetCardsOpen}
+        onClose={() => setResetCardsOpen(false)}
+        status={status}
       />
     </div>
   );

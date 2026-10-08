@@ -31,6 +31,14 @@ export function createDesktopNativePackagePrunePatterns(targetPlatformKey) {
     // 飞书 SDK 的 types/ 目录（16MB）只有编辑器消费；运行时 dynamic import 只解析
     // exports 指向的 lib/es 产物。SDK 本体保留（bots 功能），类型目录全平台裁掉。
     "!node_modules/@larksuiteoapi/node-sdk/types/**",
+    // 类型包运行时永远 require 不到（protobufjs 等历史声明把 @types/node→undici-types
+    // 拖进依赖图），全平台剪枝。
+    "!node_modules/@types/**",
+    "!node_modules/undici-types/**",
+    // OTel 运行时：第一方零 import、打包态无 OTLP 端点。@opentelemetry/api 因 hoisted
+    // 顶层残留（telemetry workspace 包顶起来的）被收集器照单全收，这里显式剪枝。
+    // 注入清单与 bundle 校验名单已同步清理（electron-builder.config.js / bundle.mjs）。
+    "!node_modules/@opentelemetry/**",
     // 桌面运行时统一使用目标 prebuild，禁止把安装机现场编译物或 ABI bin 缓存带进跨平台包。
     "!node_modules/node-pty/build/**",
     "!node_modules/node-pty/bin/**",

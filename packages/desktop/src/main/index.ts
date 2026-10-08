@@ -612,10 +612,18 @@ const UPDATE_STATUS_WINDOW_PROGRESS_HEIGHT = 224;
 const UPDATE_STATUS_WINDOW_READY_HEIGHT = UPDATE_STATUS_WINDOW_PROGRESS_HEIGHT - 54;
 const UPDATE_STATUS_WINDOW_TRAFFIC_LIGHT_POSITION = { x: 10, y: 10 } as const;
 const mainSettingService = createSettingService();
-async function resolveCurrentZCodeEndpointOrigin() {
+async function resolveCurrentZCodeEndpointOrigin(
+  options: { ignoreEnvBaseOrigin?: boolean } = {},
+) {
   return resolveZCodeEndpointOrigin({
     env: ZCODE_ENV,
-    envBaseOrigin: resolveZCodeEndpointEnvBaseOrigin(hostProcessLocalEnv),
+    // 打包正式版必须忽略机器环境变量（ZCODE_BASE_URL/ZCODE_ENDPOINT_ORIGIN）：装了
+    // 官方 ZCode 的开发机会残留 z.ai 端点，强更门禁会拿到上游「min 3.5.3」把低版本的
+    // Polaris 锁死在强更窗、更新 feed 被改道官方 CDN。打包版钉死自有默认域名，
+    // 用户显式设置（zcodeEndpointOrigin）仍可覆盖；未打包 dev 联调行为不变。
+    envBaseOrigin: options.ignoreEnvBaseOrigin
+      ? null
+      : resolveZCodeEndpointEnvBaseOrigin(hostProcessLocalEnv),
     overrideOrigin: (await mainSettingService.get()).zcodeEndpointOrigin,
   });
 }
@@ -1885,7 +1893,8 @@ app.whenReady().then(async () => {
     settingService: mainSettingService,
     locale: currentApplicationLocale,
     deviceMid,
-    resolveEndpointOrigin: resolveCurrentZCodeEndpointOrigin,
+    resolveEndpointOrigin: () =>
+      resolveCurrentZCodeEndpointOrigin({ ignoreEnvBaseOrigin: app.isPackaged }),
     updateFeedSource: resolveUpdateFeedSourceFromStartupConfig({
       argv: process.argv,
       env: process.env,
@@ -2046,7 +2055,11 @@ app.whenReady().then(async () => {
       ? await maybeBlockStartupForForceUpdate({
           locale: currentApplicationLocale,
           logger,
-          endpointOrigin: await resolveCurrentZCodeEndpointOrigin(),
+          // 强更门禁同口径：打包版忽略机器环境变量残留（上游 z.ai 端点会把
+          // 低版本 Polaris 锁死在上游强更配置里），钉死自有默认域名。
+          endpointOrigin: await resolveCurrentZCodeEndpointOrigin({
+            ignoreEnvBaseOrigin: app.isPackaged,
+          }),
           onBlocked: () => {
             forceUpdateMainWindowCreationBlocked = true;
           },

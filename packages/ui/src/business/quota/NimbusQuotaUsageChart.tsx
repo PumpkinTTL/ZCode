@@ -24,11 +24,11 @@ const CACHE_AXIS_DOMAIN: [number, number] = [0, 100];
 export const QUOTA_USAGE_CHART_CONFIG = {
   charged: {
     label: "charged",
-    theme: { light: "#4f7cff", dark: "#7aa2ff" },
+    theme: { light: "#3b82f6", dark: "#60a5fa" },
   },
   cacheHitRate: {
     label: "cacheHitRate",
-    theme: { light: "#d97706", dark: "#f2b03d" },
+    theme: { light: "#10b981", dark: "#34d399" },
   },
 } satisfies ChartConfig;
 
@@ -143,7 +143,7 @@ export function NimbusQuotaUsageChart({ usage }: { usage: readonly QuotaUsageDay
   return (
     <ChartContainer config={config} className="h-56 w-full">
       <ComposedChart accessibilityLayer data={[...rows]} margin={CHART_MARGIN}>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+        <CartesianGrid vertical={false} stroke="var(--color-border)" strokeOpacity={0.4} strokeDasharray="3 3" />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={16} />
         <YAxis yAxisId="charged" hide />
         <YAxis yAxisId="cache" hide orientation="right" domain={CACHE_AXIS_DOMAIN} />
@@ -154,7 +154,8 @@ export function NimbusQuotaUsageChart({ usage }: { usage: readonly QuotaUsageDay
           yAxisId="charged"
           dataKey="charged"
           fill="var(--color-charged)"
-          radius={[3, 3, 0, 0]}
+          radius={[4, 4, 0, 0]}
+          maxBarSize={24}
         />
         <Line
           yAxisId="cache"

@@ -65,21 +65,21 @@ export function NimbusNoticeBar() {
 
   return (
     <div
-      className="flex items-start gap-2 rounded-xl border border-border bg-card px-3 py-2"
+      className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3.5 py-2.5 shadow-2xs"
       data-system-notice=""
       role="note"
     >
-      <MegaphoneIcon className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
-      <span className="mt-px shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-ui-xs font-medium leading-4 text-primary">
+      <MegaphoneIcon className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+      <span className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-ui-xs font-medium leading-none text-amber-700 dark:border-amber-500/25 dark:text-amber-300">
         {intl.formatMessage({ id: "business.quota.noticeLabel" })}
       </span>
-      <p className="min-w-0 flex-1 text-ui-sm/relaxed text-foreground-subtle">{content}</p>
+      <p className="min-w-0 flex-1 truncate text-ui-xs text-foreground-subtle">{content}</p>
       <button
         type="button"
         onClick={handleDismiss}
         aria-label={intl.formatMessage({ id: "business.quota.noticeDismiss" })}
         title={intl.formatMessage({ id: "business.quota.noticeDismiss" })}
-        className="-mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground-subtlest outline-none transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
+        className="-mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground-subtle outline-none transition-colors hover:bg-hover hover:text-foreground cursor-pointer"
       >
         <XIcon className="size-3.5" aria-hidden="true" />
       </button>

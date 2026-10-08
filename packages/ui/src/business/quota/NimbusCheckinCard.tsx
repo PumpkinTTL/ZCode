@@ -17,7 +17,7 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { refreshNimbusAccountState } from "./nimbusAccountState.js";
 
-export function NimbusCheckinCard() {
+export function NimbusCheckinCard({ embedded = false }: { embedded?: boolean } = {}) {
   const { intl } = useZCodeIntl();
   const { providerQuotaService } = useServices();
   const [status, setStatus] = useState<QuotaCheckinStatus | null>(null);
@@ -88,32 +88,61 @@ export function NimbusCheckinCard() {
 
   return (
     <div
-      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-5 shadow-xs"
+      className={
+        embedded
+          ? "flex items-center justify-between gap-4 border-t border-border/60 bg-surface/30 px-5 py-3"
+          : "flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-xs"
+      }
       data-quota-checkin=""
     >
-      <div className="min-w-0">
-        <h4 className="text-ui-sm font-semibold text-foreground">
-          {intl.formatMessage({ id: "business.quota.checkinTitle" })}
-        </h4>
-        <p className="mt-1 text-ui-xs text-foreground-subtle">{segments.join(" · ")}</p>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-foreground-subtle">
+          <CalendarCheckIcon className="size-4" />
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-ui-sm font-semibold text-foreground">
+              {intl.formatMessage({ id: "business.quota.checkinTitle" })}
+            </span>
+            {status.streak > 0 ? (
+              <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-ui-xs font-medium leading-none text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300">
+                {intl.formatMessage({ id: "business.quota.checkinStreakDays" }, { days: status.streak })}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 truncate text-ui-xs text-foreground-subtle">
+            {checked
+              ? intl.formatMessage(
+                  { id: "business.quota.checkinRewardTomorrow" },
+                  { credits: status.tomorrowCredits },
+                )
+              : intl.formatMessage(
+                  { id: "business.quota.checkinRewardToday" },
+                  { credits: status.tomorrowCredits },
+                )}
+          </p>
+        </div>
       </div>
-      {checked ? (
-        <Button type="button" variant="outline" size="sm" disabled className="cursor-default">
-          <CalendarCheckIcon className="size-3.5 mr-1" />
-          {intl.formatMessage({ id: "business.quota.checkinDone" })}
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          size="sm"
-          className="cursor-pointer"
-          disabled={submitting}
-          onClick={() => void handleCheckin()}
-        >
-          {submitting ? <Loader2Icon className="size-3.5 mr-1 animate-spin" /> : null}
-          {intl.formatMessage({ id: "business.quota.checkinAction" })}
-        </Button>
-      )}
+
+      <div className="shrink-0">
+        {checked ? (
+          <div className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-surface/70 px-3 py-1.5 text-ui-xs font-medium text-foreground-subtle select-none">
+            <CalendarCheckIcon className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>{intl.formatMessage({ id: "business.quota.checkinDone" })}</span>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 rounded-lg px-3.5 text-ui-xs font-medium cursor-pointer"
+            disabled={submitting}
+            onClick={() => void handleCheckin()}
+          >
+            {submitting ? <Loader2Icon className="size-3.5 mr-1.5 animate-spin" /> : null}
+            {intl.formatMessage({ id: "business.quota.checkinAction" })}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
