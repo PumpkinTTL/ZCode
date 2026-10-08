@@ -1,7 +1,4 @@
-import {
-  DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
-  resolveDynamicWorkflowClientConfig,
-} from "@zcode/shared";
+import { resolveDynamicWorkflowClientConfig } from "@zcode/shared";
 import type { ApiClient } from "@zcode/shared";
 import type { ModelSelectionView } from "@zcode/provider";
 import type { ICredentialService } from "../credential/credential.js";
@@ -39,10 +36,6 @@ const EMPTY_OFF_PEAK_CLIENT_CONFIG: OffPeakClientConfig = Object.freeze({
  * apiClient / credentialService / resolveOffPeakModelSelectionView），调用点无需改动。
  */
 const EMPTY_CODING_PLAN_SUBSCRIPTION_SERVICE = {
-  batchPreview: async () => ({ productList: [], isSubscribed: false, isAuthenticated: null }),
-  getStaticProducts: async () => ({}),
-  getStaticTeamProducts: async () => ({}),
-  getStartPlanPreview: async () => null,
   getOffPeakClientConfig: async () => EMPTY_OFF_PEAK_CLIENT_CONFIG,
   // 远端灰度随官方计费一并移除后，本地覆盖是唯一来源；但不能因此回落到 fail-closed 的
   // `disabled`：打包 production 的 buildHostProcessEnv 会删掉 ZCODE_DYNAMIC_WORKFLOW_MODE
@@ -51,10 +44,7 @@ const EMPTY_CODING_PLAN_SUBSCRIPTION_SERVICE = {
   // 的姿态喂 remote，本地覆盖仍可显式降级（优先级 override > remote > default）。
   getDynamicWorkflowClientConfig: async () =>
     resolveDynamicWorkflowClientConfig({ remote: { mode: "alwaysOn" }, env: process.env }),
-  // 兼容接口：固定返回 preflight-v1，不读取远端配置或缓存。
-  getModelContextBudgetStrategy: async () => DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
   getForceUpdateConfig: async () => null,
-  getEnterprisePricing: async () => ({ productList: [] }),
 } satisfies ICodingPlanSubscriptionService;
 
 // 冻结：装配层可能多处持有同一实例（Host 装配与 remote workspace 装配），

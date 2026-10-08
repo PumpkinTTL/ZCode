@@ -1,15 +1,4 @@
-import type {
-  CodingPlanBatchPreviewRequest,
-  CodingPlanBatchPreviewResponse,
-  CodingPlanStaticProductsConfig,
-  CodingPlanStaticTeamProductsConfig,
-  DynamicWorkflowClientConfig,
-  EnterpriseCodingPlanPricingRequest,
-  EnterpriseCodingPlanPricingResponse,
-  ForceUpdateConfig,
-  StartPlanPreviewConfig,
-  ZCodeModelContextBudgetStrategy,
-} from "@zcode/shared";
+import type { DynamicWorkflowClientConfig, ForceUpdateConfig } from "@zcode/shared";
 import type { ModelSelectionView } from "@zcode/provider";
 import { ServiceChannels } from "@zcode/shared";
 import { createServiceDescriptor } from "../descriptors.js";
@@ -22,10 +11,6 @@ export interface OffPeakClientConfig {
 }
 
 export interface ICodingPlanSubscriptionService {
-  batchPreview(request?: CodingPlanBatchPreviewRequest): Promise<CodingPlanBatchPreviewResponse>;
-  getStaticProducts(): Promise<CodingPlanStaticProductsConfig>;
-  getStaticTeamProducts(): Promise<CodingPlanStaticTeamProductsConfig>;
-  getStartPlanPreview(): Promise<StartPlanPreviewConfig | null>;
   /** 闲时任务灰度配置：forceRefresh 供入口打开时补拉（绕过 1h 快照缓存）。 */
   getOffPeakClientConfig(options?: { forceRefresh?: boolean }): Promise<OffPeakClientConfig>;
   /**
@@ -35,12 +20,7 @@ export interface ICodingPlanSubscriptionService {
   getDynamicWorkflowClientConfig(options?: {
     forceRefresh?: boolean;
   }): Promise<DynamicWorkflowClientConfig>;
-  /** 兼容接口：固定返回 preflight-v1，不读取远端配置或缓存。 */
-  getModelContextBudgetStrategy(): Promise<ZCodeModelContextBudgetStrategy>;
   getForceUpdateConfig(): Promise<ForceUpdateConfig | null>;
-  getEnterprisePricing(
-    request?: EnterpriseCodingPlanPricingRequest,
-  ): Promise<EnterpriseCodingPlanPricingResponse>;
 }
 
 export const ICodingPlanSubscriptionService =
