@@ -90,18 +90,18 @@ export function NimbusCheckinCard({ embedded = false }: { embedded?: boolean } =
     <div
       className={
         embedded
-          ? "flex items-center justify-between gap-4 border-t border-border/60 bg-surface/30 px-5 py-3"
-          : "flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-xs"
+          ? "flex items-center justify-between gap-4 border-t border-border/60 px-6 py-4"
+          : "flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-6 py-4 shadow-xs"
       }
       data-quota-checkin=""
     >
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-foreground-subtle">
-          <CalendarCheckIcon className="size-4" />
+      <div className="flex items-center gap-3.5 min-w-0">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+          <CalendarCheckIcon className="size-5" />
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-ui-sm font-semibold text-foreground">
+            <span className="text-ui-base font-semibold text-foreground">
               {intl.formatMessage({ id: "business.quota.checkinTitle" })}
             </span>
             {status.streak > 0 ? (
@@ -110,7 +110,7 @@ export function NimbusCheckinCard({ embedded = false }: { embedded?: boolean } =
               </span>
             ) : null}
           </div>
-          <p className="mt-0.5 truncate text-ui-xs text-foreground-subtle">
+          <p className="mt-0.5 truncate text-ui-sm text-foreground-subtle">
             {checked
               ? intl.formatMessage(
                   { id: "business.quota.checkinRewardTomorrow" },
@@ -126,15 +126,15 @@ export function NimbusCheckinCard({ embedded = false }: { embedded?: boolean } =
 
       <div className="shrink-0">
         {checked ? (
-          <div className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-surface/70 px-3 py-1.5 text-ui-xs font-medium text-foreground-subtle select-none">
-            <CalendarCheckIcon className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+          <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-ui-sm font-medium text-emerald-700 dark:text-emerald-300 select-none">
+            <CalendarCheckIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
             <span>{intl.formatMessage({ id: "business.quota.checkinDone" })}</span>
           </div>
         ) : (
           <Button
             type="button"
             size="sm"
-            className="h-8 rounded-lg px-3.5 text-ui-xs font-medium cursor-pointer"
+            className="h-8 rounded-lg px-4 text-ui-sm font-medium cursor-pointer"
             disabled={submitting}
             onClick={() => void handleCheckin()}
           >

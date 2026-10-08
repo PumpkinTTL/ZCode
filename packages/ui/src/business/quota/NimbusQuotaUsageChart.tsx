@@ -155,14 +155,14 @@ export function NimbusQuotaUsageChart({ usage }: { usage: readonly QuotaUsageDay
           dataKey="charged"
           fill="var(--color-charged)"
           radius={[4, 4, 0, 0]}
-          maxBarSize={24}
+          maxBarSize={28}
         />
         <Line
           yAxisId="cache"
           dataKey="cacheHitRate"
           type="monotone"
           stroke="var(--color-cacheHitRate)"
-          strokeWidth={2}
+          strokeWidth={2.5}
           dot={false}
           connectNulls
         />
