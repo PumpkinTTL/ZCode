@@ -7,9 +7,15 @@ export function resolveZCodeBuiltinProviderConfigFilePath(options?: {
   readonly isPackaged?: boolean;
   readonly resourcesPath?: string;
 }): string {
-  const explicitPath = (options?.env ?? process.env)["ZCODE_BUILTIN_PROVIDER_CONFIG_FILE"]?.trim();
+  const isPackaged = options?.isPackaged ?? app.isPackaged;
+  // 打包版忽略机器环境变量残留（ZCODE_BUILTIN_PROVIDER_CONFIG_FILE）：装了官方 ZCode
+  // 的开发机会残留 3.14.4 的 z.ai 内置配置快照路径，优先级高于随包配置会把整条模型/
+  // 供应商链改道上游（rev30 事故同型）。env 覆盖仅 dev 联调生效，随包配置恒为准。
+  const explicitPath = isPackaged
+    ? undefined
+    : (options?.env ?? process.env)["ZCODE_BUILTIN_PROVIDER_CONFIG_FILE"]?.trim();
   if (explicitPath) return explicitPath;
-  if (options?.isPackaged ?? app.isPackaged) {
+  if (isPackaged) {
     return join(
       options?.resourcesPath ?? process.resourcesPath,
       "config/provider/zcode-builtin.json",

@@ -490,6 +490,28 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
     ...readDefinedProcessEnv(),
   };
   const packagedDesktop = isElectronAppPackaged();
+  // 打包版忽略机器残留的上游语义环境变量：装了官方 ZCode 的开发机会残留 z.ai 端点、
+  // 内置配置快照路径、agent server 覆盖等变量，沿 main→host→agent 透传后会把模型/
+  // 供应商链整体改道上游（rev30 事故同型；2026-10-08 实测 ZCODE_BASE_URL 改道强更/
+  // 更新链）。在 raw 源头删除，保证 sanitize/passthrough/applySelectedZCodeEnvLinks
+  // 全部拿到干净值。用户显式设置（zcodeEndpointOrigin）不受影响；dev 未打包不变。
+  if (packagedDesktop) {
+    for (const key of [
+      "ZCODE_BASE_URL",
+      "ZCODE_ENDPOINT_ORIGIN",
+      "ZAI_BUSINESS_BASE_URL",
+      "ZAI_OAUTH_ORIGIN",
+      "ZAI_OAUTH_CLIENT_ID",
+      "ZAI_OAUTH_APP_ID",
+      "BIGMODEL_API_BASE_URL",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE",
+      "ZCODE_AGENT_SERVER_COMMAND",
+      "ZCODE_AGENT_SERVER_ARGS_JSON",
+      "ZCODE_AGENT_SERVER_CWD",
+    ]) {
+      delete rawInheritedEnv[key];
+    }
+  }
   const bundledCuaHelperAppPath =
     process.platform !== "darwin"
       ? undefined
