@@ -23,6 +23,11 @@ export function createDesktopNativePackagePrunePatterns(targetPlatformKey) {
     "!node_modules/@napi-rs/canvas-*/**",
     // Linux prebuild 会在 beforePack 复制进 node-pty；源平台包本身不属于桌面运行时。
     "!node_modules/@lydell/node-pty-*/**",
+    // @fiahfy/icns 只服务 macOS .icns 图标解析（editors.ts 懒 require，缺包有降级路径），
+    // pngjs 是它唯一的子依赖且无其他运行时消费方——非 darwin 包带上纯属浪费体积。
+    ...(targetPlatformKey.startsWith("darwin")
+      ? []
+      : ["!node_modules/@fiahfy/icns/**", "!node_modules/pngjs/**"]),
     // 桌面运行时统一使用目标 prebuild，禁止把安装机现场编译物或 ABI bin 缓存带进跨平台包。
     "!node_modules/node-pty/build/**",
     "!node_modules/node-pty/bin/**",
