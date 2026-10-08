@@ -700,14 +700,17 @@ const deviceMid = ensureDesktopDeviceMidSync();
 const readHelpConfig = createDesktopHelpConfigReader({
   appVersion: ZCODE_VERSION || app.getVersion(),
   deviceMid,
-  resolveEndpointOrigin: resolveCurrentZCodeEndpointOrigin,
+  // 同强更/更新口径：打包正式版忽略机器环境变量残留，避免 device_mid 泄露给上游端点。
+  resolveEndpointOrigin: () =>
+    resolveCurrentZCodeEndpointOrigin({ ignoreEnvBaseOrigin: app.isPackaged }),
 });
 // 同一个 /api/v1/client/configs fetcher 供两个灰度 rollout 共用（请求参数与鉴权完全一致，
 // 各自独立缓存/去重，服务端按 data.configs.<key> 区分功能）。
 const electronClientConfigsFetcher = createElectronDesktopContextPromptConfigFetcher({
   appVersion: ZCODE_VERSION || app.getVersion(),
   deviceMid,
-  resolveEndpointOrigin: resolveCurrentZCodeEndpointOrigin,
+  resolveEndpointOrigin: () =>
+    resolveCurrentZCodeEndpointOrigin({ ignoreEnvBaseOrigin: app.isPackaged }),
 });
 desktopContextPromptRollout = createDesktopContextPromptRollout({
   fetchConfig: electronClientConfigsFetcher,
