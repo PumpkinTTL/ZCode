@@ -114,11 +114,6 @@ export function registerRemoteIpcHandlers(options: {
       options.logger.warn("[open-external] blocked unsupported url", url);
       return;
     }
-    const sender = event.sender;
-    const senderUrl = typeof sender?.getURL === "function" ? sender.getURL() : "";
-    const senderFrameUrl =
-      typeof event.senderFrame?.url === "string" ? event.senderFrame.url : undefined;
-    const sourceUrl = senderFrameUrl ?? request.sourceUrl ?? senderUrl;
     void Promise.resolve(shell.openExternal(url)).catch((error: unknown) => {
       options.logger.warn("[open-external] 外部 URL 打开失败", {
         url,

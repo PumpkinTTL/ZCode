@@ -39,6 +39,9 @@ export async function prepareTasksIndexStorage(
   await mkdir(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   let failure: unknown;
+  // close 失败不能在 finally 里 throw（no-unsafe-finally：会吞掉在途异常）；
+  // 暂存到 try/catch 结构结束后再上抛，保序不变。
+  let closeFailure: unknown;
   let migration: DatabaseMigrationFacts | undefined;
   try {
     db.exec("PRAGMA busy_timeout = 25");
@@ -92,9 +95,10 @@ export async function prepareTasksIndexStorage(
     try {
       db.close();
     } catch (error) {
-      if (!failure) throw error;
+      if (!failure) closeFailure = error;
     }
   }
+  if (closeFailure) throw closeFailure;
   markTasksStorageMigrated(path);
   const repos = [
     new TaskIndexRepo(path, LOCK_WAIT_MS),
