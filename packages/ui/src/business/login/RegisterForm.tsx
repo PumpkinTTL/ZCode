@@ -206,6 +206,7 @@ export function RegisterForm({
           id="welcome-nimbus-reg-username"
           label={intl.formatMessage({ id: "business.quota.username" })}
           icon={<UserIcon className="size-4" aria-hidden="true" />}
+          hint={intl.formatMessage({ id: "login.usernameHint" })}
         >
           <Input
             id="welcome-nimbus-reg-username"
@@ -220,15 +221,13 @@ export function RegisterForm({
               setError(null);
             }}
           />
-          <p className="text-ui-xs text-foreground-subtlest">
-            {intl.formatMessage({ id: "login.usernameHint" })}
-          </p>
         </LoginTextField>
         <LoginTextField
           id="welcome-nimbus-reg-password"
           label={intl.formatMessage({ id: "business.quota.password" })}
           icon={<LockIcon className="size-4" aria-hidden="true" />}
           trailing={passwordToggle(passwordVisible, setPasswordVisible)}
+          hint={intl.formatMessage({ id: "login.passwordHint" })}
         >
           <Input
             id="welcome-nimbus-reg-password"
@@ -243,9 +242,6 @@ export function RegisterForm({
               setError(null);
             }}
           />
-          <p className="text-ui-xs text-foreground-subtlest">
-            {intl.formatMessage({ id: "login.passwordHint" })}
-          </p>
         </LoginTextField>
         <LoginTextField
           id="welcome-nimbus-reg-confirm"

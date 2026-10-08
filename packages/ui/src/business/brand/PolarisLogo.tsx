@@ -46,15 +46,16 @@ export function PolarisLogo({
       className={cn(className)}
     >
       <rect width="100" height="100" rx="24" fill="#101012" />
-      {/* 北极星：主星（白）+ 弧线轨道（灰） */}
+      {/* 北极星：主星（白）+ 弧线轨道（灰）。轨道弧与应用图标同款几何：
+          端点在星底两侧、控制点在端点下方——弧向下沉「托住」星底，不是向上拱。 */}
       <path
         d="M50 16 Q54.5 46 84 50 Q54.5 54 50 84 Q45.5 54 16 50 Q45.5 46 50 16 Z"
         fill="#f7f8f8"
       />
       <path
-        d="M14 78 Q50 62 86 70"
+        d="M23 67 Q50 84 77 66"
         stroke="#8a8f98"
-        strokeWidth="2.5"
+        strokeWidth="2.7"
         strokeLinecap="round"
       />
     </svg>

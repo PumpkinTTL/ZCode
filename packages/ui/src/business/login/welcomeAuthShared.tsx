@@ -133,12 +133,16 @@ export function LoginTextField({
   label,
   icon,
   trailing,
+  hint,
   children,
 }: {
   id: string;
   label: string;
   icon: ReactNode;
   trailing?: ReactNode;
+  /** 提示行：渲染在输入框下方、与框内文字（pl-10）左对齐。不能塞进 relative 容器——
+   *  会撑高容器让图标/尾部按钮的 top-1/2 居中失准（注册表单实测）。 */
+  hint?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -153,6 +157,7 @@ export function LoginTextField({
         {children}
         {trailing}
       </div>
+      {hint ? <p className="pl-10 text-ui-xs text-foreground-subtlest">{hint}</p> : null}
     </div>
   );
 }

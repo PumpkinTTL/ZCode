@@ -175,6 +175,7 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
         id="welcome-nimbus-reset-password"
         label={intl.formatMessage({ id: "login.newPassword" })}
         icon={<LockIcon className="size-4" aria-hidden="true" />}
+        hint={intl.formatMessage({ id: "login.passwordHint" })}
       >
         <Input
           id="welcome-nimbus-reset-password"
@@ -189,9 +190,6 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
             setError(null);
           }}
         />
-        <p className="text-ui-xs text-foreground-subtlest">
-          {intl.formatMessage({ id: "login.passwordHint" })}
-        </p>
       </LoginTextField>
       <LoginTextField
         id="welcome-nimbus-reset-confirm"
