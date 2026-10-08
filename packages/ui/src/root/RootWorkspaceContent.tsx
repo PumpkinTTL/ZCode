@@ -44,7 +44,6 @@ interface RootWorkspaceContentProps {
   isMacDesktop?: RootProps["isMacDesktop"];
   isWindowsDesktop?: RootProps["isWindowsDesktop"];
   supportsEmbeddedBrowser: NonNullable<RootProps["supportsEmbeddedBrowser"]>;
-  windowsWindowControlsRightPaddingPx?: number;
 }
 
 export function RootWorkspaceContent({
@@ -81,7 +80,6 @@ export function RootWorkspaceContent({
   isMacDesktop,
   isWindowsDesktop,
   supportsEmbeddedBrowser,
-  windowsWindowControlsRightPaddingPx,
 }: RootWorkspaceContentProps) {
   const workspaceKey = workspaceIdentity?.trim() || workspaceShellPath;
 
@@ -177,7 +175,6 @@ export function RootWorkspaceContent({
             isDesktop={isDesktop}
             isMacDesktop={isMacDesktop}
             isWindowsDesktop={isWindowsDesktop}
-            windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
             captionWorkspacePath={activeWorkspacePath}
             onBack={activeWorkspacePath ? handleBackFromSettings : undefined}
             onCreateTask={handleCreateTask}

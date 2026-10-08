@@ -1127,6 +1127,7 @@ export function App({
         <WorkspaceShellLayout
           services={services}
           workspaceReadOnlyReason={workspaceReadOnlyReason}
+          windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
           workspaceMainView={workspaceMainView}
           pluginStoreOpenVersion={pluginStoreOpenVersion}
           openAutomationId={openAutomationId}
@@ -1171,7 +1172,6 @@ export function App({
           isMacFullscreen={isMacFullscreen}
           desktopWindowChromeState={desktopWindowChromeState}
           macWindowControlsLeftPaddingPx={macWindowControlsLeftPaddingPx}
-          windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
           updateReadyVersion={updateReadyVersion}
           updateState={updateState}
           sidebarContainerRef={sidebarContainerRef}

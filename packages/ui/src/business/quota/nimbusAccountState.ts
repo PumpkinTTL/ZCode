@@ -137,7 +137,7 @@ export function refreshNimbusAccountState(): Promise<void> {
 
 /**
  * 登录/登出后广播：带乐观快照立即切换所有订阅方，再后台重校验收敛。
- * 调用方：WelcomeScreen（登录成功）、NimbusAccountDialog（登录/登出）、
+ * 调用方：WelcomeScreen（登录成功）、设置页「我的额度」/侧边栏（登录/登出）、
  * 侧边栏底部的 Nimbus 登出。
  */
 export function notifyNimbusAccountChanged(status: QuotaStatusResult): void {

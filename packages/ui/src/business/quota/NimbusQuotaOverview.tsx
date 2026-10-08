@@ -6,7 +6,7 @@
  * （主条 h-2.5，窗口迷你卡内细条 h-1.5）、「圆点 + 标签 + 右对齐数值」行式概览、
  * border-t 附注行。层级只有「主条 → 窗口迷你卡 → 附注」一层，不做彩色分栏与多卡堆叠。
  *
- * 面板本体是数据驱动的只读视图，登录/登出仍由 NimbusAccountDialog 负责。
+ * 面板本体是数据驱动的只读视图，登录入口由设置页自动弹 WelcomeScreen 承接。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QuotaStatusResult, QuotaUsageDay } from "@zcode/services";

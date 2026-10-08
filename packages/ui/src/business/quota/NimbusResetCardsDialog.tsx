@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QuotaResetCard, QuotaStatusResult } from "@zcode/services";
-import { Loader2, RotateCcw, X } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -19,8 +19,6 @@ import { NimbusQuotaSummary } from "./NimbusQuotaSummary.js";
 type LoggedInStatus = Extract<QuotaStatusResult, { loggedIn: true }>;
 
 const WINDOW_LABEL_ID: Record<string, string> = {
-  "5h": "business.quota.window5hShort",
-  week: "business.quota.windowWeeklyShort",
   period: "business.quota.validity",
   calls: "business.quota.remainingCalls",
 };
@@ -224,5 +222,3 @@ export function NimbusResetCardsDialog({
   );
 }
 
-/** 弹窗头部的关闭按钮由 DialogContent 自带；此处导出仅供测试桩使用。 */
-export const ResetCardsDialogCloseIcon = X;

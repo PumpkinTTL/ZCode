@@ -9,7 +9,6 @@ export function WorkspaceSettingsLayer({
   isDesktop,
   isMacDesktop,
   isWindowsDesktop,
-  windowsWindowControlsRightPaddingPx,
   captionWorkspacePath,
   onBack,
   onCreateTask,
@@ -33,7 +32,6 @@ export function WorkspaceSettingsLayer({
             isDesktop={isDesktop}
             isMacDesktop={isMacDesktop}
             isWindowsDesktop={isWindowsDesktop}
-            windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
             captionWorkspacePath={captionWorkspacePath}
             onBack={onBack}
             onCreateTask={onCreateTask}
@@ -48,7 +46,6 @@ export function WorkspaceSettingsLayer({
           isDesktop={isDesktop}
           isMacDesktop={isMacDesktop}
           isWindowsDesktop={isWindowsDesktop}
-          windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
           captionWorkspacePath={captionWorkspacePath}
           onBack={onBack}
           onCreateTask={onCreateTask}

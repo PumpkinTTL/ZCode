@@ -131,7 +131,6 @@ export function SettingsPage({
   isDesktop,
   isWindowsDesktop,
   isMacDesktop,
-  windowsWindowControlsRightPaddingPx: _windowsWindowControlsRightPaddingPx,
   captionWorkspacePath,
   onBack,
   onCreateTask,
@@ -144,7 +143,6 @@ export function SettingsPage({
   isDesktop?: boolean;
   isWindowsDesktop?: boolean;
   isMacDesktop?: boolean;
-  windowsWindowControlsRightPaddingPx?: number;
   captionWorkspacePath?: string | null;
   onBack?: () => void;
   onCreateTask?: (request?: CreateTaskRequest) => void;
@@ -768,11 +766,6 @@ export function SettingsPage({
                   </ControlHintTooltip>
                 ) : null}
 
-                {/* <div className={onBack ? "mt-5" : "pt-2"}>
-                    <h1 className="flex items-center gap-2 px-2.5 text-ui-lg font-medium text-foreground-subtle">
-                      {intl.formatMessage({ id: "settings.title" })}
-                    </h1>
-                  </div> */}
               </div>
 
               <nav
@@ -931,7 +924,6 @@ export function SettingsPage({
                         SETTINGS_FRAME_CONTENT_CLASSNAME,
                         "flex flex-col gap-8",
                         isMacDesktop && "pt-0",
-                        // isWindowsDesktop && "pt-12",
                       )}
                     >
                       <div>

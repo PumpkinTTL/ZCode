@@ -45,7 +45,6 @@ export interface WorkspaceSettingsLayerProps {
   isDesktop?: boolean;
   isMacDesktop?: boolean;
   isWindowsDesktop?: boolean;
-  windowsWindowControlsRightPaddingPx?: number;
   captionWorkspacePath?: string | null;
   onBack?: () => void;
   onCreateTask?: (request?: CreateTaskRequest) => void;
