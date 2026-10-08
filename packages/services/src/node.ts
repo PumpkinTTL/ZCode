@@ -2415,7 +2415,12 @@ export function createLocalServices(options: {
     )
     .register(IFileWatcherService, createFileWatcherService())
     .register(IOAuthService, oauthService)
-    .register(IUsageStatsService, createUsageStatsService({ zcodeAgentService }))
+    .register(
+      IUsageStatsService,
+      createUsageStatsService({
+        getAppUsageStats: (...args) => zcodeAgentService.getAppUsageStats(...args),
+      }),
+    )
     .register(ICodingPlanSubscriptionService, codingPlanSubscriptionService)
     .register(
       IClientConfigService,

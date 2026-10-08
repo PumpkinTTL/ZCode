@@ -1982,7 +1982,6 @@ const enUS: Record<string, string> = {
   "business.quota.manage": "Manage",
   "business.quota.notActivated": "Starts on first use",
   "business.quota.title": "My quota",
-  "business.quota.loginTitle": "Nimbus",
   "business.appUpdate.title": "Release Notes",
   "business.appUpdate.loading": "Checking…",
   "business.appUpdate.noReleases": "No releases published yet",
@@ -2508,10 +2507,6 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.newProviderName": "New provider",
   "sidebar.usage.plan.openStats": "Usage stats",
   "sidebar.usage.quota.open": "Usage quota",
-  "usage.error.chatPlan.credential":
-    "Unable to read plan quota. Reconnect the Coding Plan account or confirm that the account has an active plan.",
-  "usage.error.chatPlan.generic":
-    "Unable to read plan quota. Try again later or check the provider configuration.",
   "settings.usage.range.all": "All time",
   "settings.usage.range.7d": "Last 7 days",
   "settings.usage.range.30d": "Last 30 days",

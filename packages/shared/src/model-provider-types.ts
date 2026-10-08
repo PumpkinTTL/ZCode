@@ -28,42 +28,9 @@ export function isBuiltinModelProviderId(id: string): id is BuiltinModelProvider
   );
 }
 
-export function isZaiCodingPlanProviderId(id: string): boolean {
-  return (
-    id === BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan ||
-    id === BUILTIN_MODEL_PROVIDER_IDS.zaiTeamCodingPlan ||
-    id === BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan
-  );
-}
-
-export function isBigModelStartPlanProviderId(id: string): boolean {
-  return id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan;
-}
-
 export function isStartPlanModelProviderId(id: string): boolean {
   return (
     id === BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan ||
-    id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan
-  );
-}
-
-/**
- * 个人版 Coding Plan（不含 Start Plan 与 Team Plan）。
- * Start Plan 用 disconnected 展示领取/付费卡，Team Plan 有独立文案，
- * "服务端明确无权益"只对个人版需要区分成"未开通"。
- */
-export function isIndividualCodingPlanModelProviderId(id: string): boolean {
-  return (
-    id === BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan ||
-    id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan
-  );
-}
-
-export function isCodingPlanModelProviderId(id: string): boolean {
-  return (
-    isZaiCodingPlanProviderId(id) ||
-    id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan ||
-    id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan ||
     id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan
   );
 }

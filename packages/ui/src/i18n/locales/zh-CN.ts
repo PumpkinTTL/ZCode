@@ -1881,7 +1881,6 @@ const zhCN: Record<string, string> = {
   "business.quota.manage": "管理",
   "business.quota.notActivated": "首次使用后开始计时",
   "business.quota.title": "我的额度",
-  "business.quota.loginTitle": "Nimbus",
   "business.appUpdate.title": "更新日志",
   "business.appUpdate.loading": "检查中…",
   "business.appUpdate.noReleases": "暂无发布版本",
@@ -2385,9 +2384,6 @@ const zhCN: Record<string, string> = {
     "本地工作区不可用，无法测试模型连通性。",
   "sidebar.usage.plan.openStats": "使用统计",
   "sidebar.usage.quota.open": "用量额度",
-  "usage.error.chatPlan.credential":
-    "无法读取套餐额度。请重新连接编程套餐账号，或确认该账号已开通套餐。",
-  "usage.error.chatPlan.generic": "无法读取套餐额度。请稍后重试，或检查供应商配置。",
   "settings.usage.range.all": "全部时间",
   "settings.usage.range.7d": "近 7 日",
   "settings.usage.range.30d": "近 30 日",

@@ -75,17 +75,6 @@ export function resolveModelProviderFamilyIdByProviderId(
   return MODEL_PROVIDER_FAMILY_ID_BY_PROVIDER_ID.get(providerId as BuiltinModelProviderId) ?? null;
 }
 
-export function resolveModelProviderFamilySpecByProviderId(
-  providerId: string,
-): ModelProviderFamilySpec | null {
-  const familyId = resolveModelProviderFamilyIdByProviderId(providerId);
-  return familyId ? getModelProviderFamilySpec(familyId) : null;
-}
-
-export function resolveModelProviderFamilyLabelByProviderId(providerId: string): string | null {
-  return resolveModelProviderFamilySpecByProviderId(providerId)?.label ?? null;
-}
-
 export function normalizeProviderFamilyDomain(
   value: string | null | undefined,
 ): ProviderFamilyDomain | null {
@@ -102,49 +91,4 @@ export function resolveProviderFamilyDomainFromOAuthProvider(
     return "bigmodel";
   }
   return null;
-}
-
-export function shouldShowModelProviderFamilyForDomain(params: {
-  familyId: ModelProviderFamilyId;
-  providerFamilyDomain: ProviderFamilyDomain | null | undefined;
-}): boolean {
-  const providerFamilyDomain = normalizeProviderFamilyDomain(params.providerFamilyDomain);
-  if (!providerFamilyDomain) {
-    return true;
-  }
-  return params.familyId === providerFamilyDomain;
-}
-
-export function shouldShowModelProviderFamilyForActiveOAuth(params: {
-  familyId: ModelProviderFamilyId;
-  activeOAuthProvider: OAuthProviderId | null | undefined;
-}): boolean {
-  return shouldShowModelProviderFamilyForDomain({
-    familyId: params.familyId,
-    providerFamilyDomain: resolveProviderFamilyDomainFromOAuthProvider(params.activeOAuthProvider),
-  });
-}
-
-export function shouldShowBuiltinModelProviderForDomain(params: {
-  providerId: string;
-  providerFamilyDomain: ProviderFamilyDomain | null | undefined;
-}): boolean {
-  const familyId = resolveModelProviderFamilyIdByProviderId(params.providerId);
-  if (!familyId) {
-    return true;
-  }
-  return shouldShowModelProviderFamilyForDomain({
-    familyId,
-    providerFamilyDomain: params.providerFamilyDomain,
-  });
-}
-
-export function shouldShowBuiltinModelProviderForActiveOAuth(params: {
-  providerId: string;
-  activeOAuthProvider: OAuthProviderId | null | undefined;
-}): boolean {
-  return shouldShowBuiltinModelProviderForDomain({
-    providerId: params.providerId,
-    providerFamilyDomain: resolveProviderFamilyDomainFromOAuthProvider(params.activeOAuthProvider),
-  });
 }

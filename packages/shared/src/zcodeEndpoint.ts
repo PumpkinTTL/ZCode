@@ -39,10 +39,6 @@ export interface ZCodeEndpointUrls {
   origin: string;
   apiBaseUrl: string;
   webShareCallbackUrl: string;
-  zcodePlanOpenAiBaseUrl: string;
-  zcodePlanAnthropicBaseUrl: string;
-  zcodePlanBillingCurrentUrl: string;
-  zcodePlanBillingBalanceUrl: string;
 }
 
 export interface RuntimeZCodeEndpointEnv {
@@ -129,12 +125,6 @@ export function resolveRuntimeZCodeEndpointOrigin(
   });
 }
 
-export function buildRuntimeZCodeEndpointUrls(
-  env: RuntimeZCodeEndpointEnv = readProductEndpointEnv(),
-): ZCodeEndpointUrls {
-  return buildZCodeEndpointUrls(resolveRuntimeZCodeEndpointOrigin(env));
-}
-
 export function buildRuntimeZCodeApiUrl(
   env: RuntimeZCodeEndpointEnv = readProductEndpointEnv(),
   path: string,
@@ -157,13 +147,6 @@ export function buildBigModelApiUrl(
 ): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${resolveBigModelApiOrigin(env)}${normalizedPath}`;
-}
-
-export function buildBigModelCodingPlanPersonalManageUrl(
-  env: RuntimeBigModelApiEnv = readProductEndpointEnv(),
-): string {
-  // 管理页与业务 API 共用显式 origin，避免把已登录账号带到另一个部署。
-  return buildBigModelApiUrl(env, "/coding-plan/personal/overview");
 }
 
 export function buildBigModelCodingPlanTeamManageUrl(
@@ -241,10 +224,6 @@ export function buildZCodeEndpointUrls(origin: string): ZCodeEndpointUrls {
     origin: normalizedOrigin,
     apiBaseUrl: `${normalizedOrigin}/api/v1`,
     webShareCallbackUrl: `${normalizedOrigin}/cn/share/callback`,
-    zcodePlanOpenAiBaseUrl: `${normalizedOrigin}/api/v1/zcode-plan`,
-    zcodePlanAnthropicBaseUrl: `${normalizedOrigin}/api/v1/zcode-plan/anthropic`,
-    zcodePlanBillingCurrentUrl: `${normalizedOrigin}/api/v1/zcode-plan/billing/current`,
-    zcodePlanBillingBalanceUrl: `${normalizedOrigin}/api/v1/zcode-plan/billing/balance`,
   };
 }
 

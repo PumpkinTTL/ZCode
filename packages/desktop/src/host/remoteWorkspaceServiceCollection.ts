@@ -285,7 +285,8 @@ export function createRemoteWorkspaceServiceCollection(params: {
     .register(
       IUsageStatsService,
       createUsageStatsService({
-        zcodeAgentService: params.connectionServices.zcodeAgentService,
+        getAppUsageStats: (...args) =>
+          params.connectionServices.zcodeAgentService.getAppUsageStats(...args),
       }),
     )
     .register(ICodingPlanSubscriptionService, localCodingPlanSubscriptionService)
