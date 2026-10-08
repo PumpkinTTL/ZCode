@@ -1,14 +1,14 @@
 import type { IPlatformService, UpdateStatePayload } from "@zcode/shared";
+import { ZCODE_VERSION } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import { Separator } from "@/components/ui/separator.js";
-import { getPathLeaf } from "@/lib/path.js";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  FolderIcon,
   MessageCirclePlus,
   PanelLeftClose,
   PanelLeftOpen,
+  Tag,
 } from "lucide-react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { UpdateStatusButton } from "@/UpdateStatusButton.js";
@@ -18,19 +18,6 @@ import {
   createWindowsCaptionControlsStyle,
   WINDOWS_CAPTION_CONTROLS_RIGHT_INSET_VAR,
 } from "@/windowCaptionControls.js";
-
-/**
- * 顶栏工作区标签只取路径最后一段，完整路径交给 hover 提示。
- * 未选中工作区（空路径）或取不到目录名的根路径（"/"、"C:\"）返回 null，标签整体不渲染，
- * 避免出现一个只剩图标、看不出含义的空壳。
- */
-function resolveWorkspaceLabel(workspaceAbsPath: string): string | null {
-  const leaf = getPathLeaf(workspaceAbsPath).trim();
-  if (!leaf || /^[\\/]+$/u.test(leaf) || /^[A-Za-z]:$/u.test(leaf)) {
-    return null;
-  }
-  return leaf;
-}
 
 interface DesktopTopOverlayProps {
   workspaceAbsPath: string;

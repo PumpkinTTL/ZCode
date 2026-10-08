@@ -221,7 +221,7 @@ export function NimbusQuotaOverview({
               <button
                 type="button"
                 title={intl.formatMessage({ id: "business.quota.resetCardBadgeTitle" })}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-ui-xs font-medium leading-none text-emerald-700 transition-colors hover:border-emerald-500/35 hover:bg-emerald-500/15 active:bg-emerald-500/20 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 cursor-pointer select-none"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-ui-xs font-medium text-emerald-700 transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/15 active:bg-emerald-500/20 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 cursor-pointer select-none"
                 onClick={() => setResetCardsOpen(true)}
               >
                 <Gift aria-hidden="true" className="size-3 text-emerald-600 dark:text-emerald-400" />
