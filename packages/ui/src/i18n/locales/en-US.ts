@@ -2016,7 +2016,6 @@ const enUS: Record<string, string> = {
   "business.quota.resetCardNoun": " quota reset",
   "business.quota.resetCardCount": "{count} left",
   "business.quota.resetCardExpires": "Expires {date}",
-  "business.quota.resetCardEarliestExpires": "Earliest expires {date}",
   "business.quota.resetCardNeverExpires": "Never expires",
   "business.quota.resetAction": "Reset",
   "business.quota.redeemed": "Reset",
