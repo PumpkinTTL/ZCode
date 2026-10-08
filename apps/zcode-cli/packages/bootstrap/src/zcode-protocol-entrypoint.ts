@@ -45,9 +45,7 @@ import {
 import { ZCodeProtocolAgentServer } from "./zcode-protocol/server.js";
 import { ZCodeProtocolNdjsonConnection } from "./zcode-protocol/transport.js";
 import { cleanupProtocolRuntime } from "./zcode-protocol/runtime-cleanup.js";
-import { startProtocolResourceSampler } from "./zcode-protocol/resource-sampler.js";
 import { acquireProtocolStartupResource } from "./zcode-protocol/startup-resource.js";
-import type { ZCodeProcessResourceSampler } from "./process-resource-sampler.js";
 import { prepareZCodeTelemetryEnv, shutdownZCodeTelemetry } from "./telemetry-bootstrap.js";
 
 function applyProtocolPresentationSurface(
@@ -130,7 +128,6 @@ export async function runZCodeProtocolAgent(
   let mcpTelemetryTracker: McpTelemetryTracker | undefined;
   let mcpResourceSink: ((samples: ZCodeMcpResourceSample[]) => void) | undefined;
   let mcpTelemetrySink: ((event: ZCodeMcpTelemetryEvent) => void) | undefined;
-  let processResourceSampler: ZCodeProcessResourceSampler | undefined;
   let providerRegistryRuntime:
     | Awaited<ReturnType<typeof startProcessProviderRegistryRuntime>>
     | undefined;
@@ -351,11 +348,6 @@ export async function runZCodeProtocolAgent(
     };
     connection.start();
     mcpTelemetryTracker?.start();
-    processResourceSampler = startProtocolResourceSampler(
-      server,
-      (message) => connection.send(message),
-      logger,
-    );
     startupTimer.complete("ZCode Protocol agent startup completed", {
       event: "zcode_protocol.startup.completed",
       stage: "total",
@@ -377,7 +369,6 @@ export async function runZCodeProtocolAgent(
       logger,
       deadlineAt: options.lifecycle?.deadlineAt,
       server: serverForCleanup,
-      processResourceSampler,
       mcpTelemetryTracker,
       nodeReplBrowserBroker,
       mcpPort,

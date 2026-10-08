@@ -26,9 +26,9 @@ export {
 export { createFileService } from "./file/fileService.js";
 export {
   attributeHostProcessTree,
-  createProcessResourceSampler,
   createProcessResourceTableReader,
   type HostResourceUsageAgent,
+  createProcessResourceSampler,
   type ProcessResourceSample,
   type ProcessResourceSampler,
 } from "./process/processResourceSampler.js";
