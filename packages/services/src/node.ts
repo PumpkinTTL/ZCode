@@ -633,6 +633,17 @@ const providerProvisioningTriggerDisposers = new WeakMap<
   ServiceCollection,
   readonly (() => void)[]
 >();
+// 随 ServiceCollection 生命周期的杂项释放动作（事件订阅句柄、临时监听等）：
+// 不登记就会随远端连接反复重连线性堆积，闭包还捕获整条服务装配链。
+const serviceCollectionDisposers = new WeakMap<ServiceCollection, ReadonlyArray<() => void>>();
+
+export function registerServiceCollectionDisposer(
+  services: ServiceCollection,
+  dispose: () => void,
+): void {
+  const existing = serviceCollectionDisposers.get(services) ?? [];
+  serviceCollectionDisposers.set(services, [...existing, dispose]);
+}
 // TaskIndexRepo / OffPeakTaskRepo 等各自持有 tasks-index.sqlite 的连接句柄；
 // dispose 链必须统一关闭：Windows 上句柄悬着会让宿主回收后临时目录 rm 撞 EBUSY
 // （stdioDesktopPresentationSurface 单测稳定复现），Linux 的 unlink-while-open 语义掩盖了泄漏。
@@ -2671,6 +2682,8 @@ export function disposeServiceResources(services: ServiceCollection): void {
   for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
   providerProvisioningTriggerDisposers.delete(services);
   providerProvisioningSources.delete(services);
+  for (const dispose of serviceCollectionDisposers.get(services) ?? []) dispose();
+  serviceCollectionDisposers.delete(services);
   managedHostApiNetworkTransports.get(services)?.dispose();
 }
 
@@ -2711,6 +2724,8 @@ export async function disposeServiceResourcesAndWait(services: ServiceCollection
   for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
   providerProvisioningTriggerDisposers.delete(services);
   providerProvisioningSources.delete(services);
+  for (const dispose of serviceCollectionDisposers.get(services) ?? []) dispose();
+  serviceCollectionDisposers.delete(services);
   await managedHostApiNetworkTransports
     .get(services)
     ?.disposeAndWait()

@@ -1582,7 +1582,15 @@ export function createZCodeAgentService(
     if (existing) {
       return existing;
     }
-    const created = new Emitter<ZCodeAgentServiceEvent>();
+    // 自毁生命周期：最后一个订阅者退订即从映射移除并 dispose。会话级 emitter
+    // 若只依赖 runtime 换代清理，长存 runtime 下每个历史会话都会遗留一个。
+    const created = new Emitter<ZCodeAgentServiceEvent>({
+      onDidRemoveLastListener: () => {
+        if (sessionEmitters.get(key) !== created) return;
+        sessionEmitters.delete(key);
+        created.dispose();
+      },
+    });
     sessionEmitters.set(key, created);
     return created;
   }
@@ -1888,6 +1896,14 @@ export function createZCodeAgentService(
       type: "session.event",
       event: normalizedEvent,
     });
+    if (normalizedEvent.type === "session.closed") {
+      // 会话终态：顺序状态与 traceId 已无后续用途，即刻释放（emitter 由
+      // onDidRemoveLastListener 随订阅者退订自毁）。与 runtime 换代清理互补——
+      // runtime 长期存活时，这里防止已关闭会话的数据慢性累积。
+      const key = sessionEventKey({ ...workspace, sessionId: normalizedEvent.sessionId });
+      sessionEventSequenceStates.delete(key);
+      sessionTraceIdBySessionKey.delete(key);
+    }
   }
 
   function handleStateUpdated(

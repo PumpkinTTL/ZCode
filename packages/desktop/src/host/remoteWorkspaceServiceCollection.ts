@@ -47,6 +47,7 @@ import {
   createNodeApiClient,
   createHostApiNetworkTransport,
   registerHostApiNetworkTransportForDispose,
+  registerServiceCollectionDisposer,
   createOAuthService,
   createOAuthProviderLogoutHandler,
   createSettingsSyncService,
@@ -143,7 +144,9 @@ export function createRemoteWorkspaceServiceCollection(params: {
   // desktop-attached remote 的 Agent 运行在远端，但 app-global 设置权威仍在
   // desktop shared Host。通过窄化的 runtime-preferences 请求原路返回，避免远端读取自己的 setting。
   const { onError } = params.runtimePreferencesBridge;
-  params.connectionServices.zcodeAgentService.onDynamicSessionRuntimePreferencesRequest()(
+  // 订阅句柄必须随本连接的 ServiceCollection 释放：闭包捕获整条装配链，不登记的
+  // 话每次 remote connect 都会线性堆积一个监听器（常驻远端进程下还会重复响应）。
+  const runtimePreferencesSubscription = params.connectionServices.zcodeAgentService.onDynamicSessionRuntimePreferencesRequest()(
     (request) => {
       const startedAt = Date.now();
       const requestContext = {
@@ -311,6 +314,7 @@ export function createRemoteWorkspaceServiceCollection(params: {
     )
     .register(IPromptAttachmentTransferService, params.promptAttachmentTransferService);
   registerHostApiNetworkTransportForDispose(services, hostApiNetworkTransport);
+  registerServiceCollectionDisposer(services, () => runtimePreferencesSubscription.dispose());
   registerRemoteProviderProvisioningExecutor(services, remoteProviderProvisioningService);
   return services;
 }

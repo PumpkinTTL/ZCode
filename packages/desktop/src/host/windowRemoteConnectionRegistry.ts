@@ -229,6 +229,9 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
           )
         ) {
           entry.workspaceRuntimeByKey.delete(workspaceKey);
+          // 运行时已无人持有，键集合同步收缩；否则 entry 存活期内每打开过一个
+          // workspace 都会永久遗留一条（SSH entry 是窗口级缓存，尤其容易积累）。
+          entry.workspaceKeys.delete(workspaceKey);
         }
       });
     // release 由 dispose/running-task 事件触发；失败由结构化回调记录，同时保留 rejecting
@@ -354,6 +357,8 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
     entry.abortController.abort();
     entry.closeSubscription?.dispose();
     entry.closeSubscription = undefined;
+    // 连接整体退役：按 workspace 累积的键集合一并释放。
+    entry.workspaceKeys.clear();
     if (entriesByKey.get(entry.key) === entry) {
       entriesByKey.delete(entry.key);
     }
