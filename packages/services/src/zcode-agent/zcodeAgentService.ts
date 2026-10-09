@@ -426,7 +426,7 @@ const SESSION_SEND_OPTIONAL_COMPAT_FIELDS = new Set<SessionSendCompatField>([
 const SESSION_SUBSCRIBE_RETRY_BASE_DELAY_MS = 500;
 const SESSION_SUBSCRIBE_RETRY_MAX_DELAY_MS = 5_000;
 const SESSION_SUBSCRIBE_MAX_ATTEMPTS = 8;
-const MAX_TRACKED_SESSION_EVENT_IDS = 10_000;
+const MAX_TRACKED_SESSION_EVENT_IDS = 1_000;
 const SSH_REMOTE_WORKSPACE_IDENTITY_PREFIX = "remote:ssh:";
 const WSL_REMOTE_WORKSPACE_IDENTITY_PREFIX = "remote:wsl:";
 
@@ -1177,6 +1177,9 @@ export function createZCodeAgentService(
     clearV4SubscriptionRoutes(workspaceKey);
     cuaOperationTurnTracker?.clearWorkspaceKey(workspaceKey);
   });
+  // 每会话事件序列状态体积大（万级 eventId × 4 容器/会话），必须封顶：
+  // 超限淘汰最久未活跃会话（重建即恢复，仅损失 seq 去重连续性）。
+  const MAX_TRACKED_SESSION_EVENT_SEQUENCE_STATES = 128;
   const sessionEventSequenceStates = new Map<string, SessionEventSequenceState>();
   const wiredClients = new WeakSet<ZCodeProtocolClient>();
   const clientDisposables = new WeakMap<ZCodeProtocolClient, IDisposable[]>();
@@ -1260,6 +1263,20 @@ export function createZCodeAgentService(
     // Interaction preference 是 CLI 进程内存态；runtime 换代后即使 app revision
     // 未变化也必须重新同步，不能沿用旧 client 的完成 Promise。
     interactionPreferenceSyncByWorkspaceKey.delete(workspaceKey);
+    // 会话级状态（每会话可达 MB 级）随 runtime 换代释放：键 = workspaceKey + SEP + sessionId。
+    const sessionPrefix = `${workspaceKey}` + String.fromCharCode(0);
+    for (const key of [...sessionEventSequenceStates.keys()]) {
+      if (key.startsWith(sessionPrefix)) sessionEventSequenceStates.delete(key);
+    }
+    for (const key of [...sessionEmitters.keys()]) {
+      if (key.startsWith(sessionPrefix)) sessionEmitters.delete(key);
+    }
+    for (const key of [...conversationFrameEmitters.keys()]) {
+      if (key.startsWith(sessionPrefix)) conversationFrameEmitters.delete(key);
+    }
+    for (const key of [...sessionTraceIdBySessionKey.keys()]) {
+      if (key.startsWith(sessionPrefix)) sessionTraceIdBySessionKey.delete(key);
+    }
   }
 
   const runtimeLifecycleDisposable = processManager.onRuntimeLifecycle((event) => {
@@ -1799,7 +1816,16 @@ export function createZCodeAgentService(
     const key = sessionEventKey({ ...workspace, sessionId });
     const existing = sessionEventSequenceStates.get(key);
     if (existing) {
+      // LRU touch：删了重插，维持「最近活跃在后」
+      sessionEventSequenceStates.delete(key);
+      sessionEventSequenceStates.set(key, existing);
       return existing;
+    }
+    if (sessionEventSequenceStates.size >= MAX_TRACKED_SESSION_EVENT_SEQUENCE_STATES) {
+      const oldest = sessionEventSequenceStates.keys().next().value;
+      if (oldest !== undefined) {
+        sessionEventSequenceStates.delete(oldest);
+      }
     }
     const created: SessionEventSequenceState = {
       assignedSeqByEventId: new Map<string, number>(),
