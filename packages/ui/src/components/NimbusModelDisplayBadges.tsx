@@ -80,6 +80,15 @@ export function NimbusModelDisplayTags({ meta }: { meta: NimbusModelDisplayMeta 
           {promo.label}
         </span>
       ) : null}
+      {/* 自定义标签：中性灰胶囊（管理端自由配置的运营信息，不上彩色） */}
+      {meta.customTags.map((label) => (
+        <span
+          key={label}
+          className={cn(TAG_BADGE_BASE, "border-border/60 bg-surface px-2 py-0.5 text-foreground-subtle")}
+        >
+          {label}
+        </span>
+      ))}
     </>
   );
 }

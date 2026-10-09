@@ -17,6 +17,8 @@ export interface NimbusModelDisplayMeta {
   /** 组合计费倍率（如 0.5 = 半价）；未配置时 null。 */
   readonly multiplier: number | null;
   readonly tags: readonly QuotaModelDisplayTag[];
+  /** 管理端自定义标签（服务端已按 visible 过滤）；中性样式渲染。 */
+  readonly customTags: readonly string[];
   readonly promo: QuotaModelPromo | null;
 }
 
@@ -45,10 +47,18 @@ export function publishNimbusModelDisplayMeta(
 ): void {
   const byModelId = new Map<string, NimbusModelDisplayMeta>();
   for (const entry of entries) {
-    if (entry.multiplier === null && entry.tags.length === 0 && entry.promo === null) continue;
+    if (
+      entry.multiplier === null &&
+      entry.tags.length === 0 &&
+      entry.customTags.length === 0 &&
+      entry.promo === null
+    ) {
+      continue;
+    }
     byModelId.set(entry.id, {
       multiplier: entry.multiplier,
       tags: entry.tags,
+      customTags: entry.customTags,
       promo: entry.promo,
     });
   }

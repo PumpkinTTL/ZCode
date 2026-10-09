@@ -261,5 +261,7 @@ export interface QuotaModelCatalogEntry {
   /** 组合计费倍率（如 0.5 = 半价）；未配置组合级倍率时不下发。 */
   readonly multiplier: number | null;
   readonly tags: readonly QuotaModelDisplayTag[];
+  /** 管理端自定义标签（服务端已按 visible 过滤、去重、截断）；未配置为空数组。 */
+  readonly customTags: readonly string[];
   readonly promo: QuotaModelPromo | null;
 }

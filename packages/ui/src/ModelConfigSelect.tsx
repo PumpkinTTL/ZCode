@@ -361,7 +361,13 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
               // item.iconProviderId/iconModelId 只描述模型身份（registry 条目必填）；
               // 快照内部做 providerId 匹配，其他供应商的同名模型不会串台。
               const displayMeta = getNimbusModelDisplayMeta(item.iconProviderId, item.iconModelId);
-              return displayMeta ? <NimbusModelDisplayTags meta={displayMeta} /> : null;
+              // 标签成组：组内 4px、与名字 6px（外层 gap-1.5），shrink-0 保证
+              // 名字先截断而标签不挤压变形——排版按 Linear/OpenAI 行内徽标纪律。
+              return displayMeta ? (
+                <span className="flex shrink-0 items-center gap-1">
+                  <NimbusModelDisplayTags meta={displayMeta} />
+                </span>
+              ) : null;
             })()}
           </span>
           {(() => {

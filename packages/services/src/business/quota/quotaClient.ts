@@ -728,6 +728,25 @@ function parseModelDisplayTags(value: unknown): QuotaModelDisplayTag[] {
   return out;
 }
 
+/**
+ * 自定义标签解析：[{label, visible}] → 可见 label 列表（strip/非空/去重保序，
+ * 最多 6 条）；服务端已做第一道过滤，这里仍是出口兜底。
+ */
+export function parseComboCustomTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const record = item as Record<string, unknown>;
+    if (record.visible !== true) continue;
+    const label = readString(record.label).trim();
+    if (!label || label.length > 16 || out.includes(label)) continue;
+    out.push(label);
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
 /** 限时折扣载荷：服务端「生效才下发」，这里只验形；ends_at 归一到毫秒。 */
 function parseModelPromo(value: unknown): QuotaModelPromo | null {
   if (typeof value !== "object" || value === null) return null;
@@ -755,6 +774,7 @@ export function projectModelCatalogEntries(data: unknown): QuotaModelCatalogEntr
       id: item.id as string,
       multiplier: readNumber(item.multiplier),
       tags: parseModelDisplayTags(item.tags),
+      customTags: parseComboCustomTags(item.custom_tags),
       promo: parseModelPromo(item.promo),
     }));
 }
