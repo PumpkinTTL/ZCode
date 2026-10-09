@@ -26,7 +26,6 @@ import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { useNimbusAccountState } from "@/business/quota/nimbusAccountState.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { getPathLeaf } from "@/lib/path.js";
 import {
@@ -360,15 +359,11 @@ export function SettingsPage({
     [activeSection, setActiveSettingsSection],
   );
 
-  // 「我的额度」未登录时不渲染内嵌登录表单：进入该分区即自动弹统一登录
-  // （WelcomeScreen，Root 的 onLogin=handleOpenLoginEntry）。登录完成后本 effect
-  // 不再触发，直接落回已登录的额度面板。关闭登录窗未登录 → 分区显示极简提示。
-  const nimbusAccount = useNimbusAccountState();
-  useEffect(() => {
-    if (activeSection !== "providerQuota") return;
-    if (nimbusAccount.loggedIn || nimbusAccount.loading || nimbusAccount.status === null) return;
-    onLogin?.();
-  }, [activeSection, nimbusAccount.loggedIn, nimbusAccount.loading, onLogin]);
+  // 「我的额度」未登录时显示极简提示，**不**自动弹统一登录。曾实现为进入分区即
+  // onLogin() 强开 WelcomeScreen——但欢迎页开着时 Root 只渲染欢迎页，设置页随之
+  // 卸载；用户点 X 关闭 → 设置页重挂载 → 本 effect 再开 → 死循环，登录页永远
+  // 关不掉（连接使用入口不受影响，因此只有额度路径复现）。要登录走侧栏
+  // 「连接使用」或分区里的提示；这里保持纯展示。
 
   useEffect(() => {
     services.settingService
