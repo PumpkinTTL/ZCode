@@ -74,7 +74,8 @@ export function appendRemoteConnectionRuntimeLog(
     }
   }
 
-  return [
+  // 连接重试/慢传输场景会无限 append；只保留最近 500 条，日志面板只看尾部。
+  const nextLogs = [
     ...currentLogs,
     {
       id: incoming.id,
@@ -83,6 +84,7 @@ export function appendRemoteConnectionRuntimeLog(
       timestamp: incoming.timestamp,
     },
   ];
+  return nextLogs.length > 500 ? nextLogs.slice(nextLogs.length - 500) : nextLogs;
 }
 
 function shouldAcceptRemoteConnectionRuntimeLog(
@@ -135,20 +137,24 @@ export function useRemoteConnectionLogs(activeRequestId?: string | null) {
   };
 
   const appendConnectionLog = (level: RemoteConnectionLogEntry["level"], message: string) => {
-    setConnectionLogs((currentLogs) => [
-      ...currentLogs,
-      {
-        id: `${Date.now()}-${currentLogs.length}`,
-        level,
-        message,
-        timestamp: new Date().toLocaleTimeString(undefined, {
-          hour12: false,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-      },
-    ]);
+    setConnectionLogs((currentLogs) => {
+      // 长时间连接重试会无限 append；只保留最近 500 条，日志面板只看尾部。
+      const next = [
+        ...currentLogs,
+        {
+          id: `${Date.now()}-${currentLogs.length}`,
+          level,
+          message,
+          timestamp: new Date().toLocaleTimeString(undefined, {
+            hour12: false,
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+        },
+      ];
+      return next.length > 500 ? next.slice(next.length - 500) : next;
+    });
   };
 
   return {

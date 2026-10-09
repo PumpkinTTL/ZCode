@@ -71,7 +71,6 @@ export interface ConversationTurnRenderUnit {
 }
 
 interface BuildConversationTurnRenderUnitsOptions {
-  nowMs?: number;
   sessionPhase?: SessionPhase;
   /** 插件卡片折叠裁决（时间线由推导结果 + 手动状态组装）。 */
   pluginUiPinResolver?: PluginUiRowPinResolver;
@@ -298,7 +297,7 @@ function materializeDraftUnit(
   const latestAssistantTextRow =
     actionAssistantTextRow ??
     (!isRunning && lastFlowRow && isAssistantTextRow(lastFlowRow) ? lastFlowRow : undefined);
-  const workDurationMs = resolveConversationTurnWorkDurationMs(draft.header, options, isRunning);
+  const workDurationMs = resolveConversationTurnWorkDurationMs(draft.header);
   const workStatus = resolveConversationTurnWorkStatus(
     draft.header,
     bodyRows,
@@ -323,7 +322,6 @@ function materializeDraftUnit(
     isInterrupted,
     forceOpenHistory,
     timelineOnly,
-    nowMs: options.nowMs,
     ...(options.pluginUiPinResolver ? { pluginUiPinResolver: options.pluginUiPinResolver } : {}),
   });
   const orderedAssistantHistoryRows = workSegments.flatMap(

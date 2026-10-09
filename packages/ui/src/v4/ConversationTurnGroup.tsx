@@ -84,6 +84,7 @@ import type {
   ConversationTurnWorkSegment,
 } from "@/v4/conversationTurnRenderUnits.js";
 import { formatConversationWorkDuration } from "@/v4/conversationWorkDuration.js";
+import { useRunningWorkClock } from "@/v4/useRunningWorkClock.js";
 import { ConversationTurnRow, resolveAssistantCopyText } from "@/v4/ConversationTurnRow.js";
 import { ConversationHookDetailsAction } from "@/v4/ConversationHookDetailsAction.js";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
@@ -570,15 +571,20 @@ function AssistantHistoryStatus({
   open: boolean;
 }) {
   const { intl, locale } = useZCodeIntl();
-  const durationLabel = formatConversationWorkDuration(
-    segment.workStatus?.durationMs,
-    intl,
-    locale,
-  );
+  // 运行中时长不再烘进 renderUnits（那会逼整条时间线每秒重建）：builder 只下发
+  // startedAt 锚，由这个叶子订阅共享秒级时钟推进；完成/中断态仍是协议事实，静态渲染。
+  const liveNowMs = useRunningWorkClock();
+  const workStatus = segment.workStatus;
+  const durationMs =
+    workStatus?.durationMs ??
+    (workStatus?.state === "running" && workStatus.startedAt !== undefined
+      ? Math.max(liveNowMs - workStatus.startedAt, 0)
+      : undefined);
+  const durationLabel = formatConversationWorkDuration(durationMs, intl, locale);
   const label =
-    segment.workStatus?.state === "interrupted"
+    workStatus?.state === "interrupted"
       ? intl.formatMessage({ id: "chat.history.stopped" })
-      : segment.workStatus?.state === "running"
+      : workStatus?.state === "running"
         ? intl.formatMessage({ id: "chat.history.workingFor" }, { duration: durationLabel ?? "" })
         : durationLabel
           ? intl.formatMessage({ id: "chat.history.workedFor" }, { duration: durationLabel })

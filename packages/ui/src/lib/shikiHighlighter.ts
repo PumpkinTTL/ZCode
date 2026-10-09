@@ -58,11 +58,14 @@ const highlighterCache = new Map<
   Promise<HighlighterGeneric<BundledLanguage, BundledTheme>>
 >();
 const tokensCache = new Map<string, TokenizedCode>();
+// 单条 ThemedToken[][] 约是源码体积 5-20 倍的对象图；不淘汰的话长会话全量
+// 水合会把历史里每个代码块都永久常驻在堆里。LRU 封顶：命中续期，超限淘汰最旧。
+const MAX_TOKENS_CACHE_ENTRIES = 300;
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
-// 内存诊断计数器：tokensCache 目前无淘汰，是审计里
-// renderer 最可疑的增长点，先把条数落到日志里。
+// 内存诊断计数器：tokensCache 已 LRU 封顶，条数与上限一并落日志。
 uiMemoryDiagnosticsRegistry.register("shiki", () => ({
   tokensCache: tokensCache.size,
+  tokensCacheCap: MAX_TOKENS_CACHE_ENTRIES,
   highlighters: highlighterCache.size,
 }));
 
@@ -138,6 +141,9 @@ export const highlightCode = (
 
   const cached = tokensCache.get(tokensCacheKey);
   if (cached) {
+    // LRU 续期：Map 迭代按插入序，删了重插让命中项沉底（最旧在队首）。
+    tokensCache.delete(tokensCacheKey);
+    tokensCache.set(tokensCacheKey, cached);
     // 缓存命中时也需要通知 effect，但不能同步触发 setState。
     // 历史消息恢复时大量代码块会在同一次提交后挂载；同步 callback 会把 cache-hit 变成嵌套更新，
     // 和 Streamdown 的重渲染叠在一起时容易触发 React #185。推迟到微任务后再交给幂等 setter。
@@ -174,6 +180,11 @@ export const highlightCode = (
       };
 
       tokensCache.set(tokensCacheKey, tokenized);
+      while (tokensCache.size > MAX_TOKENS_CACHE_ENTRIES) {
+        const oldestKey = tokensCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        tokensCache.delete(oldestKey);
+      }
 
       const subs = subscribers.get(tokensCacheKey);
       if (subs) {
