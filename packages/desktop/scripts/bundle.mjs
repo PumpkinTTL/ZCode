@@ -90,9 +90,10 @@ const requiredRuntimeModules = [
   // Polaris：OTel 闭包（sdk-metrics/OTLP exporter×2，零消费方）与 pngjs（darwin 专属
   // icns 解析链，已按平台门控注入）从注入清单移除；校验名单与注入清单同口径，
   // 不再对已裁剪包做机械校验。
-  // @arms/rum-core 运行时会从 CJS 入口继续 require('@babel/runtime/helpers/*')。
-  // 它把 @babel/runtime 挂在 peerDependencies，pnpm workspace 开发态通常能解析，
-  // 但如果生产包没把该 peer 运行时带进 app.asar，已安装应用会在主进程启动阶段直接崩溃。
+  // @babel/runtime 是 desktop 的显式生产依赖；历史上由 CJS 运行时的 helper 解析链引入
+  // （原消费方 @arms/rum-core 已随遥测退役移除）。当前仓库代码未直接引用它，但打包态
+  // node_modules 里可能仍有 CJS 外部依赖的 helper 兜底路径，未做打包验证前保留条目与依赖。
+  // 校验目的不变：@babel/runtime 若缺失，依赖其 helper 的 CJS 环节会在主进程启动阶段崩溃。
   // 这里把 @babel/runtime 纳入 bundle 后机械校验，防止坏包继续流出。
   "@babel/runtime",
   // services 里的代理探测会在运行时 require("undici")。
