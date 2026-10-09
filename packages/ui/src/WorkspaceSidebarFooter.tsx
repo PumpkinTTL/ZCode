@@ -289,7 +289,12 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const openQuotaSettings = useCallback(() => {
     setPendingSettingsSection("providerQuota");
     openSettingsTab("providerQuota");
-  }, [openSettingsTab]);
+    // 未登录直接拉起统一登录（站长令：用量额度未登录就该跳登录）。必须是
+    // 一次性用户动作——曾挂在设置页挂载 effect 里，X 关闭后设置页重挂载会
+    // 再开，形成「登录页永远关不掉」的死循环。关掉登录页落在「我的额度」
+    // 引导卡，不再弹回。
+    if (!nimbusLoggedIn) onLogin?.();
+  }, [openSettingsTab, nimbusLoggedIn, onLogin]);
   const [desktopZoomLevel, setDesktopZoomLevel] = useState(0);
   const runDesktopZoomCommand = useCallback(
     (command: (typeof DesktopCommandIds)["ZoomIn" | "ZoomOut" | "ResetZoom"]) => {
