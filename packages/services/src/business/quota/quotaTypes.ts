@@ -234,3 +234,32 @@ export interface QuotaResetCard {
   readonly dailyUsed: number;
   readonly dailyLimit: number | null;
 }
+
+/**
+ * 组合展示标签（/v1/models 的 combo 条目，服务端白名单三值）：
+ * 纯展示，不参与任何计费/能力判定。
+ */
+export type QuotaModelDisplayTag = "recommended" | "limited_time" | "peak_pricing";
+
+/**
+ * 限时折扣展示载荷（服务端已按当前时间判定生效才下发；starts_at 不下发）。
+ * ends_at 为 unix 秒；客户端只做截止提示，不做本地时间判定。
+ */
+export interface QuotaModelPromo {
+  readonly label: string;
+  readonly note: string | null;
+  readonly endsAt: number | null;
+}
+
+/**
+ * 模型目录条目（GET /v1/models 与免登录 /app-updates/models 共用构建器）。
+ * id 是唯一必填字段；展示元数据（multiplier/tags/promo）仅组合（combo）条目
+ * 且服务端配置了才出现，直连模型不带 —— 容错读法，缺省即 undefined。
+ */
+export interface QuotaModelCatalogEntry {
+  readonly id: string;
+  /** 组合计费倍率（如 0.5 = 半价）；未配置组合级倍率时不下发。 */
+  readonly multiplier: number | null;
+  readonly tags: readonly QuotaModelDisplayTag[];
+  readonly promo: QuotaModelPromo | null;
+}

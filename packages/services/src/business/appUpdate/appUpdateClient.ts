@@ -16,6 +16,8 @@ import type {
   AppReleaseVersion,
   AppUpdateCheck,
 } from "./appUpdateTypes.js";
+import { projectModelCatalogEntries } from "../quota/quotaClient.js";
+import type { QuotaModelCatalogEntry } from "../quota/quotaTypes.js";
 
 /** 非 2xx 时抛出；message 为可直接展示的中文文案。 */
 export class AppUpdateApiError extends Error {
@@ -223,6 +225,20 @@ export class AppUpdateApiClient {
           : "",
       )
       .filter((id) => id.length > 0);
+  }
+
+  /**
+   * 公开模型目录（免鉴权）：与 fetchPublicModelIds 同一端点、同一构建器；
+   * 返回完整条目（含组合倍率/标签/限时折扣展示元数据，与 /v1/models 同构）。
+   */
+  async fetchPublicModelCatalog(signal?: AbortSignal): Promise<QuotaModelCatalogEntry[]> {
+    const response = await this.#fetchImpl(
+      `${this.#baseUrl}/api/v1/user/app-updates/models`,
+      { signal },
+    );
+    if (!response.ok) throw await toApiError(response);
+    const body = (await parseJson(response)) as { data?: unknown } | null;
+    return projectModelCatalogEntries(body?.data);
   }
 
   /**

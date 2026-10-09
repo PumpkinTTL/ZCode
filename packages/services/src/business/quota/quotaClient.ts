@@ -338,17 +338,18 @@ export class QuotaApiClient {
     if (!response.ok && response.status !== 404) throw await toApiError(response);
   }
 
-  async listModelIds(apiKey: string, signal?: AbortSignal): Promise<string[]> {
+  /**
+   * 模型目录（GET /v1/models；组合条目带展示元数据 multiplier/tags/promo）。
+   * 展示字段一律容错读法：服务端未配置/脏值就当没有，不猜、不拦整个目录。
+   */
+  async listModelCatalog(apiKey: string, signal?: AbortSignal): Promise<QuotaModelCatalogEntry[]> {
     const response = await this.#fetchImpl(`${this.#baseUrl}${MODELS_PATH}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal,
     });
     if (!response.ok) throw await toApiError(response);
     const body = (await parseJson(response)) as { data?: unknown } | null;
-    const items = Array.isArray(body?.data) ? (body.data as Array<Record<string, unknown>>) : [];
-    return items
-      .map((item) => (typeof item.id === "string" ? item.id : ""))
-      .filter((id) => id.length > 0);
+    return projectModelCatalogEntries(body?.data);
   }
 
   /**
@@ -703,6 +704,61 @@ export function projectEmailMasked(me: Record<string, unknown>): string | null {
   return email || null;
 }
 
+// ---- 模型目录展示元数据解析（组合条目；服务端已做时间判定与白名单） ----
+
+const MODEL_DISPLAY_TAGS: readonly QuotaModelDisplayTag[] = [
+  "recommended",
+  "limited_time",
+  "peak_pricing",
+];
+
+/** 白名单标签解析：非数组/非字符串/白名单外/重复全部丢弃（保序去重）。 */
+function parseModelDisplayTags(value: unknown): QuotaModelDisplayTag[] {
+  if (!Array.isArray(value)) return [];
+  const out: QuotaModelDisplayTag[] = [];
+  for (const item of value) {
+    if (
+      typeof item === "string" &&
+      MODEL_DISPLAY_TAGS.includes(item as QuotaModelDisplayTag) &&
+      !out.includes(item as QuotaModelDisplayTag)
+    ) {
+      out.push(item as QuotaModelDisplayTag);
+    }
+  }
+  return out;
+}
+
+/** 限时折扣载荷：服务端「生效才下发」，这里只验形；ends_at 归一到毫秒。 */
+function parseModelPromo(value: unknown): QuotaModelPromo | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  const label = readString(record.label).trim();
+  if (!label) return null;
+  const note = readString(record.note).trim();
+  const endsAtSeconds = readNumber(record.ends_at);
+  return {
+    label,
+    note: note || null,
+    endsAt: endsAtSeconds !== null && endsAtSeconds > 0 ? normalizeEpochMs(endsAtSeconds) : null,
+  };
+}
+
+/**
+ * 模型目录 data 数组 → 条目列表（/v1/models 与免登录 /app-updates/models 共用同一
+ * 构建器与同一解析：组合展示元数据透传，直连模型条目字段缺省）。
+ */
+export function projectModelCatalogEntries(data: unknown): QuotaModelCatalogEntry[] {
+  const items = Array.isArray(data) ? (data as Array<Record<string, unknown>>) : [];
+  return items
+    .filter((item) => typeof item.id === "string" && item.id.length > 0)
+    .map((item) => ({
+      id: item.id as string,
+      multiplier: readNumber(item.multiplier),
+      tags: parseModelDisplayTags(item.tags),
+      promo: parseModelPromo(item.promo),
+    }));
+}
+
 /**
  * 后端 expires_at 是 Unix **秒**（32 位 Integer 列）；前端 Date/Intl 一律要毫秒。
  * 容错：若上游某天改发毫秒（>1e12），原样保留，避免二次放大。
@@ -719,6 +775,9 @@ function normalizeEpochMs(seconds: number): number {
 import type {
   QuotaCheckinResult,
   QuotaCheckinStatus,
+  QuotaModelCatalogEntry,
+  QuotaModelDisplayTag,
+  QuotaModelPromo,
   QuotaNotice,
   QuotaPasswordResetParams,
   QuotaRechargeOrderCreated,

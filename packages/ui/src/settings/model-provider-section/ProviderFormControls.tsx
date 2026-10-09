@@ -5,6 +5,11 @@ import { Loader2Icon, Trash2, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { ModelBrandIcon } from "@/components/ModelBrandIcon.js";
 import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadge.js";
+import { NimbusModelDisplayBadges } from "@/components/NimbusModelDisplayBadges.js";
+import {
+  getNimbusModelDisplayMeta,
+  useNimbusModelDisplayMetaVersion,
+} from "@/lib/nimbusModelDisplayMeta.js";
 import { Switch } from "@/components/ui/switch.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useProviderModelDraft } from "@/settings/model-provider-section/useProviderModelDraft.js";
@@ -47,6 +52,9 @@ export function ModelRowInput({
   onTest?: (model: string) => Promise<ModelConnectivityResult>;
 }) {
   const { intl, locale } = useZCodeIntl();
+  // 官方模型展示元数据发布后重渲染（仅官方供应商行会命中快照，其余供应商行零变化）。
+  useNimbusModelDisplayMetaVersion();
+  const nimbusDisplayMeta = getNimbusModelDisplayMeta(providerId, model.modelId);
   const { showFeedback } = useProviderDetailFeedback();
   const [isTesting, setIsTesting] = useState(false);
   const [metadataDialogOpen, setMetadataDialogOpen] = useState(false);
@@ -278,6 +286,7 @@ export function ModelRowInput({
           ) ? (
             <ModelInputCapabilityBadge />
           ) : null}
+          {nimbusDisplayMeta ? <NimbusModelDisplayBadges meta={nimbusDisplayMeta} /> : null}
         </div>
         {shouldShowTestButton ? (
           <Button

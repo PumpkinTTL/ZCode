@@ -14,7 +14,9 @@ import type {
   ModelSelection,
   ModelSelectionView,
   ProviderSettingsProviderView,
+  QuotaModelCatalogEntry,
 } from "@zcode/services";
+import { publishNimbusModelDisplayMeta } from "@/lib/nimbusModelDisplayMeta.js";
 import { completeNewModelSelection } from "@zcode/provider";
 import {
   NIMBUS_PROVIDER_LABEL,
@@ -50,10 +52,10 @@ function resolveNimbusAccessRecipe(baseUrl: string): {
   };
 }
 
-/** 认 Nimbus 供应商：模板按 templateId 认；模板缺失按展示名认；手工建的本地联调供应商按
+/** 认 Nimbus 供应商（导出供展示元数据刷新复用）：模板按 templateId 认；模板缺失按展示名认；手工建的本地联调供应商按
  * 「API 基址与额度服务同源」认领 —— 否则登录会自动再建一个 "Nimbus"，把用户已有的可用
  * 配置架空成重复项（实测：手工建的 "NimbusLocal" 指向同一中继时命中本条）。 */
-function findNimbusProvider(
+export function findNimbusProvider(
   providers: readonly ProviderSettingsProviderView[],
   baseUrl: string,
 ): ProviderSettingsProviderView | undefined {
@@ -87,7 +89,7 @@ export async function provisionNimbusProvider(deps: {
   readonly quota: {
     ensureApiKey(): Promise<string>;
     getBaseUrl(): Promise<string>;
-    getModelIds(apiKey: string): Promise<readonly string[]>;
+    getModelCatalog(apiKey: string): Promise<readonly QuotaModelCatalogEntry[]>;
   };
   readonly providerSettings: IProviderSettingsService;
   readonly logger?: { warn: (...args: unknown[]) => void };
@@ -95,10 +97,11 @@ export async function provisionNimbusProvider(deps: {
   // base 与额度服务同源（dev=本地/打包=域名/环境变量可覆盖），模型调用与密钥管理都指向它。
   const baseUrl = await deps.quota.getBaseUrl();
   const apiKey = await deps.quota.ensureApiKey();
-  const modelIds = await deps.quota.getModelIds(apiKey).catch((error: unknown) => {
+  const modelCatalog = await deps.quota.getModelCatalog(apiKey).catch((error: unknown) => {
     deps.logger?.warn("[nimbus] 拉取模型目录失败，先建供应商，模型可手动添加", error);
-    return [] as string[];
+    return null;
   });
+  const modelIds = modelCatalog?.map((entry) => entry.id) ?? [];
 
   const view = await deps.providerSettings.getView();
   const existing = findNimbusProvider(view.providers, baseUrl);
@@ -114,6 +117,8 @@ export async function provisionNimbusProvider(deps: {
       ...(modelIds.length > 0 ? { personalModelIds: [...modelIds] } : {}),
     });
     await pinFirst(deps.providerSettings, view.providerOrder, existing.providerId);
+    // 展示元数据（倍率/标签/折扣）随本次目录拉取一并发布；拉取失败保留旧快照。
+    if (modelCatalog) publishNimbusModelDisplayMeta(existing.providerId, modelCatalog);
     return { providerId: existing.providerId, modelCount: modelIds.length, reused: true };
   }
 
@@ -140,6 +145,7 @@ export async function provisionNimbusProvider(deps: {
         },
   );
   await pinFirst(deps.providerSettings, view.providerOrder, created.providerId);
+  if (modelCatalog) publishNimbusModelDisplayMeta(created.providerId, modelCatalog);
   return { providerId: created.providerId, modelCount: modelIds.length, reused: false };
 }
 

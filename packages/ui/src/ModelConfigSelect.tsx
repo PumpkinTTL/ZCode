@@ -46,6 +46,11 @@ import {
 } from "@/lib/pickerFocus.js";
 import { RollingToolbarLabel } from "@/chat-input-toolbar/RollingToolbarLabel.js";
 import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadge.js";
+import { NimbusModelDisplayBadges } from "@/components/NimbusModelDisplayBadges.js";
+import {
+  getNimbusModelDisplayMeta,
+  useNimbusModelDisplayMetaVersion,
+} from "@/lib/nimbusModelDisplayMeta.js";
 import { ModelBrandIcon } from "@/components/ModelBrandIcon.js";
 import { decodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
 
@@ -237,6 +242,9 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
   triggerBadge,
 }: ModelConfigSelectProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  // 官方模型展示元数据（倍率/标签/折扣）发布后重渲染；渲染期按 item 的
+  // providerId+modelId 实时读快照，不影响条目对象身份 memo。
+  useNimbusModelDisplayMetaVersion();
   const open = controlledOpen ?? uncontrolledOpen;
   const lastOpenRequestKeyRef = useRef(openRequestKey);
   const hasSelectableModel = modelGroups.length > 0;
@@ -335,6 +343,12 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
               <span className={MODEL_CONFIG_SELECT_BADGE_CLASS_NAME}>{item.badgeLabel}</span>
             ) : null}
             {item.supportsVisionInput ? <ModelInputCapabilityBadge /> : null}
+            {(() => {
+              // item.iconProviderId/iconModelId 只描述模型身份（registry 条目必填）；
+              // 快照内部做 providerId 匹配，其他供应商的同名模型不会串台。
+              const displayMeta = getNimbusModelDisplayMeta(item.iconProviderId, item.iconModelId);
+              return displayMeta ? <NimbusModelDisplayBadges meta={displayMeta} /> : null;
+            })()}
           </span>
           {itemLocked ? (
             <TooltipProvider>

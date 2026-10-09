@@ -40,6 +40,9 @@ export type {
   QuotaNotice,
   QuotaCheckinStatus,
   QuotaCheckinResult,
+  QuotaModelCatalogEntry,
+  QuotaModelDisplayTag,
+  QuotaModelPromo,
 } from "./quota/quotaTypes.js";
 // App 更新检查 / 版本目录（更新日志）/ 在线心跳（cbcn-cloud app_release.py 契约）。
 export {

@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useServices } from "@/hooks/useServices.js";
+import { useNimbusModelCatalogRefresh } from "@/business/quota/nimbusModelCatalogRefresh.js";
 import { TECHNICAL_INPUT_ATTRIBUTES } from "@/lib/technicalInputAttributes.js";
 import { ApiKeyInput } from "./ApiKeyInput.js";
 import { ModelRowInput } from "./ProviderFormControls.js";
@@ -374,6 +375,8 @@ export function ProviderModelsSection({
   onReorderModelIds?: (modelIds: string[]) => void;
   settingsRevision?: number;
 }) {
+  // 官方模型展示元数据（倍率/标签/折扣）挂载时按需刷新（模块级节流，非官方供应商也安全）。
+  useNimbusModelCatalogRefresh();
   const { intl } = useZCodeIntl();
   const { providerSettingsService } = useServices();
   const [addDialogOpen, setAddDialogOpen] = useState(false);

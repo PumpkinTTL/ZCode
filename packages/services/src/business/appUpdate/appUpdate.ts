@@ -11,6 +11,7 @@
  * 缺省（无设备身份）时后端自动回落 IP+UA 哈希（app_release.py:83-88）。
  */
 import { ServiceChannels } from "@zcode/shared";
+import type { QuotaModelCatalogEntry } from "../quota/quotaTypes.js";
 import { createServiceDescriptor } from "../../descriptors.js";
 import { NIMBUS_CLIENT_ID } from "../quota/quota.js";
 import type { AppReleaseHistoryEntry, AppUpdateCheckResult } from "./appUpdateTypes.js";
@@ -46,6 +47,8 @@ export interface IAppUpdateService {
    * 未知应用（404）按空列表处理；失败抛 AppUpdateApiError。
    */
   listPublicModelIds(): Promise<readonly string[]>;
+  /** 同端点完整目录（含组合倍率/标签/限时折扣展示元数据）；404 按空目录。 */
+  listPublicModelCatalog(): Promise<readonly QuotaModelCatalogEntry[]>;
   /**
    * 在线心跳（单次）：POST /user/app-updates/{client_id}/heartbeat（app_release.py:210）。
    *

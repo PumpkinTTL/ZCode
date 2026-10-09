@@ -51,6 +51,7 @@ import { logger } from "@/logger.js";
 import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
 import { buildRegistryModelSelectGroups } from "@/lib/modelSelectionGroups.js";
 import { provisionNimbusProvider } from "@/business/quota/provisionNimbusProvider.js";
+import { useNimbusModelCatalogRefresh } from "@/business/quota/nimbusModelCatalogRefresh.js";
 import { toast } from "@/components/ui/toast.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useNimbusAccountState } from "@/business/quota/nimbusAccountState.js";
@@ -197,6 +198,8 @@ function V4ComposerModelControlsImpl({
 
   const { providerQuotaService, providerSettingsService } = useServices();
   const nimbusAccount = useNimbusAccountState();
+  // 官方模型展示元数据（倍率/标签/折扣）挂载时按需刷新（模块级节流）。
+  useNimbusModelCatalogRefresh();
   // 官方（Nimbus）模型目录手动同步：入口在菜单里官方分组标题行的图标（CloudDownload，
   // 同步中转圈），不弹任何独立面板。幂等开通（key/基址/模型目录以远端为准）。
   const [officialSyncing, setOfficialSyncing] = useState(false);

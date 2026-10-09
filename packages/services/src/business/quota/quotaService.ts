@@ -35,6 +35,7 @@ import {
 import type {
   QuotaCheckinResult,
   QuotaCheckinStatus,
+  QuotaModelCatalogEntry,
   QuotaNotice,
   QuotaPasswordResetParams,
   QuotaRechargeOrderCreated,
@@ -524,10 +525,15 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
       await client.redeemResetCard(token, cardId);
     },
 
-    /** 用调用密钥拉模型目录（OpenAI 兼容 /v1/models），返回去重后的模型 id。 */
-    async getModelIds(apiKey: string): Promise<string[]> {
-      const ids = await client.listModelIds(apiKey);
-      return [...new Set(ids)];
+    /** 用调用密钥拉模型目录（/v1/models）：按 id 去重保序，重复 id 保留首个条目。 */
+    async getModelCatalog(apiKey: string): Promise<QuotaModelCatalogEntry[]> {
+      const entries = await client.listModelCatalog(apiKey);
+      const seen = new Set<string>();
+      return entries.filter((entry) => {
+        if (seen.has(entry.id)) return false;
+        seen.add(entry.id);
+        return true;
+      });
     },
 
     async getUsageDaily(days: number): Promise<readonly QuotaUsageDay[]> {

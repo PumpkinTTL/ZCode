@@ -12,6 +12,7 @@ import { createServiceDescriptor } from "../../descriptors.js";
 import type {
   QuotaCheckinResult,
   QuotaCheckinStatus,
+  QuotaModelCatalogEntry,
   QuotaNotice,
   QuotaPasswordResetParams,
   QuotaRechargeOrderCreated,
@@ -100,8 +101,8 @@ export interface IProviderQuotaService {
    * 可覆盖）。UI 装配 Nimbus 供应商时必须用它而不是编译期常量，保证与额度服务同源。
    */
   getBaseUrl(): Promise<string>;
-  /** 用 sk- 密钥拉模型目录（OpenAI 兼容 /v1/models），返回模型 id 列表。 */
-  getModelIds(apiKey: string): Promise<readonly string[]>;
+  /** 用 sk- 密钥拉模型目录（OpenAI 兼容 /v1/models；组合条目带倍率/标签/折扣展示元数据）。 */
+  getModelCatalog(apiKey: string): Promise<readonly QuotaModelCatalogEntry[]>;
   /**
    * 我的可用重置卡数量（GET /api/v1/user/reset-cards：已发放绑定本账号、
    * 未使用的用量重置卡）。未登录或查询失败返回 0（纯展示数据，不抛错）。

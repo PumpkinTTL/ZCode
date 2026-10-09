@@ -14,6 +14,7 @@
  * AppID 是客户端公开标识，在线数按设备身份去重）。
  */
 import type { NimbusDeviceKeyProvider } from "../quota/quota.js";
+import type { QuotaModelCatalogEntry } from "../quota/quotaTypes.js";
 import { resolveQuotaBaseUrl } from "../quota/quotaService.js";
 import { APP_UPDATE_CHANNEL, APP_UPDATE_CLIENT_ID } from "./appUpdate.js";
 import type { IAppUpdateService } from "./appUpdate.js";
@@ -167,6 +168,16 @@ export function createAppUpdateService(
         return await client.fetchPublicModelIds();
       } catch (error) {
         // 404（未知应用）按空目录处理，与 checkForUpdate 同一口径；其余照抛。
+        if (error instanceof AppUpdateApiError && error.status === 404) return [];
+        throw error;
+      }
+    },
+
+    /** 同端点完整条目（含组合展示元数据）；404 按空目录，与 listPublicModelIds 同口径。 */
+    async listPublicModelCatalog(): Promise<readonly QuotaModelCatalogEntry[]> {
+      try {
+        return await client.fetchPublicModelCatalog();
+      } catch (error) {
         if (error instanceof AppUpdateApiError && error.status === 404) return [];
         throw error;
       }
