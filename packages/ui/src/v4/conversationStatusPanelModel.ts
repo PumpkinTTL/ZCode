@@ -295,6 +295,10 @@ export function resolveSoleRunningWorkflowRunTarget(
   return workflowRunOpenTarget(model.runningWorkflowRuns[0]!);
 }
 
+function normalizeStartedAt(value: number | undefined): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 export function buildConversationStatusPanelModel(
   input: BuildConversationStatusPanelModelInput,
 ): ConversationStatusPanelModel {
@@ -331,15 +335,20 @@ export function buildConversationStatusPanelModel(
       );
     }
   }
+  // startedAt 防御性归一：非有限数/≤0 一律置 undefined（渲染回退 now → 0 秒）。
+  // 只清脏值，不删条目——计数与 Composer 徽标同源，删条目会把上游缺陷伪装成正常。
   const runningSubagentWorks: ConversationStatusPanelRunningSubagent[] = (
     input.runningSubagents ?? []
   ).map((subagent) => {
     const controlWork = subagentControlByChildSessionId.get(subagent.childSessionId);
-    if (!controlWork) return subagent;
+    const normalized = normalizeStartedAt(subagent.startedAt);
+    if (!controlWork && normalized === subagent.startedAt) return subagent;
     return {
       ...subagent,
-      controlWorkId: controlWork.workId,
-      cancellable: controlWork.cancellable !== false,
+      startedAt: normalized,
+      ...(controlWork
+        ? { controlWorkId: controlWork.workId, cancellable: controlWork.cancellable !== false }
+        : {}),
     };
   });
   const projectedChildSessionIds = new Set(
@@ -357,7 +366,7 @@ export function buildConversationStatusPanelModel(
       subagentType: "subagent",
       title: controlWork.title,
       status: controlWork.blocked ? "blocked" : "running",
-      startedAt: controlWork.startedAt,
+      startedAt: normalizeStartedAt(controlWork.startedAt),
       cancellable: controlWork.cancellable !== false,
     });
   }

@@ -161,6 +161,10 @@ function formatDurationUnits(
   formatMessage: ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"],
 ) {
   const seconds = Math.max(0, Math.floor(totalSeconds));
+  // 与 formatBackgroundTaskElapsedLabel 同一口径的 24 小时封顶（陈旧条目防御）。
+  if (seconds > 24 * 3600) {
+    return formatMessage({ id: "chat.longRunning.elapsedOverCap" }, { hours: "24" });
+  }
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const restSeconds = seconds % 60;
@@ -1338,7 +1342,7 @@ function SubagentStatusSection({
   title: string;
   subagents: readonly ConversationStatusPanelRunningSubagent[];
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl, locale } = useZCodeIntl();
   const [now, setNow] = useState(() => Date.now());
   const ordered = useMemo(
     () => [...subagents].sort((left, right) => (left.startedAt ?? 0) - (right.startedAt ?? 0)),
@@ -1427,7 +1431,19 @@ function SubagentStatusSection({
                   {subagent.title}
                 </span>
                 <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-ui-base">
-                  <span className="text-ui-base tabular-nums text-[var(--color-foreground-subtle)]">
+                  <span
+                    className="text-ui-base tabular-nums text-[var(--color-foreground-subtle)]"
+                    // 悬浮给出真实开始时刻：陈旧条目（核心链路冷恢复边界的已知
+                    // 表现）靠它可以被辨识，而不是只看到一个大得离谱的时长。
+                    title={
+                      subagent.startedAt !== undefined
+                        ? intl.formatMessage(
+                            { id: "chat.statusPanel.startedAtTitle" },
+                            { time: new Date(subagent.startedAt).toLocaleString(locale) },
+                          )
+                        : undefined
+                    }
+                  >
                     {formatBackgroundTaskElapsedLabel(
                       Math.max(0, now - (subagent.startedAt ?? now)),
                       intl.formatMessage,
