@@ -2,9 +2,9 @@
  * Polaris 自有业务：App 更新检查 / 版本目录（更新日志）/ 在线心跳的领域类型。
  *
  * 契约出处（cbcn-cloud，只读对接，字段名与语义以后端为准）：
- * - backend/app/api/v1/app_release.py:113  GET /api/v1/user/app-updates/{client_id}/latest
- * - backend/app/api/v1/app_release.py:210  POST /api/v1/user/app-updates/{client_id}/heartbeat
- * - backend/app/api/v1/app_release.py:254  GET /api/v1/user/app-updates/{client_id}/versions
+ * - backend/app/api/v1/app_release.py:113  GET /api/v1/app-updates/{client_id}/latest
+ * - backend/app/api/v1/app_release.py:210  POST /api/v1/app-updates/{client_id}/heartbeat
+ * - backend/app/api/v1/app_release.py:254  GET /api/v1/app-updates/{client_id}/versions
  *
  * 字段口径沿用 quota 层同一原则「看不到的字段不要猜」：投影层容错读法，
  * 缺键/坏形状不抛错，交给 UI 按缺省值渲染。

@@ -3,9 +3,9 @@
  *
  * 路径均挂在用户侧前缀 /api/v1/user 下（app_release.router 无自身 prefix，
  * 经 api/v1/__init__.py:29-30 合并进 user.router，见 cbcn-cloud __init__.py 注释）：
- * - GET  /api/v1/user/app-updates/{client_id}/latest?platform=&channel=&current_version=
- * - GET  /api/v1/user/app-updates/{client_id}/versions?channel=&limit=
- * - POST /api/v1/user/app-updates/{client_id}/heartbeat  body {version, device, platform}
+ * - GET  /api/v1/app-updates/{client_id}/latest?platform=&channel=&current_version=
+ * - GET  /api/v1/app-updates/{client_id}/versions?channel=&limit=
+ * - POST /api/v1/app-updates/{client_id}/heartbeat  body {version, device, platform}
  *
  * 错误口径与 quotaClient 同款：非 2xx 抛 AppUpdateApiError，detail 是后端给的
  * 可直接展示的中文；latest 的 404（未发布任何版本）由服务层翻译成 null。
@@ -165,7 +165,7 @@ export class AppUpdateApiClient {
   }
 
   #path(clientId: string, suffix: string): string {
-    return `/api/v1/user/app-updates/${encodeSegment(clientId)}${suffix}`;
+    return `/api/v1/app-updates/${encodeSegment(clientId)}${suffix}`;
   }
 
   /**
@@ -212,7 +212,7 @@ export class AppUpdateApiClient {
    */
   async fetchPublicModelIds(signal?: AbortSignal): Promise<string[]> {
     const response = await this.#fetchImpl(
-      `${this.#baseUrl}/api/v1/user/app-updates/models`,
+      `${this.#baseUrl}/api/v1/app-updates/models`,
       { signal },
     );
     if (!response.ok) throw await toApiError(response);
@@ -233,7 +233,7 @@ export class AppUpdateApiClient {
    */
   async fetchPublicModelCatalog(signal?: AbortSignal): Promise<QuotaModelCatalogEntry[]> {
     const response = await this.#fetchImpl(
-      `${this.#baseUrl}/api/v1/user/app-updates/models`,
+      `${this.#baseUrl}/api/v1/app-updates/models`,
       { signal },
     );
     if (!response.ok) throw await toApiError(response);
