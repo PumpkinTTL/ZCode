@@ -590,9 +590,12 @@ export function SessionPane({
     enabled: shareSelectionPanelVisible,
     onDismiss: dismissShareSelectionPanel,
   });
+  // 分享通道全部门控在 shareActive：这两条 useMemo 原先是无条件的，每帧（=每次
+  // rows 引用变化，流式下每秒几十次）都要全量重建 renderUnits + 逐 unit 的
+  // 文本预览归一化——分享未开启时纯属浪费。开启后依赖原样，行为不变。
   const shareRenderUnits = useMemo(
-    () => buildConversationTurnRenderUnits(snapshot?.rows.window ?? []),
-    [snapshot?.rows.window],
+    () => (shareActive ? buildConversationTurnRenderUnits(snapshot?.rows.window ?? []) : []),
+    [shareActive, snapshot?.rows.window],
   );
   const shareItems = useMemo(
     () =>
@@ -610,12 +613,12 @@ export function SessionPane({
     [intl, shareRenderUnits],
   );
   const eligibleShareItems = useMemo(
-    () => shareItems.filter((item) => !item.isRunning),
-    [shareItems],
+    () => (shareActive ? shareItems.filter((item) => !item.isRunning) : []),
+    [shareActive, shareItems],
   );
   const eligibleShareRowIds = useMemo(
-    () => new Set(eligibleShareItems.map((item) => item.rowId)),
-    [eligibleShareItems],
+    () => new Set(shareActive ? eligibleShareItems.map((item) => item.rowId) : []),
+    [shareActive, eligibleShareItems],
   );
   useEffect(() => {
     if (!sessionId || !shareActive) return;

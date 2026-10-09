@@ -6,7 +6,8 @@
 //   3. base 与状态同生共死——断档时状态未被污染，携当前水位重订阅，由服务端裁决 resume/snapshot。
 // 除 optimistic overlay（pending 命令展示）外，本 store 不产生任何 conversation 事实。
 import {
-  applyConversationDeltas,
+  applyConversationDeltasMutable,
+  createMutableConversationSnapshotAccumulator,
   isDeterministicContentFault,
   parseConversationTopic,
   PROTOCOL_V4_LIMITS,
@@ -44,6 +45,17 @@ const RUNTIME_RECYCLE_RETRY_DELAYS_MS = [250, 1_000, 3_000] as const;
  * 延迟，又能尽快从“CLI 继续工作、订阅完全静默”的半开通道自愈。超时只恢复订阅，不重放命令。
  */
 const ACCEPTED_INPUT_PROJECTION_GRACE_MS = 2_000;
+
+/**
+ * 完整目录水合的单次拉取页数预算（page = rowsRangeMaxLimit = 200 行）。
+ *
+ * 目录导航要求「分支全量 rows 在一次 snapshot 里」；不设预算时，一个几万行的
+ * 长分支会把全部历史（含截图行）一次性灌进 renderer projection 且常驻。48 页
+ * ≈ 9600 行——覆盖现实中的极长会话，同时给病态分支一个硬上界。超预算返回
+ * hydrated-partial（终态，不重试）：目录覆盖最新 9600 行内的全部轮次，更早的
+ * 轮次在用户向上滚动（loadOlder 预取）自然补进来，导航仍可跳转已覆盖部分。
+ */
+export const TURN_NAVIGATOR_HYDRATION_MAX_PAGES = 48;
 const ACCEPTED_INPUT_COMMAND_TYPES = new Set(["sendText"]);
 
 /** 退避耗尽时展示给用户的 lastError（无底层 error 对象可引用的换代路径）。 */
@@ -329,7 +341,7 @@ export class ConversationProjectionStore {
   private turnNavigatorHydrationTerminal:
     | (Extract<
         ConversationTurnNavigatorHydrationResult,
-        { status: "hydrated" | "not-enough-queries" }
+        { status: "hydrated" | "hydrated-partial" | "not-enough-queries" }
       > & { directoryRevision: number })
     | null = null;
   private closed = false;
@@ -731,9 +743,14 @@ export class ConversationProjectionStore {
       }
       return;
     }
-    const applied = applyConversationDeltas(current, frame.payload.deltas);
+    // 帧内原地应用：不可变逐条 apply 每 delta 都全量复制 rows.window 并线性查 rowId，
+    // 长会话流式下是 O(k×N)；mutable 累加器在「未发布候选快照」隔离边界内复用同一份
+    // 数组与 rowIndexById（语义与不可变实现逐字节一致，有黄金测试背书）。current 是
+    // 已发布快照，累加器构造时已浅拷贝 window，订阅者持有的旧数组不被触碰。
+    const accumulator = createMutableConversationSnapshotAccumulator(current);
+    applyConversationDeltasMutable(accumulator, frame.payload.deltas);
     // seq 是快照对齐水位，delta 帧应用完推进到帧右端点。
-    const next = { ...applied, seq: frame.toSeq };
+    const next = { ...accumulator.snapshot, seq: frame.toSeq };
     logSubagentProjectionTransition(this.topic, current, next, "deltas");
     const removedFromRowId = frame.payload.deltas.reduce<number | null>(
       (earliest, delta) =>
@@ -1072,6 +1089,7 @@ export class ConversationProjectionStore {
     const pages: ConversationRow[][] = [];
     let beforeRowId = initialBeforeRowId;
     let committed = false;
+    let capped = false;
     this.setState({ loadingOlder: true });
     logger.debug("[v4-store] 完整问题目录开始补拉历史 rows", {
       beforeRowId,
@@ -1117,6 +1135,14 @@ export class ConversationProjectionStore {
         pages.push(older);
         beforeRowId = nextBeforeRowId;
         if (!result.hasMore) break;
+        if (pages.length >= TURN_NAVIGATOR_HYDRATION_MAX_PAGES) {
+          capped = true;
+          logger.debug("[v4-store] 完整问题目录达到页数预算，按最新一段截断水合", {
+            pages: pages.length,
+            sessionId,
+          });
+          break;
+        }
       }
 
       const current = this.state.snapshot;
@@ -1178,7 +1204,9 @@ export class ConversationProjectionStore {
         sessionId,
       });
       const result = {
-        status: "hydrated" as const,
+        // capped = 分支比预算更长：目录覆盖最新一段（终态，不重试）；未超预算
+        // 与旧行为逐字节一致（hydrated）。
+        status: capped ? ("hydrated-partial" as const) : ("hydrated" as const),
         logEpoch: initialLogEpoch,
         directoryRevision,
       };

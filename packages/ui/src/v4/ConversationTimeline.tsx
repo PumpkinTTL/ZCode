@@ -650,7 +650,11 @@ function ConversationTimelineImpl({
     });
     void onLoadAllOlder().then((result) => {
       if (attempt.key !== hydrationKey) return;
-      if (result.status === "hydrated" || result.status === "not-enough-queries") {
+      if (
+        result.status === "hydrated" ||
+        result.status === "hydrated-partial" ||
+        result.status === "not-enough-queries"
+      ) {
         attempt.status = "terminal";
         return;
       }
@@ -950,6 +954,28 @@ function ConversationTimelineImpl({
     [syncMessageLayerMask],
   );
 
+  // 视口同步（querySelectorAll + 逐挂载行 getBoundingClientRect + 目录 setState）原先
+  // 每 scroll 事件跑一次；滚动爆发时会一帧内执行多次且每次都触发强制布局。
+  // rAF 合帧后每帧至多一次，滚动体感不变、长会话滚动成本与目录规模解耦。
+  const navViewportSyncFrameRef = useRef<number | null>(null);
+  const scheduleTurnNavigatorViewportSync = useCallback(() => {
+    if (navViewportSyncFrameRef.current !== null) return;
+    navViewportSyncFrameRef.current = window.requestAnimationFrame(() => {
+      navViewportSyncFrameRef.current = null;
+      const current = scrollRef.current;
+      if (current) syncTurnNavigatorViewport(current);
+    });
+  }, [syncTurnNavigatorViewport]);
+  useEffect(
+    () => () => {
+      if (navViewportSyncFrameRef.current !== null) {
+        window.cancelAnimationFrame(navViewportSyncFrameRef.current);
+        navViewportSyncFrameRef.current = null;
+      }
+    },
+    [],
+  );
+
   useLayoutEffect(() => {
     const scrollElement = scrollRef.current;
     const messageLayer = messageLayerRef.current;
@@ -1206,7 +1232,7 @@ function ConversationTimelineImpl({
       suppressVirtualizerAdjustmentDuringRestoreRef.current = false;
     }
     lastObservedScrollTopRef.current = element.scrollTop;
-    syncTurnNavigatorViewport(element);
+    scheduleTurnNavigatorViewportSync();
     const following = resolveFollowingAfterScroll({
       following: followingRef.current,
       source: scrollSource,
@@ -1258,7 +1284,7 @@ function ConversationTimelineImpl({
     commitFollowing,
     getActiveUserScrollIntent,
     saveCurrentScrollMemory,
-    syncTurnNavigatorViewport,
+    scheduleTurnNavigatorViewportSync,
     virtualizer,
   ]);
 

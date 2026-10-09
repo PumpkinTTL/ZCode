@@ -70,6 +70,8 @@ const CONVERSATION_TURN_NAVIGATOR_MIN_WIDTH_PX = 864;
 
 export type ConversationTurnNavigatorHydrationResult =
   | { status: "hydrated"; logEpoch: string }
+  /** 分支超过页数预算，按最新一段截断水合（终态，不重试；见 store 预算常量）。 */
+  | { status: "hydrated-partial"; logEpoch: string }
   | { status: "not-enough-queries"; logEpoch: string }
   | { status: "retryable-failure"; logEpoch: string }
   | { status: "stale"; logEpoch: string };
@@ -116,6 +118,39 @@ function truncatePreview(text: string, maxChars: number): string {
   return `${text.slice(0, normalizedMaxChars - 3).trimEnd()}...`;
 }
 
+/**
+ * 预览源文本的有界切片：先截断再归一化。
+ *
+ * 目录预览每帧随 rows 重建；不设界的话长回合全文（可能几十 KB）每帧都要走一次
+ * 全文正则归一化。这里保证「切片后归一化的前缀」与全量归一化一致：保守窗 8x
+ * maxChars，且把落在空白游程中的切口滑到下一个非空白字符（含），避免把一次
+ * 空白折叠切两半。唯一可分辨的差异是段落间存在超过 64 字符连续空白的病态文本。
+ */
+function slicePreviewSource(
+  text: string,
+  maxPreviewChars: number,
+  maxPreviewParagraphs: number,
+): string {
+  const bound = Math.max(512, maxPreviewChars * 8, maxPreviewParagraphs * 512);
+  if (text.length <= bound) {
+    return text;
+  }
+  let end = bound;
+  const runLimit = bound + 64;
+  while (end < text.length && end < runLimit && /\s/u.test(text[end] ?? "")) {
+    end += 1;
+  }
+  if (end < text.length && end === runLimit) {
+    // 超长空白游程（>64）：放弃对齐，停在游程内（归一化只会多折叠一层空白）。
+    return text.slice(0, end);
+  }
+  if (end < text.length) {
+    // 吃掉游程后的第一个非空白字符，保证空白折叠结果与全量前缀一致。
+    end += 1;
+  }
+  return text.slice(0, end);
+}
+
 function buildPreviewText({
   texts,
   fallback,
@@ -127,7 +162,10 @@ function buildPreviewText({
   maxPreviewChars: number;
   maxPreviewParagraphs: number;
 }): string {
-  const paragraphs = normalizePreviewParagraphs(texts.join("\n\n"), maxPreviewParagraphs);
+  const paragraphs = normalizePreviewParagraphs(
+    slicePreviewSource(texts.join("\n\n"), maxPreviewChars, maxPreviewParagraphs),
+    maxPreviewParagraphs,
+  );
   if (paragraphs.length === 0) {
     return fallback;
   }
