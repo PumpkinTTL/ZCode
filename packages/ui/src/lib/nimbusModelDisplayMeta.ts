@@ -64,6 +64,13 @@ export function getNimbusModelDisplayMetaSnapshot(): NimbusModelDisplayMetaSnaps
 }
 
 /** 读取某供应商某模型的展示元数据；providerId 不匹配或未发布时 undefined。 */
+/** 该 providerId 是否是发布过展示元数据的官方（Nimbus）供应商。 */
+export function isNimbusModelDisplayProvider(
+  providerId: string | null | undefined,
+): boolean {
+  return Boolean(providerId) && providerId === snapshot.providerId;
+}
+
 export function getNimbusModelDisplayMeta(
   providerId: string | null | undefined,
   modelId: string | null | undefined,

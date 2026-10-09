@@ -1,17 +1,30 @@
 import type { QuotaModelDisplayTag } from "@zcode/services";
 import type { NimbusModelDisplayMeta } from "@/lib/nimbusModelDisplayMeta.js";
+import { cn } from "@/components/lib/utils.js";
+import { useNimbusAccountState } from "@/business/quota/nimbusAccountState.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 /**
- * 官方模型展示徽标组：计费倍率（如 0.5×）、限时折扣标签（服务端已判定生效）、
- * 组合标签（推荐/限时折扣/高峰定价）。纯展示，不参与任何选择/计费判定。
+ * 官方模型展示徽标组：组合标签（推荐/限时折扣/高峰定价）+ 计费倍率。
+ * 纯展示，不参与任何选择/计费判定。
  *
- * 样式与 ModelConfigSelect 的 badgeLabel 胶囊同族（bg-surface 小胶囊），
- * 折扣标签用 warning 色突出；模型选择器与设置页模型行共用本组件。
+ * 站长定稿（2026-10-10）：
+ * - 登录态标签彩色区分（推荐=绿 / 限时折扣=琥珀 / 高峰定价=红），不要一片灰；
+ * - 未登录全部置灰（锁定态本来就该素），不加花活；
+ * - 倍率放最后、普通字重、不套胶囊——它是个数字不是个标签。
  */
 
-const DISPLAY_BADGE_CLASS_NAME =
-  "shrink-0 rounded-full bg-surface px-1 py-px text-ui-xs font-medium leading-normal text-foreground-subtle";
+const TAG_PILL_CLASS = "shrink-0 rounded-full px-1.5 py-px text-ui-xs leading-normal";
+
+/** 登录态的标签彩色（语义 token，跟随明暗主题）。 */
+const TAG_ACCENT_CLASS: Record<QuotaModelDisplayTag, string> = {
+  recommended:
+    "text-[var(--color-success)] bg-[color-mix(in_oklab,var(--color-success)_12%,transparent)]",
+  limited_time:
+    "text-[var(--color-warning)] bg-[color-mix(in_oklab,var(--color-warning)_14%,transparent)]",
+  peak_pricing:
+    "text-[var(--color-destructive)] bg-[color-mix(in_oklab,var(--color-destructive)_12%,transparent)]",
+};
 
 const TAG_MESSAGE_IDS: Record<QuotaModelDisplayTag, string> = {
   recommended: "model.displayTag.recommended",
@@ -25,7 +38,8 @@ function formatMultiplierValue(value: number): string {
 }
 
 export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMeta }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl } = useZCodeIntl();
+  const { loggedIn } = useNimbusAccountState();
   const promo = meta.promo;
   const promoTitle = promo
     ? [promo.note, promo.endsAt]
@@ -34,7 +48,7 @@ export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMet
           typeof part === "number"
             ? intl.formatMessage(
                 { id: "model.displayPromo.endsAt" },
-                { date: new Date(part).toLocaleDateString(locale) },
+                { date: new Date(part).toLocaleDateString() },
               )
             : part,
         )
@@ -42,9 +56,36 @@ export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMet
     : undefined;
   return (
     <>
+      {meta.tags.map((tag) => (
+        <span
+          key={tag}
+          className={cn(
+            TAG_PILL_CLASS,
+            loggedIn
+              ? TAG_ACCENT_CLASS[tag]
+              : "text-foreground-subtle bg-surface",
+          )}
+        >
+          {intl.formatMessage({ id: TAG_MESSAGE_IDS[tag] })}
+        </span>
+      ))}
+      {promo ? (
+        <span
+          className={cn(
+            TAG_PILL_CLASS,
+            loggedIn
+              ? "text-[var(--color-warning)] bg-[color-mix(in_oklab,var(--color-warning)_14%,transparent)]"
+              : "text-foreground-subtle bg-surface",
+          )}
+          title={promoTitle || undefined}
+        >
+          {promo.label}
+        </span>
+      ) : null}
+      {/* 倍率放最后：普通字重、不套胶囊——一个数字，不是一枚标签 */}
       {meta.multiplier !== null ? (
         <span
-          className={DISPLAY_BADGE_CLASS_NAME}
+          className="shrink-0 text-ui-xs text-foreground-subtle"
           title={intl.formatMessage({ id: "model.displayMeta.multiplierTitle" })}
         >
           {intl.formatMessage(
@@ -53,19 +94,6 @@ export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMet
           )}
         </span>
       ) : null}
-      {promo ? (
-        <span
-          className={`${DISPLAY_BADGE_CLASS_NAME} text-[var(--color-warning)]`}
-          title={promoTitle || undefined}
-        >
-          {promo.label}
-        </span>
-      ) : null}
-      {meta.tags.map((tag) => (
-        <span key={tag} className={DISPLAY_BADGE_CLASS_NAME}>
-          {intl.formatMessage({ id: TAG_MESSAGE_IDS[tag] })}
-        </span>
-      ))}
     </>
   );
 }

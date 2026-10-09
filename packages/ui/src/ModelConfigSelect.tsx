@@ -49,6 +49,7 @@ import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadg
 import { NimbusModelDisplayBadges } from "@/components/NimbusModelDisplayBadges.js";
 import {
   getNimbusModelDisplayMeta,
+  isNimbusModelDisplayProvider,
   useNimbusModelDisplayMetaVersion,
 } from "@/lib/nimbusModelDisplayMeta.js";
 import { ModelBrandIcon } from "@/components/ModelBrandIcon.js";
@@ -330,11 +331,21 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
       } as const;
       const content = (
         <>
-          <ModelBrandIcon
-            modelId={item.iconModelId ?? item.value}
-            providerId={item.iconProviderId}
-            className="pointer-events-none size-4 text-foreground-subtle"
-          />
+          {/* 官方组的品牌标整组摘除：组头的「官方」标签就是品牌，逐行再贴一次是冗余
+              （站长令：只要一个官方）。其他供应商照旧显示品牌标。 */}
+          {(() => {
+            const decoded = decodeCustomModelValue(item.value);
+            if (decoded?.providerId && isNimbusModelDisplayProvider(decoded.providerId)) {
+              return null;
+            }
+            return (
+              <ModelBrandIcon
+                modelId={item.iconModelId ?? item.value}
+                providerId={item.iconProviderId}
+                className="pointer-events-none size-4 text-foreground-subtle"
+              />
+            );
+          })()}
           <span className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
             <span className="min-w-0 truncate" title={item.name}>
               {item.name}

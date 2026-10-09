@@ -8,6 +8,7 @@ import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadg
 import { NimbusModelDisplayBadges } from "@/components/NimbusModelDisplayBadges.js";
 import {
   getNimbusModelDisplayMeta,
+  isNimbusModelDisplayProvider,
   useNimbusModelDisplayMetaVersion,
 } from "@/lib/nimbusModelDisplayMeta.js";
 import { Switch } from "@/components/ui/switch.js";
@@ -255,11 +256,15 @@ export function ModelRowInput({
     <div className="space-y-2 px-3 py-2">
       <div className="flex items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <ModelBrandIcon
-            modelId={model.modelId}
-            providerId={providerId}
-            className="pointer-events-none size-4 text-foreground-subtle"
-          />
+          {/* 官方供应商的模型行不贴品牌标（删除模型列表里「官方」语义已足够），
+              其他供应商照旧。 */}
+          {!isNimbusModelDisplayProvider(providerId) ? (
+            <ModelBrandIcon
+              modelId={model.modelId}
+              providerId={providerId}
+              className="pointer-events-none size-4 text-foreground-subtle"
+            />
+          ) : null}
           <span
             data-testid={inputTestId}
             className="min-w-0 truncate font-mono text-ui-base text-foreground"
