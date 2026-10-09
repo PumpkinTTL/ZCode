@@ -83,7 +83,7 @@ export function NimbusResetCardsDialog({
         // 成功要有明确反馈（用户实测：能重置但"该有的提示没有"）。
         toast(intl.formatMessage({ id: "business.quota.resetSuccess" }));
         // 重置即时改变额度/窗口口径：刷新共享快照并重拉清单。
-        void refreshNimbusAccountState();
+        void refreshNimbusAccountState({ bustInFlight: true });
         await loadCards();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));

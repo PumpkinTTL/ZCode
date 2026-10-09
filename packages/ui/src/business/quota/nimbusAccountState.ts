@@ -50,6 +50,9 @@ let state: NimbusAccountState = {
 const listeners = new Set<() => void>();
 let refreshPromise: Promise<void> | null = null;
 
+/** 额度快照低频轮询：余额/积分在长会话消耗、别处充值时没有主动推送，靠它兜底收敛。 */
+const REVALIDATION_POLL_INTERVAL_MS = 5 * 60 * 1000;
+
 function toState(
   status: QuotaStatusResult | null,
   loading: boolean,
@@ -99,10 +102,21 @@ export function bindNimbusAccountService(service: NimbusAccountServiceLike): voi
 /**
  * 重拉登录态。并发调用共享同一次请求；未绑定服务时直接返回（组件还没挂过）。
  * 失败只落 error 快照，绝不抛穿。
+ *
+ * `bustInFlight`：变更方（签到/充值/用卡成功、登录/登出）必须置 true——在途请求可能
+ * 起飞于服务端入账之前，直接共享会把入账前的旧快照当收敛结果，余额要等下次获焦才对。
  */
-export function refreshNimbusAccountState(): Promise<void> {
+export function refreshNimbusAccountState(
+  options: { bustInFlight?: boolean } = {},
+): Promise<void> {
   if (!boundService) return Promise.resolve();
-  if (refreshPromise) return refreshPromise;
+  if (refreshPromise) {
+    if (!options.bustInFlight) return refreshPromise;
+    const inFlight = refreshPromise;
+    // 在途请求落地时 finally 已把 refreshPromise 清空，这里必然发起一发新请求；
+    // 若期间又有别的调用方先起了更新的请求，加入它即可——那一次起飞得更晚，已能看到入账。
+    return inFlight.then(() => refreshNimbusAccountState());
+  }
   const service = boundService;
   update({ ...state, loading: true, error: null });
   refreshPromise = service
@@ -142,7 +156,7 @@ export function refreshNimbusAccountState(): Promise<void> {
  */
 export function notifyNimbusAccountChanged(status: QuotaStatusResult): void {
   update(toState(status, false, null));
-  void refreshNimbusAccountState();
+  void refreshNimbusAccountState({ bustInFlight: true });
 }
 
 /**
@@ -165,8 +179,12 @@ export function useNimbusAccountState(): NimbusAccountState {
     };
     window.addEventListener("focus", revalidate);
     document.addEventListener("visibilitychange", revalidate);
+    // 低频轮询兜底：长会话持续消耗、网页端充值等场景没有任何事件可听，
+    // 只靠获焦重校验会让余额/签到态在挂载面上长时间停留旧值。
+    const pollTimer = window.setInterval(revalidate, REVALIDATION_POLL_INTERVAL_MS);
     return () => {
       unsubscribe();
+      window.clearInterval(pollTimer);
       window.removeEventListener("focus", revalidate);
       document.removeEventListener("visibilitychange", revalidate);
     };

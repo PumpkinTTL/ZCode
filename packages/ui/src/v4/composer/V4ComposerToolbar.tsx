@@ -512,7 +512,9 @@ function V4ComposerModelControlsImpl({
       null,
     [modelSelectionView, lockedOfficialProvider],
   );
-  // 账号明确未登录（status=null 首屏加载中不算）→ 官方模型置灰、禁止选择；面板结构不动。
+  // 账号明确未登录（status !== null）→ 官方模型置灰、禁止选择；面板结构不动。
+  // status=null（首查在途）刻意不锁：锁了会让已登录用户每次冷启动都闪「请登录」误锁；
+  // 未登录用户此刻的选择会在快照到达后由下方逻辑自动切离官方供应商，自愈。
   const officialModelsLocked = nimbusAccount.status !== null && !nimbusAccount.loggedIn;
   const isModelOptionLocked = useCallback(
     (candidateValue: string) => {

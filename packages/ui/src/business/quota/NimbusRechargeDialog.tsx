@@ -129,7 +129,7 @@ export function NimbusRechargeDialog({
               setPhase("paid");
               toast(intl.formatMessage({ id: "business.quota.rechargePaidTitle" }));
               // 余额/套餐变化广播到所有订阅面（侧边栏/设置页/弹窗共用同一快照）。
-              void refreshNimbusAccountState();
+              void refreshNimbusAccountState({ bustInFlight: true });
             } else if (status.status === "closed") {
               if (pollTimerRef.current !== null) {
                 window.clearInterval(pollTimerRef.current);

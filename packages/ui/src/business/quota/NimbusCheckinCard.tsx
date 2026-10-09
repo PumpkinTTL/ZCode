@@ -25,19 +25,41 @@ export function NimbusCheckinCard({ embedded = false }: { embedded?: boolean } =
 
   useEffect(() => {
     let cancelled = false;
-    providerQuotaService
-      .getCheckinStatus()
-      .then((result) => {
-        if (!cancelled) setStatus(result);
-      })
-      .catch((error) => {
-        // 功能关闭（403 签到未开启）/ token 失效 / 网络抖动：整卡不渲染，留日志。
-        logger.warn("[quota] 签到状态查询失败，签到卡不展示", {
-          error: error instanceof Error ? error.message : String(error),
+    const pullStatus = () => {
+      providerQuotaService
+        .getCheckinStatus()
+        .then((result) => {
+          if (!cancelled) setStatus(result);
+        })
+        .catch((error) => {
+          // 功能关闭（403 签到未开启）/ token 失效 / 网络抖动：整卡不渲染，留日志。
+          logger.warn("[quota] 签到状态查询失败，签到卡不展示", {
+            error: error instanceof Error ? error.message : String(error),
+          });
         });
-      });
+    };
+    pullStatus();
+    // 跨天收敛：面板长开跨过零点后「已签到」不再成立；到点重拉让按钮回到可签状态。
+    let midnightTimer: number | undefined;
+    const scheduleMidnightRepull = (): void => {
+      const now = new Date();
+      const nextMidnight = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+        0,
+        0,
+        100,
+      );
+      midnightTimer = window.setTimeout(() => {
+        if (!cancelled) pullStatus();
+        scheduleMidnightRepull();
+      }, Math.max(nextMidnight.getTime() - now.getTime(), 1000));
+    };
+    scheduleMidnightRepull();
     return () => {
       cancelled = true;
+      if (midnightTimer !== undefined) window.clearTimeout(midnightTimer);
     };
   }, [providerQuotaService]);
 
@@ -59,7 +81,7 @@ export function NimbusCheckinCard({ embedded = false }: { embedded?: boolean } =
       // 奖励是裸数字（无千分位），文案里只做数字插值。
       toast(intl.formatMessage({ id: "business.quota.checkinSuccess" }, { credits: result.credits }));
       // 奖励入账的是钱包余额，共享快照刷新让账户卡的余额立刻跟上。
-      void refreshNimbusAccountState();
+      void refreshNimbusAccountState({ bustInFlight: true });
     } catch (error) {
       // 失败文案直接展示后端 detail（如「今日已签到」「请先绑定邮箱」）。
       toast(error instanceof Error ? error.message : String(error), { variant: "warning" });

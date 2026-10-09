@@ -11,7 +11,6 @@ import {
   ensureOfficialDefaultModel,
   provisionNimbusProvider,
 } from "@/business/quota/provisionNimbusProvider.js";
-import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
 import { notifyNimbusAccountChanged } from "@/business/quota/nimbusAccountState.js";
 import { Button } from "@/components/ui/button.js";
 import { Label } from "@/components/ui/label.js";
@@ -43,7 +42,6 @@ export function useNimbusLoginCompletion(
 ): (status: QuotaStatusResult) => Promise<void> {
   const { intl } = useZCodeIntl();
   const { providerQuotaService, providerSettingsService, modelSelectionService } = useServices();
-  const markApiKeyLoginSuccess = useZCodeStore((state) => state.markApiKeyLoginSuccess);
 
   return useCallback(
     async (status: QuotaStatusResult) => {
@@ -74,14 +72,14 @@ export function useNimbusLoginCompletion(
       // 收尾：用户没有默认模型时写入官方偏好（优先 DeepSeek，否则官方第一个模型），
       // 进入主界面后新草稿的初始模型即来自它。写入失败不阻断登录。
       if (providerId) {
-        const preference = await ensureOfficialDefaultModel({
+        // 登录后的默认模型真实生效链是 configuredDefault（服务端持久化 + onDidChange
+        // 刷新选择器）；ensureOfficialDefaultModel 的返回值过去只喂一个无消费者的
+        // 死 store 字段，这里不再记录。
+        await ensureOfficialDefaultModel({
           providerId,
           modelSelection: modelSelectionService,
           logger,
         });
-        markApiKeyLoginSuccess(
-          preference ? encodeCustomModelValue(providerId, preference.modelId) : null,
-        );
       }
       await onComplete("login");
     },
@@ -90,7 +88,6 @@ export function useNimbusLoginCompletion(
       providerQuotaService,
       providerSettingsService,
       modelSelectionService,
-      markApiKeyLoginSuccess,
       onComplete,
     ],
   );

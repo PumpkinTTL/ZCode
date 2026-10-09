@@ -9,6 +9,7 @@
  */
 import { useCallback, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/toast.js";
 import { NimbusQuotaOverview } from "./NimbusQuotaOverview.js";
 import { NimbusNoticeBar } from "./NimbusNoticeBar.js";
 import {
@@ -52,6 +53,12 @@ export function ProviderQuotaSection() {
         } catch {
           // 清理失败不阻断登出收尾；下次启动自愈补清。
         }
+      })
+      .catch((error: unknown) => {
+        // 服务端登出失败（网络/后端故障）不能静默：凭证还在，用户会误以为已登出。
+        // 提示并回读真实登录态，让三处额度 UI 与服务端事实收敛。
+        toast(error instanceof Error ? error.message : String(error), { variant: "warning" });
+        void refreshNimbusAccountState({ bustInFlight: true });
       })
       .finally(() => setBusy(false));
   }, [providerQuotaService, providerSettingsService]);
