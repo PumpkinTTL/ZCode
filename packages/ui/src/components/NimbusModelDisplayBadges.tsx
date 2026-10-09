@@ -18,16 +18,18 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
  * 表面/描边由同一 token 现场低透明度派生，自动跟随明暗与 Zai 变体。
  */
 
+// OpenAI 状态胶囊纪律：全圆角、无描边、实底软彩（文字 token 10% 混入背景）、
+// 中字重——彩字配 700 级深色，读起来笃定，不飘。
 const TAG_BADGE_BASE =
-  "inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-ui-xs font-medium leading-normal";
+  "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-ui-xs font-medium leading-normal";
 
 const TAG_ACCENT_CLASS: Record<QuotaModelDisplayTag, string> = {
   recommended:
-    "text-[var(--color-model-tag-recommended)] bg-[color-mix(in_oklab,var(--color-model-tag-recommended)_16%,transparent)] border-[color-mix(in_oklab,var(--color-model-tag-recommended)_30%,transparent)]",
+    "text-[var(--color-model-tag-recommended)] bg-[color-mix(in_oklab,var(--color-model-tag-recommended)_10%,var(--color-background))]",
   limited_time:
-    "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_16%,transparent)] border-[color-mix(in_oklab,var(--color-model-tag-limited-time)_30%,transparent)]",
+    "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_10%,var(--color-background))]",
   peak_pricing:
-    "text-[var(--color-model-tag-peak)] bg-[color-mix(in_oklab,var(--color-model-tag-peak)_16%,transparent)] border-[color-mix(in_oklab,var(--color-model-tag-peak)_30%,transparent)]",
+    "text-[var(--color-model-tag-peak)] bg-[color-mix(in_oklab,var(--color-model-tag-peak)_10%,var(--color-background))]",
 };
 
 const TAG_GRAY_CLASS = "text-foreground-subtle bg-surface border-border/60";

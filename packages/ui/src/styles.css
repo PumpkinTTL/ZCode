@@ -260,9 +260,9 @@ body {
   --color-success-foreground: var(--color-foreground-inverse);
   --color-idle-task: var(--color-violet-600);
   --color-idle-task-surface: var(--color-violet-50);
-  --color-model-tag-recommended: var(--color-green-600);
+  --color-model-tag-recommended: var(--color-green-700);
   --color-model-tag-limited-time: var(--color-sky-700);
-  --color-model-tag-peak: var(--color-amber-600);
+  --color-model-tag-peak: var(--color-amber-700);
   --color-destructive: var(--color-red-600);
   --color-destructive-foreground: var(--color-foreground-inverse);
   --color-warning: var(--color-yellow-600);
@@ -564,9 +564,9 @@ body {
   --color-success-foreground: #ffffff;
   --color-idle-task: #9e77ed;
   --color-idle-task-surface: #f5f3ff;
-  --color-model-tag-recommended: var(--color-green-600);
+  --color-model-tag-recommended: var(--color-green-700);
   --color-model-tag-limited-time: var(--color-sky-700);
-  --color-model-tag-peak: var(--color-amber-600);
+  --color-model-tag-peak: var(--color-amber-700);
   --color-destructive: #e03131;
   --color-destructive-foreground: #ffffff;
   --color-warning: #e07b00;
