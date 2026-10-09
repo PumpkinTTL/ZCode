@@ -1958,6 +1958,7 @@ const enUS: Record<string, string> = {
   "settings.migration.scanFailedDescription": "Failed to read Claude native history: {error}",
   "settings.usageTitle": "Usage stats",
   "business.quota.loginRequiredHint": "Sign in to Nimbus to view balance and plan quota",
+  "business.quota.loginCta": "Sign in",
   "business.quota.description": "Sign in to your Nimbus account to view balance and plan quota",
   "business.quota.username": "Username",
   "business.quota.password": "Password",

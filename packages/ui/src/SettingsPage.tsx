@@ -1074,7 +1074,7 @@ export function SettingsPage({
                             />
                           </ServiceProvider>
                         ) : activeSection === "providerQuota" ? (
-                          <ProviderQuotaSection />
+                          <ProviderQuotaSection onLogin={onLogin} />
                         ) : activeSection === "plugin" ? (
                           <PluginsSection
                             key={`plugin:${settingsSectionNavigationVersion}`}

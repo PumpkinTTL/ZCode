@@ -8,7 +8,8 @@
  * 业务实现在 business/quota/，与上游组件隔离：删本目录 + services 的 business/ 即整体下线。
  */
 import { useCallback, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, LogInIcon } from "lucide-react";
+import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { NimbusQuotaOverview } from "./NimbusQuotaOverview.js";
 import { NimbusNoticeBar } from "./NimbusNoticeBar.js";
@@ -21,7 +22,12 @@ import { clearNimbusProviderAccess } from "./provisionNimbusProvider.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
-export function ProviderQuotaSection() {
+export function ProviderQuotaSection({
+  onLogin,
+}: {
+  /** 未登录引导卡的登录入口（打开统一登录页）。可选：缺省只显示提示文案。 */
+  onLogin?: () => void;
+} = {}) {
   const { intl } = useZCodeIntl();
   const { providerQuotaService, providerSettingsService, appUpdateService } = useServices();
   const [busy, setBusy] = useState(false);
@@ -85,8 +91,19 @@ export function ProviderQuotaSection() {
           <span className="text-ui-base">{intl.formatMessage({ id: "business.quota.loading" })}</span>
         </div>
       ) : (
-        <div className="flex h-40 items-center justify-center text-ui-sm text-foreground-subtle">
-          {intl.formatMessage({ id: "business.quota.loginRequiredHint" })}
+        // 未登录引导卡：提示 + 显式登录按钮。曾在此分区挂载时自动强开登录页，
+        // 那会让 X 关闭后立刻重开（设置页随欢迎页卸载/重挂载的死循环），所以
+        // 登录必须是用户主动点击。
+        <div className="flex h-48 flex-col items-center justify-center gap-3 text-center">
+          <div className="flex items-center gap-2 text-ui-sm text-foreground-subtle">
+            <LogInIcon className="size-4" aria-hidden />
+            {intl.formatMessage({ id: "business.quota.loginRequiredHint" })}
+          </div>
+          {onLogin ? (
+            <Button size="sm" onClick={onLogin} data-testid="quota-login-cta">
+              {intl.formatMessage({ id: "business.quota.loginCta" })}
+            </Button>
+          ) : null}
         </div>
       )}
 

@@ -1857,6 +1857,7 @@ const zhCN: Record<string, string> = {
   "settings.providerQuotaTitle": "我的额度",
 
   "business.quota.loginRequiredHint": "登录 Nimbus 账号后可查看余额与套餐额度",
+  "business.quota.loginCta": "登录账号",
   "business.quota.description": "登录 Nimbus 账号，查看余额与套餐额度",
   "business.quota.username": "用户名",
   "business.quota.password": "密码",
