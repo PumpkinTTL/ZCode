@@ -47,18 +47,16 @@ export function publishNimbusModelDisplayMeta(
 ): void {
   const byModelId = new Map<string, NimbusModelDisplayMeta>();
   for (const entry of entries) {
-    if (
-      entry.multiplier === null &&
-      entry.tags.length === 0 &&
-      entry.customTags.length === 0 &&
-      entry.promo === null
-    ) {
+    // 零信任归一：host 侧新旧 bundle 混跑窗口内，entry 可能缺 customTags 等新字段
+    const tags = entry.tags ?? [];
+    const customTags = entry.customTags ?? [];
+    if (entry.multiplier === null && tags.length === 0 && customTags.length === 0 && entry.promo === null) {
       continue;
     }
     byModelId.set(entry.id, {
       multiplier: entry.multiplier,
-      tags: entry.tags,
-      customTags: entry.customTags,
+      tags,
+      customTags,
       promo: entry.promo,
     });
   }

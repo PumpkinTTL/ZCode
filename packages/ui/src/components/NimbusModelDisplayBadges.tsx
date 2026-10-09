@@ -49,6 +49,9 @@ function formatMultiplierValue(value: number): string {
 export function NimbusModelDisplayTags({ meta }: { meta: NimbusModelDisplayMeta }) {
   const { intl } = useZCodeIntl();
   const { loggedIn } = useNimbusAccountState();
+  // 旧快照（HMR/新旧进程混跑）可能缺新字段：一律兜底空数组，展示层永不崩
+  const tags = meta.tags ?? [];
+  const customTags = meta.customTags ?? [];
   const promo = meta.promo;
   const promoTitle = promo
     ? [promo.note, promo.endsAt]
@@ -67,7 +70,7 @@ export function NimbusModelDisplayTags({ meta }: { meta: NimbusModelDisplayMeta 
     cn(TAG_BADGE_BASE, loggedIn ? accent : TAG_GRAY_CLASS);
   return (
     <>
-      {meta.tags.map((tag) => (
+      {tags.map((tag) => (
         <span key={tag} className={badgeClass(TAG_ACCENT_CLASS[tag])}>
           {intl.formatMessage({ id: TAG_MESSAGE_IDS[tag] })}
         </span>
@@ -81,7 +84,7 @@ export function NimbusModelDisplayTags({ meta }: { meta: NimbusModelDisplayMeta 
         </span>
       ) : null}
       {/* 自定义标签：中性灰胶囊（管理端自由配置的运营信息，不上彩色） */}
-      {meta.customTags.map((label) => (
+      {customTags.map((label) => (
         <span
           key={label}
           className={cn(TAG_BADGE_BASE, "border-border/60 bg-surface px-2 py-0.5 text-foreground-subtle")}
