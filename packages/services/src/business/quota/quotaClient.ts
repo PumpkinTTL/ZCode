@@ -729,17 +729,22 @@ function parseModelDisplayTags(value: unknown): QuotaModelDisplayTag[] {
 }
 
 /**
- * 自定义标签解析：[{label, visible}] → 可见 label 列表（strip/非空/去重保序，
- * 最多 6 条）；服务端已做第一道过滤，这里仍是出口兜底。
+ * 自定义标签解析。**线上形态是纯字符串数组**（服务端已按 visible 过滤/排序/
+ * 去重后只下发 label，如 ["官方合作"]）；同时容错对象形态 [{label, visible}]
+ * （防御未来就地改形态或直连测试）。strip/非空/≤16 字/去重保序，最多 6 条。
  */
 export function parseComboCustomTags(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
   for (const item of raw) {
-    if (typeof item !== "object" || item === null) continue;
-    const record = item as Record<string, unknown>;
-    if (record.visible !== true) continue;
-    const label = readString(record.label).trim();
+    let label = "";
+    if (typeof item === "string") {
+      label = item.trim();
+    } else if (typeof item === "object" && item !== null) {
+      const record = item as Record<string, unknown>;
+      if (record.visible !== true) continue;
+      label = readString(record.label).trim();
+    }
     if (!label || label.length > 16 || out.includes(label)) continue;
     out.push(label);
     if (out.length >= 6) break;
