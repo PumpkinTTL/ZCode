@@ -289,6 +289,32 @@ function findBackgroundTask(
   );
 }
 
+/**
+ * 无人佐证的 running 兜底陈旧界。
+ *
+ * runningStatus 的三个兜底分支（async launch ACK 窗口、父 activeToolCalls、
+ * part 卡 pending/running）都是「缺反证即视为运行」：journal 缺 Stopped、
+ * part 永久停在 running/pending、后台任务记录丢失时，几周前死掉的子代理会被
+ * 冷恢复重新判成 running（实测：用户面板出现「已运行 3 万分钟」的 26 条陈旧
+ * 条目）。这里的界只收兜底分支——**有当前进程活跃佐证**的分支（background
+ * status=running / childProjection running/waiting）不受影响，它们正是跨重启
+ * 保住真运行子代理的路径（回归场景：后台 Agent 重启后 running 不丢、Stop
+ * 控制可用）。被界拦下的候选落 ended（endedStatus 兜底 lost）；若子会话其实
+ * 还活着，后续子投影/事件会重新给出 running，误伤自愈。
+ *
+ * 24h 与渲染层时长封顶（formatBackgroundTaskElapsedLabel）同口径。
+ */
+const UNCORROBORATED_RUNNING_STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+
+function isStaleUnattendedRunning(
+  candidate: SubagentCandidate,
+  background: BackgroundTaskInfo | undefined,
+): boolean {
+  const start = startedAt(candidate, background);
+  if (start === undefined) return false;
+  return Date.now() - start > UNCORROBORATED_RUNNING_STALE_AFTER_MS;
+}
+
 function runningStatus(input: {
   background?: BackgroundTaskInfo;
   candidate: SubagentCandidate;
@@ -311,11 +337,17 @@ function runningStatus(input: {
     input.background === undefined &&
     input.childProjection === undefined &&
     input.candidate.stoppedStatus === undefined &&
-    input.childOutcome.status === undefined
+    input.childOutcome.status === undefined &&
+    // launch ACK 窗口的保护只需要秒/分钟级；陈旧界拦住「async 启动后进程就死了、
+    // 记录再没更新过」的候选。
+    !isStaleUnattendedRunning(input.candidate, input.background)
   ) {
     return "running";
   }
+  // 下面两个分支的唯一依据是持久化 part 的状态：part 卡在 running/pending 的
+  // 死代理（journal 无 Stopped）在这里被陈旧界拦下，落 ended 而不是永占 running。
   if (
+    !isStaleUnattendedRunning(input.candidate, input.background) &&
     input.parentProjection?.activeToolCalls.some(
       (tool) =>
         tool.toolCallId === input.candidate.part.callID &&
@@ -325,6 +357,7 @@ function runningStatus(input: {
     return "running";
   }
   return input.parentProjection &&
+    !isStaleUnattendedRunning(input.candidate, input.background) &&
     (input.candidate.part.state.status === "pending" ||
       input.candidate.part.state.status === "running")
     ? "running"
