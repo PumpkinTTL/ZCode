@@ -5,31 +5,32 @@ import { useNimbusAccountState } from "@/business/quota/nimbusAccountState.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 /**
- * 官方模型展示徽标组：组合标签（推荐/限时折扣/高峰定价）+ 计费倍率。
+ * 官方模型展示徽标：组合标签（推荐/限时折扣/高峰定价）+ 计费倍率。
  * 纯展示，不参与任何选择/计费判定。
  *
  * 站长定稿（2026-10-10）：
- * - 登录态标签彩色区分（推荐=绿 / 限时折扣=琥珀 / 高峰定价=红），不要一片灰；
- * - 未登录全部置灰（锁定态本来就该素），不加花活；
- * - 倍率放最后、普通字重、不套胶囊——它是个数字不是个标签。
+ * - 登录态标签彩色区分（推荐=绿 / 限时折扣=蓝 / 高峰定价=琥珀），同色 hairline
+ *   描边给 badge 实体感；未登录全部置灰，不加花活；
+ * - 倍率是行末数字列：模型菜单里由调用方放在打勾前右对齐，settings 行内联在末尾；
+ *   tabular-nums 裸数字、普通字重。
+ *
+ * 颜色走 styles.css 四主题块的 --color-model-tag-* 语义 token（文字），
+ * 表面/描边由同一 token 现场低透明度派生，自动跟随明暗与 Zai 变体。
  */
 
-// OpenAI 文档 badge 形态：rounded-md 实底淡彩、medium 字重、充足内边距——
-// 不是细线描边的干瘪胶囊。
-const TAG_PILL_CLASS =
-  "inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-ui-xs font-medium leading-normal";
+const TAG_BADGE_BASE =
+  "inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-ui-xs font-medium leading-normal";
 
-/** 登录态的标签彩色（语义 token，跟随明暗主题）。 */
-// 语义 token 在 styles.css 四个主题块各有一份（表面色由组件按文字 token 现场调淡，
-// 自动跟随明暗与 Zai 变体）；未登录态不取用彩色 token，全部落灰。
 const TAG_ACCENT_CLASS: Record<QuotaModelDisplayTag, string> = {
   recommended:
-    "text-[var(--color-model-tag-recommended)] bg-[color-mix(in_oklab,var(--color-model-tag-recommended)_18%,transparent)]",
+    "text-[var(--color-model-tag-recommended)] bg-[color-mix(in_oklab,var(--color-model-tag-recommended)_16%,transparent)] border-[color-mix(in_oklab,var(--color-model-tag-recommended)_30%,transparent)]",
   limited_time:
-    "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_18%,transparent)]",
+    "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_16%,transparent)] border-[color-mix(in_oklab,var(--color-model-tag-limited-time)_30%,transparent)]",
   peak_pricing:
-    "text-[var(--color-model-tag-peak)] bg-[color-mix(in_oklab,var(--color-model-tag-peak)_18%,transparent)]",
+    "text-[var(--color-model-tag-peak)] bg-[color-mix(in_oklab,var(--color-model-tag-peak)_16%,transparent)] border-[color-mix(in_oklab,var(--color-model-tag-peak)_30%,transparent)]",
 };
+
+const TAG_GRAY_CLASS = "text-foreground-subtle bg-surface border-border/60";
 
 const TAG_MESSAGE_IDS: Record<QuotaModelDisplayTag, string> = {
   recommended: "model.displayTag.recommended",
@@ -42,7 +43,8 @@ function formatMultiplierValue(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
 }
 
-export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMeta }) {
+/** 组合标签（推荐/限时折扣/高峰定价 + 限时折扣活动文案）。 */
+export function NimbusModelDisplayTags({ meta }: { meta: NimbusModelDisplayMeta }) {
   const { intl } = useZCodeIntl();
   const { loggedIn } = useNimbusAccountState();
   const promo = meta.promo;
@@ -59,46 +61,50 @@ export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMet
         )
         .join(" · ")
     : undefined;
+  const badgeClass = (accent: string) =>
+    cn(TAG_BADGE_BASE, loggedIn ? accent : TAG_GRAY_CLASS);
   return (
     <>
       {meta.tags.map((tag) => (
-        <span
-          key={tag}
-          className={cn(
-            TAG_PILL_CLASS,
-            loggedIn
-              ? TAG_ACCENT_CLASS[tag]
-              : "text-foreground-subtle bg-surface",
-          )}
-        >
+        <span key={tag} className={badgeClass(TAG_ACCENT_CLASS[tag])}>
           {intl.formatMessage({ id: TAG_MESSAGE_IDS[tag] })}
         </span>
       ))}
       {promo ? (
         <span
-          className={cn(
-            TAG_PILL_CLASS,
-            loggedIn
-              ? "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_18%,transparent)]"
-              : "text-foreground-subtle bg-surface",
-          )}
+          className={badgeClass(TAG_ACCENT_CLASS.limited_time)}
           title={promoTitle || undefined}
         >
           {promo.label}
         </span>
       ) : null}
-      {/* 倍率放最后：普通字重、不套胶囊——一个数字，不是一枚标签 */}
-      {meta.multiplier !== null ? (
-        <span
-          className="shrink-0 text-ui-xs tabular-nums text-foreground-subtle"
-          title={intl.formatMessage({ id: "model.displayMeta.multiplierTitle" })}
-        >
-          {intl.formatMessage(
-            { id: "model.displayMeta.multiplier" },
-            { value: formatMultiplierValue(meta.multiplier) },
-          )}
-        </span>
-      ) : null}
+    </>
+  );
+}
+
+/** 计费倍率：行末数字列。菜单里放打勾前右对齐；settings 行内联在徽标组之后。 */
+export function NimbusModelDisplayMultiplier({ meta }: { meta: NimbusModelDisplayMeta }) {
+  const { intl } = useZCodeIntl();
+  if (meta.multiplier === null) return null;
+  return (
+    <span
+      className="shrink-0 text-ui-xs tabular-nums text-foreground-subtle"
+      title={intl.formatMessage({ id: "model.displayMeta.multiplierTitle" })}
+    >
+      {intl.formatMessage(
+        { id: "model.displayMeta.multiplier" },
+        { value: formatMultiplierValue(meta.multiplier) },
+      )}
+    </span>
+  );
+}
+
+/** 组合形态：标签组 + 内联倍率（设置页模型行用；菜单侧两段分开摆位）。 */
+export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMeta }) {
+  return (
+    <>
+      <NimbusModelDisplayTags meta={meta} />
+      <NimbusModelDisplayMultiplier meta={meta} />
     </>
   );
 }

@@ -46,7 +46,10 @@ import {
 } from "@/lib/pickerFocus.js";
 import { RollingToolbarLabel } from "@/chat-input-toolbar/RollingToolbarLabel.js";
 import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadge.js";
-import { NimbusModelDisplayBadges } from "@/components/NimbusModelDisplayBadges.js";
+import {
+  NimbusModelDisplayMultiplier,
+  NimbusModelDisplayTags,
+} from "@/components/NimbusModelDisplayBadges.js";
 import {
   getNimbusModelDisplayMeta,
   isNimbusModelDisplayProvider,
@@ -358,9 +361,17 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
               // item.iconProviderId/iconModelId 只描述模型身份（registry 条目必填）；
               // 快照内部做 providerId 匹配，其他供应商的同名模型不会串台。
               const displayMeta = getNimbusModelDisplayMeta(item.iconProviderId, item.iconModelId);
-              return displayMeta ? <NimbusModelDisplayBadges meta={displayMeta} /> : null;
+              return displayMeta ? <NimbusModelDisplayTags meta={displayMeta} /> : null;
             })()}
           </span>
+          {(() => {
+            // 倍率是行末数字列（打勾前右对齐）：选模型时价格在最后一眼的位置，
+            // 不和标签挤在名字后面。
+            const displayMeta = getNimbusModelDisplayMeta(item.iconProviderId, item.iconModelId);
+            return displayMeta ? (
+              <NimbusModelDisplayMultiplier meta={displayMeta} />
+            ) : null;
+          })()}
           {itemLocked ? (
             <TooltipProvider>
               <Tooltip>
