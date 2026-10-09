@@ -14,18 +14,21 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
  * - 倍率放最后、普通字重、不套胶囊——它是个数字不是个标签。
  */
 
-const TAG_PILL_CLASS = "shrink-0 rounded-full px-1.5 py-px text-ui-xs leading-normal";
+// OpenAI 文档 badge 形态：rounded-md 实底淡彩、medium 字重、充足内边距——
+// 不是细线描边的干瘪胶囊。
+const TAG_PILL_CLASS =
+  "inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-ui-xs font-medium leading-normal";
 
 /** 登录态的标签彩色（语义 token，跟随明暗主题）。 */
 // 语义 token 在 styles.css 四个主题块各有一份（表面色由组件按文字 token 现场调淡，
 // 自动跟随明暗与 Zai 变体）；未登录态不取用彩色 token，全部落灰。
 const TAG_ACCENT_CLASS: Record<QuotaModelDisplayTag, string> = {
   recommended:
-    "text-[var(--color-model-tag-recommended)] bg-[color-mix(in_oklab,var(--color-model-tag-recommended)_14%,transparent)]",
+    "text-[var(--color-model-tag-recommended)] bg-[color-mix(in_oklab,var(--color-model-tag-recommended)_18%,transparent)]",
   limited_time:
-    "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_16%,transparent)]",
+    "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_18%,transparent)]",
   peak_pricing:
-    "text-[var(--color-model-tag-peak)] bg-[color-mix(in_oklab,var(--color-model-tag-peak)_14%,transparent)]",
+    "text-[var(--color-model-tag-peak)] bg-[color-mix(in_oklab,var(--color-model-tag-peak)_18%,transparent)]",
 };
 
 const TAG_MESSAGE_IDS: Record<QuotaModelDisplayTag, string> = {
@@ -76,7 +79,7 @@ export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMet
           className={cn(
             TAG_PILL_CLASS,
             loggedIn
-              ? "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_16%,transparent)]"
+              ? "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_18%,transparent)]"
               : "text-foreground-subtle bg-surface",
           )}
           title={promoTitle || undefined}
