@@ -261,7 +261,7 @@ body {
   --color-idle-task: var(--color-violet-600);
   --color-idle-task-surface: var(--color-violet-50);
   --color-model-tag-recommended: var(--color-green-700);
-  --color-model-tag-limited-time: var(--color-sky-700);
+  --color-model-tag-limited-time: var(--color-blue-600);
   --color-model-tag-peak: var(--color-amber-700);
   --color-destructive: var(--color-red-600);
   --color-destructive-foreground: var(--color-foreground-inverse);
@@ -417,7 +417,7 @@ body {
   --color-idle-task: var(--color-violet-400);
   --color-idle-task-surface: color-mix(in oklab, var(--color-violet-950) 50%, transparent);
   --color-model-tag-recommended: var(--color-green-400);
-  --color-model-tag-limited-time: var(--color-sky-300);
+  --color-model-tag-limited-time: var(--color-blue-400);
   --color-model-tag-peak: var(--color-amber-400);
   --color-destructive: var(--color-red-500);
   --color-destructive-foreground: var(--color-foreground-inverse);
@@ -565,7 +565,7 @@ body {
   --color-idle-task: #9e77ed;
   --color-idle-task-surface: #f5f3ff;
   --color-model-tag-recommended: var(--color-green-700);
-  --color-model-tag-limited-time: var(--color-sky-700);
+  --color-model-tag-limited-time: var(--color-blue-600);
   --color-model-tag-peak: var(--color-amber-700);
   --color-destructive: #e03131;
   --color-destructive-foreground: #ffffff;
@@ -713,7 +713,7 @@ body {
   --color-idle-task: #7b5ce5;
   --color-idle-task-surface: #160d38;
   --color-model-tag-recommended: var(--color-green-400);
-  --color-model-tag-limited-time: var(--color-sky-300);
+  --color-model-tag-limited-time: var(--color-blue-400);
   --color-model-tag-peak: var(--color-amber-400);
   --color-destructive: #ff5c5c;
   /* Zai Dark 曾把 destructive 前景设为黑色，与红色危险按钮的固定白字设计冲突。 */

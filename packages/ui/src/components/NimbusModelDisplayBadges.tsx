@@ -21,7 +21,7 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 // OpenAI 状态胶囊纪律：全圆角、无描边、实底软彩（文字 token 10% 混入背景）、
 // 中字重——彩字配 700 级深色，读起来笃定，不飘。
 const TAG_BADGE_BASE =
-  "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-ui-xs font-medium leading-normal";
+  "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-ui-xs leading-normal";
 
 const TAG_ACCENT_CLASS: Record<QuotaModelDisplayTag, string> = {
   recommended:
