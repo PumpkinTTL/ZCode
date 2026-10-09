@@ -115,6 +115,12 @@ Default light and dark CSS variables still exist as fallback foundations, but ne
 - **Idle-time task**: `--color-idle-task` with `--color-idle-task-surface`
   Use only for idle-time queue and paused tags so they remain visually distinct
   from the green scheduled-task treatment.
+- **Model combo tags**: `--color-model-tag-recommended` (green),
+  `--color-model-tag-limited-time` (amber), `--color-model-tag-peak` (red).
+  Text-only tokens for the official model catalog tags in the model selector and
+  provider model rows; tag surfaces derive in place as a low-alpha `color-mix` of
+  the same token. Logged-out rendering falls back to gray pills and never uses
+  these tokens.
 - **Diff Added**: `--color-diff-added` with `--color-diff-added-foreground`
 - **Diff Removed**: `--color-diff-removed` with `--color-diff-removed-foreground`
 

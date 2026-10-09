@@ -17,13 +17,15 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 const TAG_PILL_CLASS = "shrink-0 rounded-full px-1.5 py-px text-ui-xs leading-normal";
 
 /** 登录态的标签彩色（语义 token，跟随明暗主题）。 */
+// 语义 token 在 styles.css 四个主题块各有一份（表面色由组件按文字 token 现场调淡，
+// 自动跟随明暗与 Zai 变体）；未登录态不取用彩色 token，全部落灰。
 const TAG_ACCENT_CLASS: Record<QuotaModelDisplayTag, string> = {
   recommended:
-    "text-[var(--color-success)] bg-[color-mix(in_oklab,var(--color-success)_12%,transparent)]",
+    "text-[var(--color-model-tag-recommended)] bg-[color-mix(in_oklab,var(--color-model-tag-recommended)_14%,transparent)]",
   limited_time:
-    "text-[var(--color-warning)] bg-[color-mix(in_oklab,var(--color-warning)_14%,transparent)]",
+    "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_16%,transparent)]",
   peak_pricing:
-    "text-[var(--color-destructive)] bg-[color-mix(in_oklab,var(--color-destructive)_12%,transparent)]",
+    "text-[var(--color-model-tag-peak)] bg-[color-mix(in_oklab,var(--color-model-tag-peak)_14%,transparent)]",
 };
 
 const TAG_MESSAGE_IDS: Record<QuotaModelDisplayTag, string> = {
@@ -74,7 +76,7 @@ export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMet
           className={cn(
             TAG_PILL_CLASS,
             loggedIn
-              ? "text-[var(--color-warning)] bg-[color-mix(in_oklab,var(--color-warning)_14%,transparent)]"
+              ? "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_16%,transparent)]"
               : "text-foreground-subtle bg-surface",
           )}
           title={promoTitle || undefined}
@@ -85,7 +87,7 @@ export function NimbusModelDisplayBadges({ meta }: { meta: NimbusModelDisplayMet
       {/* 倍率放最后：普通字重、不套胶囊——一个数字，不是一枚标签 */}
       {meta.multiplier !== null ? (
         <span
-          className="shrink-0 text-ui-xs text-foreground-subtle"
+          className="shrink-0 text-ui-xs tabular-nums text-foreground-subtle"
           title={intl.formatMessage({ id: "model.displayMeta.multiplierTitle" })}
         >
           {intl.formatMessage(
