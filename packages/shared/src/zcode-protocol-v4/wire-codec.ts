@@ -18,6 +18,30 @@ function vqlByteLength(value: number): number {
   return bytes;
 }
 
+// CLI 侧 envelope 的固定前缀/后缀：JSON.stringify({method:"v4/conversation/frame",
+// params: wire}) 与「前缀 + JSON.stringify(wire) + "}"」逐字节一致（同一 stringify、
+// 同一键序、无 toJSON）。有了它，调用方序列化一次即可供两层预算复用。
+const CLI_NDJSON_ENVELOPE_PREFIX = '{"method":"v4/conversation/frame","params":';
+const CLI_NDJSON_ENVELOPE_SUFFIX = "}";
+
+// mobile relay 固定头部形态只依赖编译期常量与字面量，提到模块级避免每帧重复序列化。
+const MOBILE_RELAY_FIXED_BYTES = (() => {
+  const transportId = "x".repeat(PROTOCOL_V4_LIMITS.transportEnvelopeIdMaxChars);
+  return utf8JsonByteLength({
+    type: "data",
+    payload: {
+      zcode_type: "rpc-frame",
+      bridgeSessionId: transportId,
+      bridgeGeneration: Number.MAX_SAFE_INTEGER,
+      recoveryId: transportId,
+      seq: Number.MAX_SAFE_INTEGER,
+      dataBase64: "",
+    },
+    client_ts: Number.MAX_SAFE_INTEGER,
+    server_ts: Number.MAX_SAFE_INTEGER,
+  });
+})();
+
 /**
  * 按当前生产三层真实承载计量 topic notification。mobile relay
  * 会把 Channel binary 再 base64，不能只测 CLI 的 logical JSON。
@@ -28,13 +52,28 @@ export function measureTopicNotificationEnvelopeBytes(wire: TopicWireFrameCandid
   mobileRelayBytes: number;
   maxBytes: number;
 } {
-  const cliNdjsonBytes =
-    utf8JsonByteLength({
-      method: "v4/conversation/frame",
-      params: wire,
-    }) + 1;
+  return measureTopicNotificationEnvelopeBytesFromSerializedWire(JSON.stringify(wire));
+}
 
-  const wireJsonBytes = utf8JsonByteLength(wire);
+/**
+ * 与 measureTopicNotificationEnvelopeBytes 字节级等价，但复用调用方已完成的
+ * JSON.stringify(wire)：接收路径每帧都要测一次物理上限，一份 20-60KB 的帧
+ * 原先要在这里被序列化两遍（envelope 一次、wire 单测一次），高频流式下是
+ * 纯重复的主线程开销与 GC 垃圾。
+ */
+export function measureTopicNotificationEnvelopeBytesFromSerializedWire(serializedWireJson: string): {
+  cliNdjsonBytes: number;
+  channelSocketBytes: number;
+  mobileRelayBytes: number;
+  maxBytes: number;
+} {
+  const encoder = new TextEncoder();
+  const cliNdjsonBytes =
+    encoder.encode(
+      CLI_NDJSON_ENVELOPE_PREFIX + serializedWireJson + CLI_NDJSON_ENVELOPE_SUFFIX,
+    ).byteLength + 1;
+
+  const wireJsonBytes = encoder.encode(serializedWireJson).byteLength;
   // @zcode/rpc serialization：Array tag+length+[EventFire,id]，再加 Object tag+length+JSON。
   // ChannelClient 的 id 无 31-bit wrap；超过 signed int 后 serialize 会走 Object JSON
   // fallback。因此按 Number.MAX_SAFE_INTEGER 的 16-byte JSON 形态计算最坏 header。
@@ -53,21 +92,7 @@ export function measureTopicNotificationEnvelopeBytes(wire: TopicWireFrameCandid
   // Channel payload 会再经 acknowledged raw adapter 独立分片并按最终 JSON 精确计量。
   // 两层预算分别约束 topic logical frame 与 relay physical frame，不能互相替代。
   const dataBase64Bytes = 4 * Math.ceil(channelPayloadBytes / 3);
-  const transportId = "x".repeat(PROTOCOL_V4_LIMITS.transportEnvelopeIdMaxChars);
-  const mobileRelayFixedBytes = utf8JsonByteLength({
-    type: "data",
-    payload: {
-      zcode_type: "rpc-frame",
-      bridgeSessionId: transportId,
-      bridgeGeneration: Number.MAX_SAFE_INTEGER,
-      recoveryId: transportId,
-      seq: Number.MAX_SAFE_INTEGER,
-      dataBase64: "",
-    },
-    client_ts: Number.MAX_SAFE_INTEGER,
-    server_ts: Number.MAX_SAFE_INTEGER,
-  });
-  const mobileRelayBytes = mobileRelayFixedBytes + dataBase64Bytes;
+  const mobileRelayBytes = MOBILE_RELAY_FIXED_BYTES + dataBase64Bytes;
   return {
     cliNdjsonBytes,
     channelSocketBytes,

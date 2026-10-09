@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { PROTOCOL_V4_LIMITS } from "./core.js";
 import { crc32WireBytes, decodeWireBase64 } from "./wire-binary.js";
-import { measureTopicNotificationEnvelopeBytes } from "./wire-codec.js";
+import { measureTopicNotificationEnvelopeBytesFromSerializedWire } from "./wire-codec.js";
 import type { TopicFrameDeliveryKind, TopicWireFrameCandidate } from "./wire.js";
 import { WIRE_FAULT_INVALID_PAYLOAD } from "./wire-fault.js";
 
@@ -264,7 +264,11 @@ export class TopicWireFrameAssembler<F> {
         events.push(this.fault(wire, "proto.frameAssemblyMetadataMismatch"));
         return events;
       }
-      if (measureTopicNotificationEnvelopeBytes(wire).maxBytes > this.maxPhysicalFrameBytes) {
+      // 单次序列化复用给物理上限计量（此前 envelope/单测各序列化一遍）。
+      if (
+        measureTopicNotificationEnvelopeBytesFromSerializedWire(JSON.stringify(wire)).maxBytes >
+        this.maxPhysicalFrameBytes
+      ) {
         this.releaseAndSettle(key, wire);
         events.push(this.fault(wire, "proto.frameEnvelopeTooLarge"));
         return events;
@@ -303,7 +307,10 @@ export class TopicWireFrameAssembler<F> {
       events.push(this.fault(wire, "proto.frameAssemblyMetadataMismatch"));
       return events;
     }
-    if (measureTopicNotificationEnvelopeBytes(wire).maxBytes > this.maxPhysicalFrameBytes) {
+    if (
+      measureTopicNotificationEnvelopeBytesFromSerializedWire(JSON.stringify(wire)).maxBytes >
+      this.maxPhysicalFrameBytes
+    ) {
       this.releaseAndSettle(key, wire);
       events.push(this.fault(wire, "proto.frameEnvelopeTooLarge"));
       return events;
