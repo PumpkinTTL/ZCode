@@ -12,6 +12,7 @@ import { publishNimbusModelDisplayMeta } from "@/lib/nimbusModelDisplayMeta.js";
 import { useServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
 import { findNimbusProvider } from "./provisionNimbusProvider.js";
+import { getNimbusAccountState } from "./nimbusAccountState.js";
 
 /** 刷新间隔：展示字段是装饰性数据，低频即可；重开应用/重新挂载时按此节流。 */
 const REFRESH_STALE_MS = 5 * 60 * 1000;
@@ -44,12 +45,19 @@ export function refreshNimbusModelCatalogIfStale(
       const view = await deps.providerSettings.getView();
       const provider = findNimbusProvider(view.providers, baseUrl);
       if (!provider) return;
-      try {
-        const apiKey = await deps.quota.ensureApiKey();
-        publishNimbusModelDisplayMeta(provider.providerId, await deps.quota.getModelCatalog(apiKey));
-        return;
-      } catch {
-        // 未登录 / 密钥断链：回退公开目录（匿名视角，带公开组合的展示字段）。
+      // 仅登录态走带鉴权的目录：ensureApiKey 对无密钥账号有「登录即可用」的创建语义，
+      // 被动刷新不应该在未登录时触发它——未登录直接走公开目录。
+      if (getNimbusAccountState().loggedIn) {
+        try {
+          const apiKey = await deps.quota.ensureApiKey();
+          publishNimbusModelDisplayMeta(
+            provider.providerId,
+            await deps.quota.getModelCatalog(apiKey),
+          );
+          return;
+        } catch {
+          // 密钥断链/网络失败：回退公开目录（匿名视角，带公开组合的展示字段）。
+        }
       }
       if (deps.publicCatalog) {
         const entries = await deps.publicCatalog();
