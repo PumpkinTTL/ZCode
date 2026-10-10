@@ -11,6 +11,11 @@ import { logger } from "@/logger.js";
  * 返回 [needsOnboarding, markOnboarded]：null 表示异步判定中；markOnboarded 在引导
  * 保存成功后把判定置 false（记录已落盘，本次会话不再触发）。
  */
+/**
+ * 站长令(2026-10-10)：职业问卷暂停自动触发（代码全保留，接入时改回 true）。
+ */
+const OCCUPATION_ONBOARDING_TRIGGER_ENABLED = false;
+
 export function useOnboardingTrigger(options: {
   onboardingRecord: ReturnType<typeof useOnboardingRecordService>;
   userId: string | null;
@@ -24,6 +29,13 @@ export function useOnboardingTrigger(options: {
   // 记录上一次判定时的 userId，回填只在身份实际变化后发生（见下方回填条件）。
   const lastSyncedUserIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
+    // 站长令(2026-10-10)：职业问卷**暂停自动触发**——判定/认领/迁移/回填逻辑全部
+    // 保留，接入时把 OCCUPATION_ONBOARDING_TRIGGER_ENABLED 改回 true（或删掉本闸）
+    // 即恢复原行为。设置页手动入口与快捷键不受影响，仍可主动打开。
+    if (!OCCUPATION_ONBOARDING_TRIGGER_ENABLED) {
+      setNeedsOnboarding(false);
+      return;
+    }
     let cancelled = false;
     const fallback = () => !hasStoredOccupation;
     // 服务不可用（旧测试 double / 未注册的 host）时退回旧 settings 判定，行为不回退。
