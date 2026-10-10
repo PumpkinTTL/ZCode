@@ -1,5 +1,9 @@
 {
   "name": "@zcode/ui",
+  "sideEffects": [
+    "**/*.css",
+    "src/workers/*"
+  ],
   "private": true,
   "type": "module",
   "exports": {
