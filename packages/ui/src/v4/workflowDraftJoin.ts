@@ -52,11 +52,25 @@ export function buildWorkflowDraftByToolCallId(
   return byToolCallId;
 }
 
+// 谱系判定按行引用记忆化：联接表以「行窗口引用变化」为失效条件，流式期间每帧重建，
+// 未变行会反复重跑 isAmend/isCreate 的按名匹配——normalizeToolToken 对每个候选字段做
+// toLowerCase + 正则替换并分配新串，长会话数千 toolCall 行 × 每帧一次 = 每帧字符串分配热点。
+// 协议 delta 只换新行对象、从不改原对象（shared zcode-protocol-v4/apply.ts 的不变量），
+// 行引用即合法缓存键：行任何字段变化都会换新对象，缓存自然失效。
+const workflowDraftLineageCache = new WeakMap<ToolCallRow, string | undefined>();
+
 function workflowDraftLineage(row: ToolCallRow): string | undefined {
-  if (isAmendWorkflowToolCall(row)) {
-    return `amend\u0000${readWorkflowAmendTarget(row.input) ?? ""}`;
+  const cached = workflowDraftLineageCache.get(row);
+  if (cached !== undefined || workflowDraftLineageCache.has(row)) {
+    return cached;
   }
-  return isCreateWorkflowToolCall(row) ? "create" : undefined;
+  const lineage = isAmendWorkflowToolCall(row)
+    ? `amend\u0000${readWorkflowAmendTarget(row.input) ?? ""}`
+    : isCreateWorkflowToolCall(row)
+      ? "create"
+      : undefined;
+  workflowDraftLineageCache.set(row, lineage);
+  return lineage;
 }
 
 /**

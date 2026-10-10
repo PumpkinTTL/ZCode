@@ -37,21 +37,30 @@ export function createAssistantPreviewPptxAutoOpenGateState(): AssistantPreviewP
 export function resolveLatestCompletedAssistantPreviewTurn(
   rows: readonly ConversationRow[],
 ): AssistantPreviewPptxCompletedTurn | null {
-  const latestHeader = [...rows]
-    .reverse()
-    .find(
-      (row): row is Extract<ConversationRow, { kind: "turnHeader" }> => row.kind === "turnHeader",
-    );
+  // 流式期间本函数每帧被调用一次（SessionPane 的 gate effect）。此前的
+  // `[...rows].reverse().find(...)` 每次调用都对整条行窗口做两次全量数组拷贝 + 翻转
+  // （万行长会话 ≈ 每帧 4 万次引用搬运 + 双份临时数组），纯属 GC 压力；
+  // 语义等价的倒序 for 循环零分配，且同样「取满足谓词的最后一行」。
+  let latestHeader: Extract<ConversationRow, { kind: "turnHeader" }> | undefined;
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    if (row?.kind === "turnHeader") {
+      latestHeader = row;
+      break;
+    }
+  }
   if (!latestHeader || latestHeader.state !== "completedSuccess") {
     return null;
   }
 
-  const latestAssistant = [...rows]
-    .reverse()
-    .find(
-      (row): row is Extract<ConversationRow, { kind: "assistantText" }> =>
-        row.kind === "assistantText" && row.turnId === latestHeader.turnId,
-    );
+  let latestAssistant: Extract<ConversationRow, { kind: "assistantText" }> | undefined;
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    if (row?.kind === "assistantText" && row.turnId === latestHeader.turnId) {
+      latestAssistant = row;
+      break;
+    }
+  }
   if (!latestAssistant || latestAssistant.state !== "complete") return null;
 
   return {

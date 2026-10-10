@@ -1061,12 +1061,18 @@ export function SessionPane({
   useEffect(() => {
     const scopeKey = `${workspaceKey}\u0000${sessionId ?? "draft"}`;
     const enabled = Boolean(onAutoOpenAssistantPptx && focused && sessionId);
+    // gate 在 enabled=false 分支（以及未武装短路分支）都不读 completedTurn；
+    // 这里按 enabled 惰性求值：PPTX 自动打开未启用的面板此前也在每次 rows 变化
+    // （流式下每帧）对全窗口做一次「找最后一条完成 turn」的扫描，纯属白扫。
+    const completedTurn = enabled
+      ? resolveLatestCompletedAssistantPreviewTurn(snapshot?.rows.window ?? [])
+      : null;
     const result = advanceAssistantPreviewPptxAutoOpenGate(assistantPreviewPptxGateRef.current, {
       enabled,
       scopeKey,
       logEpoch: snapshot?.logEpoch,
       phase: snapshot?.control.phase,
-      completedTurn: resolveLatestCompletedAssistantPreviewTurn(snapshot?.rows.window ?? []),
+      completedTurn,
     });
     assistantPreviewPptxGateRef.current = result.state;
     if (result.target !== undefined) {
