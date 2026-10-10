@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
-import { WebRemoteControlDialog } from "@/WebRemoteControlDialog.js";
+
+// WebRemoteControlDialog → BotsDialog 链（含 qrcode）只有点击触发时才需要；
+// 本 trigger 挂在首屏侧栏 footer 上，静态 import 会把整条链拖进首屏 preload。
+const WebRemoteControlDialog = lazy(async () => ({
+  default: (await import("@/WebRemoteControlDialog.js")).WebRemoteControlDialog,
+}));
 
 export function WorkspaceWebRemoteControlTrigger({
   workspacePath,
@@ -57,12 +62,14 @@ export function WorkspaceWebRemoteControlTrigger({
           )}
         </Button>
       </ControlHintTooltip>
-      <WebRemoteControlDialog
-        open={webRemoteControlOpen}
-        onOpenChange={setWebRemoteControlOpen}
-        workspacePath={workspacePath}
-        workspaceIdentity={workspaceIdentity}
-      />
+      <Suspense fallback={null}>
+        <WebRemoteControlDialog
+          open={webRemoteControlOpen}
+          onOpenChange={setWebRemoteControlOpen}
+          workspacePath={workspacePath}
+          workspaceIdentity={workspaceIdentity}
+        />
+      </Suspense>
     </>
   );
 }

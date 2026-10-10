@@ -17,7 +17,7 @@ import { useTabPersistence } from "@/hooks/useTabPersistence.js";
 import { useWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 // 重型面板懒加载：设置页（含 recharts 图表链）与 SSH 远程连接对话框都不在首屏路径上，
-// 静态 import 会把它们连abhängig依赖图整个拖进首屏 bundle 与常驻内存。
+// 静态 import 会把它们连同依赖图整个拖进首屏 bundle 与常驻内存。
 const SSHDialog = lazy(async () => ({ default: (await import("@/SSHDialog.js")).SSHDialog }));
 const SettingsPage = lazy(async () => ({
   default: (await import("@/SettingsPage.js")).SettingsPage,
