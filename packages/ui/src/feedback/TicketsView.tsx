@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, CopyIcon, Inbox, Loader2, PlusCircle, RefreshCcw } from "lucide-react";
+import { Check, CopyIcon, Inbox, Loader2, MessageSquareText, PlusCircle, RefreshCcw } from "lucide-react";
 import type { FeedbackTicketSummary } from "@zcode/shared";
 import type { IFeedbackService } from "@zcode/services";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { FeedbackErrorTip, StatusIndicator } from "@/feedback/feedbackBadges.js";
 import { ScrollFadeViewport } from "@/components/ui/scroll-fade-viewport.js";
+import { TicketDetailDialog } from "@/feedback/TicketDetailDialog.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import { formatRelativeTime } from "@/feedback/feedbackUserView.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -27,6 +28,7 @@ export function TicketsView({
   const [loadingList, setLoadingList] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
+  const [detailTicketId, setDetailTicketId] = useState<string | null>(null);
 
   const loadList = useCallback(async () => {
     setLoadingList(true);
@@ -104,6 +106,7 @@ export function TicketsView({
             selectedTicketId={selectedTicketId}
             copiedTicketId={copiedTicketId}
             onCopyTicketId={handleCopyTicketId}
+            onOpenTicket={setDetailTicketId}
           />
           {loadingList && items.length > 0 ? (
             <div className="flex items-center justify-center py-2 text-ui-xs text-foreground-subtle">
@@ -134,6 +137,12 @@ export function TicketsView({
           {formatMessage({ id: "feedback.tickets.newFeedback" })}
         </Button>
       </div>
+      <TicketDetailDialog
+        feedbackService={feedbackService}
+        ticketId={detailTicketId}
+        open={detailTicketId !== null}
+        onClose={() => setDetailTicketId(null)}
+      />
     </div>
   );
 }
@@ -153,11 +162,13 @@ function FeedbackTicketList({
   selectedTicketId,
   copiedTicketId,
   onCopyTicketId,
+  onOpenTicket,
 }: {
   items: FeedbackTicketSummary[];
   selectedTicketId: string | null;
   copiedTicketId: string | null;
   onCopyTicketId: (ticketId: string) => void;
+  onOpenTicket: (ticketId: string) => void;
 }) {
   const { intl } = useZCodeIntl();
   const formatMessage = intl.formatMessage;
@@ -177,6 +188,7 @@ function FeedbackTicketList({
           const copyLabel = formatMessage({
             id: copied ? "feedback.detail.issueCopied" : "feedback.detail.issueCopy",
           });
+          const openLabel = formatMessage({ id: "feedback.ticketDetail.open" });
           return (
             <li
               key={item.id}
@@ -206,6 +218,17 @@ function FeedbackTicketList({
                 <span className="min-w-0 flex-1 truncate font-mono text-ui-xs text-foreground">
                   {item.id}
                 </span>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={openLabel}
+                  title={openLabel}
+                  onClick={() => onOpenTicket(item.id)}
+                  className="shrink-0 text-foreground-subtle hover:text-foreground"
+                >
+                  <MessageSquareText className="size-3" />
+                </Button>
                 <Button
                   type="button"
                   size="icon-sm"
