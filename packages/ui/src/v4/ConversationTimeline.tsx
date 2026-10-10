@@ -36,8 +36,11 @@ import {
   deriveLogicalUiInstances,
   getPluginUiDisclosureVersion,
   getPluginUiManualPin,
+  pluginUiInstanceDerivationsEqual,
   setPluginUiInstanceDerivation,
   subscribePluginUiDisclosure,
+  EMPTY_PLUGIN_UI_INSTANCE_DERIVATION,
+  type PluginUiInstanceDerivation,
   type PluginUiRowPinResolver,
 } from "@/plugin-ui/index.js";
 import { ConversationPendingGuideList } from "@/v4/ConversationPendingGuideList.js";
@@ -51,9 +54,10 @@ import {
   getConversationStatusPanelOffsetClassName,
 } from "@/v4/conversationLayout.js";
 import {
-  buildConversationTurnRenderUnits,
-  type ConversationTurnRenderUnit,
-} from "@/v4/conversationTurnRenderUnits.js";
+  createConversationTurnRenderUnitsCache,
+  buildConversationTurnRenderUnitsIncremental,
+} from "@/v4/conversationTurnRenderUnitsIncremental.js";
+import type { ConversationTurnRenderUnit } from "@/v4/conversationTurnRenderUnits.js";
 import {
   resolveConversationTurnNavigatorActiveQueryRowId,
   resolveConversationTurnNavigatorHydrationRetryDelayMs,
@@ -414,7 +418,20 @@ function ConversationTimelineImpl({
     return () => observer.disconnect();
   }, [hasHeaderSlot]);
   // 插件卡片展示模型——同资源替代 + 最近三回合自动展开 + 手动固定；推导结果发布给卡片自己读。
-  const pluginUiDerivation = useMemo(() => deriveLogicalUiInstances(rows), [rows]);
+  // 流式期间 rows 每帧都是新数组，推导结果绝大多数帧逐字段相同；这里按内容等价复用上一次
+  // 引用，避免 pinResolver 与 renderUnits 增量缓存被无关行的变化每帧无效化。
+  const pluginUiDerivationRef = useRef<PluginUiInstanceDerivation>(
+    EMPTY_PLUGIN_UI_INSTANCE_DERIVATION,
+  );
+  const pluginUiDerivation = useMemo(() => {
+    const next = deriveLogicalUiInstances(rows);
+    const previous = pluginUiDerivationRef.current;
+    if (pluginUiInstanceDerivationsEqual(previous, next)) {
+      return previous;
+    }
+    pluginUiDerivationRef.current = next;
+    return next;
+  }, [rows]);
   useEffect(() => {
     setPluginUiInstanceDerivation(sessionKey, pluginUiDerivation);
   }, [pluginUiDerivation, sessionKey]);
@@ -431,13 +448,26 @@ function ConversationTimelineImpl({
       manualPinned: getPluginUiManualPin(sessionKey, toolCallId),
     });
   }, [pluginUiDerivation, sessionKey, pluginUiDisclosureVersion]);
+  // renderUnits 走跨帧增量缓存：流式期间只有运行中 turn 的行在变，未变 turn 复用
+  // 上一帧的 unit 引用（构建成本 O(变化轮) 而非每帧全量 O(N)），同时让下游
+  // ConversationTurnGroup 的 memo 在未变轮上真正跳过整棵子树协调。
+  const renderUnitsCacheRef =
+    useRef<ReturnType<typeof createConversationTurnRenderUnitsCache>>(null);
+  if (renderUnitsCacheRef.current === null) {
+    renderUnitsCacheRef.current = createConversationTurnRenderUnitsCache();
+  }
+  const renderUnitsCache = renderUnitsCacheRef.current;
   const renderUnits = useMemo(
     () =>
-      buildConversationTurnRenderUnits(rows, {
-        sessionPhase,
-        pluginUiPinResolver,
-      }),
-    [pluginUiPinResolver, rows, sessionPhase],
+      buildConversationTurnRenderUnitsIncremental(
+        rows,
+        {
+          sessionPhase,
+          pluginUiPinResolver,
+        },
+        renderUnitsCache,
+      ),
+    [pluginUiPinResolver, renderUnitsCache, rows, sessionPhase],
   );
   const { virtualizedUnits, liveUnit, liveUnitIndex } = useMemo(
     () => splitConversationTimelineLiveTail(renderUnits),

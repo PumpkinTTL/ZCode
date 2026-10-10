@@ -70,13 +70,14 @@ export interface ConversationTurnRenderUnit {
   workflowLaunch?: WorkflowLaunchMeta;
 }
 
-interface BuildConversationTurnRenderUnitsOptions {
+export interface BuildConversationTurnRenderUnitsOptions {
   sessionPhase?: SessionPhase;
   /** 插件卡片折叠裁决（时间线由推导结果 + 手动状态组装）。 */
   pluginUiPinResolver?: PluginUiRowPinResolver;
 }
 
-interface DraftTurnRenderUnit {
+/** 仅供 conversationTurnRenderUnitsIncremental 消费的分组草稿。 */
+export interface DraftTurnRenderUnit {
   key: string;
   turnId: string;
   header?: TurnHeaderRow;
@@ -231,7 +232,7 @@ function shouldForceOpenAbnormalHistory(
   return sessionPhase === "completedInterrupted" || sessionPhase === "error";
 }
 
-function materializeDraftUnit(
+export function materializeDraftUnit(
   draft: DraftTurnRenderUnit,
   index: number,
   total: number,
@@ -373,7 +374,7 @@ function createDraftUnit(turnId: string): DraftTurnRenderUnit {
   };
 }
 
-function shouldKeepRenderUnit(unit: ConversationTurnRenderUnit): boolean {
+export function shouldKeepRenderUnit(unit: ConversationTurnRenderUnit): boolean {
   // 隐形行清零后（投影不再产不可渲染 marker），任何工作行都可渲染；
   // 「哪些 marker 可渲染」不再是 UI 的判断。
   return (
@@ -387,7 +388,7 @@ function shouldKeepRenderUnit(unit: ConversationTurnRenderUnit): boolean {
   );
 }
 
-function normalizeRenderUnitPosition(
+export function normalizeRenderUnitPosition(
   unit: ConversationTurnRenderUnit,
   index: number,
   total: number,
@@ -437,44 +438,52 @@ function normalizeRenderUnitPosition(
   };
 }
 
+export function groupRowsIntoDrafts(rows: readonly ConversationRow[]): {
+  drafts: DraftTurnRenderUnit[];
+  lastTurnId: string | undefined;
+} {
+  const drafts: DraftTurnRenderUnit[] = [];
+  const draftByTurnId = new Map<string, DraftTurnRenderUnit>();
+
+  const getOrCreateDraft = (turnId: string) => {
+    const existing = draftByTurnId.get(turnId);
+    if (existing) {
+      return existing;
+    }
+    const draft = createDraftUnit(turnId);
+    drafts.push(draft);
+    draftByTurnId.set(turnId, draft);
+    return draft;
+  };
+
+  for (const row of rows) {
+    const draft = getOrCreateDraft(row.turnId);
+    if (isTurnHeaderRow(row)) {
+      draft.header = row;
+      continue;
+    }
+    draft.orderedRows.push(row);
+    if (isUserInputRow(row)) {
+      draft.userInputs.push(row);
+      continue;
+    }
+    if (isHookInvocationRow(row)) {
+      draft.hookInvocations.push(row);
+      continue;
+    }
+    draft.assistantWorkRows.push(row);
+  }
+
+  return { drafts, lastTurnId: drafts.at(-1)?.turnId };
+}
+
 export function buildConversationTurnRenderUnits(
   rows: readonly ConversationRow[],
   options: BuildConversationTurnRenderUnitsOptions = {},
 ): ConversationTurnRenderUnit[] {
-  const units: DraftTurnRenderUnit[] = [];
-  const unitByTurnId = new Map<string, DraftTurnRenderUnit>();
-
-  const getOrCreateUnit = (turnId: string) => {
-    const existing = unitByTurnId.get(turnId);
-    if (existing) {
-      return existing;
-    }
-    const unit = createDraftUnit(turnId);
-    units.push(unit);
-    unitByTurnId.set(turnId, unit);
-    return unit;
-  };
-
-  for (const row of rows) {
-    const unit = getOrCreateUnit(row.turnId);
-    if (isTurnHeaderRow(row)) {
-      unit.header = row;
-      continue;
-    }
-    unit.orderedRows.push(row);
-    if (isUserInputRow(row)) {
-      unit.userInputs.push(row);
-      continue;
-    }
-    if (isHookInvocationRow(row)) {
-      unit.hookInvocations.push(row);
-      continue;
-    }
-    unit.assistantWorkRows.push(row);
-  }
-
-  const materializedUnits = units.map((unit, index) =>
-    materializeDraftUnit(unit, index, units.length, options),
+  const { drafts } = groupRowsIntoDrafts(rows);
+  const materializedUnits = drafts.map((draft, index) =>
+    materializeDraftUnit(draft, index, drafts.length, options),
   );
   const keptUnits = materializedUnits.filter(shouldKeepRenderUnit);
   return keptUnits.map((unit, index) =>

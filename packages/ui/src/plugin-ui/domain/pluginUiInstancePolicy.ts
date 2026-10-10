@@ -109,3 +109,49 @@ export function deriveLogicalUiInstances(
   }
   return { instances, byToolCallId };
 }
+
+/**
+ * 内容等价比较：流式期间 rows 每帧变化，但推导结果绝大多数帧逐字段相同。
+ * 调用方用它复用上一次推导的引用，让依赖推导身份的下游 memo（pinResolver、
+ * renderUnits 增量缓存）不被无关行的变化无效化。纯函数、不含 Map/Set（模块边界约束）。
+ */
+export function pluginUiInstanceDerivationsEqual(
+  previous: PluginUiInstanceDerivation,
+  next: PluginUiInstanceDerivation,
+): boolean {
+  if (previous === next) return true;
+  const previousInstances = previous.instances;
+  const nextInstances = next.instances;
+  if (previousInstances.length !== nextInstances.length) return false;
+  for (let index = 0; index < nextInstances.length; index += 1) {
+    const a = previousInstances[index]!;
+    const b = nextInstances[index]!;
+    if (
+      a.key !== b.key ||
+      a.activeToolCallId !== b.activeToolCallId ||
+      a.supersededToolCallIds.length !== b.supersededToolCallIds.length
+    ) {
+      return false;
+    }
+    for (let slot = 0; slot < b.supersededToolCallIds.length; slot += 1) {
+      if (a.supersededToolCallIds[slot] !== b.supersededToolCallIds[slot]) return false;
+    }
+  }
+  const previousKeys = Object.keys(previous.byToolCallId);
+  const nextKeys = Object.keys(next.byToolCallId);
+  if (previousKeys.length !== nextKeys.length) return false;
+  for (const toolCallId of nextKeys) {
+    const a = previous.byToolCallId[toolCallId];
+    const b = next.byToolCallId[toolCallId];
+    if (a === undefined || b === undefined) return false;
+    if (
+      a.key !== b.key ||
+      a.superseded !== b.superseded ||
+      a.autoExpand !== b.autoExpand ||
+      a.forcedInline !== b.forcedInline
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
