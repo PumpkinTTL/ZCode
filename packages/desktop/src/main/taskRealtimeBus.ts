@@ -29,6 +29,10 @@ const STREAM_MIRROR_TEXT_OP_MAX_CHARS = 128 * 1024;
 const OWNER_COMMAND_TIMEOUT_MS = 30_000;
 const SESSION_MESSAGE_DELIVERY_TIMEOUT_MS = 30_000;
 
+// replay 增量记账的单批字符长度表：批事件入队后引用不变（重建批都是 spread 新对象），
+// 按引用缓存 stringify 长度即可，弹出时扣减，WeakMap 随事件对象一起回收。
+const streamMirrorBatchChars = new WeakMap<TaskStreamMirrorBatchEvent, number>();
+
 type HostMessageListener = (message: unknown) => void;
 type HostExitListener = () => void;
 
@@ -72,6 +76,9 @@ interface PendingStreamBatch {
   nextOpSeq: number;
   pendingOps: TaskStreamMirrorPublishOp[];
   replay: TaskStreamMirrorBatchEvent[];
+  // replay 缓冲的 JSON 字符长度累计（与原 replayBytes 口径一致：stringify 后的码元数）。
+  // 每批到达时增量维护，避免对整个缓冲反复全量 stringify 求和拖主进程主线程。
+  replayTotalChars: number;
   replayUnavailable: boolean;
   timer: ReturnType<typeof setTimeout> | null;
   replayInitializedHostIds: Set<string>;
@@ -442,6 +449,7 @@ export class TaskRealtimeBus {
       nextOpSeq: 1,
       pendingOps: [],
       replay: [],
+      replayTotalChars: 0,
       replayUnavailable: false,
       timer: null,
       replayInitializedHostIds: new Set<string>(),
@@ -503,14 +511,17 @@ export class TaskRealtimeBus {
         (op) => op.kind === "stream_event" && this.isTerminalEventType(op.event.type),
       ),
     };
-    if (JSON.stringify(event).length > STREAM_MIRROR_MAX_BATCH_BYTES) {
+    // 只 stringify 一次：长度同时用于超大批次判定与 replay 增量记账
+    //（旧实现 rememberReplayBatch 内部会对整个 replay 缓冲再反复全量 stringify）。
+    const eventChars = JSON.stringify(event).length;
+    if (eventChars > STREAM_MIRROR_MAX_BATCH_BYTES) {
       // 单次 mirror batch 过大时，RPC/base64/JSON 会在链路上多次复制，导致 host 堆内存打满。
       // owner 仍依赖 mirror seq 流渲染主动发送端，所以这里对 owner 做小批次分片；observer
       // 不消费正文流，只收到 snapshot invalidation/remoteGenerating 状态。
       this.deliverOversizedStreamBatchFallback(batch, event);
       return;
     }
-    this.rememberReplayBatch(batch, event);
+    this.rememberReplayBatch(batch, event, eventChars);
     this.deliverStreamBatch(batch, event);
 
     if (event.terminal) {
@@ -527,6 +538,7 @@ export class TaskRealtimeBus {
     // 这里只给 owner 发送连续小批次；observer 和 late subscriber 统一走快照补齐，避免大 payload 扩散。
     batch.replayUnavailable = true;
     batch.replay = [];
+    batch.replayTotalChars = 0;
     for (const chunk of this.splitOversizedBatchForOwner(batch, event)) {
       this.deliverStreamBatchToHost(batch.ownerHostId, batch, chunk, "relay_owner");
     }
@@ -726,20 +738,35 @@ export class TaskRealtimeBus {
     });
   }
 
-  private rememberReplayBatch(batch: PendingStreamBatch, event: TaskStreamMirrorBatchEvent): void {
+  private rememberReplayBatch(
+    batch: PendingStreamBatch,
+    event: TaskStreamMirrorBatchEvent,
+    eventChars: number,
+  ): void {
     // 无上限 replay 在长任务中会线性占用主进程内存。
     // 这里恢复批次数+字节数双阈值，超限后由 replayVisibleRunsToHost 触发 stream_mirror_gap 并走快照补齐。
+    // 字节数走增量记账：旧实现在每次循环里对整个缓冲重新全量 stringify 求和
+    //（60 批 × 512KB 上限时，单次到达最坏要做几十 MB 的序列化），是主进程流式期间的长任务。
+    streamMirrorBatchChars.set(event, eventChars);
     batch.replay.push(event);
+    batch.replayTotalChars += eventChars;
     while (batch.replay.length > STREAM_MIRROR_MAX_REPLAY_BATCHES) {
-      batch.replay.shift();
+      this.dropOldestReplayBatch(batch);
     }
-    while (this.replayBytes(batch.replay) > STREAM_MIRROR_MAX_REPLAY_BYTES) {
-      batch.replay.shift();
+    while (batch.replayTotalChars > STREAM_MIRROR_MAX_REPLAY_BYTES) {
+      if (batch.replay.length === 0) break;
+      this.dropOldestReplayBatch(batch);
     }
   }
 
-  private replayBytes(replay: TaskStreamMirrorBatchEvent[]): number {
-    return replay.reduce((total, replayEvent) => total + JSON.stringify(replayEvent).length, 0);
+  private dropOldestReplayBatch(batch: PendingStreamBatch): void {
+    const dropped = batch.replay.shift();
+    if (dropped === undefined) return;
+    batch.replayTotalChars = Math.max(
+      0,
+      batch.replayTotalChars - (streamMirrorBatchChars.get(dropped) ?? 0),
+    );
+    streamMirrorBatchChars.delete(dropped);
   }
 
   private replayVisibleRunsToHost(hostId: string, workspaceKeys: Iterable<string>): void {
