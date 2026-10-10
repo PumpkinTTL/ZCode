@@ -13,7 +13,7 @@ export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "polaris-plugins-official";
 
 /** Polaris 自有官方目录静态地址（静态清单镜像，排在自有后端动态端点之后）。 */
 export const POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL =
-  "https://polaris.bitlesu.com/plugins/marketplace.json";
+  "https://nimbus.bitlesu.com/plugins/marketplace.json";
 
 /** 官方目录的 Polaris 自有描述；镜像（含 Z.ai 原站）的品牌字段不得覆盖它。 */
 export const POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_DESCRIPTION =

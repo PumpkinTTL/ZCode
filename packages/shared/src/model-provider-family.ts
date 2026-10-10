@@ -33,7 +33,7 @@ export const MODEL_PROVIDER_FAMILY_SPECS = [
     startPlanProviderId: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
     individualCodingPlanProviderId: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
     teamCodingPlanProviderId: BUILTIN_MODEL_PROVIDER_IDS.zaiTeamCodingPlan,
-    teamCodingPlanManageUrl: "https://polaris.bitlesu.com/account/subscription",
+    teamCodingPlanManageUrl: "https://nimbus.bitlesu.com/account/subscription",
   },
   {
     id: "bigmodel",

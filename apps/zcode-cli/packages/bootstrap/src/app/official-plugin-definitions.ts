@@ -56,7 +56,7 @@ export interface OfficialPluginDefinition {
 
 // Polaris：官方插件图原本指向 cdn-zcode.z.ai，现已移除。客户端按插件 id 命中打包
 // 素材（见 ui/src/lib/pluginIconSource.ts），未命中时降级为中性占位图标。
-const OFFICIAL_PLUGIN_AUTHOR = { name: "Polaris", url: "https://polaris.bitlesu.com" } as const;
+const OFFICIAL_PLUGIN_AUTHOR = { name: "Polaris", url: "https://nimbus.bitlesu.com" } as const;
 
 const OFFICIAL_NODE_REPL_HOST_REQUIRED_SEED_PATHS = ["dist/mcp/server.js"] as const;
 

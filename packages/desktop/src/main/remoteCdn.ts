@@ -3,7 +3,7 @@ import { ZCODE_VERSION, type ZCodeEnv } from "@zcode/shared";
 declare const __ZCODE_CDN_BASE_URL__: string | undefined;
 // Polaris：远程工作区资源 CDN 改指自有（原为 ZCode 官方 cdn-zcode.z.ai）。
 // 运行时可由 overrideBaseUrl 或构建期 __ZCODE_CDN_BASE_URL__ 覆盖。
-const DEFAULT_CDN_BASE_URL = "https://polaris.bitlesu.com/cdn";
+const DEFAULT_CDN_BASE_URL = "https://nimbus.bitlesu.com/cdn";
 
 export interface ResolveRemoteCdnOptions {
   env?: ZCodeEnv;

@@ -1,8 +1,8 @@
 {
-  "feedback_url": "https://polaris.bitlesu.com/feedback",
+  "feedback_url": "https://nimbus.bitlesu.com/feedback",
   "feedback_use_external_form": false,
   "community_urls": {
-    "zh-CN": "https://polaris.bitlesu.com/community",
-    "en-US": "https://polaris.bitlesu.com/community"
+    "zh-CN": "https://nimbus.bitlesu.com/community",
+    "en-US": "https://nimbus.bitlesu.com/community"
   }
 }
