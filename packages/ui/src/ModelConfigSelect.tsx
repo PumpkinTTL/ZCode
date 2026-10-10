@@ -49,6 +49,8 @@ import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadg
 import {
   NimbusModelDisplayMultiplier,
   NimbusModelDisplayTags,
+  OFFICIAL_KEYWORD_ACCENT_CLASS,
+  isOfficialKeywordLabel,
 } from "@/components/NimbusModelDisplayBadges.js";
 import {
   getNimbusModelDisplayMeta,
@@ -459,11 +461,17 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
     (group: ModelSelectGroup, options: { mutedLabel?: boolean } = {}) => (
       <span className="min-w-0 flex-1 items-center gap-1.5 text-left inline-flex">
         {group.labelTag ? (
+          // 组头小标签：文案命中「官方」关键词 → 统一走模型标签的官方蓝（同一 token、
+          // 同软底、无描边）；未命中文案维持原中性灰描边样式。判定只认文案关键词
+          // （与自定义标签同一 isOfficialKeywordLabel），不按分组类型硬编码。
           <span
             title={group.label}
             className={cn(
               MODEL_CONFIG_SELECT_BADGE_CLASS_NAME,
-              "cursor-default border border-border px-1.5 py-0.5 text-foreground-subtle",
+              "cursor-default px-1.5 py-0.5",
+              isOfficialKeywordLabel(group.label)
+                ? OFFICIAL_KEYWORD_ACCENT_CLASS
+                : "border border-border text-foreground-subtle",
             )}
           >
             {group.label}

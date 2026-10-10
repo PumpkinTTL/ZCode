@@ -120,8 +120,11 @@ Default light and dark CSS variables still exist as fallback foundations, but ne
   `--color-model-tag-peak` (amber, load warning).
   Text-only tokens for the official model catalog tags in the model selector and
   provider model rows; tag surfaces derive in place as a low-alpha `color-mix` of
-  the same token. Logged-out rendering falls back to gray pills and never uses
-  these tokens.
+  the same token. Custom (admin-configured) tag labels that hit the 「官方」 keyword
+  (「官方合作」/「官方直连」/「官方认证」…) reuse the limited-time blue token, and the
+  model-menu group header tag does the same when its label hits the keyword; all
+  other custom tags stay neutral gray. Logged-out rendering falls back to gray pills
+  and never uses these tokens.
 - **Diff Added**: `--color-diff-added` with `--color-diff-added-foreground`
 - **Diff Removed**: `--color-diff-removed` with `--color-diff-removed-foreground`
 

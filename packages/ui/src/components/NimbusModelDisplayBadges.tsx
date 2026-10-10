@@ -14,6 +14,9 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
  * - 倍率是行末数字列：模型菜单里由调用方放在打勾前右对齐，settings 行内联在末尾；
  *   tabular-nums 裸数字、普通字重。
  *
+ * 站长令（2026-10-10 追补）：自定义标签文案命中「官方」关键词 → 复用「限时折扣」
+ * 蓝（同一 token、同一软底形态）；未命中维持中性灰。判定见 isOfficialKeywordLabel。
+ *
  * 颜色走 styles.css 四主题块的 --color-model-tag-* 语义 token（文字），
  * 表面/描边由同一 token 现场低透明度派生，自动跟随明暗与 Zai 变体。
  */
@@ -33,6 +36,24 @@ const TAG_ACCENT_CLASS: Record<QuotaModelDisplayTag, string> = {
 };
 
 const TAG_GRAY_CLASS = "text-foreground-subtle bg-surface border-border/60";
+
+/**
+ * 归一规则：命中「官方」关键词的标签复用的蓝色 accent——即「限时折扣」的同一
+ * token 与软底形态（文字色用同一 token + 10% color-mix 背景）。模型菜单组头
+ * labelTag（ModelConfigSelect）与行内自定义标签共用，保证两处是同一只蓝。
+ */
+export const OFFICIAL_KEYWORD_ACCENT_CLASS = TAG_ACCENT_CLASS.limited_time;
+
+/**
+ * 自定义标签关键词判定（产品语义：管理端配置的运营标签按文案着色，判定只认
+ * 文案子串、不认来源/分组类型）。当前关键词：「官方」——「官方合作」「官方直连」
+ * 「官方认证」等均可命中，表达官方背书，复用「限时折扣」蓝；未命中维持中性灰。
+ * 以后扩展关键词（新增背书词等）只改这一处；未登录置灰是独立规则，由渲染处
+ * badgeClass 统一收口，与本函数无关。
+ */
+export function isOfficialKeywordLabel(label: string): boolean {
+  return label.includes("官方");
+}
 
 const TAG_MESSAGE_IDS: Record<QuotaModelDisplayTag, string> = {
   recommended: "model.displayTag.recommended",
@@ -83,11 +104,15 @@ export function NimbusModelDisplayTags({ meta }: { meta: NimbusModelDisplayMeta 
           {promo.label}
         </span>
       ) : null}
-      {/* 自定义标签：中性灰胶囊（管理端自由配置的运营信息，不上彩色） */}
+      {/* 自定义标签：文案命中「官方」关键词走官方蓝（与「限时折扣」同 token、同软底，
+          无描边实底）；其余维持中性灰。形态与上方组合标签统一（TAG_BADGE_BASE）。
+          未登录仍一律置灰——由 badgeClass 的 loggedIn 收口，规则不变。 */}
       {customTags.map((label) => (
         <span
           key={label}
-          className={cn(TAG_BADGE_BASE, "border-border/60 bg-surface px-2 py-0.5 text-foreground-subtle")}
+          className={badgeClass(
+            isOfficialKeywordLabel(label) ? OFFICIAL_KEYWORD_ACCENT_CLASS : TAG_GRAY_CLASS,
+          )}
         >
           {label}
         </span>
