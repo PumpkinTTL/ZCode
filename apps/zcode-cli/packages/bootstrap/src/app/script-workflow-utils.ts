@@ -10,7 +10,7 @@ import { isAbsolute, join, relative } from "node:path";
 
 // Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
 // 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
-// 只用于用户级（全局档）；workspace 级仍是既定的 `.zcode` 点文件契约。
+// 只用于用户级（全局档）；workspace 级同名字面量，两级统一跟品牌（`.polaris`）。
 const DATA_ROOT_DIR_NAME = ".polaris";
 
 const STRUCTURED_OUTPUT_PROMPT =
@@ -175,7 +175,7 @@ export function inferScriptWorkflowScope(
   scriptPath: string,
   workingDirectory: string,
 ): "explicit" | "project" | "user" {
-  if (isWithin(scriptPath, join(workingDirectory, ".zcode", "workflows"))) return "project";
+  if (isWithin(scriptPath, join(workingDirectory, ".polaris", "workflows"))) return "project";
   if (isWithin(scriptPath, join(homedir(), DATA_ROOT_DIR_NAME, "workflows"))) return "user";
   return "explicit";
 }

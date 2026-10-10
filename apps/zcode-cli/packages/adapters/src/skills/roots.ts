@@ -7,11 +7,10 @@ const GIT_MARKER = ".git";
 const HOME_PREFIX = "~/";
 const PRIORITY_STEP = 10;
 const SKILLS_DIR = "skills";
-const ZCODE_DIR = ".zcode";
-// Polaris fork：用户级数据根目录名（`.zcode` → `.polaris`）。CLI 不依赖 @zcode/services，
-// 无法直接 import DATA_ROOT_DIR_NAME，因此保留字面量，指向 packages/services/src/paths.ts 的同名常量。
-// 只用于用户级；workspace 级仍是既定的 `.zcode` 点文件契约，不跟着改。
-const ZCODE_USER_DIR = ".polaris";
+// Polaris fork：数据根目录名统一跟品牌（原 `.zcode` → `.polaris`），用户级与 workspace 级一致。
+// CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，因此保留字面量，
+// 指向 packages/services/src/paths.ts 的同名常量。
+const POLARIS_DIR = ".polaris";
 const AGENTS_DIR = ".agents";
 
 export interface SkillRootResolutionOptions {
@@ -100,10 +99,9 @@ function skillRootsForBase(
   scope: SkillRoot["scope"],
   nextPriority: () => number,
 ): SkillRoot[] {
-  // 合并而不是 fallback：用户可能同时安装原生 `.zcode` skill 和兼容 `.agents` skill。
+  // 合并而不是 fallback：用户可能同时安装原生 `.polaris` skill 和兼容 `.agents` skill。
   // 同一级别仍保持原生目录优先，后续同名按 root 顺序解析。
-  // 用户级目录名跟数据根走（`.polaris`），workspace 级仍是 `.zcode`。
-  const zcodeDir = scope === "user" ? ZCODE_USER_DIR : ZCODE_DIR;
+  const zcodeDir = POLARIS_DIR;
   return [
     root(join(baseDirectory, zcodeDir, SKILLS_DIR), scope, "zcode", nextPriority()),
     root(join(baseDirectory, AGENTS_DIR, SKILLS_DIR), scope, "agents", nextPriority()),

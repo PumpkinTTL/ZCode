@@ -423,7 +423,7 @@ function resolveUserHomeDir(): string {
 }
 
 function getWorkspaceZcodeSkillRoot(workspacePath: string): string {
-  return join(workspacePath, ".zcode", "skills");
+  return join(workspacePath, ".polaris", "skills");
 }
 
 function getUserZcodeSkillRoot(): string {
@@ -431,7 +431,7 @@ function getUserZcodeSkillRoot(): string {
 }
 
 function getWorkspaceZcodeCommandRoot(workspacePath: string): string {
-  return join(workspacePath, ".zcode", "commands");
+  return join(workspacePath, ".polaris", "commands");
 }
 
 function getUserZcodeCommandRoot(): string {
@@ -439,7 +439,7 @@ function getUserZcodeCommandRoot(): string {
 }
 
 function getWorkspaceZcodePluginRoot(workspacePath: string): string {
-  return join(workspacePath, ".zcode", "plugins");
+  return join(workspacePath, ".polaris", "plugins");
 }
 
 function getUserZcodePluginRoot(): string {
@@ -451,7 +451,7 @@ function getUserZcodeCliConfigPath(): string {
 }
 
 function getWorkspaceZcodeConfigPath(workspacePath: string): string {
-  return join(workspacePath, ".zcode", "config.json");
+  return join(workspacePath, ".polaris", "config.json");
 }
 
 function getClaudeUserAgentsFileSourcePath(): string {

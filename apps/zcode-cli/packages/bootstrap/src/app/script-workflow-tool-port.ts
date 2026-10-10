@@ -23,7 +23,7 @@ import { isScriptWorkflowStore } from "./script-workflow-utils.js";
 
 // Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
 // 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
-// 只用于用户级（全局档）；workspace 级仍是既定的 `.zcode` 点文件契约。
+// 只用于用户级（全局档）；workspace 级同名字面量，两级统一跟品牌（`.polaris`）。
 const DATA_ROOT_DIR_NAME = ".polaris";
 
 const WORKFLOW_SCRIPT_SUFFIX = ".workflow.js";
@@ -319,7 +319,7 @@ async function resolveNamedWorkflowPath(
 ): Promise<string> {
   const fileName = workflowFileName(name);
   const candidates = [
-    join(deps.workingDirectory, ".zcode", "workflows", fileName),
+    join(deps.workingDirectory, ".polaris", "workflows", fileName),
     join(homedir(), DATA_ROOT_DIR_NAME, "workflows", fileName),
   ];
   const builtIn = BUILTIN_WORKFLOW_ALLOWLIST.get(name);
