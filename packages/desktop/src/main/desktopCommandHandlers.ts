@@ -594,7 +594,8 @@ export async function executeDesktopCommand(options: {
       await exportLogs();
       return;
     case DesktopCommandIds.ToggleDevTools:
-      targetWindow?.webContents.toggleDevTools();
+      // 打包版封死：菜单入口已摘除，这里兜住残余调用方；e2e 不经此命令开 DevTools。
+      if (!app.isPackaged) targetWindow?.webContents.toggleDevTools();
       return;
     case DesktopCommandIds.OpenResourceManager:
       openResourceManager();

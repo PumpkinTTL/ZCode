@@ -321,12 +321,18 @@ function buildApplicationMenuTemplate(options: {
               { type: "separator" as const },
             ]
           : []),
-        {
-          id: HELP_TOGGLE_DEV_TOOLS_MENU_ID,
-          label: getLabel(desktopMenuMessageIds.helpToggleDevTools),
-          role: "toggleDevTools" as const,
-          click: () => void options.executeDesktopCommand(DesktopCommandIds.ToggleDevTools),
-        },
+        // 打包版不提供开发者工具入口：role 自带 Ctrl+Shift+I/Cmd+Alt+I 加速键，
+        // 菜单栏不可见时加速键依然命中，所以必须整项摘除而不是隐藏。
+        ...(!app.isPackaged
+          ? [
+              {
+                id: HELP_TOGGLE_DEV_TOOLS_MENU_ID,
+                label: getLabel(desktopMenuMessageIds.helpToggleDevTools),
+                role: "toggleDevTools" as const,
+                click: () => void options.executeDesktopCommand(DesktopCommandIds.ToggleDevTools),
+              },
+            ]
+          : []),
         { type: "separator" as const },
         {
           label: getLabel(desktopMenuMessageIds.helpResourceManager),

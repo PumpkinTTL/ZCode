@@ -222,6 +222,22 @@ if (!shouldUseElectronDefaultUserDataPath) {
 }
 process.title = runtimeApplicationName;
 
+// 打包版封死开发者工具键盘入口：菜单 role 与命令处理器已按 isPackaged 门控，
+// 这里对所有 webContents（主窗口/关于窗/弹窗/webview guest）统一拦截 F12 与
+// DevTools 默认加速键，防止未来新增 surface 绕过；dev 态不受影响。
+if (app.isPackaged) {
+  app.on("web-contents-created", (_event, contents) => {
+    contents.on("before-input-event", (event, input) => {
+      if (input.type !== "keyDown") return;
+      const key = input.key.toLowerCase();
+      const isF12 = key === "f12";
+      const isCtrlShiftI = (input.control || input.meta) && input.shift && key === "i";
+      const isCmdAltI = input.meta && input.alt && key === "i";
+      if (isF12 || isCtrlShiftI || isCmdAltI) event.preventDefault();
+    });
+  });
+}
+
 process.on("unhandledRejection", (reason) => {
   logger.error("unhandledRejection:", reason);
 });
