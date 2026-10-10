@@ -9,7 +9,7 @@
  * 把源码里的 Polaris 默认值整片盖掉——表现就是"改了品牌却还在请求官方接口"。
  *
  * 这里在进 `define` 之前把这些键里的官方域名摘掉并打印告警：摘掉之后
- * `readProductEndpointEnv()` 会自然回落到源码默认值（polaris.bitlesu.com）。
+ * `readProductEndpointEnv()` 会自然回落到源码默认值（nimbus.bitlesu.com）。
  * 需要指向官方做迁移验证时，显式设置 POLARIS_ALLOW_UPSTREAM_ENDPOINTS=1。
  */
 
@@ -64,7 +64,7 @@ export function rejectUpstreamEndpoints(endpointEnv, options = {}) {
     log(
       `[polaris] 已从构建端点环境中摘除上游域名：${droppedKeys.join(", ")}。` +
         `这些变量来自当前 shell 的 process.env，会把产物端点指回 Z.ai/ZCode。` +
-        `摘除后回落到源码默认值（polaris.bitlesu.com）。` +
+        `摘除后回落到源码默认值（nimbus.bitlesu.com）。` +
         `确需保留请设 ${ALLOW_UPSTREAM_ENDPOINTS_ENV}=1。`,
     );
   }
