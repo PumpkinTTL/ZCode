@@ -1841,3 +1841,89 @@ skill bootstrap 读到的 `ZCODE_CUA_PLUGIN_ROOT` 落到 browser-use 根。
 - **glm 基准下复刻 agent 判定**（探针）：computer-use enabled 且 root=cache 路径；
   `runtimeFeatures.computerUse: true`；nodeRepl env `ZCODE_CUA_PLUGIN_ROOT` = computer-use 根。
 - 启动日志零错误、Helper ready；下游链（此前已验证）不变。
+
+## 30. 精简与性能优化代理（后台任务）第二轮：上游核查 + 残留清扫 + 性能三次核查（2026-10-10）
+
+基线：`enterprise` HEAD `1b18991`（干净）。三条工作线：上游检查 / 官方业务与品牌残留第二轮 / 性能与内存第三轮。
+
+### 30a. 上游检查：无新提交，跳过合并
+
+- `git fetch upstream --prune`（zai-org）与 `git fetch origin --prune`（PumpkinTTL）均成功，无新增 ref。
+- 实证（非缓存）：`git ls-remote upstream` 实时返回 `refs/heads/main = 29628c9`（v3.14.3，2026-09-24）、
+  `refs/heads/feat/ui-plugin = 662c30b`，两者都已是 HEAD 的祖先（`feat/ui-plugin` 于 `bb4e2d4` 合并）。
+- 结论：**上游无新提交，本轮不合并**。本地 `origin/enterprise` 落后本地 64 个提交（属未推送，与上游无关）。
+
+### 30b. 官方业务 / 品牌残留第二轮（本批删了什么）
+
+| 项                     | 处置                                                                                                                                               | 依据                                                                                                                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 死 i18n 键 5 条        | `business.quota.{title,description,retry,window5h,windowWeekly}` 从 zh/en 对称删除（提交 `5838976`）                                               | 额度面板改版遗留；现役是 `window5hShort/windowWeeklyShort`。保守扫描器（模板字面量动态前缀 + 字符串拼接前缀 + `join(".")` 兜底）0 动态证据；`git grep -F` 全仓逐键 0 命中 |
+| third-party 陈旧元数据 | `npm-overrides.json` 删 3 条 `@arms/rum-*` 覆盖项 + `inventory.json` reviewRequired 删 3 条（提交 `252eb47`）                                      | 证据文件 `third-party/upstream/*.txt` 已在前轮删除；lockfile 0 引用；`generate-third-party-notices.mjs` 自身断言 "Stale npm notice override"——留着重生成必抛错            |
+| 打包注释死引用         | `packages/desktop/scripts/bundle.mjs` 的 `@babel/runtime` 校验理由注释更新：原消费方 `@arms/rum-core` 已退役；条目与依赖暂留（打包态未验证前不动） | 全仓 grep：`@babel/runtime` 仅 package.json 声明 + 该注释；agent 产物 zcode.cjs 中仅剩许可证文本，无运行时 require                                                        |
+
+**扫描后确认无死物的区域**（证据留档，避免下轮重复劳动）：
+
+- `scripts/find-orphans.mjs`：4046 候选 / 202 疑似 → **0 个零字符串引用**（全部有 package.json / 文档 / 技能脚本引用；
+  41 个 stringRef=1 逐一核对均为手工运维工具或入口，按 §10c 保留）。
+- 图片资源 47 个（`assets/**`，不含 material-icons 等运行时动态解析目录）：零引用 = 0。
+- 代码/资源中**已删资源路径的字符串引用**：`payment-icons`、`CodingPlanEmbeddedWebviewDialog`、
+  `BigModelRegistrationHint`、`codingPlanFunnelTelemetry`、`PRESET_PROVIDER_SPECS`、`teamPlanApiKey`、
+  `codingPlanEntitlement`、`zaiBusinessTokenResolver` 全仓 0 命中（死模块名已被前轮清干净）。
+- 纯注释里的 ARMS 字样（`apps/zcode-cli/packages/telemetry/src/bootstrap.ts:101`、
+  `contracts/src/telemetry/agent-execution.ts:80`、`shared/src/processResourceTelemetry.ts:65`）：
+  在 CLI/契约文件内，**按红线不改**（注释非语义，但避免动红线文件；不影响任何产物）。
+- `zhipu-account` access 类型面（provider schema/resolver/config-service）：现役配置解析路径仍在用，
+  **属 provider 域兼容面，红线不动**。
+- `apps/zcode-cli/dependencies/native-search/ripgrep-v13.0.0-10/**`：远程 macOS 仍按版本钉死引用
+  （`runtime-tool-runtime.ts:51`、`remote-native-search-tools-config.mjs:9`），**保留**。
+
+### 30c. 性能 / 内存第三轮：逐区核查结论（无新增修改；全部为已验证项或观测项）
+
+> 方法：对「已知修复点」之外的区域做定点复核（file:line 为证据），凡已封顶/自适应/门控的不重复动。
+> 本轮**没有**发现新的「无界增长且安全可删」缺陷，故不制造改动（宁少勿错）。
+
+已核实为「已封顶 / 自适应 / 自动回收」的路径：
+
+| 区域             | 证据                                                                                                            | 结论                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| 会话状态面板时钟 | `ConversationStatusPanel.tsx:1052/1152/1353`                                                                    | 均按「有运行条目才起 1s ticker」，无条目零开销、卸载清理 |
+| 会话时间线       | `ConversationTimeline.tsx:729`（`useVirtualizer` + 动态测高缓存 + 行卸载复用）                                  | 长列表已虚拟化                                           |
+| 文件树           | `WorkspaceFileTreeList.tsx:160`（`@tanstack/react-virtual`）、搜索索引 `enabled` 门控                           | 已虚拟化 + 惰性建索引                                    |
+| diff 渲染        | `patchDiffPreview.ts:3-6`（行/字符/深 hunk 上限 + 800 行截断）、`toolDiffPreview.ts:267`（LCS 6 万格上限）      | 已封顶                                                   |
+| worker 池        | `DiffsWorkerPoolProvider.tsx`（`min(4, cores/2)`，根级单例）                                                    | 有界                                                     |
+| 任务缓存         | `useZCodeTaskService.ts`（256KB/条、2MB 总、20 条）、`useGroupedTaskView.ts`（FIFO 8）、`taskQueryCache`（400） | 已封顶                                                   |
+| 滚动/面板记忆    | `chatSessionScrollMemory.ts`（200）、`taskSidePaneMemory.ts`（50）                                              | 已封顶                                                   |
+| 插件沙箱         | `PluginUiPageManager`（30 任务、64 槽、5min 挂起、任务删除回收）、`pluginUiInstanceStore`（FIFO 12）            | 有界 + 自愈                                              |
+| host 事件去重    | `taskRealtimeBridge.ts:27,74-90`（1000 窗口）                                                                   | 已封顶（注释即此修复）                                   |
+| host 订阅        | `host/index.ts` cron/off-peak `dispose*` 显式释放（745/803/822/957/2098/2167）                                  | 有释放路径                                               |
+| 诊断采样         | `hostMemoryDiagnosticsLog` / `memoryDiagnostics`（60s + 变化门控 + stop()）                                     | 低开销、可停                                             |
+| renderer 启动    | `performanceTimelineCleanup.ts`（DEV-only，清 React19 dev Performance timeline，GB 级堆的已知来源）             | 已处理                                                   |
+| 首屏             | `f386c6c` lazy 批 + `main.tsx` 极薄入口 + T0-T4 打点                                                            | 无新增阻塞项                                             |
+
+**观察清单（watch，本轮不动，留证据）**：
+
+| 项                                                                       | 现状与风险                                                                                                                                                                |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pluginUiWidgetStateStore.ts` 无自身上限                                 | 由页面生命周期（destroy/reload/instance-closed 清理）+ 页面管理器容量间接约束；若未来出现「单任务海量 plugin UI 卡片」再评估 FIFO 上限（同 `pluginUiInstanceStore` 先例） |
+| `clientConfigService.ts:30` `entries` 无淘汰                             | 键 = endpoint+app_version+platform，键空间极小；风险低，不动                                                                                                              |
+| `windowHostControllerProjection.ts:340-430` 每帧逐行 `isDeepStrictEqual` | 事件风暴下 O(N) 深比较 + 仅发布真实 delta；属设计权衡，若帧频率实测放大再优化                                                                                             |
+| `@babel/runtime`（desktop 生产依赖 + bundle 校验条目）                   | 原消费方已退役；移除需打包验证（本轮不跑重构建），留待拍板                                                                                                                |
+| `THIRD-PARTY-NOTICES.md` 仍列 `@arms/rum-*`                              | 生成物；本机 `pnpm -r ls` EMFILE（§21c 已知），重生成留待句柄上限足够的机器                                                                                               |
+| 工具环境限制                                                             | `knip` 本机 OOM（Array buffer allocation failed）；`licenses.mjs notices` EMFILE——均为机器限制，非代码问题                                                                |
+
+### 30d. 本轮验证
+
+```
+tsc -b packages/ui（删键后）              ✅ 0 错误
+scripts/find-missing-i18n-keys.mjs        ✅ missing 0 / onlyEn 0 / onlyZh 0
+JSON.parse(inventory/npm-overrides)       ✅ OK
+oxfmt --check bundle.mjs                  ✅ 通过
+git grep @arms（two third-party files）   ✅ 0
+```
+
+### 30e. 提交
+
+| hash      | 内容                                                             |
+| --------- | ---------------------------------------------------------------- |
+| `5838976` | chore(i18n): 第二轮死键清扫——5 条无消费方 business.quota 遗留键  |
+| `252eb47` | chore(cleanup): 第三轮残留——third-party 陈旧 @arms 元数据 + 注释 |
