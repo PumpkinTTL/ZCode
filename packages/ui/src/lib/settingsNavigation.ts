@@ -318,7 +318,11 @@ export function consumePendingSettingsPluginTab(): SettingsPluginTabTarget | und
   try {
     const raw = window.sessionStorage.getItem(SETTINGS_PLUGIN_TAB_INTENT_KEY);
     window.sessionStorage.removeItem(SETTINGS_PLUGIN_TAB_INTENT_KEY);
-    return raw === "plugins" || raw === "mcps" || raw === "skills" ? raw : undefined;
+    // SettingsPluginTabTarget 四值全收："commands" 曾被漏掉——setter 类型允许它、
+    // 设置页有对应分区，但这里会静默丢弃该意图（§32e-1，第五轮收尾修复）。
+    return raw === "plugins" || raw === "mcps" || raw === "skills" || raw === "commands"
+      ? raw
+      : undefined;
   } catch {
     return undefined;
   }
