@@ -90,6 +90,9 @@ interface FeishuUserInfoResponse {
 }
 
 const accessTokenCache = new Map<string, { token: string; expiresAt: number }>();
+// FIFO 上限：删除失败的条目会滞留（保留 reaction_id 以便重试删除），防长期运行慢性累积；
+// 淘汰后的极端后果只是该条消息上的「输入中」表情残留在飞书侧，纯外观。
+const FEISHU_TYPING_REACTION_IDS_CAP = 2000;
 const typingReactionIds = new Map<string, string>();
 const userDisplayNameCache = new Map<string, { name: string | null; expiresAt: number }>();
 const FEISHU_ELICITATION_FORM_FIELD_NAME = "answer";
@@ -1378,6 +1381,10 @@ async function addFeishuTypingReaction(
   }
   if (payload.data?.reaction_id) {
     typingReactionIds.set(key, payload.data.reaction_id);
+    if (typingReactionIds.size >= FEISHU_TYPING_REACTION_IDS_CAP) {
+      const oldest = typingReactionIds.keys().next().value;
+      if (oldest !== undefined) typingReactionIds.delete(oldest);
+    }
   }
 }
 

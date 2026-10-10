@@ -46,6 +46,9 @@ interface ParsedCodeCommentPrompt {
 type CodeCommentAddToChatEvent = CustomEvent<CodeCommentPayload>;
 type CodeCommentRemoveFromChatEvent = CustomEvent<CodeCommentRemovePayload>;
 
+// FIFO 上限：墓碑淘汰后，理论上同一条移除事件重放会让评论在 composer 复现——
+// 但该事件是一次性 UI 动作，重放概率可忽略；防模块级 Set 慢性累积优先。
+const REMOVED_CODE_COMMENT_KEYS_CAP = 500;
 const removedCodeCommentKeys = new Set<string>();
 
 export function getCodeCommentWorkspaceKey(workspacePath: string, workspaceIdentity?: string) {
@@ -61,7 +64,12 @@ export function isCodeCommentMarkedRemoved(payload: CodeCommentRemovePayload) {
 }
 
 export function markCodeCommentRemoved(payload: CodeCommentRemovePayload) {
-  removedCodeCommentKeys.add(getCodeCommentRemovalKey(payload));
+  const removalKey = getCodeCommentRemovalKey(payload);
+  if (removedCodeCommentKeys.size >= REMOVED_CODE_COMMENT_KEYS_CAP) {
+    const oldest = removedCodeCommentKeys.values().next().value;
+    if (oldest !== undefined) removedCodeCommentKeys.delete(oldest);
+  }
+  removedCodeCommentKeys.add(removalKey);
 }
 
 export function unmarkCodeCommentRemoved(payload: CodeCommentRemovePayload) {

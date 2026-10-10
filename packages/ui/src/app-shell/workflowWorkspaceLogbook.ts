@@ -128,6 +128,8 @@ export function peekLinesOf(result: unknown, max = 3): PeekLine[] {
 }
 
 // 展开态按卡记忆（与 ToolLayout 的模块级 map 同一做法）：收起再展开、切 tab 再回来都还在。
+// FIFO 上限：极老卡片的展开态会被遗忘（回落默认收起），防模块级 Map 慢性累积。
+const OPEN_STATE_CAP = 500;
 const openState = new Map<string, boolean>();
 
 export function rememberedOpen(key: string): boolean {
@@ -135,5 +137,9 @@ export function rememberedOpen(key: string): boolean {
 }
 
 export function setRememberedOpen(key: string, open: boolean): void {
+  if (!openState.has(key) && openState.size >= OPEN_STATE_CAP) {
+    const oldest = openState.keys().next().value;
+    if (oldest !== undefined) openState.delete(oldest);
+  }
   openState.set(key, open);
 }
