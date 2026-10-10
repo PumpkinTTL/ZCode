@@ -329,21 +329,32 @@ export async function ensureMarketplaceManifestAvailable(input: {
   // 受信任的内部懒加载：用 known record 的规范 source 拉取，并以 record.id 作为 trustedId，
   // 使官方 id 只能由本来就是该官方 id 的记录刷新得到。
   // 官方目录按镜像优先级逐个尝试，前一个不可达就降级到下一个；全部失败才抛最后一个错误。
+  // 空目录不算终态：官方 catalog 命中「可用但 0 插件」的镜像（自有源已上线但内容未就绪）
+  // 时继续往后降级到有内容的镜像，全部为空才接受空目录——先用上游内容撑消费端市场（站长令）。
+  // 注意此分支只对官方目录生效：非官方记录 resolveMarketplaceRefreshSources 只有一个候选，
+  // 行为不变。
   let lastError: unknown;
+  let emptyResult: KnownMarketplaceRecord | null = null;
   for (const source of resolveMarketplaceRefreshSources(record)) {
     throwIfPluginOperationAborted(input.signal);
     try {
-      return await addMarketplace({
+      const added = await addMarketplace({
         signal: input.signal,
         source,
         storageRoot: input.storageRoot,
         trustedId: record.id,
       });
+      if ((added.pluginCount ?? 0) === 0) {
+        emptyResult = added;
+        continue;
+      }
+      return added;
     } catch (error) {
       if (input.signal?.aborted) throw error;
       lastError = error;
     }
   }
+  if (emptyResult) return emptyResult;
   throw lastError ?? new Error(`Marketplace refresh failed: ${record.id}`);
 }
 

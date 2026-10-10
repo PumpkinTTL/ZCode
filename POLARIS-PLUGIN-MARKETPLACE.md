@@ -105,12 +105,16 @@ Z.ai 原站的 manifest 声明名是**历史名** `zcode-plugins-official`（官
 
 ```
 OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS = [
-  https://nimbus.bitlesu.com/plugins/marketplace.json          // 优先级 1（Polaris 自有）
-  https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json // 优先级 2（Z.ai 原站，兼容镜像）
+  https://nimbus.bitlesu.com/api/v1/public/plugin-marketplace.json // 优先级 1（Polaris 动态端点）
+  https://nimbus.bitlesu.com/plugins/marketplace.json               // 优先级 2（Polaris 静态清单镜像）
+  https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json     // 优先级 3（Z.ai 原站，兼容镜像）
 ]
 ```
 
-- 刷新官方目录时按顺序逐个尝试：**前一个不可达就降级到下一个**，全部失败才记账。
+- 刷新官方目录时按顺序逐个尝试：**前一个不可达、或目录为空（0 插件）就降级到下一个**，
+  全部失败才记账、全部为空才接受空目录（站长令 2026-10-10：自有市场内容就绪前，
+  先用上游目录撑消费端市场；内容就绪后移除 Z.ai 镜像并恢复原口径）。
+  未打包开发实例的镜像链为 [本地 cbcn (127.0.0.1:8000) → Polaris 静态 → Z.ai 原站]。
 - 实测：主源（未部署）DNS 失败约 1.1s 后回退到 Z.ai 原站，成功拉到 26 个插件，无 error。
 - 成功后 `known_marketplaces.json` 的 `source` 会指向本次成功的镜像；下一次刷新仍按镜像列表顺序重试。
 - 命中的镜像目录会写入官方目录的 CDN 分片（`cdn-marketplace.json`），与内置 seed 合并。

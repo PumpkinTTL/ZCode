@@ -8,6 +8,7 @@ import {
   PLUGIN_MARKETPLACE_SOURCES_ENV,
   POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
   PRESET_PLUGIN_MARKETPLACES,
+  ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
   isPresetMarketplaceAdded,
   normalizeMarketplaceSourceForCompare,
   parsePluginMarketplaceSourceList,
@@ -104,15 +105,20 @@ test("source normalization is only for comparison, not for fetching", () => {
   );
 });
 
-test("official marketplace mirrors default to own backend first, Polaris static as fallback", () => {
+test("official marketplace mirrors default to own backend first, upstream compat mirror last", () => {
   assert.deepEqual(
     [...OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS],
-    [NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL, POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL],
+    [
+      NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
+      POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
+      ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
+    ],
   );
   // 未声明运行环境（打包生产 / CLI / 浏览器）→ 静态默认链，不回落本地。
   assert.deepEqual(resolveOfficialPluginMarketplaceMirrors({} as NodeJS.ProcessEnv), [
     NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
     POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
+    ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
   ]);
 });
 
@@ -121,7 +127,11 @@ test("unpacked development instances fall back to the local cbcn-cloud marketpla
     resolveOfficialPluginMarketplaceMirrors({
       [ZCODE_RUNTIME_ENV_KEY]: "development",
     } as unknown as NodeJS.ProcessEnv),
-    [DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL, POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL],
+    [
+      DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
+      POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
+      ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
+    ],
   );
   // 打包生产（显式 production）不命中本地。
   assert.deepEqual(

@@ -35,14 +35,26 @@ export const DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL =
   "http://127.0.0.1:8000/api/v1/public/plugin-marketplace.json";
 
 /**
+ * 上游（Z.ai 原站）兼容镜像：同一 `polaris-plugins-official` 目录的历史来源。
+ *
+ * 站长令（2026-10-10）：自有市场内容（nimbus 动态端点/静态清单的插件条目）就绪前，
+ * 暂时保留此回退源，先把它家的目录当消费端市场用；自有源内容就绪后应移除本项，
+ * 恢复「不自动打上游」的口径。仅刷新时按镜像顺序尝试，且只贡献内容——
+ * manifest 声明的历史名会被 adapter 归一化（身份归 Polaris，镜像只供内容）。
+ */
+export const ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL =
+  "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json";
+
+/**
  * 官方目录（`polaris-plugins-official`）的镜像源（生产默认顺序），按优先级排序：
- * 靠前的先试，失败才降级到下一个。实际取用请走
+ * 靠前的先试，失败**或自有源目录为空**才降级到下一个。实际取用请走
  * {@link resolveOfficialPluginMarketplaceMirrors}（它会按运行环境替换第一优先，
  * 并支持 {@link PLUGIN_MARKETPLACE_MIRRORS_ENV} 完全覆盖）。
  */
 export const OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS: readonly string[] = [
   NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
   POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
+  ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
 ];
 
 /**
@@ -67,7 +79,11 @@ export function resolveOfficialPluginMarketplaceMirrors(env?: NodeJS.ProcessEnv)
   if (overridden.length > 0) return overridden;
   const runtimeEnv = resolvedEnv ? resolveZCodeRuntimeEnv(resolvedEnv) : "production";
   return runtimeEnv === "development"
-    ? [DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL, POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL]
+    ? [
+        DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
+        POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
+        ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
+      ]
     : [...OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS];
 }
 
