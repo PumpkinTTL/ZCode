@@ -1927,3 +1927,127 @@ git grep @arms（two third-party files）   ✅ 0
 | --------- | ---------------------------------------------------------------- |
 | `5838976` | chore(i18n): 第二轮死键清扫——5 条无消费方 business.quota 遗留键  |
 | `252eb47` | chore(cleanup): 第三轮残留——third-party 陈旧 @arms 元数据 + 注释 |
+
+## 31. 性能深挖与瘦身代理第四轮：加载图 + asar 解剖 + 内存面盘点（2026-10-10）
+
+基线：`enterprise` HEAD `d6ca9ff`（tracked 干净）。复用第二轮遗留的 4 个 tmp 分析脚本
+（已全部内存纪律化：asar 审计/预载/cat 改流式读 header + 定点 readSync，不再整读 264MB asar）。
+
+### 31a. renderer 首屏加载图（静态 import 闭包实测）
+
+- `scripts/tmp-renderer-graph.mjs`：nodes=1712，首屏纯静态可达 1680——几乎全量同步。
+- 首屏 preload 实测（`tmp-asar-preload.mjs`，构建日期 10-08 的 asar）：**8.82MB / 295 文件**；
+  其中 `styles-BWmzHFFM.js` 一个 chunk 5.7MB（shiki 引擎 + streamdown + radix + i18n + 共享
+  UI 的自动 vendor chunk），IntlProvider 585KB，recharts 链约 324KB，katex 251KB。
+- 已正确 lazy 的：Terminal 主面板、pdf/office/pptx 预览、shiki 语言 grammar、mermaid、
+  ArtifactChartView（recharts 主包）。
+- 发现并修复两条「静态旁路」：
+  1. `root/WorkspaceSettingsLayer.tsx` 静态 import SettingsPage——Root.tsx 本已 lazy，此旁路把
+     settings 全子树（recharts/pinyin-pro/usage-stats/插件市场搜索/Bots）拖回首屏（提交 `d58ef03`）；
+  2. `WorkspaceWebRemoteControlTrigger.tsx`（首屏侧栏 footer）静态 import WebRemoteControlDialog
+     → BotsDialog+qrcode 链（同提交）。
+- 待拍板（非平凡改造）：katex（`message.tsx:14` `@streamdown/math` 经 remark 插件 API 静态挂入，
+  惰性化需插件按需装配方案）；5.7MB styles vendor chunk 拆分（需 manualChunks 策略，重构建验证）。
+
+### 31b. app.asar 解剖与 node_modules 瘦身（本批最大收益）
+
+- asar 262.8MB：node_modules 218.3MB + out 44.5MB。node_modules 里：
+  echarts 23.8MB（5 份 dist 全打包）、mermaid 21.2MB、pdfjs-dist 16MB（legacy+modern 双份）、
+  @extend-ai+@dukelib 19.5MB（wasm 三份重复）、@larksuiteoapi 9.2MB、playwright-core 8.3MB、
+  world/us-atlas 9.7MB、lucide-react 6.9MB（4.5MB 是 .d.mts 类型）、.ts/.mts 源码 16MB、msw 2.5MB。
+- 双证据判定「必留集合」：① desktop tsup externals（node-pty/ssh2/undici/yaml/node-forge/yauzl/
+  @larksuiteoapi）；② REQUIRED_ASAR_RUNTIME_MODULES；③ agent bundle 外置（playwright-core/koffi，
+  `resolveBuildExternal()`）；④ electron-updater 闭包（ws/semver/ms/axios/protobufjs/lodash.*——
+  已逐包核对 axios/protobufjs 是飞书 SDK 依赖）。
+- `scripts/tmp-external-ref-check.mjs`：out/main+out/host 全部 48 个产物对候选包 grep
+  external import/require——echarts/zrender/mermaid/pdfjs-dist/@extend-ai/@dukelib/world-atlas/
+  lucide-react/highlight.js/katex/media-chrome/recharts/lexical/@rive-app/shiki/streamdown/msw/
+  web-streams-polyfill/@babel/@modelcontextprotocol/zod/ai 等全部零引用（vite 已预打包或 tsup 已内联）。
+- 处置：`electron-builder.config.js` 新增 `PACKAGING_NODE_MODULES_PRUNE_PATTERNS`（58 条）。
+  按 asar header 逐项求和：**省 124.6MB（262.8→138.2，-47%）**（提交 `aff581e`）。
+  归属存疑未动：tldts（←tough-cookie）、hono（←sdk?）。
+- 下次重打包后需冒烟验证：正常启动 + SSH 远程 + 飞书 bot + web 远控 + 设置页图表。
+
+### 31c. agent bundle（resources/glm）与外置估算（只列清单未实施）
+
+- zcode.cjs 16.8MB（win32，esbuild minified CJS），glm/packages 3.7MB，两平台合计 40MB。
+- 现外置：@zcode/tui、playwright-core、koffi。TypeScript（dynamic-workflow AST 分析、
+  node-repl-host 真实消费）整体内联，估计占 minified 5.5~6.5MB；外置需 glm 暂存
+  node_modules/typescript（lib ≈8.6MB）——磁盘净收益 ≈0~-3MB，启动内存不受影响（CJS 惰性求值），
+  **不建议做**。记账项维持「6-9MB」口径修正为「minified 后 ≈6MB、净收益≈0」。
+
+### 31d. packages/ui sideEffects 白名单清单（只出清单未改 package.json）
+
+- 全 src 1449 文件扫描（`scripts/tmp-side-effects-scan.mjs` + 定向复核）：模块级副作用只有 3 处：
+  1. `components/ui/pdf-viewer.tsx:7`（import react-pdf TextLayer.css）
+  2. `onboarding/OccupationOnboardingVisual.tsx:10`（import onboardingLogoSweep.css）
+  3. `workers/diffs.worker.ts:1`（import @pierre/diffs/worker/worker.js——注册 message 监听，
+     即 vite.config 注释里「漏声明会被摇成 0B」的那类）
+- 其余 9 处 `uiMemoryDiagnosticsRegistry.register(...)` 与 2 处顶层 `store.subscribe(...)` 都在
+  「有被使用的具名导出」模块内——sideEffects 语义下整模块保留，不受影响。
+- 建议白名单（安全写法）：
+  ```json
+  "sideEffects": ["**/*.css", "src/workers/*"]
+  ```
+  风险说明：漏标副作用文件=被摇树删除（事故）；本清单基于全量扫描，但若后续新增
+  「仅靠 import 副作用注册、零具名导出」的模块，必须同步追加白名单。
+
+### 31e. 内存诊断盘点与漏监清单（B）
+
+- 计数器全集：renderer（`ui/lib/memoryDiagnostics.ts`）7 个：projection/sessionStore/shiki/
+  taskQueryCache/taskSnapshotCache/toolLayout/xterm；services（Host）5 个：agent/bots/fileWatcher/
+  task/terminal。
+- 全仓模块级容器 246 个（`scripts/tmp-unbounded-containers.mjs`），绝大多数为常量集合或
+  已封顶 FIFO（chatSessionScrollMemory 200、groupedViewCache 8、nodeResult cache 256×32KB、
+  taskSidePaneMemory 50、toolEntranceAnimationKeys 800、statusUnreadDedupe 256——逐一核实）。
+- 漏监且无上限的真候选（下一泄漏排查面）：
+  1. `app-shell/workflowWorkspaceLogbook.ts:131 openState`——按 workflow 卡 key 无限增长（布尔值，低危）
+  2. `lib/codeCommentContext.ts:49 removedCodeCommentKeys`——按删除事件 key 增长，无 cap（低危）
+  3. `services/bots/providers/feishuProvider.ts:93 typingReactionIds`——按 providerMessageId 增长，
+     仅成功清理路径会 delete，失败路径泄漏（中危：长期挂机的 bot）
+- 建议补挂诊断 provider 的大缓存：`useWorkflowRunNodeResult.ts` cache（预算 8MB，注释明示）未注册 provider。
+
+### 31f. 历史截图 base64 常驻——惰性解码设计（只设计未实施，待拍板）
+
+- 现状：`lib/nodeReplToolDisplay.ts:288-310` 解析出 `images[{base64,mimeType}]` 随工具结果进
+  projection/session store 常驻 JS 堆（≈1.33× 二进制体积）；`ToolCallBlocks/renderers/
+  nodeReplImageGrid.tsx:27` 与 `cuaScreenshotDetails.ts:41-42` 直接拼 `data:` URL 给 `<img>`。
+  长会话 100 张 500KB 截图 ≈ 66MB 字符串常驻。
+- 最小改造（不动协议）：新增 `lib/screenshotObjectUrlCache.ts`（LRU：8 个 object URL /
+  32MB 总量，可见时 IntersectionObserver 触发 atob→Blob→createObjectURL，离视口+30s revoke，
+  注册 `screenshotObjectUrls` 诊断 provider）；改 nodeReplImageGrid.tsx 与 cuaScreenshotDetails.ts
+  两处 src 来源。风险：blob 闪烁边界、SSR 无关、改动面 3 文件。
+- 持有层瘦身（大收益，需协议配合，单独拍板）：store/projection 只留 fingerprint，base64 留在
+  host 磁盘 journal，渲染时按需 RPC 取；远程 workspace/分享导入需 fallback 内联。
+
+### 31g. 非 agent 业务清单（C）
+
+- 逐面核查结论：`business/*`（login/quota/appUpdate/brand=登录/额度/签到/公告/重置卡/更新通道）、
+  bots（手机远控+飞书/钉钉通道）、conversation-share、feedback、polaris-plugins-official 市场——
+  全部站长自有业务，保留。
+- gen-ui / browser preview / PreviewPane / workflow-artifacts / remotePromptAttachments
+  （手机→桌面 prompt 附件，远控链路）/ formal-proof（agent bootstrap 消费，163KB）——
+  全部 agent 能力，保留。
+- `services/coding-plan-subscription/*`：已是文档化空实现（零网络调用，保留接口等接自有套餐），
+  无需处置。
+- 官方残留 grep（bigmodel/chatglm/z.ai/购买/升级套餐）仅剩错误码映射与文案（兼容面）+ i18n 1 条
+  错误文案——不影响产物，保留。
+- 待拍板（产品决策，非死代码）：`onboarding/OccupationOnboarding` 首启向导（约 14 文件）可达
+  （Root.tsx:980）。其中 Claude 会话迁移步（useClaudeSessionMigration）与界面模式步是 agent 工具
+  能力应保留；**职业问卷的答案全仓零功能消费**（仅作「是否已引导」标记位，`onboardingOccupation`
+  还进了协议 schema/appSettings 校验面）。若站长认为职业问卷属官方推荐引导残留，可砍问卷步保留
+  迁移+模式步——需产品拍板，不按死代码自动处理。
+
+### 31h. 本轮验证与提交
+
+```
+tsc -b packages/ui（lazy 改动后）            ✅ 0 错误
+node --check electron-builder.config.js     ✅
+必留集合冲突断言（52→58 patterns）           ✅ none
+scripts/tmp-external-ref-check.mjs          ✅ 候选全零引用/必留全命中
+```
+
+| hash      | 内容                                                                 |
+| --------- | -------------------------------------------------------------------- |
+| `d58ef03` | perf(ui): 两条静态 import 旁路 lazy 化（settings/Bots 链退出首屏）      |
+| `aff581e` | perf(packaging): asar node_modules 瘦身 -124.6MB（58 条 prune 模式）   |
