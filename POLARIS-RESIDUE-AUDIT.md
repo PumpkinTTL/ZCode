@@ -1957,7 +1957,7 @@ git grep @arms（two third-party files）   ✅ 0
   world/us-atlas 9.7MB、lucide-react 6.9MB（4.5MB 是 .d.mts 类型）、.ts/.mts 源码 16MB、msw 2.5MB。
 - 双证据判定「必留集合」：① desktop tsup externals（node-pty/ssh2/undici/yaml/node-forge/yauzl/
   @larksuiteoapi）；② REQUIRED_ASAR_RUNTIME_MODULES；③ agent bundle 外置（playwright-core/koffi，
-  `resolveBuildExternal()`）；④ electron-updater 闭包（ws/semver/ms/axios/protobufjs/lodash.*——
+  `resolveBuildExternal()`）；④ electron-updater 闭包（ws/semver/ms/axios/protobufjs/lodash.\*——
   已逐包核对 axios/protobufjs 是飞书 SDK 依赖）。
 - `scripts/tmp-external-ref-check.mjs`：out/main+out/host 全部 48 个产物对候选包 grep
   external import/require——echarts/zrender/mermaid/pdfjs-dist/@extend-ai/@dukelib/world-atlas/
@@ -2011,7 +2011,7 @@ git grep @arms（two third-party files）   ✅ 0
 
 - 现状：`lib/nodeReplToolDisplay.ts:288-310` 解析出 `images[{base64,mimeType}]` 随工具结果进
   projection/session store 常驻 JS 堆（≈1.33× 二进制体积）；`ToolCallBlocks/renderers/
-  nodeReplImageGrid.tsx:27` 与 `cuaScreenshotDetails.ts:41-42` 直接拼 `data:` URL 给 `<img>`。
+nodeReplImageGrid.tsx:27` 与 `cuaScreenshotDetails.ts:41-42` 直接拼 `data:` URL 给 `<img>`。
   长会话 100 张 500KB 截图 ≈ 66MB 字符串常驻。
 - 最小改造（不动协议）：新增 `lib/screenshotObjectUrlCache.ts`（LRU：8 个 object URL /
   32MB 总量，可见时 IntersectionObserver 触发 atob→Blob→createObjectURL，离视口+30s revoke，
@@ -2049,5 +2049,115 @@ scripts/tmp-external-ref-check.mjs          ✅ 候选全零引用/必留全命�
 
 | hash      | 内容                                                                 |
 | --------- | -------------------------------------------------------------------- |
-| `d58ef03` | perf(ui): 两条静态 import 旁路 lazy 化（settings/Bots 链退出首屏）      |
-| `aff581e` | perf(packaging): asar node_modules 瘦身 -124.6MB（58 条 prune 模式）   |
+| `d58ef03` | perf(ui): 两条静态 import 旁路 lazy 化（settings/Bots 链退出首屏）   |
+| `aff581e` | perf(packaging): asar node_modules 瘦身 -124.6MB（58 条 prune 模式） |
+
+## 32. 第五轮性能与清扫代理：卡死专项（主线程长任务）+ 依赖/资产清扫（2026-10-10）
+
+基线：`enterprise` HEAD `3e3d2e8`（干净）。开工前 `git bundle` 全分支备份
+（`D:\DevelopmentProject\zcode-fork-backup-20261010.bundle`）。三条工作线：卡死专项（A）、
+热路径质量（B，与 A 合并实施）、品牌/业务残余入口反扫（C）。
+
+### 32a. 卡死专项：逐区排查结论（file:line 证据）
+
+> 方法：会话渲染/流式/滚动/启动四条热路径逐点核查；前四轮已修项（renderUnits 秒重建、
+> 帧序列化、水合预算、滚动合帧、find 缓存）不重复。
+
+**发现并修复的两项（本轮主收益）**：
+
+1. **renderUnits 每帧全量物化**（`v4/conversationTurnRenderUnits.ts` + `ConversationTimeline.tsx:434`）
+   - 场景：流式期间 rows 每帧变化，`buildConversationTurnRenderUnits` 对全部历史 turn
+     重跑 materialize（每轮多次 filter/Set/flatMap + workSegments 构建）；且每帧产出全轮
+     新引用，使 `ConversationTurnGroup`（memo）的浅比较全部失效——挂载的每个历史 turn
+     每帧都做整棵子树协调。万行长会话 = 每帧 O(N) 重物化 + 全挂载树重协调，是渲染主线程
+     剩余的最大每帧项（前四轮只摘掉了「无变化时每秒重建」这条腿）。
+   - 修法：新增 `conversationTurnRenderUnitsIncremental.ts`——按 turn 输入签名
+     （header 引用 + orderedRows/hookInvocations 逐位引用比较 + isLastDraft +
+     sessionPhase + pinResolver 引用）复用未变轮的 materialize 结果；签名未变 ⇒ 纯函数
+     输出不变，与同步版本逐字节等价。配合 `pluginUiDerivationsEqual` 内容等价复用
+     `pluginUiDerivation` 引用（否则 pinResolver 每帧换引用会打穿缓存），顺带消除
+     `setPluginUiInstanceDerivation` 每帧通知插件卡片 useSyncExternalStore 的风暴。
+   - 效果：未变轮返回同一 unit 引用 → 构建成本 O(变化轮)、下游 memo 真正生效。
+   - 风险：缓存键只对 unit 引用身份生效，内容等价即正确（黄金不变量：签名覆盖
+     materialize 的全部输入）；缓存表每次构建整体重建，陈旧轮自然丢弃，无泄漏面。
+
+2. **投影 store 每帧重建 rowId 索引表**（`v4/conversationProjectionStore.ts:750` 附近）
+   - 场景：delta 帧应用时 `createMutableConversationSnapshotAccumulator` 每帧重建
+     rowId→index 的 Map（9600 行 ≈ 每帧近万次 Map.set + 数组拷贝），流式期间每帧一次。
+   - 修法：上一帧发布快照（`next.rows.window`）与本帧拷贝源是同一数组（引用相等判定）、
+     逐位拷贝保序 ⇒ 上一帧索引表对新副本逐项有效，直接复用；引用不等（loadOlder 前插 /
+     snapshot 整体替换）保守重建，并在这些发布点显式置空防滞留旧窗口数组。
+   - 安全性：`statePatchSchema` 键集合封闭且不含 rows（协议保证 state.updated 不会换
+     窗口数组）；row.removed 在 mutable apply 内 clear+重建，自身一致。
+
+**核查后确认无需改动的区域**（证据留档）：
+
+| 区域                                      | 证据                                                              | 结论                                                                                                             |
+| ----------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| ToolCallBody/ToolOutput 大 JSON.stringify | `ai-elements/tool.tsx:123,143`、`fallback.tsx:65`                 | 仅展开时渲染（`ToolLayout.shouldRenderResolvedContent`），默认路径不执行                                         |
+| 工具 renderer 内 JSON.parse 群            | `ToolCallBlocks/renderers/*.tsx`                                  | 展开时单块一次，输入有界                                                                                         |
+| 强制同步布局循环                          | 全 ui src grep                                                    | 唯一命中 `changes-group.tsx:100`（chips 逐个 offsetWidth，挂载后一次）；其余布局读取均已 rAF 合帧/ResizeObserver |
+| scroll/resize 监听                        | 全量清单                                                          | 均已 passive + rAF/防抖合帧 + state 去重（§30c 复核过的时间线滚动、侧栏遮罩等）                                  |
+| 会话内查找                                | `useConversationTimelineFind.ts:97`                               | 已有 per-unit 缓存（前轮修复），streaming turn 之外零重扫                                                        |
+| 协议 delta 应用                           | `shared/zcode-protocol-v4/apply.ts`                               | mutable 累加器 O(1) 均摊；不可变版本仅冷路径                                                                     |
+| 深比较每帧逐行                            | `desktop/host/windowHostControllerProjection.ts:388`              | 仅快照替换/overlay 更新时跑，任务数有界；维持 §30c 观察结论                                                      |
+| flow items / work segments                | `conversationTurnFlowItems.ts`、`conversationTurnWorkSegments.ts` | 单趟 + Set，线性；本轮起只对变化轮执行                                                                           |
+| 会话列表排序                              | `sessionsIndexStore.ts:767`                                       | cachedList 失效才重排，会话数有界                                                                                |
+| 递归/循环 RegExp                          | 全 ui src grep                                                    | 主链路无嵌套树（v4 行扁平）；`new RegExp` 均为每调用一次、非循环内热点                                           |
+| `useGlobalTaskList` stringify 选择器      | `useGlobalTaskList.ts:54-102`                                     | tab 数个位数，每次 store 变更微秒级；不值得动                                                                    |
+
+### 32b. 任务 C：入口反扫结论（大概率见底，如实记账）
+
+- **设置导航死入口**：`lib/settingsNavigation.ts:34` `HIDDEN_SETTINGS_SECTIONS`（automations/
+  plugins/workspaceFileSearch/computerUse）为**有意隐藏**——文件内注释明示 workspaceFileSearch
+  「编辑页代码保留，放开时从这里移除」、automations 已迁 workspace 主视图（AutomationsSection
+  仍被 `WorkspaceShellLayout.tsx:43` lazy 使用）、plugins→plugin 有迁移语义。computerUse 分支
+  代码因此不可达（CUA 设置页），但 CUA 属 agent 能力红线，休眠入口保留不动。顺带发现
+  `consumePendingSettingsPluginTab`（settingsNavigation.ts:321）未把 "commands" 列入合法返回，
+  与 `setPendingSettingsPluginIntent` 不对称——行为 bug 但非本轮范围，留待拍板。
+- **命令面板/帮助菜单**：quickpick 全部条目有真实 handler；community 已按 Polaris 决策门控
+  不注册（`quickPickCommands.ts:251` 注释）；product-docs 指向自有文档站占位
+  （`lib/productDocs.ts`）。无死入口。
+- **零使用依赖**：ui package.json 删 12 条（见 32d 提交）。desktop 依赖逐条核对全部有
+  import 或打包清单引用（`module-details-from-path`/`yazl`/`@fiahfy/icns` 是
+  REQUIRED_ASAR_RUNTIME_MODULES 或运行时 require，保留）。
+- **assets 增量复核**：43 个图片/字体扫描，零引用 2 个已删（Z.svg 旧徽标、
+  model-provider-zai.png 无后缀旧版——现役是 -app 后缀版）；其余全有引用。
+- **官方品牌死引用**：全 ui/shared/desktop src 扫 `open.bigmodel.cn`/`chatglm`/`zhipuai`
+  等，仅剩 `services/model-provider/legacyZCodeConfigProviderReader.ts:62` 的 legacy 配置
+  兼容映射（§30b 已定性 provider 域兼容面，功能性保留）。无新增死引用。
+
+### 32c. 观察清单（watch，本轮不动）
+
+| 项                                       | 现状                                                                       |
+| ---------------------------------------- | -------------------------------------------------------------------------- |
+| renderUnits 签名缓存 miss 全量重建       | snapshot 替换/loadOlder 前插后首个帧重建一次全部受影响轮，与旧行为一致     |
+| `deriveLogicalUiInstances` 每帧两趟 O(N) | 引用复用后仅剩计算本身（~2 万次迭代/帧量级）；若实测放大再考虑按 turn 增量 |
+| computerUse 设置分区休眠                 | 代码保留（有意），放开 = 从 HIDDEN_SETTINGS_SECTIONS 移除一行              |
+
+### 32d. 本轮验证与提交
+
+```
+tsc -b packages/ui（两笔 perf 后）            ✅ 0 错误
+pnpm typecheck（全仓，12 工作区）             ✅ 0 错误
+architecture:check --changed                 ✅ violations 0
+oxlint（改动文件）                            ✅ 0 error（5 条存量 warning 与本轮无关）
+oxfmt --check（改动文件）                     ✅ 通过
+pnpm install --lockfile-only（依赖清扫后）    ✅ lockfile -307 行一致
+资产零引用扫描（43 项）                       ✅ 2 项删除、41 项有引用
+```
+
+| hash       | 内容                                                                     |
+| ---------- | ------------------------------------------------------------------------ |
+| `580db27`  | perf(ui): renderUnits 跨帧增量缓存——流式每帧 O(N) 全量物化降为 O(变化轮) |
+| `9006fd0`  | perf(ui): 投影 store rowId 索引表跨帧复用——流式每帧省一遍 O(N) Map 重建  |
+| `0f3d633`  | chore(deps): packages/ui 零使用依赖清扫——12 条三重证据删除               |
+| （本提交） | chore(cleanup): 两个零引用资产删除 + 本节审计记录                        |
+
+### 32e. 待拍板汇总
+
+1. `consumePendingSettingsPluginTab` 漏 "commands" 合法值（settingsNavigation.ts:321）——
+   quickpick「命令」意图经 sessionStorage 中转时被丢弃；属行为修复，需产品确认意图链路后再动。
+2. computerUse 设置分区休眠代码（ComputerUseSection 等）：CUA 引擎已复现（§26/§29），
+   设置入口是否重新放开由产品决定。
+3. katex 惰性化与 5.7MB styles vendor chunk 拆分（§31a 遗留，非平凡改造）。
