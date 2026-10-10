@@ -238,6 +238,93 @@ const PACKAGING_PRUNE_PATTERNS = [
   "!**/SECURITY*",
 ];
 
+// app.asar 的 node_modules 只服务三类运行时，其余一律不进安装包：
+// ① main/host 的 tsup 外置依赖（desktopNodeRuntimeExternals：node-pty/ssh2/undici/yaml/
+//    node-forge/yauzl/@larksuiteoapi/node-sdk + electron-updater 闭包 ws/semver/ms 等）；
+// ② agent bundle（resources/glm/zcode.cjs）的运行时外置依赖（playwright-core/koffi，
+//    见 apps/zcode-cli/packages/cli/scripts/build.mjs 的 resolveBuildExternal）；
+// ③ afterPack 注入清单（REQUIRED_ASAR_RUNTIME_MODULES：module-details-from-path/yazl/asn1 等）。
+// 下面排除的全部是「vite 已预打包进 out/renderer/assets 的 renderer-only 重库」或
+// 「main/host 已 tsup 内联、node_modules 副本不被运行时解析」或「测试/mock 设施」。
+// 证据口径（2026-10 第四轮体积解剖）：
+//  - asar 实测 262.8MB，node_modules 占 218.3MB；echarts 23.8MB（5 份 dist 全打包）、
+//    mermaid 21.2MB、pdfjs-dist 16MB（legacy+modern 双份）、@extend-ai+@dukelib 19.5MB
+//    （wasm 三份重复）全部来自 packages/zcode-server-cli 的依赖与 @zcode/ui 的 renderer 依赖，
+//    被 pnpm collector 陪葬进 asar；
+//  - packages/desktop/out/main+out/host 全部产物 grep（scripts/tmp-external-ref-check.mjs）
+//    对下列每个包名零 external import/require —— tsup noExternal 已把它们内联或根本无消费方。
+const PACKAGING_NODE_MODULES_PRUNE_PATTERNS = [
+  // —— renderer-only 重库（vite 已打进 out/renderer/assets）——
+  "!node_modules/echarts/**",
+  "!node_modules/zrender/**",
+  "!node_modules/mermaid/**",
+  "!node_modules/pdfjs-dist/**",
+  "!node_modules/@extend-ai/**",
+  "!node_modules/@dukelib/**",
+  "!node_modules/world-atlas/**",
+  "!node_modules/lucide-react/**",
+  "!node_modules/highlight.js/**",
+  "!node_modules/katex/**",
+  "!node_modules/media-chrome/**",
+  "!node_modules/recharts/**",
+  "!node_modules/lexical/**",
+  "!node_modules/@lexical/**",
+  "!node_modules/@rive-app/**",
+  "!node_modules/shiki/**",
+  "!node_modules/@shikijs/**",
+  "!node_modules/streamdown/**",
+  "!node_modules/@streamdown/**",
+  "!node_modules/@xterm/**",
+  "!node_modules/docx-preview/**",
+  "!node_modules/@aiden0z/**",
+  "!node_modules/@xyflow/**",
+  "!node_modules/@pierre/**",
+  "!node_modules/radix-ui/**",
+  "!node_modules/@radix-ui/**",
+  "!node_modules/cmdk/**",
+  "!node_modules/embla-carousel/**",
+  "!node_modules/embla-carousel-react/**",
+  "!node_modules/motion/**",
+  "!node_modules/motion-dom/**",
+  "!node_modules/motion-utils/**",
+  "!node_modules/qrcode/**",
+  "!node_modules/pinyin-pro/**",
+  "!node_modules/marked/**",
+  "!node_modules/react-jsx-parser/**",
+  "!node_modules/react-pdf/**",
+  "!node_modules/react-resizable-panels/**",
+  "!node_modules/@dnd-kit/**",
+  "!node_modules/tokenlens/**",
+  "!node_modules/swr/**",
+  "!node_modules/zustand/**",
+  "!node_modules/ansi-to-react/**",
+  // 仅被上面已排除包依赖的闭包（归属实测：framer-motion←motion、us-atlas←react-xlsx、
+  // es-toolkit←recharts、graphql←msw、pako←jszip/utif；顶层 xterm 无人依赖且零引用）
+  "!node_modules/framer-motion/**",
+  "!node_modules/us-atlas/**",
+  "!node_modules/es-toolkit/**",
+  "!node_modules/graphql/**",
+  "!node_modules/pako/**",
+  "!node_modules/xterm/**",
+  // —— main/host 已由 tsup 内联（noExternal），运行时不解析这些 node_modules 副本 ——
+  "!node_modules/@modelcontextprotocol/**",
+  "!node_modules/zod/**",
+  "!node_modules/ai/**",
+  "!node_modules/@ai-sdk/**",
+  "!node_modules/@babel/**",
+  "!node_modules/web-streams-polyfill/**",
+  // —— 测试/mock 设施（vitest → @vitest/mocker 链路陪葬）——
+  "!node_modules/msw/**",
+  // —— 纯类型/源码地图/文档资产：任何运行时都零消费 ——
+  "!node_modules/**/*.d.ts",
+  "!node_modules/**/*.d.mts",
+  "!node_modules/**/*.d.cts",
+  "!node_modules/**/*.bcmap",
+  "!node_modules/**/*.mdx",
+  "!node_modules/typescript/**",
+  "!node_modules/@types/**",
+];
+
 function buildDesktopArtifactName(platformName, extension = "${ext}") {
   // 测试环境产物必须和正式安装包文件名区分，避免上传、下载或人工验收时混用。
   return `\${productName}-\${version}-${platformName}-\${arch}${desktopArtifactEnvSuffix}.${extension}`;
@@ -500,6 +587,8 @@ export default {
     // app.asar 会把桌面端运行时 node_modules 一并打进去，依赖包自带的 .map / README
     // 默认也会原样进入安装包。这里统一在主包层做一次裁剪，只移除非运行时文件，LICENSE 继续保留。
     ...PACKAGING_PRUNE_PATTERNS,
+    // renderer-only/已内联/测试设施的 node_modules 整包裁剪（证据与口径见上方常量注释）。
+    ...PACKAGING_NODE_MODULES_PRUNE_PATTERNS,
     ...createDesktopNativePackagePrunePatterns(targetPlatform.key),
     "!node_modules/@zcode/**",
     "!node_modules/react/**",
