@@ -70,3 +70,8 @@ packages/desktop/.e2e-artifacts/
 packages/desktop/.e2e-cache/
 packages/desktop/.e2e-network-capture/
 .zcode-runtime/
+
+# 工作区本地数据根（用户的 skills / workflows / agents / hook 配置等），与历史 .zcode 同级：
+# 属于使用者本地状态，不入库。
+.zcode/
+.polaris/
