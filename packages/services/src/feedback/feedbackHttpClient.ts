@@ -777,6 +777,12 @@ function mapFeedbackStatus(status: unknown): FeedbackTicketStatus {
     case "closed":
     case "已归档":
       return "已归档";
+    // 管理端状态流转(submitted/processing/resolved/closed)：
+    // 处理中在客户端语义里对应「开发中」，已解决同名。
+    case "processing":
+      return "开发中";
+    case "resolved":
+      return "已解决";
     case "submitted":
     // 兼容后端或历史缓存里仍返回旧中文状态的工单。
     case "待评估":
