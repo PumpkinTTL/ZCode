@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ImagePreviewDialog } from "@/components/ai-elements/image-preview-dialog.js";
 import {
   ImageThumbnailGallery,
@@ -7,6 +7,11 @@ import {
 } from "@/components/ai-elements/image-thumbnail-gallery.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { NodeReplDisplayModel } from "@/lib/nodeReplToolDisplay.js";
+import {
+  getScreenshotObjectUrlVersion,
+  resolveScreenshotObjectUrl,
+  subscribeScreenshotObjectUrls,
+} from "@/lib/screenshotObjectUrlCache.js";
 
 export function NodeReplImageGrid({
   images,
@@ -16,6 +21,9 @@ export function NodeReplImageGrid({
   resultImageLabel: string;
 }) {
   const { intl } = useZCodeIntl();
+  // 截图解码完成/驱逐后重渲染：src 渲染期经缓存解析（objectURL 优先，
+  // 未命中回落 data URL 并后台解码），避免整条会话的 base64 字符串常驻 DOM。
+  useSyncExternalStore(subscribeScreenshotObjectUrls, getScreenshotObjectUrlVersion);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -24,7 +32,11 @@ export function NodeReplImageGrid({
       images.map((image, index) => ({
         alt: `${resultImageLabel} ${index + 1}`,
         filename: `result-image-${index + 1}`,
-        src: `data:${image.mimeType};base64,${image.base64}`,
+        src: resolveScreenshotObjectUrl(
+          `${image.mimeType}:${image.base64.length}:${image.base64.slice(0, 24)}`,
+          image.mimeType,
+          image.base64,
+        ),
       })),
     [images, resultImageLabel],
   );

@@ -1,10 +1,20 @@
 import { ImageIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import {
+  resolveScreenshotObjectUrlFromDataUrl,
+  useScreenshotObjectUrlVersion,
+} from "@/lib/screenshotObjectUrlCache.js";
 import type { CuaScreenshotDetails } from "@/ToolCallBlocks/renderers/cuaScreenshotDetails.js";
 
 export function CuaScreenshotSection({ screenshot }: { screenshot: CuaScreenshotDetails }) {
   const { intl } = useZCodeIntl();
+  // 截图 src 经共享 objectURL 缓存解析（解码完成/驱逐后本组件重渲染取最新）；
+  // 未命中/解码失败回落原 data URL，展示不破碎。
+  useScreenshotObjectUrlVersion();
+  const screenshotSrc = screenshot.dataUrl
+    ? resolveScreenshotObjectUrlFromDataUrl(screenshot.dataUrl)
+    : null;
   const metadata: Array<[string, string]> = [];
   const titleId = screenshot.zoom
     ? "chat.toolCall.cua.details.zoomPreview"
@@ -42,7 +52,7 @@ export function CuaScreenshotSection({ screenshot }: { screenshot: CuaScreenshot
               className="block w-full overflow-hidden rounded-lg border border-border bg-surface outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <img
-                src={screenshot.dataUrl}
+                src={screenshotSrc ?? screenshot.dataUrl}
                 alt={intl.formatMessage({ id: "chat.toolCall.cua.details.openScreenshot" })}
                 className="max-h-96 w-full object-contain"
               />
@@ -51,7 +61,7 @@ export function CuaScreenshotSection({ screenshot }: { screenshot: CuaScreenshot
           <DialogContent className="rounded-xl max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] overflow-auto p-3">
             <DialogTitle className="sr-only">{intl.formatMessage({ id: titleId })}</DialogTitle>
             <img
-              src={screenshot.dataUrl}
+              src={screenshotSrc ?? screenshot.dataUrl}
               alt=""
               className="max-h-[calc(100vh-4rem)] w-full object-contain"
             />
