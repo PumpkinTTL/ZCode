@@ -345,6 +345,14 @@ export class ConversationProjectionStore {
       > & { directoryRevision: number })
     | null = null;
   private closed = false;
+  /**
+   * 上一帧 delta 应用的索引表缓存。source 是上一帧发布快照：仅当本帧的 current
+   * 就是它（窗口未被 loadOlder/snapshot 替换）时，其 rowIndexById 对新拷贝仍有效。
+   */
+  private lastDeltaAccumulator: {
+    source: ConversationSnapshot;
+    rowIndexById: Map<number, number>;
+  } | null = null;
 
   constructor(
     readonly topic: string,
@@ -687,6 +695,8 @@ export class ConversationProjectionStore {
         "snapshot",
       );
       // 规则 1：整体替换，扔掉手里的一切换新的。
+      // 上一帧的窗口数组已失效，索引表缓存一并丢弃。
+      this.lastDeltaAccumulator = null;
       this.setState({
         snapshot: frame.payload.snapshot,
         planDirectoryRevision: this.state.planDirectoryRevision + 1,
@@ -748,9 +758,17 @@ export class ConversationProjectionStore {
     // 数组与 rowIndexById（语义与不可变实现逐字节一致，有黄金测试背书）。current 是
     // 已发布快照，累加器构造时已浅拷贝 window，订阅者持有的旧数组不被触碰。
     const accumulator = createMutableConversationSnapshotAccumulator(current);
+    // rowId→index 索引表跨帧复用：上一帧发布的 next.rows.window 与本帧拷贝源是同一个
+    // 数组（引用相等判定），逐位拷贝保序 ⇒ 上一帧的索引表对本帧副本逐项有效。流式
+    // 长会话每帧省一遍 O(N) Map 重建；引用不等（loadOlder 前插/snapshot 替换）时保守重建。
+    const previousAccumulator = this.lastDeltaAccumulator;
+    if (previousAccumulator !== null && previousAccumulator.source === current) {
+      accumulator.rowIndexById = previousAccumulator.rowIndexById;
+    }
     applyConversationDeltasMutable(accumulator, frame.payload.deltas);
     // seq 是快照对齐水位，delta 帧应用完推进到帧右端点。
     const next = { ...accumulator.snapshot, seq: frame.toSeq };
+    this.lastDeltaAccumulator = { source: next, rowIndexById: accumulator.rowIndexById };
     logSubagentProjectionTransition(this.topic, current, next, "deltas");
     const removedFromRowId = frame.payload.deltas.reduce<number | null>(
       (earliest, delta) =>
@@ -1042,6 +1060,7 @@ export class ConversationProjectionStore {
       if (current.rows.window[0]?.rowId !== beforeRowId) return;
       const window = mergeOlderRows(current.rows.window, result.rows);
       if (window === null) return;
+      this.lastDeltaAccumulator = null; // 窗口前插，旧索引表失效
       this.setState({
         snapshot: { ...current, rows: { ...current.rows, window } },
       });
@@ -1163,6 +1182,7 @@ export class ConversationProjectionStore {
           const window = mergeOlderRows(current.rows.window, olderRows);
           if (window === null) return stale(initialLogEpoch);
           committed = true;
+          this.lastDeltaAccumulator = null; // 窗口前插，旧索引表失效
           this.setState({
             loadingOlder: false,
             snapshot: { ...current, rows: { ...current.rows, window } },
@@ -1194,6 +1214,7 @@ export class ConversationProjectionStore {
       const window = mergeOlderRows(current.rows.window, olderRows);
       if (window === null) return stale(initialLogEpoch);
       committed = true;
+      this.lastDeltaAccumulator = null; // 窗口前插，旧索引表失效
       this.setState({
         loadingOlder: false,
         snapshot: { ...current, rows: { ...current.rows, window } },
