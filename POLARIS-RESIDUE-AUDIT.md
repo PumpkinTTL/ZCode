@@ -20,7 +20,7 @@
 | 位置                                                                                 | 内容                                                                                                                                                                                                                  | 建议                                          |
 | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | `apps/zcode-cli/packages/adapters/src/auth/coding-plan-api-key.ts:4`                 | `ZAI_API_HOST = "https://api.z.ai"` 硬编码，**没走** `resolveZaiBusinessBaseUrl()`；`:122` 会真发 `POST /api/auth/z/login`，`:97` 发 `/api/biz/...`。同文件 `:81` 的 bigmodel 分支已经用了 `resolveBigModelApiOrigin` | 改指 `resolveZaiBusinessBaseUrl(process.env)` |
-| `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts:58`        | `OFFICIAL_PLUGIN_ASSETS_BASE_URL = "https://cdn-zcode.z.ai/zcode/official-plugin/assets"`，给 8 个内置插件当地 `icon` URL 用（`:114` `:138` `:171` `:211` `:231` `:283` `:304` `:349`）                               | 本地化素材，或改指 `polaris.bitlesu.com/cdn`  |
+| `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts:58`        | `OFFICIAL_PLUGIN_ASSETS_BASE_URL = "https://cdn-zcode.z.ai/zcode/official-plugin/assets"`，给 8 个内置插件当地 `icon` URL 用（`:114` `:138` `:171` `:211` `:231` `:283` `:304` `:349`）                               | 本地化素材，或改指 `nimbus.bitlesu.com/cdn`  |
 | `config/default.json:2`                                                              | `feedback_url` = 智谱飞书表单                                                                                                                                                                                         | 改指自有（或确认就是要发官方）                |
 | `config/default.json:5,6`                                                            | `community_urls` = 飞书邀请 + `discord.gg/z9aBcQXZQ3`                                                                                                                                                                 | 改指自有社群（UI 入口已隐藏）                 |
 | `packages/services/src/model-provider/legacyZCodeConfigProviderReader.ts:64`         | `BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL = "https://open.bigmodel.cn/api/anthropic"`，作为**生产**兜底 baseUrl（`:71-73` `:79` `:88-90`）；导入旧 ZCode `config.json` 时会把请求打到 `open.bigmodel.cn`               | 改指 `resolveBigModelApiOrigin()`             |
@@ -157,7 +157,7 @@
 
 - §2 数据根泄漏（真 bug）：用户级路径全部 `.polaris`，含桌面、services、CLI 的读**与**写两侧。
 - §1a 的官方端点里，`config/default.json` 的 `feedback_url` / `community_urls` 已改指
-  `polaris.bitlesu.com`（反馈提交端点本来就已走自有 origin）。
+  `nimbus.bitlesu.com`（反馈提交端点本来就已走自有 origin）。
 - 品牌漏项：应用主界面 logo（`App.tsx` + `WindowsTopLeftLogo`）此前仍是 **Z.AI logo**，已换成
   Polaris 占位星标 `assets/provider-icons/logo-polaris.svg`。
 - 死素材：`packages/ui/src/assets/payment-icons/`（0 引用，支付 UI 已空壳化）已删。
@@ -297,7 +297,7 @@
    与 `shouldOpenLoginEntry`；拟按「保留接口 + 空壳实现」处理。
 4. **CLI 官方登录**（`login-command.ts` / `bootstrap/auth-login.ts` 410 行 / `tui-auth.ts` / `command-center/login-flow.ts`）
    —— 目前仅关闭为可读错误，尚未删除；`i18n` 里 `/login` `/logout` `callouts.*` 的同源文案一并待清。
-5. **`.env.example`** 仍写官方域名参考（改指 `polaris.bitlesu.com`）；编辑工具对 `.env*` 有写保护，需手工替换。
+5. **`.env.example`** 仍写官方域名参考（改指 `nimbus.bitlesu.com`）；编辑工具对 `.env*` 有写保护，需手工替换。
 
 ### 8e. 验证
 
@@ -439,9 +439,9 @@ OAuth 服务空壳化后，UI 层原来那套登录轮询 / deep-link 回调 / J
 
 | 位置                                                                        | 处置                                                               |
 | --------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `packages/desktop/electron-builder.config.js` `extraMetadata.homepage`      | `https://zcode.z.ai` → `https://polaris.bitlesu.com`               |
-| 同处 `author.name` / `email`                                                | `ZCode` / `dev@zcode.z.ai` → `Polaris` / `dev@polaris.bitlesu.com` |
-| Linux `maintainer`                                                          | `ZCode <dev@zcode.z.ai>` → `Polaris <dev@polaris.bitlesu.com>`     |
+| `packages/desktop/electron-builder.config.js` `extraMetadata.homepage`      | `https://zcode.z.ai` → `https://nimbus.bitlesu.com`               |
+| 同处 `author.name` / `email`                                                | `ZCode` / `dev@zcode.z.ai` → `Polaris` / `dev@nimbus.bitlesu.com` |
+| Linux `maintainer`                                                          | `ZCode <dev@zcode.z.ai>` → `Polaris <dev@nimbus.bitlesu.com>`     |
 | `resolveAppAsarPath` / `resolvePackagedResourcesDir` 的 `?? "ZCode"` 兜底名 | → `?? "Polaris"`                                                   |
 
 注：`appId` 早已是 `com.bitlesu.polaris`（见 `scripts/desktop-product-identity.mjs`）；
@@ -515,7 +515,7 @@ provider 的请求路径与请求头完全一致，不触碰 agent 能力。
 
 - 市场格式是**公开标准**（Claude Code 的 `.claude-plugin/marketplace.json`；插件包识别
   `.zcode-plugin/` / `.claude-plugin/` / `.codex-plugin/` 三种 manifest）。数据源不独属任何厂商。
-- 此前唯一的默认源被（本线程之前的基线提交 `f3f5d4b`）指向 `polaris.bitlesu.com/plugins/marketplace.json`，
+- 此前唯一的默认源被（本线程之前的基线提交 `f3f5d4b`）指向 `nimbus.bitlesu.com/plugins/marketplace.json`，
   该后端尚未部署 → 刷新失败、列表空。**这是源地址问题，不是能力被删**。
 - **内置插件是本地 seed**（SEA 资源 + `<storage>/cache/zcode-plugins-official/…`），离线始终可用，不受市场源可达性影响。
   ⚠️ 本仓库能真正 seed 的只有 **2 个**（`node-repl-host` / `browser-use`），其余定义指向的插件包
@@ -732,7 +732,7 @@ git log --oneline -S "电脑控制回退为默认关闭"                 # → 8
 | 被删的 53 个文案键是否仍被代码引用      | **0 个悬空**（32 个仍被引用，但它们的键在 zh/en 两侧都还在，删掉的只是同一个键的重复行）                                                                                                                                                                        |
 | 被删的 66 个文件的模块名是否仍被 import | **0 个真实悬空**（命中项全是**注释**里的历史说明，如 `oauthUnauthorizedRequest.ts:23`、`officialMcpCredentials.ts:39`）；`coding-plan-subscription/` 目录只删了 provider 实现，被 import 的 `codingPlanSubscription*.js` 都还在                                 |
 | 被删的 8 个支付图标是否仍被引用         | **0 个引用**（纯资源，删对了）                                                                                                                                                                                                                                  |
-| 仍指向官方域名的出网路径                | 只剩三类命中，**均为有意保留**：① 旧配置里官方域名→自有网关的**匹配键**（`legacyZCodeConfigProviderReader.ts:66`，永不直接请求）；② 历史注释；③ 插件市场镜像（本线程新增，可用环境变量关掉）。`zcodeEndpoint.ts` 四个默认 origin 均已指向 `polaris.bitlesu.com` |
+| 仍指向官方域名的出网路径                | 只剩三类命中，**均为有意保留**：① 旧配置里官方域名→自有网关的**匹配键**（`legacyZCodeConfigProviderReader.ts:66`，永不直接请求）；② 历史注释；③ 插件市场镜像（本线程新增，可用环境变量关掉）。`zcodeEndpoint.ts` 四个默认 origin 均已指向 `nimbus.bitlesu.com` |
 
 也就是说：能力层面**没发现砍错的东西**。
 
@@ -822,10 +822,10 @@ pnpm typecheck ✅ 0 错误 · CLI turbo run typecheck ✅ 27/27 · tsx --test �
 
 | 项                               | 现状                                                                                                                             |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 安装包身份                       | `productName: Polaris`、`appId: com.bitlesu.polaris`、Linux executable `polaris`、homepage/maintainer 均为 `polaris.bitlesu.com` |
+| 安装包身份                       | `productName: Polaris`、`appId: com.bitlesu.polaris`、Linux executable `polaris`、homepage/maintainer 均为 `nimbus.bitlesu.com` |
 | 主进程身份                       | `app.setName()` / `process.title` = 运行时产品名（Polaris）                                                                      |
 | 右键菜单/Finder 服务的**展示名** | 已是「在 Polaris 中打开 / Open in Polaris」                                                                                      |
-| 端点默认值                       | `zcodeEndpoint.ts` 四个默认 origin 全部 `polaris.bitlesu.com`                                                                    |
+| 端点默认值                       | `zcodeEndpoint.ts` 四个默认 origin 全部 `nimbus.bitlesu.com`                                                                    |
 | 更新源                           | `publish.url` 仍是 `http://localhost:8081` 占位（有意）                                                                          |
 
 ### 20b. 本轮改掉的（全部带旧值清理，不会产生重复菜单/孤儿文件）
@@ -1118,7 +1118,7 @@ PiP 只在 `platform === "darwin" && serviceAuthorityMode === "desktop-local"` �
 
 ### 9b. 三条「永远失败的远端调用」
 
-三条都指向 `polaris.bitlesu.com/api/v1/client/configs`（自有后端未就绪）。它们本来就 fail-safe
+三条都指向 `nimbus.bitlesu.com/api/v1/client/configs`（自有后端未就绪）。它们本来就 fail-safe
 到 bundled/本地配置，问题只在**失败被当成故障上报**：
 
 | 位置                                                      | 问题                                                                                                                                                      | 处置                                                                                              |

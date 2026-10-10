@@ -105,7 +105,7 @@ Z.ai 原站的 manifest 声明名是**历史名** `zcode-plugins-official`（官
 
 ```
 OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS = [
-  https://polaris.bitlesu.com/plugins/marketplace.json          // 优先级 1（Polaris 自有）
+  https://nimbus.bitlesu.com/plugins/marketplace.json          // 优先级 1（Polaris 自有）
   https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json // 优先级 2（Z.ai 原站，兼容镜像）
 ]
 ```

@@ -7,7 +7,7 @@
 | 项       | 值                               |
 | -------- | -------------------------------- |
 | 产品     | Polaris（`com.bitlesu.polaris`） |
-| 自有域名 | `polaris.bitlesu.com`            |
+| 自有域名 | `nimbus.bitlesu.com`            |
 | 数据目录 | `~/.polaris`                     |
 
 ## 正确的心智模型
@@ -22,10 +22,10 @@
 
 | 位置                                                          | 现状                                        | 处置                                                                  |
 | ------------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------- |
-| `ui/lib/productDocs.ts:2`                                     | `https://zcode.z.ai/docs`                   | 改指 `https://polaris.bitlesu.com/docs`                               |
+| `ui/lib/productDocs.ts:2`                                     | `https://zcode.z.ai/docs`                   | 改指 `https://nimbus.bitlesu.com/docs`                               |
 | `ui/v4/featureSuggestedPrompts.ts:11`                         | `https://cdn-zcode.z.ai/...` 素材           | **本地化**（素材内置，或改指自有 CDN）                                |
 | `web/auth/webZaiOAuthConfig.ts`                               | `chat.z.ai/api/oauth/authorize`             | **删文件**（OAuth 已砍，无调用方）                                    |
-| `web/share/ConversationShareLandingPage.tsx:91`               | `ZCODE_DOWNLOAD_URL = "https://zcode.z.ai"` | 改指 `https://polaris.bitlesu.com`                                    |
+| `web/share/ConversationShareLandingPage.tsx:91`               | `ZCODE_DOWNLOAD_URL = "https://zcode.z.ai"` | 改指 `https://nimbus.bitlesu.com`                                    |
 | `services/conversation-share/conversationShareService.ts:721` | 兜底 `zcode.z.ai/cn/share`                  | 改指自有域名                                                          |
 | 社群链接（discord/feishu）                                    | 官方社群                                    | **隐藏入口**（`canOpenCommunity` 恒 false）——域名不可达，留着是坏体验 |
 | `config/*.env.example`                                        | 官方地址参考                                | **保留**（配置示例，不是运行时请求）                                  |
@@ -46,7 +46,7 @@
 
 | 模块                                                   | 处置                                                                |
 | ------------------------------------------------------ | ------------------------------------------------------------------- |
-| `ui/feedback/`（问题上报、给产品提需求）               | **完整保留**；提交端点改指自有（`polaris.bitlesu.com`），不再发官方 |
+| `ui/feedback/`（问题上报、给产品提需求）               | **完整保留**；提交端点改指自有（`nimbus.bitlesu.com`），不再发官方 |
 | `ui/quickpick/quickPickCommands.ts` 的 `feedback` 命令 | 保留                                                                |
 | 工单/反馈列表查询                                      | 保留，端点可配置                                                    |
 

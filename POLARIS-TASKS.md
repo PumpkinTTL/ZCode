@@ -9,7 +9,7 @@
 | 产品名   | **Polaris**                                 |
 | appId    | `com.bitlesu.polaris`                       |
 | 数据目录 | `~/.polaris`（原 `~/.zcode`）               |
-| 域名     | `polaris.bitlesu.com`                       |
+| 域名     | `nimbus.bitlesu.com`                       |
 | 上游     | `zai-org/ZCode`（fork: `PumpkinTTL/ZCode`） |
 | 分支     | `enterprise`                                |
 
