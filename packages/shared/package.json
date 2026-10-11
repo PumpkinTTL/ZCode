@@ -38,7 +38,6 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@modelcontextprotocol/ext-apps": "2.0.0",
-    "typescript": "^6.0.2"
+    "@modelcontextprotocol/ext-apps": "2.0.0"
   }
 }
