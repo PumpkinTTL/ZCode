@@ -232,7 +232,6 @@
     "apps/zcode-cli/packages/contracts/package.json": "7443f402f58df867ad5f776b2e94823d2b3bb235b16d0155f7a939ba181aa3ac",
     "apps/zcode-cli/packages/core/package.json": "abf5a6c8715fe87ea4b5ef3a48b225f94980dc386fe2ccfe98844347aa16bcd8",
     "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts": "60fa5acd9f5c357f4e51b1d1e944ee39da92680e4bc5e98dd708f1457fcf612b",
-    "apps/zcode-cli/packages/debug/package.json": "16e6a402d995d3a56ed6e97665cd81f0dd22f03280350d5e0a70c14a2cc4b2ca",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
     "apps/zcode-cli/packages/i18n/package.json": "025e4620d80f39cac3df06249866fcaed531615b6b8a4c4a727c4557066f7b1b",
