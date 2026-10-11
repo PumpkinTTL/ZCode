@@ -1901,7 +1901,7 @@ const zhCN: Record<string, string> = {
   "business.quota.windowWeeklyShort": "周额度",
   "business.quota.baseQuota": "基本额度",
   "business.quota.resetCardBadgeTitle": "可用用量重置卡，点击查看",
-  "business.quota.resetCardBadge": "获得{count}次重置额度",
+  "business.quota.resetCardBadge": "{count}张重置卡",
   "business.quota.resetSuccess": "重置成功，额度已恢复",
   "business.quota.resetCardsTitle": "可重置额度",
   "business.quota.resetCardsEmpty": "没有可用的重置卡",

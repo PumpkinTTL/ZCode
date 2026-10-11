@@ -113,7 +113,7 @@ export interface ModelSelectFooterAction {
 
 const EMPTY_MODEL_SELECT_FOOTER_ACTIONS: readonly ModelSelectFooterAction[] = [];
 export const MODEL_CONFIG_SELECT_BADGE_CLASS_NAME =
-  "shrink-0 rounded-full bg-surface px-1 py-px text-ui-xs font-medium leading-normal text-foreground-subtle";
+  "inline-flex shrink-0 items-center justify-center rounded-md border border-border/70 bg-surface/70 px-1.5 h-5 text-ui-xs font-medium leading-none select-none";
 
 function shouldShowModelProviderLevel(modelGroups: readonly ModelSelectGroup[]): boolean {
   return modelGroups.length > 0;
@@ -468,10 +468,10 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
             title={group.label}
             className={cn(
               MODEL_CONFIG_SELECT_BADGE_CLASS_NAME,
-              "cursor-default px-1.5 py-0.5",
+              "cursor-default",
               isOfficialKeywordLabel(group.label)
                 ? OFFICIAL_KEYWORD_ACCENT_CLASS
-                : "border border-border text-foreground-subtle",
+                : "border-border/70 text-foreground-subtle bg-surface/70",
             )}
           >
             {group.label}

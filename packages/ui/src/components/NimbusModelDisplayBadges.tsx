@@ -21,21 +21,21 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
  * 表面/描边由同一 token 现场低透明度派生，自动跟随明暗与 Zai 变体。
  */
 
-// OpenAI 状态胶囊纪律：全圆角、无描边、实底软彩（文字 token 10% 混入背景）、
-// 中字重——彩字配 700 级深色，读起来笃定，不飘。
+// 统一模型微徽章规范：精巧圆角矩形（rounded-md）、细微描边、合宜内边距与高度（h-5 px-1.5）、
+// 精确居中对齐，与模型菜单项整体设计语言严密贴合。
 const TAG_BADGE_BASE =
-  "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-ui-xs leading-normal";
+  "inline-flex shrink-0 items-center justify-center rounded-md border px-1.5 h-5 text-ui-xs font-medium leading-none select-none";
 
 const TAG_ACCENT_CLASS: Record<QuotaModelDisplayTag, string> = {
   recommended:
-    "text-[var(--color-model-tag-recommended)] bg-[color-mix(in_oklab,var(--color-model-tag-recommended)_10%,var(--color-background))]",
+    "text-[#345e3d] bg-[#eef5ef] border-[#b8d5be] dark:text-[#8ec69b] dark:bg-[#8ec69b]/12 dark:border-[#8ec69b]/25",
   limited_time:
-    "text-[var(--color-model-tag-limited-time)] bg-[color-mix(in_oklab,var(--color-model-tag-limited-time)_10%,var(--color-background))]",
+    "text-blue-600 bg-blue-500/10 border-blue-500/20 dark:text-blue-400 dark:bg-blue-400/10 dark:border-blue-400/20",
   peak_pricing:
-    "text-[var(--color-model-tag-peak)] bg-[color-mix(in_oklab,var(--color-model-tag-peak)_10%,var(--color-background))]",
+    "text-amber-600 bg-amber-500/10 border-amber-500/20 dark:text-amber-400 dark:bg-amber-400/10 dark:border-amber-400/20",
 };
 
-const TAG_GRAY_CLASS = "text-foreground-subtle bg-surface border-border/60";
+const TAG_GRAY_CLASS = "text-foreground-subtle bg-surface/70 border-border/70";
 
 /**
  * 归一规则：命中「官方」关键词的标签复用的蓝色 accent——即「限时折扣」的同一

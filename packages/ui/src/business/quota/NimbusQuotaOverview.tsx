@@ -221,11 +221,11 @@ export function NimbusQuotaOverview({
               <button
                 type="button"
                 title={intl.formatMessage({ id: "business.quota.resetCardBadgeTitle" })}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-ui-xs font-medium text-emerald-700 transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/15 active:bg-emerald-500/20 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 cursor-pointer select-none"
+                className="inline-flex shrink-0 items-center justify-center gap-1 rounded-md border border-[#b8d5be] bg-[#eef5ef] px-1.5 h-5 text-ui-xs font-medium leading-none text-[#345e3d] transition-colors hover:border-[#a8caa0] hover:bg-[#e4eee5] active:bg-[#d8e7da] dark:border-[#8ec69b]/25 dark:bg-[#8ec69b]/12 dark:text-[#8ec69b] dark:hover:border-[#8ec69b]/35 dark:hover:bg-[#8ec69b]/18 cursor-pointer select-none"
                 onClick={() => setResetCardsOpen(true)}
               >
-                <Gift aria-hidden="true" className="size-3 text-emerald-600 dark:text-emerald-400" />
-                <span>
+                <Gift aria-hidden="true" className="size-3 shrink-0" />
+                <span className="leading-none">
                   {intl.formatMessage(
                     { id: "business.quota.resetCardBadge" },
                     { count: resetCardCount },

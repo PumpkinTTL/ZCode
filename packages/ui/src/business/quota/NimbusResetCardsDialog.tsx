@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QuotaResetCard, QuotaStatusResult } from "@zcode/services";
 import { Loader2, RotateCcw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog.js";
+import { Button } from "@/components/ui/button.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { refreshNimbusAccountState } from "./nimbusAccountState.js";
@@ -154,7 +155,7 @@ export function NimbusResetCardsDialog({
                     <span className="truncate text-ui-sm font-medium text-foreground">
                       {formatWindowResetTitle(window)}
                     </span>
-                    <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-ui-xs font-medium leading-none text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    <span className="inline-flex shrink-0 items-center justify-center rounded-md border border-[#b8d5be] bg-[#eef5ef] px-1.5 h-5 text-ui-xs font-medium leading-none text-[#345e3d] dark:border-[#8ec69b]/25 dark:bg-[#8ec69b]/12 dark:text-[#8ec69b]">
                       {intl.formatMessage(
                         { id: "business.quota.resetCardCount" },
                         { count: groupCards.length },
@@ -189,21 +190,23 @@ export function NimbusResetCardsDialog({
                                     id: "business.quota.resetCardNeverExpires",
                                   })}
                           </span>
-                          <button
+                          <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
                             disabled={blocked || redeemingId !== null}
-                            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-ui-xs font-medium text-white transition-colors hover:bg-emerald-500 active:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer select-none"
+                            className="h-6.5 px-2.5 text-ui-xs font-medium gap-1.5 border-border hover:bg-surface-hover text-foreground hover:text-foreground"
                             onClick={() => void handleRedeem(card)}
                           >
                             {busy ? (
-                              <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                              <Loader2 aria-hidden="true" className="size-3 animate-spin" />
                             ) : (
-                              <RotateCcw aria-hidden="true" className="size-3.5" />
+                              <RotateCcw aria-hidden="true" className="size-3" />
                             )}
                             {redeemed && !blocked
                               ? intl.formatMessage({ id: "business.quota.redeemed" })
                               : intl.formatMessage({ id: "business.quota.resetAction" })}
-                          </button>
+                          </Button>
                         </div>
                       );
                     })}

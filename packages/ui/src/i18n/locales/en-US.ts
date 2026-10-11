@@ -2002,7 +2002,7 @@ const enUS: Record<string, string> = {
   "business.quota.windowWeeklyShort": "Weekly",
   "business.quota.baseQuota": "Base quota",
   "business.quota.resetCardBadgeTitle": "Usage reset cards available — click to view",
-  "business.quota.resetCardBadge": "Earn {count} quota resets",
+  "business.quota.resetCardBadge": "{count} reset cards",
   "business.quota.resetSuccess": "Reset successful — quota restored",
   "business.quota.resetCardsTitle": "Resettable Quota",
   "business.quota.resetCardsEmpty": "No reset cards available",

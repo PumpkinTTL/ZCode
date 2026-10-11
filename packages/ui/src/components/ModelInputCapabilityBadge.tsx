@@ -2,7 +2,7 @@ import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 export const MODEL_INPUT_CAPABILITY_BADGE_CLASS_NAME =
-  "pointer-events-none inline-flex shrink-0 items-center rounded-full border border-border bg-surface px-1 py-px text-ui-xs font-medium leading-normal text-foreground-subtle";
+  "pointer-events-none inline-flex shrink-0 items-center justify-center rounded-md border border-border/70 bg-surface/70 px-1.5 h-5 text-ui-xs font-medium leading-none text-foreground-subtle select-none";
 
 export function ModelInputCapabilityBadge({ className }: { className?: string }) {
   const { intl } = useZCodeIntl();
