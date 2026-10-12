@@ -2,13 +2,12 @@
  * 侧边额度面板的两张数据卡（积分余额 + 套餐额度）：纯展示，数据由
  * NimbusQuotaSidePanel 喂入，自身不取数、不发请求。
  *
- * 单独成文件是为了与面板外壳（Dialog 定位 / 登录引导 / 底部操作）分离，两张卡
- * 目前只有侧边面板一个宿主，不做多余抽象——props 直接是服务层类型。
- *
- * 口径与「我的额度」设置页同源（QuotaStatusResult）：
- * - 积分余额大字 = 钱包可用余额（formatCredits 裸数字，不加千分位）；
- * - 窗口行按剩余量直读（limit − used），百分比走 percentOf，进度条低量变琥珀/玫红；
- * - 空窗（limit 为 null/0）整行不渲染，绝不猜字段（文档口径：看不到的字段不要猜）。
+ * 视觉规范（DESIGN.md + design-md 技能六条硬规则）：
+ * - 卡容器 = 低强调容器 `rounded-xl border-border/60 bg-surface p-4`
+ *   （面板壳是 bg-popover，card/popover 同值无法分层；surface 是浮层内瓦片的正确 token）；
+ * - 数字一律 UI 无衬线 + `tabular-nums` 裸格式（禁止 font-mono），单位语义放小字标签；
+ * - 窗口分色沿用设置页「我的额度」同款：5 小时窗蓝 / 本周窗靛，低量转琥珀/玫红；
+ * - 发丝线统一 `border-border/60`，间距走 4px 网格（p-4 / space-y-3 / pt-3）。
  */
 import type {
   QuotaCreditsSubscription,
@@ -33,43 +32,43 @@ export function NimbusQuotaWalletCard({ wallet }: { wallet: QuotaWalletInfo }) {
 
   return (
     <section
-      className="space-y-1.5 rounded-xl border border-border/50 bg-muted/30 p-2.5"
+      className="space-y-3 rounded-xl border border-border/60 bg-surface p-4"
       data-quota-side-wallet=""
     >
-      <div className="flex items-center gap-1.5 text-ui-xs">
-        <span className="min-w-0 truncate font-medium text-foreground">
+      <div className="flex items-center gap-2 text-ui-sm">
+        <span className="min-w-0 truncate font-semibold text-foreground">
           {intl.formatMessage({ id: "business.quota.available" })}
         </span>
         {wallet.lowBalance ? (
-          <span className="inline-flex shrink-0 items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-ui-xs font-medium leading-none text-amber-600 dark:text-amber-400">
+          <span className="inline-flex shrink-0 items-center rounded-md border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-ui-xs font-medium leading-none text-amber-600 dark:text-amber-400">
             {intl.formatMessage({ id: "business.quota.lowBalanceBadge" })}
           </span>
         ) : null}
       </div>
 
-      <div className="flex items-baseline gap-1">
-        <span className="font-mono text-ui-lg font-bold tabular-nums text-foreground">
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-ui-xl font-bold tabular-nums tracking-tight text-foreground">
           {formatCredits(wallet.available)}
         </span>
-        <span className="text-ui-xs text-foreground-subtle">
+        <span className="text-ui-sm text-foreground-subtle">
           {intl.formatMessage({ id: "business.quota.creditsUnit" })}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 border-t border-border/40 pt-1.5 text-ui-xs">
-        <div className="flex items-center justify-between gap-2 border-r border-border/60 pr-2.5">
+      <div className="grid grid-cols-2 gap-3 border-t border-border/60 pt-3 text-ui-xs">
+        <div className="flex items-center justify-between gap-2 border-r border-border/60 pr-3">
           <span className="min-w-0 truncate text-foreground-subtle">
             {intl.formatMessage({ id: "business.quota.todaySpend" })}
           </span>
-          <span className="shrink-0 font-mono font-medium tabular-nums text-foreground">
+          <span className="shrink-0 font-medium tabular-nums text-foreground">
             {formatCredits(wallet.todaySpend)}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-2 pl-0.5">
+        <div className="flex items-center justify-between gap-2">
           <span className="min-w-0 truncate text-foreground-subtle">
             {intl.formatMessage({ id: "business.quota.monthSpend" })}
           </span>
-          <span className="shrink-0 font-mono font-medium tabular-nums text-foreground">
+          <span className="shrink-0 font-medium tabular-nums text-foreground">
             {formatCredits(wallet.monthSpend)}
           </span>
         </div>
@@ -81,6 +80,12 @@ export function NimbusQuotaWalletCard({ wallet }: { wallet: QuotaWalletInfo }) {
 // ------------------------------------------------------------
 // 套餐额度卡
 // ------------------------------------------------------------
+
+/** 窗口色调 → 正常态强调色（与设置页「我的额度」窗口分色同款）。 */
+const WINDOW_TONE_CLASS = {
+  blue: "text-blue-600 dark:text-blue-400",
+  indigo: "text-indigo-600 dark:text-indigo-400",
+} as const;
 
 /** 一道窗口闸的展示行：名称 + 剩余百分比 / 进度条 / 剩余·上限 + 重置时刻。 */
 function WindowRow({
@@ -95,24 +100,24 @@ function WindowRow({
   limit: number;
   /** 重置时刻文案（null = 不展示，如周窗未锚定）。 */
   resetText: string | null;
-  tone: "blue" | "indigo";
+  tone: keyof typeof WINDOW_TONE_CLASS;
 }) {
   const percent = percentOf(remaining, limit);
   const isLow = percent <= 20;
   const isCritical = percent <= 10;
 
   return (
-    <div className="space-y-1.5" data-quota-side-window-row="">
-      <div className="flex items-center justify-between gap-2 text-ui-xs">
-        <span className="shrink-0 font-medium whitespace-nowrap text-foreground">{label}</span>
+    <div className="space-y-2" data-quota-side-window-row="">
+      <div className="flex items-center justify-between gap-2 text-ui-sm">
+        <span className="shrink-0 font-semibold whitespace-nowrap text-foreground">{label}</span>
         <span
           className={cn(
-            "shrink-0 font-mono font-medium tabular-nums",
+            "shrink-0 font-medium tabular-nums",
             isCritical
               ? "text-rose-600 dark:text-rose-400"
               : isLow
                 ? "text-amber-600 dark:text-amber-400"
-                : "text-foreground",
+                : WINDOW_TONE_CLASS[tone],
           )}
         >
           {Math.round(percent)}%
@@ -133,16 +138,13 @@ function WindowRow({
                 : "bg-blue-600 dark:bg-blue-500",
         )}
       />
-      <div className="flex items-center justify-between gap-2 font-mono text-ui-xs tabular-nums">
-        <span className="shrink-0 whitespace-nowrap text-foreground-subtle">
+      <div className="flex items-center justify-between gap-2 text-ui-xs tabular-nums">
+        <span className="shrink-0 whitespace-nowrap">
           <span className="font-medium text-foreground">{formatCredits(remaining)}</span>
-          {" / "}
-          {formatCredits(limit)}
+          <span className="text-foreground-subtle">{" / "}{formatCredits(limit)}</span>
         </span>
         {resetText ? (
-          <span className="min-w-0 truncate text-ui-xs text-foreground-subtle/80">
-            {resetText}
-          </span>
+          <span className="min-w-0 truncate text-foreground-subtle">{resetText}</span>
         ) : null}
       </div>
     </div>
@@ -210,25 +212,26 @@ export function NimbusQuotaPlanCard({
 
   return (
     <section
-      className="space-y-3 rounded-xl border border-border/50 bg-muted/30 p-3"
+      className="space-y-3 rounded-xl border border-border/60 bg-surface p-4"
       data-quota-side-plan=""
     >
-      <div className="flex items-center justify-between gap-2 text-ui-xs">
-        <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 text-ui-sm">
           <span className="shrink-0 font-semibold text-foreground">
             {intl.formatMessage({ id: "business.quota.subscriptions" })}
           </span>
           {planName ? (
-            <span className="min-w-0 truncate text-foreground-subtle">
+            <span className="min-w-0 truncate text-ui-xs text-foreground-subtle">
               ({formatQuotaPlanName(planName)})
             </span>
           ) : null}
         </div>
         {resetCardCount > 0 ? (
+          // 与设置页「我的额度」重置卡徽章同款（浅色鼠尾草绿 / 深色同系微透）。
           <button
             type="button"
             title={intl.formatMessage({ id: "business.quota.resetCardBadgeTitle" })}
-            className="inline-flex h-5 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-1.5 text-ui-xs font-medium leading-none text-emerald-700 select-none transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/15 dark:border-emerald-500/25 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:border-emerald-500/40"
+            className="inline-flex h-5 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md border border-[#b8d5be] bg-[#eef5ef] px-1.5 text-ui-xs font-medium leading-none text-[#345e3d] transition-colors select-none hover:border-[#a8caa0] hover:bg-[#e4eee5] active:bg-[#d8e7da] dark:border-[#8ec69b]/25 dark:bg-[#8ec69b]/12 dark:text-[#8ec69b] dark:hover:border-[#8ec69b]/35 dark:hover:bg-[#8ec69b]/18"
             onClick={onOpenResetCards}
           >
             <Gift aria-hidden="true" className="size-3 shrink-0" />
@@ -275,7 +278,7 @@ export function NimbusQuotaPlanCard({
           resetText={perCallExpiry}
         />
       ) : (
-        <p className="text-ui-xs text-foreground-subtle">
+        <p className="text-ui-sm text-foreground-subtle">
           {intl.formatMessage({ id: "business.quota.noSubscription" })}
         </p>
       )}

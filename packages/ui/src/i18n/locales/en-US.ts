@@ -1973,7 +1973,7 @@ const enUS: Record<string, string> = {
   "business.quota.todaySpend": "Today's usage",
   "business.quota.lowBalance": "Low balance — please top up",
   "business.quota.lowBalanceBadge": "Low balance",
-  "business.quota.sidePanelPreferences": "Preferences",
+  "business.quota.sidePanelPreferences": "Full details",
   "business.quota.subscriptions": "My plans",
   "business.quota.noSubscription": "No active plan",
   "business.quota.remaining": "Remaining",

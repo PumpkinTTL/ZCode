@@ -625,9 +625,9 @@ const zhCN: Record<string, string> = {
   "settings.onboardingOpen": "打开引导",
 
   // 应用头部
-  "app.login": "登录",
+  "app.login": "登录使用",
   "app.logout": "断开连接",
-  "sidebar.profile.notLoggedIn": "登录",
+  "sidebar.profile.notLoggedIn": "登录使用",
   "browser.title": "浏览器",
   "browser.addressPlaceholder": "输入网址后回车",
   "browser.back": "后退",
@@ -1872,7 +1872,7 @@ const zhCN: Record<string, string> = {
   "business.quota.todaySpend": "今日已用",
   "business.quota.lowBalance": "余额不足，请及时充值",
   "business.quota.lowBalanceBadge": "余额偏低",
-  "business.quota.sidePanelPreferences": "偏好设置",
+  "business.quota.sidePanelPreferences": "完整明细",
   "business.quota.subscriptions": "我的套餐",
   "business.quota.noSubscription": "当前没有生效中的套餐",
   "business.quota.remaining": "剩余额度",

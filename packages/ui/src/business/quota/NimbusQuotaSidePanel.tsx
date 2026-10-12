@@ -5,7 +5,7 @@
  * 不遮罩整页（showOverlay=false），点外部 / Esc 关闭。内容自上而下：
  * 账户头部（头像/用户名/刷新·关闭）→ 公告条（可选）→ 积分余额卡 → 套餐额度卡
  * （5 小时窗口 / 本周窗口进度条 + 重置时刻 + 重置卡徽章）→ 每日签到 → 底部
- * （偏好设置 / 退出登录）。
+ * （完整明细 / 退出登录）。
  *
  * 数据全部走现有服务，不新造数据链：登录态/用户名/重置卡数量走
  * useNimbusAccountState 共享快照（打开即 refreshNimbusAccountState 求一次真相），
@@ -78,7 +78,7 @@ export function NimbusQuotaSidePanel({
     void refreshNimbusAccountState();
   }, []);
 
-  /** 底部「偏好设置」：回到设置页「我的额度」分区（原入口的落点原地保留）。 */
+  /** 底部「完整明细」：回到设置页「我的额度」分区（完整用量/套餐明细页；原入口的落点原地保留）。 */
   const handleOpenPreferences = useCallback(() => {
     setResetCardsOpen(false);
     onOpenChange(false);
@@ -141,7 +141,7 @@ export function NimbusQuotaSidePanel({
           </DialogTitle>
 
           {/* 账户头部：头像 + 用户名（+ 掩码邮箱）+ 刷新 / 关闭 */}
-          <header className="flex items-center justify-between gap-2 border-b border-border/60 px-3.5 py-3">
+          <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
               <Avatar size="default">
                 <AvatarFallback className="bg-surface text-ui-sm font-semibold text-foreground">
@@ -193,7 +193,7 @@ export function NimbusQuotaSidePanel({
           </header>
 
           {/* 主体：三态（已登录数据 / 首载 / 未登录引导） */}
-          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3.5 py-3">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
             {loggedInStatus ? (
               <>
                 {/* 公告条（有公告才渲染，同一份已读记忆与设置页共享） */}
@@ -241,8 +241,8 @@ export function NimbusQuotaSidePanel({
             )}
           </div>
 
-          {/* 底部：偏好设置 / 退出登录（Lyra 账户弹层同款文本动作行） */}
-          <footer className="flex items-center justify-end gap-2 border-t border-border/60 px-3.5 py-2.5 text-ui-xs">
+          {/* 底部：完整明细 / 退出登录（Lyra 账户弹层同款文本动作行） */}
+          <footer className="flex items-center justify-end gap-2 border-t border-border/60 px-4 py-3 text-ui-xs">
             <button
               type="button"
               className="cursor-pointer text-foreground-subtle transition-colors hover:text-foreground"
