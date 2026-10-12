@@ -67,10 +67,19 @@ export interface QuotaApiClientOptions {
   readonly fetchImpl?: typeof fetch;
 }
 
+/**
+ * 服务端 key_prefix 归一：列表/冲突回执里是「明文前 8 位 + ****」的展示掩码，
+ * 一律剥掉尾部星号再交给上层——任何本地明文比对都不得看到掩码形态
+ * （不剥则 startsWith 恒假，会触发无谓的吊销重建，与 keyEntryPrefix 同口径）。
+ */
+function normalizeServerKeyPrefix(raw: string | null): string | null {
+  const prefix = raw?.replace(/\*+$/u, "") ?? "";
+  return prefix || null;
+}
+
 /** 容错读法：文档明确"看不到的字段不要猜"，缺键返回 undefined。 */
 function readNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
+  return typeof value === "number" && Number.isFinite(value) ? value : null;}
 
 function readNumberOr(value: unknown, fallback: number): number {
   return readNumber(value) ?? fallback;
@@ -300,8 +309,9 @@ export class QuotaApiClient {
         (typeof level?.existing_key_id === "string" && level.existing_key_id
           ? level.existing_key_id
           : null);
-      const keyPrefix =
-        typeof level?.key_prefix === "string" && level.key_prefix ? level.key_prefix : null;
+      const keyPrefix = normalizeServerKeyPrefix(
+        typeof level?.key_prefix === "string" ? level.key_prefix : null,
+      );
       return { created: false, existingKeyId, keyPrefix };
     }
     if (!response.ok) throw await toApiError(response);
