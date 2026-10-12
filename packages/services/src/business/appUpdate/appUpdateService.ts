@@ -115,9 +115,10 @@ export function createAppUpdateService(
   const configuredDeviceMid = options.deviceMid?.trim() ?? "";
 
   /**
-   * 心跳身份键：与 electron manifest 通道（device_mid）同键优先——两通道对同一
-   * 设备必须上报同一字符串，服务端才去得掉重；取不到时回落 Nimbus device id，
-   * 都没有返回空串 → 后端按 IP+UA 哈希归属。
+   * 心跳身份键：与 electron manifest 通道（device_mid）同键优先——所有上报
+   * 通道（独立心跳 / latest 更新检查 / manifest）对同一设备必须上报同一字符串，
+   * 服务端才去得掉重；取不到时回落 Nimbus device id，都没有返回空串 →
+   * 后端按 IP+UA 哈希归属。
    */
   async function resolveDeviceId(): Promise<string> {
     if (configuredDeviceMid) return configuredDeviceMid;
@@ -168,6 +169,9 @@ export function createAppUpdateService(
           platform,
           channel,
           currentVersion: appVersion,
+          // 更新检查即心跳（后端 _record_heartbeat）：带同一身份键，避免同机
+          // 在「检查」与「独立心跳」两条链上按两个身份被双计。
+          device: await resolveDeviceId(),
         });
         return projectUpdateCheck(raw);
       } catch (error) {

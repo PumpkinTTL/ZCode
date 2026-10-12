@@ -12,8 +12,8 @@ import { describe, expect, it } from "vitest";
 import type { NimbusDeviceKeyProvider } from "../quota/quota.js";
 import { createAppUpdateService } from "./appUpdateService.js";
 
-/** 按脚本应答一次的 mock fetch（记录请求） */
-function mockFetch(): {
+/** 按固定响应应答的 mock fetch（记录请求） */
+function mockFetch(body: unknown = { ok: true }): {
   fetchImpl: typeof fetch;
   calls: Array<{ url: string; init: RequestInit }>;
 } {
@@ -21,7 +21,7 @@ function mockFetch(): {
   const fetchImpl = (async (input: unknown, init?: unknown) => {
     const url = typeof input === "string" ? input : String(input);
     calls.push({ url, init: (init ?? {}) as RequestInit });
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify(body), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
@@ -50,8 +50,12 @@ function heartbeatBody(call: { init: RequestInit }): Record<string, unknown> {
   return JSON.parse(String(call.init.body)) as Record<string, unknown>;
 }
 
-function harness(input: { deviceMid?: string; deviceKeys?: NimbusDeviceKeyProvider }) {
-  const { fetchImpl, calls } = mockFetch();
+function harness(input: {
+  deviceMid?: string;
+  deviceKeys?: NimbusDeviceKeyProvider;
+  latestBody?: unknown;
+}) {
+  const { fetchImpl, calls } = mockFetch(input.latestBody);
   const { service } = createAppUpdateService({
     appVersion: "1.0.1",
     platform: "windows",
@@ -104,5 +108,31 @@ describe("reportHeartbeat 身份键（双通道同键去重）", () => {
     await h.service.reportHeartbeat();
 
     expect(heartbeatBody(h.calls[0]!)["device"]).toBe("");
+  });
+});
+
+describe("checkForUpdate 更新检查即心跳（app_release.py:200）", () => {
+  it("latest 请求带上与独立心跳相同的 device——同机两条链不按两个身份双计", async () => {
+    const h = harness({
+      deviceMid: "0f8c4f4e-aaaa-bbbb-cccc-ddddeeeeffff",
+      latestBody: { latest: { version: "1.0.1", file: {} } },
+    });
+
+    const check = await h.service.checkForUpdate();
+
+    expect(check?.latest.version).toBe("1.0.1");
+    const url = new URL(h.calls[0]!.url);
+    expect(url.pathname).toBe("/api/v1/app-updates/polaris/latest");
+    expect(url.searchParams.get("device")).toBe("0f8c4f4e-aaaa-bbbb-cccc-ddddeeeeffff");
+    expect(url.searchParams.get("current_version")).toBe("1.0.1");
+    expect(url.searchParams.get("platform")).toBe("windows");
+  });
+
+  it("无设备身份时不带 device 参数（后端照旧按 IP+UA 归属）", async () => {
+    const h = harness({ latestBody: { latest: { version: "1.0.1", file: {} } } });
+
+    await h.service.checkForUpdate();
+
+    expect(new URL(h.calls[0]!.url).searchParams.has("device")).toBe(false);
   });
 });

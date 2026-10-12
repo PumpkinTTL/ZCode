@@ -172,6 +172,10 @@ export class AppUpdateApiClient {
   /**
    * 更新检查（无需鉴权）。404 照抛（服务层翻译成 null = 未发布任何版本）；
    * 后端限流 60 次/分钟/IP（app_release.py:36 "rl:appupd:latest"）。
+   *
+   * device：更新检查即心跳（app_release.py:200 `_record_heartbeat`）——带上设备
+   * 身份键，与独立心跳端点/electron manifest 通道落同一 Redis 键；不带则身份
+   * 退化成 IP+UA 哈希，同机在两通道按两个身份双计。
    */
   async fetchLatest(
     input: {
@@ -179,6 +183,7 @@ export class AppUpdateApiClient {
       platform: string;
       channel: string;
       currentVersion: string;
+      device?: string;
     },
     signal?: AbortSignal,
   ): Promise<unknown> {
@@ -186,6 +191,7 @@ export class AppUpdateApiClient {
     query.set("platform", input.platform);
     query.set("channel", input.channel);
     if (input.currentVersion) query.set("current_version", input.currentVersion);
+    if (input.device?.trim()) query.set("device", input.device.trim());
     const path = `${this.#path(input.clientId, "/latest")}?${query.toString()}`;
     const response = await this.#fetchImpl(`${this.#baseUrl}${path}`, { signal });
     if (!response.ok) throw await toApiError(response);
