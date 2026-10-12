@@ -1986,6 +1986,7 @@ const enUS: Record<string, string> = {
   "business.appUpdate.title": "Release Notes",
   "business.appUpdate.badge": "New version",
   "business.appUpdate.badgeTitle": "Version v{version} is available — click to view release notes",
+  "business.appUpdate.downloadUnavailable": "No installer download link yet (release storage not configured or the package has not been uploaded).",
   "business.appUpdate.loading": "Checking…",
   "business.appUpdate.noReleases": "No releases published yet",
   "business.appUpdate.upToDate": "You're up to date",

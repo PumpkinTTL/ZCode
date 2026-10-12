@@ -61,7 +61,10 @@ export function NimbusAppUpdateDialog({ open, onClose }: { open: boolean; onClos
           <DialogTitle>{intl.formatMessage({ id: "business.appUpdate.title" })}</DialogTitle>
         </DialogHeader>
 
-        {/* 状态行：检查结果 / 下载入口 */}
+        {/* 状态行：检查结果 / 下载入口。
+            有安装包链（服务端已配发布存储并上传了包）→ 可点下载；
+            发现新版本但拿不到链接（发布存储未配置/包未上传）→ 按钮禁用 +
+            下一行明示原因，不让"按钮凭空消失"变成困惑。 */}
         <div className="flex min-w-0 items-center justify-between gap-3">
           <span className="min-w-0 truncate text-ui-sm text-foreground">
             {unavailable
@@ -79,18 +82,36 @@ export function NimbusAppUpdateDialog({ open, onClose }: { open: boolean; onClos
                         )
                       : intl.formatMessage({ id: "business.appUpdate.upToDate" })}
           </span>
-          {check?.updateAvailable && check.latest.file.url ? (
-            <Button
-              type="button"
-              size="sm"
-              className="shrink-0"
-              onClick={() => platform.openExternal(check.latest.file.url)}
-            >
-              <Download aria-hidden="true" className="size-3.5" />
-              {intl.formatMessage({ id: "business.appUpdate.download" })}
-            </Button>
+          {check?.updateAvailable ? (
+            check.latest.file.url ? (
+              <Button
+                type="button"
+                size="sm"
+                className="shrink-0"
+                onClick={() => platform.openExternal(check.latest.file.url)}
+              >
+                <Download aria-hidden="true" className="size-3.5" />
+                {intl.formatMessage({ id: "business.appUpdate.download" })}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                className="shrink-0"
+                disabled
+                title={intl.formatMessage({ id: "business.appUpdate.downloadUnavailable" })}
+              >
+                <Download aria-hidden="true" className="size-3.5" />
+                {intl.formatMessage({ id: "business.appUpdate.download" })}
+              </Button>
+            )
           ) : null}
         </div>
+        {check?.updateAvailable && !check.latest.file.url ? (
+          <p className="text-ui-xs text-foreground-subtle">
+            {intl.formatMessage({ id: "business.appUpdate.downloadUnavailable" })}
+          </p>
+        ) : null}
 
         {/* 版本目录：更新日志正文 */}
         <div className="max-h-72 space-y-3 overflow-y-auto pr-1">

@@ -1885,6 +1885,7 @@ const zhCN: Record<string, string> = {
   "business.appUpdate.title": "更新日志",
   "business.appUpdate.badge": "新版本",
   "business.appUpdate.badgeTitle": "发现新版本 v{version}，点击查看更新日志",
+  "business.appUpdate.downloadUnavailable": "暂未获取到安装包下载链接（发布存储未配置或安装包未上传）。",
   "business.appUpdate.loading": "检查中…",
   "business.appUpdate.noReleases": "暂无发布版本",
   "business.appUpdate.upToDate": "已是最新版本",

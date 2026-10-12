@@ -57,7 +57,7 @@ export function NimbusUpdateBadge() {
           { id: "business.appUpdate.badgeTitle" },
           { version: availableVersion },
         )}
-        className="inline-flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-2 text-ui-xs font-medium leading-none text-primary transition-colors select-none [app-region:no-drag] hover:border-primary/40 hover:bg-primary/15"
+        className="inline-flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 text-ui-xs font-medium leading-none text-emerald-700 transition-colors select-none [app-region:no-drag] hover:border-emerald-500/40 hover:bg-emerald-500/15 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:border-emerald-500/45"
         onClick={() => setDialogOpen(true)}
       >
         <ArrowUpCircleIcon aria-hidden="true" className="size-3 shrink-0" />
