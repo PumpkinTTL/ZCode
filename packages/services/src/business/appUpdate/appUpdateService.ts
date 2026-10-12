@@ -6,8 +6,9 @@
  *
  * 与额度服务的关系：**同一后端、同一 base 解析出口**（复用
  * quotaService.resolveQuotaBaseUrl：QUOTA_BASE_URL 覆盖 > 未打包(development)
- * 本地 127.0.0.1:8000 > 打包域名），保证两边永远指向同一部署；设备身份也复用
- * 额度层的 NimbusDeviceKeyProvider（Ed25519 身份单实例），不另造一套。
+ * 本地 127.0.0.1:8000 > 打包域名），保证两边永远指向同一部署；心跳身份键与
+ * electron manifest 通道（device_mid）同值优先，缺口时回落额度层的
+ * NimbusDeviceKeyProvider（Ed25519 身份单实例），不另造一套。
  *
  * 鉴权：三个端点都是公开端点（无 JWT，见 appUpdate.ts 头注）——本服务不读
  * 登录 token，因此**未登录也能上报在线/检查更新**（这正是后端的设计意图：
@@ -28,18 +29,18 @@ import type { AppReleaseHistoryEntry, AppUpdateCheckResult } from "./appUpdateTy
 
 /**
  * 在线心跳周期。后端窗口是 Redis 5 分钟滑动 TTL（cbcn-cloud
- * app_release.py:57 `_ONLINE_TTL_SECONDS = 300`），取 4 分钟：每台设备在窗口内
+ * app_release.py:59 `_ONLINE_TTL_SECONDS = 300`），取 4 分钟：每台设备在窗口内
  * 至少留下两次心跳，留 60s 容错（网络抖动/休眠唤醒），同时远低于后端
- * 60 次/分钟/IP 的限流（app_release.py:34）。
+ * 60 次/分钟/IP 的限流（app_release.py:36）。
  */
 export const APP_UPDATE_HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000;
 
-/** 版本目录单次拉取上限（后端钳位 1..100，app_release.py:268）。 */
+/** 版本目录单次拉取上限（后端钳位 1..100，app_release.py:287）。 */
 export const APP_UPDATE_RELEASE_LIST_MAX = 100;
 
 /**
  * 后端更新检查的平台名不是 Node 的 process.platform：
- * app_release.py:36 只接受 ""/"windows"/"macos"/"linux"（其他值直接 400）。
+ * app_release.py:38 只接受 ""/"windows"/"macos"/"linux"（其他值直接 400）。
  * 未知平台映射为 ""（后端语义 = 平台通用版本），绝不猜一个后端不认的名字。
  */
 export function resolveAppUpdatePlatform(platform: NodeJS.Platform = process.platform): string {
@@ -68,8 +69,16 @@ export interface CreateAppUpdateServiceOptions {
   /** AppID，缺省 `polaris`（与设备/agent key 同一 apps 行）。 */
   readonly clientId?: string;
   /**
-   * 设备身份能力（可选）：心跳带上 device_id 让后端按设备去重在线数
-   * （app_release.py:83-88；缺省回落 IP+UA 哈希，同 IP 多机折叠成一台）。
+   * 桌面端持久化设备标识（主进程 telemetry-state.json 的 deviceMid，经 Host init
+   * 下发）。与 electron manifest 通道上报的 device_mid 是**同一个值**——服务端
+   * 在线统计按 identity 去重（SCAN + 去重，见 app_release.py:54-58），两个通道
+   * 对同一台机器必须落同一身份键，否则同设备双计。且它先于登录存在：未配对
+   * 用户也能按设备稳定归属；未提供（非桌面宿主/web）时才回落 Nimbus device id。
+   */
+  readonly deviceMid?: string;
+  /**
+   * 设备身份能力（可选）：无 deviceMid 时的回落——心跳带上 device_id 让后端按设备
+   * 去重在线数（app_release.py:94-98；再缺省回落 IP+UA 哈希，同 IP 多机折叠成一台）。
    * 与额度服务共用同一个 provider 实例；不传时心跳仍可用（device 传空串）。
    */
   readonly deviceKeys?: NimbusDeviceKeyProvider;
@@ -103,9 +112,15 @@ export function createAppUpdateService(
   const appVersion = options.appVersion.trim();
   const client = new AppUpdateApiClient({ baseUrl, fetchImpl: options.fetchImpl });
   const deviceKeys = options.deviceKeys;
+  const configuredDeviceMid = options.deviceMid?.trim() ?? "";
 
-  /** 设备 id 用于在线身份去重；取不到（未装配/读写失败）返回空串 → 后端回落 IP+UA。 */
+  /**
+   * 心跳身份键：与 electron manifest 通道（device_mid）同键优先——两通道对同一
+   * 设备必须上报同一字符串，服务端才去得掉重；取不到时回落 Nimbus device id，
+   * 都没有返回空串 → 后端按 IP+UA 哈希归属。
+   */
   async function resolveDeviceId(): Promise<string> {
+    if (configuredDeviceMid) return configuredDeviceMid;
     if (!deviceKeys) return "";
     try {
       const identity = await deviceKeys.loadOrCreate();
@@ -156,7 +171,7 @@ export function createAppUpdateService(
         });
         return projectUpdateCheck(raw);
       } catch (error) {
-        // 404 = 未知应用或暂无发布版本（app_release.py:138-153 同一口径）：
+        // 404 = 未知应用或暂无发布版本（app_release.py:148-163 同一口径）：
         // Polaris 尚未发版是正常状态，翻译成 null 交给 UI 展示「暂无发布版本」。
         if (error instanceof AppUpdateApiError && error.status === 404) return null;
         throw error;

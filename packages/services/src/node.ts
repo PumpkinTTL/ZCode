@@ -319,6 +319,9 @@ import {
   createAppUpdateService,
   IAppUpdateService,
 } from "./business/index.js";
+// 桌面主进程装配 electron 更新通道（manifest client_id）也要用同一 AppID 常量，
+// 避免两处字面量漂移（APP_UPDATE_CLIENT_ID === NIMBUS_CLIENT_ID === "polaris"）。
+export { APP_UPDATE_CLIENT_ID } from "./business/index.js";
 // 设备密钥能力（Ed25519 配对 + 请求签名）依赖 node:crypto，只在宿主组合根实例化，
 // 不经 business/index 转出——渲染层 bundle 不引入 node 内建模块。
 import { createNodeNimbusDeviceKeyProvider } from "./business/quota/nimbusDeviceIdentity.js";
@@ -2577,12 +2580,15 @@ export function createLocalServices(options: {
     .register(
       IAppUpdateService,
       // App 更新检查 / 版本目录（更新日志）+ 在线心跳（公开端点，无需登录）：
-      // base 与额度服务同源（resolveQuotaBaseUrl）；设备身份与额度共用同一实例
-      // （心跳 device 用于后端在线去重，未配对时传空 → 后端回落 IP+UA 哈希）。
+      // base 与额度服务同源（resolveQuotaBaseUrl）。
+      // 心跳身份键优先级：主进程 deviceMid（telemetry-state.json，与 electron
+      // manifest 通道 device_mid 同值 → 服务端两通道同键去重，同设备不双计）>
+      // Nimbus device id（未配对为空）> 空串交后端按 IP+UA 归属。
       // 定时心跳：host 进程存在 ≈ 客户端在运行；定时器 unref，不阻塞进程退出；
       // 后端 Redis 5 分钟窗口内按 device 去重，多窗口/多 host 不重复计在线。
       createAppUpdateService({
         appVersion: ZCODE_VERSION,
+        deviceMid: options.agentRuntimeContext?.getDeviceMid?.(),
         deviceKeys: nimbusDeviceKeyProvider,
         heartbeatIntervalMs: APP_UPDATE_HEARTBEAT_INTERVAL_MS,
       }).service,

@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- autoUpdater 需要集中维护 Electron 事件、菜单状态与 IPC 交互，过度拆分会让更新状态流更难追踪 */
 import type { ISettingService } from "@zcode/services";
+import { APP_UPDATE_CLIENT_ID } from "@zcode/services/node";
 import {
   DEFAULT_LOCALE,
   DEFAULT_ZCODE_ENDPOINT_ORIGIN,
@@ -760,6 +761,12 @@ function applyManifestUpdateProvider(options: InitAutoUpdaterOptions): void {
     ...(manifestUrl ? { manifestUrl } : {}),
     releasePlatform: getElectronReleasePlatform(),
     deviceMid: options.deviceMid,
+    // cbcn 发版通道的双通道身份契约（与 host 侧在线心跳同键去重）：
+    // - client_id 显式上报——服务端缺省 'polaris' 是历史默认，不传将来可能读到别的应用目录；
+    // - version 透传当前版本——服务端「更新检查即在线心跳」按版本分桶，不传则 Electron
+    //   通道在线数恒为零（cbcn-cloud 2026-10-12 修复的客户端半边）。
+    clientId: APP_UPDATE_CLIENT_ID,
+    currentVersion: getCurrentAppVersionForUpdate(),
     resolveEndpointOrigin:
       options.resolveEndpointOrigin ?? (() => resolveRuntimeZCodeEndpointOrigin(process.env)),
     resolveReleaseChannel: async () => {

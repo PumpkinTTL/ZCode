@@ -27,6 +27,18 @@ interface ManifestUpdateProviderOptions extends CustomPublishOptions {
   endpointOrigin?: string;
   manifestUrl?: string;
   deviceMid?: string;
+  /**
+   * 接入方 AppID（cbcn-cloud apps 表主键）。服务端缺省值是 'polaris'，那是
+   * 单客户端时期的历史默认——必须显式上报，否则默认值一旦变化会静默读到
+   * 别的应用的发布目录（Lyra 侧同款修复，2026-10-12）。
+   */
+  clientId?: string;
+  /**
+   * 客户端当前版本（app.getVersion()；dev 模拟版本经覆盖后）。服务端把
+   * 「更新检查即在线心跳」按版本分桶——不传则本客户端从不入在线统计
+   * （cbcn-cloud app_release.py 的 electron_manifest 心跳透传契约）。
+   */
+  currentVersion?: string;
   releasePlatform?: string;
   releaseChannel?: ElectronReleaseChannel;
   resolveEndpointOrigin?: () => string | Promise<string>;
@@ -74,10 +86,12 @@ export function getElectronReleasePlatform(
   return `${mapElectronReleasePlatform(platform)}-${mapElectronReleaseArch(arch)}`;
 }
 
-function buildElectronManifestUrl(options: {
+export function buildElectronManifestUrl(options: {
   endpointOrigin: string;
   manifestUrl?: string;
   platform: string;
+  clientId?: string;
+  currentVersion?: string;
   deviceMid?: string;
   channel: ElectronReleaseChannel;
 }): URL {
@@ -85,6 +99,12 @@ function buildElectronManifestUrl(options: {
     ? new URL(options.manifestUrl.trim())
     : new URL(ELECTRON_MANIFEST_API_PATH, normalizeZCodeEndpointOrigin(options.endpointOrigin));
   url.searchParams.set("platform", options.platform);
+  if (options.clientId?.trim()) {
+    url.searchParams.set("client_id", options.clientId.trim());
+  }
+  if (options.currentVersion?.trim()) {
+    url.searchParams.set("version", options.currentVersion.trim());
+  }
   if (options.deviceMid?.trim()) {
     url.searchParams.set("device_mid", options.deviceMid.trim());
   }
@@ -209,6 +229,8 @@ export class ManifestUpdateProvider extends Provider<UpdateInfo> {
       endpointOrigin,
       manifestUrl: this.options.manifestUrl,
       platform: this.releasePlatform,
+      clientId: this.options.clientId,
+      currentVersion: this.options.currentVersion,
       deviceMid: this.options.deviceMid,
       channel: releaseChannel,
     });

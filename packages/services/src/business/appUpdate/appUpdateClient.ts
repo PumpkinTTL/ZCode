@@ -1,8 +1,9 @@
 /**
  * App 更新/在线能力 HTTP 客户端（纯函数 + 容错投影，无状态）。
  *
- * 路径均挂在用户侧前缀 /api/v1/user 下（app_release.router 无自身 prefix，
- * 经 api/v1/__init__.py:29-30 合并进 user.router，见 cbcn-cloud __init__.py 注释）：
+ * 路径挂在 App 更新模块自己的命名空间 /api/v1/app-updates/* 下
+ * （cbcn-cloud app_release.router 无自身 prefix，由 main.py 以 API_PREFIX 挂载；
+ * 2026-10-10 起取消并入 user.router 的 /api/v1/user/app-updates/*）：
  * - GET  /api/v1/app-updates/{client_id}/latest?platform=&channel=&current_version=
  * - GET  /api/v1/app-updates/{client_id}/versions?channel=&limit=
  * - POST /api/v1/app-updates/{client_id}/heartbeat  body {version, device, platform}
@@ -170,7 +171,7 @@ export class AppUpdateApiClient {
 
   /**
    * 更新检查（无需鉴权）。404 照抛（服务层翻译成 null = 未发布任何版本）；
-   * 后端限流 60 次/分钟/IP（app_release.py:34 "rl:appupd:latest"）。
+   * 后端限流 60 次/分钟/IP（app_release.py:36 "rl:appupd:latest"）。
    */
   async fetchLatest(
     input: {
@@ -206,7 +207,7 @@ export class AppUpdateApiClient {
   }
 
   /**
-   * 公开模型目录（免鉴权，backend/app/api/v1/app_release.py:241）：
+   * 公开模型目录（免鉴权，backend/app/api/v1/app_release.py:260）：
    * 「内置供应商免登录预同步」的数据源——与 /v1/models 同一构建器的匿名视角。
    * 返回模型 id 列表；响应形状与 /v1/models 同构（data[].id），容错读法。
    */
@@ -242,8 +243,8 @@ export class AppUpdateApiClient {
   }
 
   /**
-   * 在线心跳（无需鉴权）。device 传空串 = 交给后端按 IP+UA 哈希归属
-   * （app_release.py:235-237 只在非空时用 body 里的 device 覆盖）。
+   * 在线心跳（无需鉴权）。device 空串 = 交给后端按 IP+UA 哈希归属
+   * （app_release.py:94-98 identity 优先 device/device_mid，缺省回落哈希）。
    * 返回是否确认成功（后端回 {"ok": true}）。
    */
   async postHeartbeat(
