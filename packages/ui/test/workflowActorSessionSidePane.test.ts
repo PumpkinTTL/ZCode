@@ -184,9 +184,10 @@ describe("WorkflowActorSessionSidePane", () => {
       readOnly: true,
       // 关键一行：读的是 actor 会话，不是父会话，也不是 run id。
       sessionId: "dwf-dwfrun-1-actor_1@2",
-      telemetryVisible: true,
       workspacePath: "/workspace",
     });
+    // Polaris：会话前台遥测随上游遥测栈整体砍除，SessionPane 不再有 telemetryVisible 契约。
+    expect(paneState.props?.telemetryVisible).toBeUndefined();
   });
 
   it("不下发 subagent 下钻回调：actor 的工具面里没有 subagent", () => {
@@ -214,12 +215,14 @@ describe("WorkflowActorSessionSidePane", () => {
     });
   });
 
-  it("非 focused 时不上报前台 telemetry", () => {
+  it("非 focused 时不冒充前台会话", () => {
     renderToStaticMarkup(
       createElement(WorkflowActorSessionSidePane, { tab: tabOf(), focused: false }),
     );
 
-    expect(paneState.props).toMatchObject({ focused: false, telemetryVisible: false });
+    // 遥测栈已砍除，focused 仍是本面板对外的唯一前台语义。
+    expect(paneState.props).toMatchObject({ focused: false });
+    expect(paneState.props?.telemetryVisible).toBeUndefined();
   });
 });
 

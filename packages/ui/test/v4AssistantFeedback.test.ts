@@ -72,32 +72,22 @@ describe("V4 assistant feedback", () => {
     reportAppTelemetryEvent.mockClear();
   });
 
-  it("点赞立即提交 CAS 回调并上报旧版 reaction/talk/message payload", async () => {
+  it("点赞立即提交 CAS 回调", async () => {
     const onFeedbackChange = vi.fn(async () => true);
     renderActions({ onFeedbackChange });
 
     (feedbackAction("v4-feedback-like-9").onClick as () => void)();
     await Promise.resolve();
 
+    // 旧版 reaction/talk/message 遥测上报已随遥测栈砍除下线（Polaris 红线 1）。
     expect(onFeedbackChange).toHaveBeenCalledWith(
       { rowId: 9, entityId: "assistant-entity-9" },
       "like",
     );
-    expect(reportAppTelemetryEvent).toHaveBeenCalledWith(
-      platform,
-      {
-        elementName: "assistant_message_feedback",
-        eventRegion: "chat",
-        eventType: "ck",
-        eventExtraDetail: { reaction: "like" },
-        talkId: "session-1",
-        messageId: "assistant-entity-9",
-      },
-      "ConversationRowView",
-    );
+    expect(reportAppTelemetryEvent).not.toHaveBeenCalled();
   });
 
-  it("再次点击已选 reaction 写 null 并上报 none", async () => {
+  it("再次点击已选 reaction 写 null", async () => {
     const onFeedbackChange = vi.fn(async () => true);
     renderActions({ feedback: "like", onFeedbackChange });
 
@@ -108,11 +98,7 @@ describe("V4 assistant feedback", () => {
       { rowId: 9, entityId: "assistant-entity-9" },
       null,
     );
-    expect(reportAppTelemetryEvent.mock.calls[0]?.[1]).toMatchObject({
-      eventExtraDetail: { reaction: "none" },
-      talkId: "session-1",
-      messageId: "assistant-entity-9",
-    });
+    expect(reportAppTelemetryEvent).not.toHaveBeenCalled();
   });
 
   it("旧 row 缺少 entityId 时不展示反馈按钮，禁止用 rowId 代替 messageId", () => {

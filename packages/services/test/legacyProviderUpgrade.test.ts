@@ -95,7 +95,18 @@ describe("Todo 72 已发布 config.json 首次升级", () => {
     });
     try {
       const personal = await repository.read();
+      // 旧配置里的 builtin:* 只有「按量 API Key」是用户输入，仍导入成 Personal Provider；
+      // Polaris fork 砍掉的官方计费模板（zai-api / bigmodel-api）不再贡献模型清单，
+      // 因此这里只断言身份与 Key 保留，不断言官方模型可执行性。
       expect(personal.providers.keys()).toEqual(["bigmodel-api", "zai-api", customId]);
+      for (const family of ["bigmodel", "zai"] as const) {
+        const id = `${family}-api`;
+        expect(personal.providers.get(id)?.toJSON()).toEqual({
+          group: "standard-personal",
+          access: { type: "api-key", apiKey: `fake-builtin:${family}` },
+        });
+        expect(personal.providers.getRule(id)?.templateId).toBe(id);
+      }
       const builtin = await source.read();
       const resolved = new ProviderConfigResolver().resolve({
         zcodeBuiltinProviders: builtin.providers,
@@ -105,21 +116,6 @@ describe("Todo 72 已发布 config.json 首次升级", () => {
         personalModels: personal.models,
         accountProviders: ProviderConfigMap.empty(),
       });
-      for (const family of ["bigmodel", "zai"] as const) {
-        const id = `${family}-api`;
-        const provider = resolved.resolvedProviders.find((item) => item.providerId === id)!;
-        expect(provider.config.api?.baseUrl).toBe(
-          builtin.providerTemplates?.get(id)?.config.api?.baseUrl,
-        );
-        // Todo112 规范了当前模板的官方 ID；旧配置导入仍保留 Key 与旧文件，不沿用旧名单大小写。
-        expect(provider.models.some((model) => model.modelId === "GLM-5.3")).toBe(true);
-        expect(provider.models.find((model) => model.modelId === "GLM-5.3")?.executable).toBe(true);
-        expect(personal.providers.get(id)?.toJSON()).toEqual({
-          group: "standard-personal",
-          access: { type: "api-key", apiKey: `fake-builtin:${family}` },
-        });
-        expect(personal.providers.getRule(id)?.templateId).toBe(id);
-      }
       expect(personal.models.getExact(customId, "GLM-5.3")?.properties?.contextWindow).toBe(64_000);
       expect(personal.providers.getRule(customId)?.enabled).toBe(enabled);
       expect(personal.providers.get(customId)?.toJSON()).not.toHaveProperty("enabled");
@@ -148,12 +144,11 @@ describe("Todo 72 已发布 config.json 首次升级", () => {
       expect(missingKey.registryProviders.some((item) => item.providerId === customId)).toBe(false);
       await repository.update((current) => ({
         ...current,
-        providers: current.providers.delete("bigmodel-api").setRule({
+        providers: current.providers.setRule({
           ...current.providers.getRule(customId)!,
           enabled: !(enabled ?? true),
         }),
       }));
-      expect((await repository.read()).providers.has("bigmodel-api")).toBe(false);
       const reopened = new NodePersonalProviderConfigRepository({
         filePath: join(configDir, "provider_config.json"),
         pollingIntervalMs: false,
@@ -167,7 +162,6 @@ describe("Todo 72 已发布 config.json 首次升级", () => {
       try {
         const persisted = await reopened.read();
         expect(persisted.providers.getRule(customId)?.enabled).toBe(!(enabled ?? true));
-        expect(persisted.providers.has("bigmodel-api")).toBe(false);
       } finally {
         reopened.dispose();
       }

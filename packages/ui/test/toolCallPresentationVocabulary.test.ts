@@ -11,12 +11,12 @@ const stableKinds = {
   "chat.toolCall.kind.terminal": ["终端", "Terminal"],
   "chat.toolCall.kind.skill": ["技能", "Skill"],
   "chat.toolCall.kind.sessionContext": ["会话上下文", "Session context"],
-  "chat.toolCall.kind.nodeRepl": ["Node.js", "Node.js"],
+  // chat.toolCall.kind.nodeRepl / kind.todo 已随死文案清理下线：node-repl 与 todo
+  // 渲染器走各自的 chat.toolCall.nodeRepl.* / chat.toolCall.todo.* 文案，不再用 kind 标题。
   "chat.toolCall.kind.message": ["消息", "Message"],
   "chat.toolCall.kind.response": ["回复", "Response"],
   "chat.toolCall.kind.taskOutput": ["任务输出", "Task output"],
   "chat.toolCall.kind.taskStop": ["停止任务", "Stop task"],
-  "chat.toolCall.kind.todo": ["待办", "Todos"],
   "chat.toolCall.explore.label": ["查阅", "Explore"],
 } as const;
 

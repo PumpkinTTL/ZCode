@@ -13,10 +13,9 @@ const secondarySurfaces = [
 ] as const;
 
 const secondaryBackMessageIds = [
-  "settings.plugins.store.back",
-  "settings.commands.backToList",
+  // settings.plugins.store.back / settings.commands.backToList / settings.subagents.backToList
+  // 随官方套餐与页内返回入口一起下线（Polaris 走标题栏面包屑）。
   "settings.hooks.backToList",
-  "settings.subagents.backToList",
   "settings.mcp.form.backToList",
 ] as const;
 
@@ -31,7 +30,7 @@ describe("settings secondary navigation", () => {
     }
   });
 
-  it("自动化、闲时任务、模型购买与升级返回入口保持独立", async () => {
+  it("自动化与闲时任务返回入口保持独立", async () => {
     const automation = await readFile(
       new URL("../src/settings/AutomationEditView.tsx", import.meta.url),
       "utf8",
@@ -40,17 +39,9 @@ describe("settings secondary navigation", () => {
       new URL("../src/settings/OffPeakEditView.tsx", import.meta.url),
       "utf8",
     );
-    // 原生购买面板已下线（购买走 webview 弹窗），返回入口契约只保留闲时任务与升级按钮。
-    const upgrade = await readFile(
-      new URL(
-        "../src/settings/model-provider-section/CodingPlanStatusActions.tsx",
-        import.meta.url,
-      ),
-      "utf8",
-    );
+    // CodingPlanStatusActions（原生购买/升级面板）已随官方套餐业务下线，不再参与契约。
     expect(automation).not.toContain("SettingsBackButton");
     expect(offPeak).not.toContain("SettingsBackButton");
-    expect(upgrade).not.toContain("SettingsBackButton");
   });
 
   it("所有二级设置页返回文案不附带业务对象", () => {

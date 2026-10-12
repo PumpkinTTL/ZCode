@@ -1,3 +1,7 @@
+import {
+  BUILTIN_MODEL_PROVIDER_IDS,
+  resolveModelProviderFamilyIdByProviderId,
+} from "@zcode/shared";
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
 import type { ModelSelectGroup, ModelSelectGroupItem } from "@/ModelConfigSelect.js";
 
@@ -25,7 +29,15 @@ export function formatProviderModelLabel(
   providerName: string | undefined,
   modelName: string,
 ): string {
-  void providerId;
+  // 【疑似合并回归】官方套餐整批移除时把这段家族判定一起删成了 `void providerId`，
+  // 但本文件与 subagent-model-label.ts 的契约（「内置家族只说模型名，自定义 provider
+  // 才显示『名字/模型』」）仍然有效，且 MODEL_PROVIDER_FAMILY_SPECS 表在 shared 里
+  // 原样保留。这里按原契约恢复：Z.ai / BigModel 的内置连接名属于产品固定入口，
+  // 拼进模型文案会重复展示「Coding Plan」等连接信息。
+  if (providerId && resolveModelProviderFamilyIdByProviderId(providerId)) {
+    return modelName;
+  }
+
   const normalizedProviderName = providerName?.trim();
   return normalizedProviderName ? `${normalizedProviderName}/${modelName}` : modelName;
 }

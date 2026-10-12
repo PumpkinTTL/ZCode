@@ -196,6 +196,23 @@ beforeEach(() => {
   workflowRunArtifacts.mockResolvedValue({ artifacts: [record()] });
   workflowRunArtifactData.mockResolvedValue({ items: [], hasMore: false });
   workflowRunArtifactRead.mockResolvedValue(textChunk("bytes---", "application/pdf"));
+  // 「作为文件打开」记住上次选用的编辑器（editorPreference 走 window.localStorage）。
+  // 本仓 jsdom 环境的 localStorage 不可用（Node 侧 --localstorage-file 影子替换），
+  // 与 promptHistoryStorage.test.ts 同一处理：注入最小 StorageLike。
+  const memory = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => memory.get(key) ?? null,
+    key: (index: number) => Array.from(memory.keys())[index] ?? null,
+    get length() {
+      return memory.size;
+    },
+    removeItem: (key: string) => {
+      memory.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+      memory.set(key, String(value));
+    },
+  });
   // resolveTheme("system") 会问 matchMedia；jsdom 不带它。
   (window as unknown as { matchMedia: (query: string) => unknown }).matchMedia = () => ({
     matches: false,

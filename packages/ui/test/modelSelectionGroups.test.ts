@@ -52,6 +52,9 @@ describe("model selection groups", () => {
         key: `registry-provider:aggregator:${modelId}`,
         value: "custom:aggregator:upstream%2Ffamily%2Fvision-preview",
         name: modelId,
+        // Polaris：模型行携带品牌图标身份（ModelBrandIcon 按 providerId+modelId 解析）。
+        iconModelId: modelId,
+        iconProviderId: "aggregator",
         supportsVisionInput: true,
       },
     ]);
@@ -108,12 +111,16 @@ describe("model selection groups", () => {
             key: "registry-provider:anthropic-api:claude-a",
             value: "custom:anthropic-api:claude-a",
             name: "claude-a",
+            iconModelId: "claude-a",
+            iconProviderId: "anthropic-api",
             supportsVisionInput: true,
           },
           {
             key: "registry-provider:anthropic-api:claude-b",
             value: "custom:anthropic-api:claude-b",
             name: "claude-b",
+            iconModelId: "claude-b",
+            iconProviderId: "anthropic-api",
           },
         ],
       },
@@ -125,6 +132,8 @@ describe("model selection groups", () => {
             key: "registry-provider:openai-api:model-a",
             value: "custom:openai-api:model-a",
             name: "model-a",
+            iconModelId: "model-a",
+            iconProviderId: "openai-api",
           },
         ],
       },
@@ -160,14 +169,16 @@ describe("model selection groups", () => {
     expect(buildRegistryModelSelectGroups("glm", selectionView)).toEqual([
       {
         key: `registry-provider:${providerId}`,
-        label: "BigModel",
-        labelBadge: "Team",
-        directItems: true,
+        // Polaris：官方套餐身份（Coding Plan / Team 徽章）已随套餐业务移除，
+        // 分组标题回落到 providerName，也不再直出扁平列表。
+        label: "BigModel Coding Plan",
         items: [
           {
             key: `registry-provider:${providerId}:GLM-5.2`,
             value: "custom:account%3Abigmodel-team-coding-plan:GLM-5.2",
             name: "GLM-5.2",
+            iconModelId: "GLM-5.2",
+            iconProviderId: providerId,
           },
         ],
       },

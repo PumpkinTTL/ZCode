@@ -197,7 +197,8 @@ export async function resolveOffPeakCredentials(
         reason: "off-peak",
       });
       codingPlanApiKey = auth.apiKey?.trim() ?? "";
-      accountScope = undefined;
+      // 账号作用域随派发下传，供后续请求刷新时校验凭据归属；空壳 resolver 自然返回 undefined。
+      accountScope = auth.accountScope;
     } catch (error) {
       if (error instanceof AccountRequestCredentialUnavailableError) {
         throw new OffPeakCredentialsUnavailableError("codingPlanApiKey");

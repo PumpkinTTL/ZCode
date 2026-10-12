@@ -5,6 +5,9 @@ import type { OnboardingSettingsSyncPatch } from "@zcode/services";
 import { useOnboardingTrigger } from "@/onboarding/useOnboardingTrigger.js";
 import type { IOnboardingRecordService } from "@zcode/services";
 
+// 站长令(2026-10-10, 2a6e33c5)：职业问卷暂停自动触发——OCCUPATION_ONBOARDING_TRIGGER_ENABLED=false
+// 使 needsOnboarding 恒为 false，判定/认领/回填逻辑完整保留但不再生效。
+// 因此以下「自动触发」类用例在 Polaris 现行为下不成立，待接入时把该常量改回 true 即可恢复。
 /**
  * CR 修复回归：useOnboardingTrigger 曾因坏 copy-paste 把 useState/useRef 嵌进
  * useEffect 回调（Rules of Hooks 违规，挂载即抛 "Invalid hook call"），且内层
@@ -56,7 +59,7 @@ describe("useOnboardingTrigger", () => {
     await waitFor(() => expect(result.current[0]).toBe(false));
   });
 
-  it("shouldOnboard=true 时输出需要引导；markOnboarded 置回 false", async () => {
+  it.skip("shouldOnboard=true 时输出需要引导；markOnboarded 置回 false", async () => {
     const service = createRecordService({ shouldOnboard: async () => true });
     const { result } = renderTrigger({ service });
     await waitFor(() => expect(result.current[0]).toBe(true));
@@ -66,12 +69,12 @@ describe("useOnboardingTrigger", () => {
     expect(result.current[0]).toBe(false);
   });
 
-  it("服务不可用退回 settings 判定（hasStoredOccupation=false 视为需引导）", async () => {
+  it.skip("服务不可用退回 settings 判定（hasStoredOccupation=false 视为需引导）", async () => {
     const { result } = renderTrigger({ service: null, hasStoredOccupation: false });
     await waitFor(() => expect(result.current[0]).toBe(true));
   });
 
-  it("挂载首跑不回填 settings；userId 运行时变化才按 record 回填", async () => {
+  it.skip("挂载首跑不回填 settings；userId 运行时变化才按 record 回填", async () => {
     const patch: OnboardingSettingsSyncPatch = { onboardingOccupation: "finance" };
     const sync = vi.fn(async () => patch);
     const service = createRecordService({
@@ -96,7 +99,7 @@ describe("useOnboardingTrigger", () => {
     );
   });
 
-  it("登出（id→null）也按 null 用户的 record 回填", async () => {
+  it.skip("登出（id→null）也按 null 用户的 record 回填", async () => {
     const patch: OnboardingSettingsSyncPatch = { onboardingOccupation: "other" };
     const sync = vi.fn(async () => patch);
     const service = createRecordService({
@@ -109,7 +112,7 @@ describe("useOnboardingTrigger", () => {
     await waitFor(() => expect(update).toHaveBeenCalledWith(expect.objectContaining(patch)));
   });
 
-  it("登录后先认领再判定：认领使判定不触发（同一人不重复引导）", async () => {
+  it.skip("登录后先认领再判定：认领使判定不触发（同一人不重复引导）", async () => {
     // shouldOnboard 返回 true 表示"若无认领会弹引导"；认领先行由服务层保证一致性，
     // 这里验证调用顺序：claim 必须在 shouldOnboard 之前完成。
     const calls: string[] = [];
@@ -127,7 +130,7 @@ describe("useOnboardingTrigger", () => {
     expect(calls.indexOf("claim")).toBeLessThan(calls.indexOf("shouldOnboard"));
   });
 
-  it("shouldOnboard RPC 挂起时 3 秒超时兜底退回 settings 判定", { timeout: 8000 }, async () => {
+  it.skip("shouldOnboard RPC 挂起时 3 秒超时兜底退回 settings 判定", { timeout: 8000 }, async () => {
     const service = createRecordService({
       shouldOnboard: () => new Promise<boolean>(() => {}),
     });

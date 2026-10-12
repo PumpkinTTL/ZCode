@@ -16,9 +16,9 @@ vi.mock("@/ControlHintTooltip.js", () => ({
 // 见 docs/plugin-marketplace-ui-ux.md「降级矩阵」。
 function makeItem(requiresPaidPlan: boolean | undefined): StorePluginItem {
   return {
-    id: "pro-plugin@zcode-plugins-official",
+    id: "pro-plugin@polaris-plugins-official",
     name: "pro-plugin",
-    marketplace: "zcode-plugins-official",
+    marketplace: "polaris-plugins-official",
     installed: false,
     restorable: false,
     orphaned: false,
@@ -80,18 +80,18 @@ describe("plugin store paid plan badge", () => {
     expect(html).not.toContain("button-gradient");
     expect(html).toContain("text-ui-sm");
     expect(html).toContain("lucide-crown");
-    expect(html).toContain("Coding Plan");
+    expect(html).toContain(">Plan<");
     expect(html).toContain("lucide-crown");
     expect(html).not.toContain("lucide-trending-up");
-    expect(html).toContain('data-tooltip-title="This plugin works better with a Coding Plan"');
+    expect(html).toContain('data-tooltip-title="This plugin works better with a paid plan"');
   });
 
   it("marks a plugin that needs a paid plan on the detail title", async () => {
     const html = await renderDetail(makeItem(true));
     expect(html).toContain('data-testid="plugin-store-paid-plan-badge"');
     expect(html).toContain("bg-[var(--color-plugin-paid-plan-badge)]");
-    expect(html).toContain("Coding Plan");
-    expect(html).toContain('data-tooltip-title="This plugin works better with a Coding Plan"');
+    expect(html).toContain(">Plan<");
+    expect(html).toContain('data-tooltip-title="This plugin works better with a paid plan"');
   });
 
   it("uses the concise coding plan label in Chinese", async () => {

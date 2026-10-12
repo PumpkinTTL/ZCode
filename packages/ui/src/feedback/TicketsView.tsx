@@ -87,6 +87,10 @@ export function TicketsView({
     [formatMessage],
   );
 
+  // memo 化的 TicketDetailDialog 需要引用稳定的回调：inline arrow 每次渲染都会新建引用，
+  // 让 memo 完全失效（见 test/reactStableReferences.test.ts 的静态边界检查）。
+  const handleCloseTicketDetail = useCallback(() => setDetailTicketId(null), []);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-popover">
       {loadingList && items.length === 0 ? (
@@ -141,7 +145,7 @@ export function TicketsView({
         feedbackService={feedbackService}
         ticketId={detailTicketId}
         open={detailTicketId !== null}
-        onClose={() => setDetailTicketId(null)}
+        onClose={handleCloseTicketDetail}
       />
     </div>
   );

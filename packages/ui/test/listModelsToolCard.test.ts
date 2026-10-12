@@ -212,7 +212,8 @@ describe("ListModelsToolCallBlock", () => {
     renderCard(ListModelsToolCallBlock, buildContext(buildListModelsToolCall()));
 
     const title = rowByModelId(CURRENT_MODEL_ID)?.getAttribute("title") ?? "";
-    expect(title).toContain("Thinking levels: Low · Medium · High (default High)");
+    // Polaris：分级档位原样显示配置名（low/medium/high…），不再翻成别名词。
+    expect(title).toContain("Thinking levels: low · medium · high (default high)");
     // 规范 id 只住在 tooltip 里——它是给机器回填 subagent_model 用的。
     expect(title).toContain(CURRENT_MODEL_ID);
 
@@ -270,7 +271,7 @@ describe("ListModelsToolCallBlock", () => {
     expect(screen.getByText("4 个模型")).toBeTruthy();
     expect(document.querySelector('[data-model-current="true"]')?.textContent).toBe("当前");
     expect(rowByModelId(CURRENT_MODEL_ID)?.getAttribute("title")).toContain(
-      "思考强度：低 · 中 · 高（默认 高）",
+      "思考强度：low · medium · high（默认 high）",
     );
     cleanup();
 

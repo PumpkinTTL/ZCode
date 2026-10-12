@@ -156,8 +156,8 @@ describe("PluginStoreSourcesDialog", () => {
               lastUpdated: "2026-01-01T00:00:00Z",
             },
             {
-              id: "zcode-plugins-official",
-              name: "zcode-plugins-official",
+              id: "polaris-plugins-official",
+              name: "polaris-plugins-official",
               source: {},
               pluginCount: 0,
               lastUpdated: "2026-08-20T23:00:00Z",
@@ -182,7 +182,7 @@ describe("PluginStoreSourcesDialog", () => {
         .getAllByTestId("plugin-store-source-row")
         .map((row) => row.getAttribute("data-marketplace-id")),
     ).toEqual([
-      "zcode-plugins-official",
+      "polaris-plugins-official",
       "claude-plugins-official",
       "zcode-labs",
       "zcode-plugins-test",

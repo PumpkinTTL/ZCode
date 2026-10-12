@@ -51,8 +51,8 @@ describe("MCP failure presentation", () => {
   });
 
   it.each([
-    ["zh-CN" as const, "当前未登录，请先登录 ZCode。"],
-    ["en-US" as const, "You are not signed in. Sign in to ZCode to use this MCP server."],
+    ["zh-CN" as const, "当前未登录，请先登录 Polaris。"],
+    ["en-US" as const, "You are not signed in. Sign in to Polaris to use this MCP server."],
   ])("localizes the not-authenticated diagnosis for %s", (locale, message) => {
     const html = renderToStaticMarkup(
       createElement(
@@ -65,10 +65,10 @@ describe("MCP failure presentation", () => {
   });
 
   it.each([
-    ["zh-CN" as const, "当前账号没有 Coding Plan，请先购买或配置 Coding Plan。"],
+    ["zh-CN" as const, "当前账号没有可用套餐，请先购买或配置套餐。"],
     [
       "en-US" as const,
-      "This account has no Coding Plan. Purchase or configure a Coding Plan to use this MCP server.",
+      "This account has no eligible plan. Purchase or configure a plan to use this MCP server.",
     ],
   ])("localizes the coding-plan diagnosis for %s", (locale, message) => {
     const html = renderToStaticMarkup(

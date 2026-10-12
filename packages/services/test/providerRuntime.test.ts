@@ -542,10 +542,11 @@ describe("ProviderRuntime", () => {
         watch: false,
       });
       const created = await runtime.providerSettings.createPersonalProvider();
+      // Polaris fork：显式传入的 personalModelIds 会被保留（内置供应商模型目录同步依赖该语义），
+      // 因此这里只保存访问配置；model-a 由下面的 addPersonalModel 原子新增。
       await runtime.providerSettings.savePersonalProviderOverlay(created.providerId, {
         access: { type: "api-key", apiKey: "secret" },
         api: { type: "anthropic-messages", baseUrl: "https://api.example.com" },
-        personalModelIds: ["model-a"],
       });
       const config = {
         properties: {

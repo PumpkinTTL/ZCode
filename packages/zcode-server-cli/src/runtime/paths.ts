@@ -22,7 +22,8 @@ export interface ServerLayout {
 
 export function getDefaultServerDataRoot(): string {
   const configured = process.env.ZCODE_DATA_BASE_DIR?.trim();
-  return join(configured || homedir(), ".zcode", "server");
+  // Polaris fork：数据根 .zcode → .polaris（与 services/paths.ts 的 DATA_ROOT_DIR_NAME 对齐）。
+  return join(configured || homedir(), ".polaris", "server");
 }
 
 export function resolveServerLayout(serverRoot = getDefaultServerDataRoot()): ServerLayout {
@@ -75,7 +76,8 @@ export async function resolveCanonicalServerLayout(serverRoot = getDefaultServer
 
 function inferDataBaseDir(serverRoot: string): string {
   const parent = dirname(serverRoot);
-  if (basename(serverRoot) === "server" && basename(parent) === ".zcode") {
+  // 认改名前后两种数据根名（旧 .zcode 存量安装仍可推断）。
+  if (basename(serverRoot) === "server" && (basename(parent) === ".polaris" || basename(parent) === ".zcode")) {
     return dirname(parent);
   }
   // 非标准的显式 server root 仍保持隔离，不向其父目录扩散 Agent/SQLite 数据。
@@ -134,5 +136,5 @@ export function assertServerDataRoot(serverRoot: string): string {
 }
 
 export function serverDataRootFromBase(baseDir: string): string {
-  return join(resolve(baseDir), ".zcode", "server");
+  return join(resolve(baseDir), ".polaris", "server");
 }

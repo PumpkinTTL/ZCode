@@ -237,8 +237,8 @@ const clientScenesResponse = {
               id: "document-skills",
               type: "plugin",
               contents: {
-                cn: "document-skills@zcode-plugins-official",
-                en: "document-skills@zcode-plugins-official",
+                cn: "document-skills@polaris-plugins-official",
+                en: "document-skills@polaris-plugins-official",
               },
               descs: { cn: "", en: "" },
               labels: { cn: "文档技能", en: "Document skills" },
@@ -263,18 +263,18 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     getPluginReferenceCatalog.mockResolvedValue({ authority: "workspace", plugins: [] });
     resolveSuggestedPluginReference.mockReset();
     resolveSuggestedPluginReference.mockResolvedValue({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       status: "unavailable",
       diagnostics: [],
     });
     installPlugin.mockReset();
     installPlugin.mockResolvedValue({
-      dependencyClosure: ["document-skills@zcode-plugins-official"],
+      dependencyClosure: ["document-skills@polaris-plugins-official"],
       installedPlugins: [
         {
-          id: "document-skills@zcode-plugins-official",
+          id: "document-skills@polaris-plugins-official",
           name: "document-skills",
-          marketplace: "zcode-plugins-official",
+          marketplace: "polaris-plugins-official",
           enabled: true,
           scope: "user",
         },
@@ -414,33 +414,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     expect(getPluginReferenceCatalog).not.toHaveBeenCalled();
   });
 
-  it("reports a Desktop template click before plugin resolution", async () => {
-    const workspacePath = "/tmp/suggested-prompt-desktop-telemetry";
-    render(
-      createElement(ConversationDraftSuggestedPromptsContainer, {
-        workspacePath,
-        isDesktop: true,
-      }),
-    );
-
-    fireEvent.click(await screen.findByRole("button", { name: pluginLabel }));
-
-    expect(reportTelemetryEvent).toHaveBeenCalledOnce();
-    expect(reportTelemetryEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        elementName: "prompt_template_ck",
-        eventRegion: "app.session",
-        eventType: "ck",
-        eventText: pluginLabel,
-        eventExtraDetail: {
-          template_id: "create-pdf",
-          template_prompt: pluginPrompt,
-        },
-      }),
-    );
-  });
-
-  it("does not report template clicks on non-Desktop surfaces", async () => {
+  it("plain prompt clicks still prefill the composer without any telemetry side channel", async () => {
     const workspacePath = "/tmp/suggested-prompt-web-telemetry";
     render(
       createElement(ConversationDraftSuggestedPromptsContainer, {
@@ -451,13 +425,14 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: plainLabel }));
 
-    expect(reportTelemetryEvent).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(
         useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
           ?.text,
       ).toBe(plainPrompt),
     );
+    // Polaris：prompt-template 埋点随上游遥测栈整体砍除，点击只剩插入行为。
+    expect(reportTelemetryEvent).not.toHaveBeenCalled();
   });
 
   it("opens the Idle-time Automations tab without prefilling or navigating twice", async () => {
@@ -533,9 +508,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     act(() => {
       settleResolution({
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@polaris-plugins-official",
         status: "ready",
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         icon: "https://cdn.example/document-skills.svg",
@@ -549,13 +524,13 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
           .composerTextInsertRequest,
       ).toEqual({
         requestId: 1,
-        text: `[@文档技能](plugin://document-skills@zcode-plugins-official) ${pluginPrompt}`,
+        text: `[@文档技能](plugin://document-skills@polaris-plugins-official) ${pluginPrompt}`,
         mention: expect.objectContaining({
-          id: "plugin:document-skills@zcode-plugins-official",
+          id: "plugin:document-skills@polaris-plugins-official",
           category: "plugins",
-          value: "document-skills@zcode-plugins-official",
+          value: "document-skills@polaris-plugins-official",
           data: {
-            pluginId: "document-skills@zcode-plugins-official",
+            pluginId: "document-skills@polaris-plugins-official",
             icon: "https://cdn.example/document-skills.svg",
           },
         }),
@@ -566,7 +541,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
       workspacePath,
       workspaceIdentity,
       remoteSessionId: "remote-runtime",
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       operationId: expect.any(String),
       clientMode: "desktop-continuous",
       deliveryKind: "desktop-continuous",
@@ -580,9 +555,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
   it("uses the default Plugin icon when trusted resolution has no listing icon", async () => {
     const workspacePath = "/tmp/suggested-prompt-plugin-icon-fallback";
     resolveSuggestedPluginReference.mockResolvedValue({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       status: "ready",
-      marketplace: "zcode-plugins-official",
+      marketplace: "polaris-plugins-official",
       pluginName: "document-skills",
       sourceTrust: "official",
       diagnostics: [],
@@ -595,7 +570,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
       expect(
         useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
           ?.mention?.data,
-      ).toEqual({ pluginId: "document-skills@zcode-plugins-official" }),
+      ).toEqual({ pluginId: "document-skills@polaris-plugins-official" }),
     );
     expect(getPluginReferenceCatalog).not.toHaveBeenCalled();
   });
@@ -625,7 +600,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
   it("rejects an actionable result that does not attest the canonical official source", async () => {
     const workspacePath = "/tmp/suggested-prompt-untrusted-result";
     resolveSuggestedPluginReference.mockResolvedValue({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       status: "ready",
       marketplace: "personal",
       pluginName: "document-skills",
@@ -663,9 +638,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     await act(async () => {
       advanceComposerDraftRevision(workspacePath);
       settleResolution({
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@polaris-plugins-official",
         status: "missing",
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         diagnostics: [],
@@ -684,17 +659,17 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     const workspaceIdentity = "ssh://host/tmp/suggested-prompt-missing";
     resolveSuggestedPluginReference
       .mockResolvedValueOnce({
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@polaris-plugins-official",
         status: "missing",
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         diagnostics: [],
       })
       .mockResolvedValueOnce({
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@polaris-plugins-official",
         status: "ready",
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         icon: "https://cdn.example/document-skills.svg",
@@ -735,7 +710,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
         workspaceIdentity,
         remoteSessionId: "remote-runtime",
         pluginName: "document-skills",
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         scope: "user",
         operationId: expect.any(String),
       }),
@@ -759,7 +734,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
       useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
         .composerTextInsertRequest?.mention?.data,
     ).toEqual({
-      pluginId: "document-skills@zcode-plugins-official",
+      pluginId: "document-skills@polaris-plugins-official",
       icon: "https://cdn.example/document-skills.svg",
     });
     expect(screen.queryByText("安装成功")).toBeNull();
@@ -824,9 +799,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     act(() => {
       settleResolution({
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@polaris-plugins-official",
         status: "missing",
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         diagnostics: [],
@@ -854,17 +829,17 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     const workspacePath = "/tmp/suggested-prompt-disabled";
     resolveSuggestedPluginReference
       .mockResolvedValueOnce({
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@polaris-plugins-official",
         status: "disabled",
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         diagnostics: [],
       })
       .mockResolvedValueOnce({
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@polaris-plugins-official",
         status: "ready",
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         icon: "https://cdn.example/document-skills.svg",
@@ -904,7 +879,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     await waitFor(() =>
       expect(setPluginEnabled).toHaveBeenCalledWith({
         workspacePath,
-        pluginId: "document-skills@zcode-plugins-official",
+        pluginId: "document-skills@polaris-plugins-official",
         enabled: true,
         operationId: expect.any(String),
       }),
@@ -935,9 +910,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
   it("replaces the persistent enablement Popover with failure and never calls toast", async () => {
     const workspacePath = "/tmp/suggested-prompt-enable-failed";
     resolveSuggestedPluginReference.mockResolvedValue({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       status: "disabled",
-      marketplace: "zcode-plugins-official",
+      marketplace: "polaris-plugins-official",
       pluginName: "document-skills",
       sourceTrust: "official",
       diagnostics: [],
@@ -960,9 +935,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     async (status) => {
       const workspacePath = `/tmp/suggested-prompt-${status}-confirmation-outside`;
       resolveSuggestedPluginReference.mockResolvedValue({
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@polaris-plugins-official",
         status,
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         diagnostics: [],
@@ -1027,9 +1002,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
   it("closes a confirmation and still applies the recommendation clicked outside it", async () => {
     const workspacePath = "/tmp/suggested-prompt-confirmation-outside-recommendation";
     resolveSuggestedPluginReference.mockResolvedValue({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       status: "missing",
-      marketplace: "zcode-plugins-official",
+      marketplace: "polaris-plugins-official",
       pluginName: "document-skills",
       sourceTrust: "official",
       diagnostics: [],
@@ -1058,9 +1033,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     const workspacePath = "/tmp/suggested-prompt-install-failed";
     let settleInstall!: (value: Record<string, unknown>) => void;
     resolveSuggestedPluginReference.mockResolvedValue({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       status: "missing",
-      marketplace: "zcode-plugins-official",
+      marketplace: "polaris-plugins-official",
       pluginName: "document-skills",
       sourceTrust: "official",
       diagnostics: [],
@@ -1115,7 +1090,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
       expect.objectContaining({
         error: "offline",
         operationId: expect.any(String),
-        pluginId: "document-skills@zcode-plugins-official",
+        pluginId: "document-skills@polaris-plugins-official",
         workspaceKey: workspacePath,
       }),
     );
@@ -1134,9 +1109,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     const workspacePath = "/tmp/suggested-prompt-install-timeout";
     let settleLateInstall!: (value: Record<string, unknown>) => void;
     resolveSuggestedPluginReference.mockResolvedValue({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       status: "missing",
-      marketplace: "zcode-plugins-official",
+      marketplace: "polaris-plugins-official",
       pluginName: "document-skills",
       sourceTrust: "official",
       diagnostics: [],
@@ -1206,7 +1181,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
         expect.objectContaining({
           error: "安装超时",
           operationId: expect.any(String),
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@polaris-plugins-official",
           workspaceKey: workspacePath,
         }),
       );
@@ -1216,12 +1191,12 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
       await act(async () => {
         settleLateInstall({
-          dependencyClosure: ["document-skills@zcode-plugins-official"],
+          dependencyClosure: ["document-skills@polaris-plugins-official"],
           installedPlugins: [
             {
-              id: "document-skills@zcode-plugins-official",
+              id: "document-skills@polaris-plugins-official",
               name: "document-skills",
-              marketplace: "zcode-plugins-official",
+              marketplace: "polaris-plugins-official",
               enabled: true,
               scope: "user",
             },
@@ -1245,7 +1220,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
   it("keeps the pure prompt and does not offer installation when refresh fails closed", async () => {
     const workspacePath = "/tmp/suggested-prompt-refresh-failed";
     resolveSuggestedPluginReference.mockResolvedValue({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       status: "unavailable",
       diagnostics: [
         {
@@ -1282,9 +1257,9 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     let resolveOld!: (value: Record<string, unknown>) => void;
     let resolveCancel!: (value: Record<string, unknown>) => void;
     resolveSuggestedPluginReference.mockResolvedValue({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@polaris-plugins-official",
       status: "missing",
-      marketplace: "zcode-plugins-official",
+      marketplace: "polaris-plugins-official",
       pluginName: "document-skills",
       sourceTrust: "official",
       diagnostics: [],
@@ -1347,12 +1322,12 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await act(async () => {
       resolveOld({
-        dependencyClosure: ["document-skills@zcode-plugins-official"],
+        dependencyClosure: ["document-skills@polaris-plugins-official"],
         installedPlugins: [
           {
-            id: "document-skills@zcode-plugins-official",
+            id: "document-skills@polaris-plugins-official",
             name: "document-skills",
-            marketplace: "zcode-plugins-official",
+            marketplace: "polaris-plugins-official",
             enabled: true,
             scope: "user",
           },

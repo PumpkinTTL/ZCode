@@ -172,12 +172,12 @@ describe("ConversationShareService import", () => {
       "operation-1",
     );
     expect(imported.sessionId).toBe("imported-session");
-    const shareRootEntries = await readdir(join(imported.workspacePath, ".zcode-share"));
+    const shareRootEntries = await readdir(join(imported.workspacePath, ".polaris-share"));
     expect(shareRootEntries).toHaveLength(1);
     expect(
       (
         await stat(
-          join(imported.workspacePath, ".zcode-share", shareRootEntries[0]!, "shared-artifacts"),
+          join(imported.workspacePath, ".polaris-share", shareRootEntries[0]!, "shared-artifacts"),
         )
       ).isDirectory(),
     ).toBe(true);
@@ -185,9 +185,9 @@ describe("ConversationShareService import", () => {
       readFile(
         join(
           imported.workspacePath,
-          ".zcode-share",
+          ".polaris-share",
           shareRootEntries[0]!,
-          ".zcode-share-import.json",
+          ".polaris-share-import.json",
         ),
       ),
     ).rejects.toThrow();
@@ -550,8 +550,8 @@ describe("ConversationShareService import", () => {
     );
     const artifactDir = join(
       imported.workspacePath,
-      ".zcode-share",
-      (await readdir(join(imported.workspacePath, ".zcode-share")))[0]!,
+      ".polaris-share",
+      (await readdir(join(imported.workspacePath, ".polaris-share")))[0]!,
       "shared-artifacts",
     );
     expect(await readdir(artifactDir)).toHaveLength(1);
@@ -989,9 +989,9 @@ describe("ConversationShareService import", () => {
       subscription.dispose();
     }
 
-    const shareRootEntries = await readdir(join(root, ".zcode-share"));
+    const shareRootEntries = await readdir(join(root, ".polaris-share"));
     expect(shareRootEntries).toHaveLength(1);
-    const importRoot = join(root, ".zcode-share", shareRootEntries[0]!);
+    const importRoot = join(root, ".polaris-share", shareRootEntries[0]!);
     expect((await stat(join(importRoot, "shared-artifacts"))).isDirectory()).toBe(true);
     await expect(readFile(join(importRoot, "shared-conversation.json"), "utf8")).resolves.toContain(
       "formatVersion",
@@ -1063,7 +1063,7 @@ describe("ConversationShareService import", () => {
       );
 
     // 用真实文件系统冲突让 rename 失败：索引路径先被一个非空目录占住。
-    const indexPath = join(root, ".zcode-share-imports.json");
+    const indexPath = join(root, ".polaris-share-imports.json");
     await mkdir(indexPath, { recursive: true });
     await writeFile(join(indexPath, "blocker"), "blocked", "utf8");
 
@@ -1202,10 +1202,10 @@ describe("ConversationShareService import", () => {
     expect(loaded?.unsupportedRowCount).toBe(1);
 
     // 落盘副本保存原始 rows：用户升级之后能看到当时认不出的内容，不被永久抹掉。
-    const shareDirs = await readdir(join(imported.workspacePath, ".zcode-share"));
+    const shareDirs = await readdir(join(imported.workspacePath, ".polaris-share"));
     const persistedCopy = JSON.parse(
       await readFile(
-        join(imported.workspacePath, ".zcode-share", shareDirs[0]!, "shared-conversation.json"),
+        join(imported.workspacePath, ".polaris-share", shareDirs[0]!, "shared-conversation.json"),
         "utf8",
       ),
     ) as { rows: unknown[] };

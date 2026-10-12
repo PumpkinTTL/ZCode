@@ -5,6 +5,18 @@ import type { V4ChatPaneProps } from "@/v4/V4ChatPane.js";
 import { V4_PRIMARY_PANE_ID } from "@/v4/paneLayoutStore.js";
 import { useWorkbenchGroupStore } from "@/v4/workbenchGroupStore.js";
 
+// Polaris（f386c6c1）：TaskFindDialog 改为首屏懒加载。静态渲染只会拿到 Suspense
+// fallback，因此这里桩掉该模块本身，让「任务查找走 shell overlay 而不是 chat 正文」
+// 这条路由契约可以在静态标记里断言（overlay 槽位由 WebRemoteControlMobileShell 承接）。
+vi.mock("@/quickpick/TaskFindDialog.js", () => ({
+  TaskFindDialog: ({ placement }: { placement?: string }) =>
+    createElement("div", {
+      "data-testid": "task-find-dialog",
+      "data-placement": placement ?? "",
+      "data-slot": "task-find",
+    }),
+}));
+
 vi.mock("@/app-shell/AnimatedSidePanePanel.js", () => ({
   AnimatedSidePanePanel: ({
     isVisible,
@@ -787,13 +799,13 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
     const chatContentStart = html.indexOf('data-testid="mobile-chat-content"');
     const chatOverlayStart = html.indexOf('data-testid="mobile-chat-overlay-prop"');
 
+    // 路由契约：任务查找必须落在 shell overlay 槽位里，而不是 chat 正文。
     expect(chatOverlayStart).toBeGreaterThan(chatContentStart);
     expect(html.slice(chatContentStart, chatOverlayStart)).not.toContain(
-      'placeholder="quickPick.find.placeholder.conversation"',
+      'data-testid="task-find-dialog"',
     );
-    expect(html.slice(chatOverlayStart)).toContain(
-      'placeholder="quickPick.find.placeholder.conversation"',
-    );
+    expect(html.slice(chatOverlayStart)).toContain('data-testid="task-find-dialog"');
+    expect(html).toContain('data-placement="chat"');
 
     vi.unstubAllGlobals();
   });

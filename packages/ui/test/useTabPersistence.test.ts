@@ -11,8 +11,29 @@ import {
 } from "@/hooks/useTabPersistence.js";
 import { TabStoreProvider, useTabStoreApi } from "@/store/TabStoreProvider.js";
 
+// Node 25 默认启用 Web Storage：全局 localStorage 会盖住 jsdom 的实现，在没有
+// --localstorage-file 路径时它只是个没有 getItem/setItem 的空壳。tabStore 的
+// createTabStore() 无参时经 window.localStorage 读取展开态，这里显式提供内存实现，
+// 让用例只依赖行为而不是宿主 Node 版本（.nvmrc / engines 期望 24）。
+const localStorageValues = new Map<string, string>();
+Object.defineProperty(globalThis, "localStorage", {
+  configurable: true,
+  writable: true,
+  value: {
+    getItem: (key: string) => localStorageValues.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      localStorageValues.set(key, value);
+    },
+    removeItem: (key: string) => {
+      localStorageValues.delete(key);
+    },
+    clear: () => localStorageValues.clear(),
+  },
+});
+
 afterEach(() => {
   vi.useRealTimers();
+  localStorageValues.clear();
   delete (globalThis as { requestIdleCallback?: unknown }).requestIdleCallback;
   delete (globalThis as { cancelIdleCallback?: unknown }).cancelIdleCallback;
 });

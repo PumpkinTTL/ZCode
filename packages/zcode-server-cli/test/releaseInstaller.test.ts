@@ -16,21 +16,21 @@ describe("release installer", () => {
   it("installs a tar release, writes pending and creates a stable launcher", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-release-installer-"));
     const layout = resolveServerLayout(join(root, "server"));
-    const archiveRoot = join(root, "zcode-server-linux-x64");
+    const archiveRoot = join(root, "polaris-server-linux-x64");
     await mkdir(join(archiveRoot, "runtime"), { recursive: true });
     await writeFile(join(archiveRoot, "runtime", "node"), "node", "utf8");
     await writeFile(join(archiveRoot, "runtime", "server-cli.js"), "", "utf8");
     await writeFile(join(archiveRoot, "runtime", "server-core.js"), "", "utf8");
     await writeFile(join(archiveRoot, "runtime", "zcode.cjs"), "", "utf8");
     await writeFile(join(archiveRoot, "runtime", "package.json"), JSON.stringify({ type: "module" }), "utf8");
-    await writeFile(join(archiveRoot, "manifest.json"), JSON.stringify({ product: "zcode-server", target: "linux-x64", appVersion: "1.2.3", nodeVersion: "22.16.0", entrypoints: { cli: "runtime/server-cli.js", core: "runtime/server-core.js", agent: "runtime/zcode.cjs" }, native: ["node-pty"] }), "utf8");
+    await writeFile(join(archiveRoot, "manifest.json"), JSON.stringify({ product: "polaris-server", target: "linux-x64", appVersion: "1.2.3", nodeVersion: "22.16.0", entrypoints: { cli: "runtime/server-cli.js", core: "runtime/server-core.js", agent: "runtime/zcode.cjs" }, native: ["node-pty"] }), "utf8");
     const archivePath = join(root, "release.tar.gz");
     const { execFile } = await import("node:child_process");
-    await new Promise<void>((resolve, reject) => execFile("tar", ["-czf", archivePath, "zcode-server-linux-x64"], { cwd: root }, (error) => error ? reject(error) : resolve()));
+    await new Promise<void>((resolve, reject) => execFile("tar", ["-czf", archivePath, "polaris-server-linux-x64"], { cwd: root }, (error) => error ? reject(error) : resolve()));
     const installed = await new ReleaseInstaller(layout).installArchive({ archivePath, target: "linux-x64", version: "1.2.3" });
     expect(installed.target).toBe("linux-x64");
     expect(JSON.parse(await readFile(layout.pendingFile, "utf8"))).toMatchObject({ version: "1.2.3" });
-    const launcher = await readFile(join(layout.stableBinDir, "zcode"), "utf8");
+    const launcher = await readFile(join(layout.stableBinDir, "polaris"), "utf8");
     expect(launcher).toContain("current.json");
     expect(launcher).toContain('"$ROOT/releases"/*)');
   });
@@ -38,13 +38,13 @@ describe("release installer", () => {
   it("installs a Windows zip and writes a launcher that is safe for quoted paths", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-release-installer-win-"));
     const layout = resolveServerLayout(join(root, "server"));
-    const archiveRoot = join(root, "zcode-server-win32-x64");
+    const archiveRoot = join(root, "polaris-server-win32-x64");
     await mkdir(join(archiveRoot, "runtime"), { recursive: true });
     await writeFile(join(archiveRoot, "runtime", "node.exe"), "node", "utf8");
     await writeFile(join(archiveRoot, "runtime", "server-cli.js"), "", "utf8");
     await writeFile(join(archiveRoot, "runtime", "server-core.js"), "", "utf8");
     await writeFile(join(archiveRoot, "runtime", "zcode.cjs"), "", "utf8");
-    await writeFile(join(archiveRoot, "manifest.json"), JSON.stringify({ product: "zcode-server", target: "win32-x64", appVersion: "1.2.4", nodeVersion: "22.16.0", entrypoints: { cli: "runtime/server-cli.js", core: "runtime/server-core.js", agent: "runtime/zcode.cjs" }, native: ["node-pty"] }), "utf8");
+    await writeFile(join(archiveRoot, "manifest.json"), JSON.stringify({ product: "polaris-server", target: "win32-x64", appVersion: "1.2.4", nodeVersion: "22.16.0", entrypoints: { cli: "runtime/server-cli.js", core: "runtime/server-core.js", agent: "runtime/zcode.cjs" }, native: ["node-pty"] }), "utf8");
     const archivePath = join(root, "release.zip");
     const { execFile } = await import("node:child_process");
     // Bugfix: Windows 本机没有 Info-ZIP 的 `zip` 命令；System32 自带 bsdtar，`tar -a`
@@ -52,15 +52,15 @@ describe("release installer", () => {
     await new Promise<void>((resolve, reject) => execFile(
       process.platform === "win32" ? "tar" : "zip",
       process.platform === "win32"
-        ? ["-acf", archivePath, "zcode-server-win32-x64"]
-        : ["-qr", archivePath, "zcode-server-win32-x64"],
+        ? ["-acf", archivePath, "polaris-server-win32-x64"]
+        : ["-qr", archivePath, "polaris-server-win32-x64"],
       { cwd: root },
       (error) => error ? reject(error) : resolve(),
     ));
     await new ReleaseInstaller(layout).installArchive({ archivePath, target: "win32-x64", version: "1.2.4" });
-    const launcher = await readFile(join(layout.stableBinDir, "zcode.cmd"), "utf8");
+    const launcher = await readFile(join(layout.stableBinDir, "polaris.cmd"), "utf8");
     expect(launcher).toContain("ZCODE_SERVER_ROOT");
-    expect(launcher).toContain("Invalid current ZCode Server release");
+    expect(launcher).toContain("Invalid current Polaris Server release");
   });
 
   // Bugfix: 该用例验证 POSIX shell 版 stable launcher 的 fail-closed 输出，靠 shebang
@@ -72,17 +72,17 @@ describe("release installer", () => {
     await writeFile(layout.currentFile, JSON.stringify({ version: "1.0.0", releaseDir: join(root, "outside") }), "utf8");
     const { execFile } = await import("node:child_process");
     await expect(new Promise<void>((resolve, reject) => {
-      execFile(join(layout.stableBinDir, "zcode"), [], (error, _stdout, stderr) => {
+      execFile(join(layout.stableBinDir, "polaris"), [], (error, _stdout, stderr) => {
         if (error) reject(new Error(`${error.message}: ${stderr}`));
         else resolve();
       });
-    })).rejects.toThrow(/Invalid current ZCode Server release/);
+    })).rejects.toThrow(/Invalid current Polaris Server release/);
   });
 
   it("reuses an identical immutable release without deleting or replacing its live directory", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-release-installer-immutable-"));
     const layout = resolveServerLayout(join(root, "server"));
-    const archiveRoot = join(root, "zcode-server-linux-x64");
+    const archiveRoot = join(root, "polaris-server-linux-x64");
     await mkdir(join(archiveRoot, "runtime"), { recursive: true });
     await writeFile(join(archiveRoot, "runtime", "node"), "node", "utf8");
     await writeFile(join(archiveRoot, "runtime", "server-cli.js"), "", "utf8");
@@ -90,7 +90,7 @@ describe("release installer", () => {
     await writeFile(join(archiveRoot, "runtime", "zcode.cjs"), "", "utf8");
     await writeFile(join(archiveRoot, "runtime", "package.json"), JSON.stringify({ type: "module" }), "utf8");
     await writeFile(join(archiveRoot, "manifest.json"), JSON.stringify({
-      product: "zcode-server",
+      product: "polaris-server",
       target: "linux-x64",
       appVersion: "2.0.0",
       nodeVersion: "22.16.0",
@@ -99,7 +99,7 @@ describe("release installer", () => {
     }), "utf8");
     const archivePath = join(root, "release.tar.gz");
     const { execFile } = await import("node:child_process");
-    await new Promise<void>((resolve, reject) => execFile("tar", ["-czf", archivePath, "zcode-server-linux-x64"], { cwd: root }, (error) => error ? reject(error) : resolve()));
+    await new Promise<void>((resolve, reject) => execFile("tar", ["-czf", archivePath, "polaris-server-linux-x64"], { cwd: root }, (error) => error ? reject(error) : resolve()));
     const installer = new ReleaseInstaller(layout);
     const [first, concurrent] = await Promise.all([
       installer.installArchive({ archivePath, target: "linux-x64", version: "2.0.0" }),
@@ -118,14 +118,14 @@ describe("release installer", () => {
   it("rejects an existing release whose immutable archive identity is missing", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-release-installer-conflict-"));
     const layout = resolveServerLayout(join(root, "server"));
-    const archiveRoot = join(root, "zcode-server-linux-x64");
+    const archiveRoot = join(root, "polaris-server-linux-x64");
     await mkdir(join(archiveRoot, "runtime"), { recursive: true });
     await writeFile(join(archiveRoot, "runtime", "node"), "node", "utf8");
     await writeFile(join(archiveRoot, "runtime", "server-cli.js"), "", "utf8");
     await writeFile(join(archiveRoot, "runtime", "server-core.js"), "", "utf8");
     await writeFile(join(archiveRoot, "runtime", "zcode.cjs"), "", "utf8");
     await writeFile(join(archiveRoot, "manifest.json"), JSON.stringify({
-      product: "zcode-server",
+      product: "polaris-server",
       target: "linux-x64",
       appVersion: "2.1.0",
       nodeVersion: "22.16.0",
@@ -134,7 +134,7 @@ describe("release installer", () => {
     }), "utf8");
     const archivePath = join(root, "release.tar.gz");
     const { execFile } = await import("node:child_process");
-    await new Promise<void>((resolve, reject) => execFile("tar", ["-czf", archivePath, "zcode-server-linux-x64"], { cwd: root }, (error) => error ? reject(error) : resolve()));
+    await new Promise<void>((resolve, reject) => execFile("tar", ["-czf", archivePath, "polaris-server-linux-x64"], { cwd: root }, (error) => error ? reject(error) : resolve()));
     const installer = new ReleaseInstaller(layout);
     const first = await installer.installArchive({ archivePath, target: "linux-x64", version: "2.1.0" });
     await writeFile(join(first.releaseDir, "runtime", "server-core.js"), "tampered", "utf8");

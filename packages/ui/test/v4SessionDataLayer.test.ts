@@ -720,7 +720,10 @@ describe("ConversationProjectionStore", () => {
     expect(next.workflowRuns!.runs[0]!.nodes).toHaveLength(3);
     expect(next.workflowRuns!.runs[0]!.nodes[2]).toMatchObject({ ordinal: 3, phase: "settled" });
     expect(next.workflowRuns!.runs[1]).toBe(untouched);
-    expect(next.rows).toBe(rows);
+    // Polaris 性能改造（6215d26c「帧内原地应用」）：delta 帧在未发布候选快照上复用
+    // 累加器，rows 容器每帧换新，但行对象按值复用池中旧引用——行级 memo 不重算，
+    // 这才是本用例要钉的不变量。
+    expect(next.rows.window[0]).toBe(rows.window[0]);
   });
 
   it("首轮 rewind 后新分支的 rowId 空洞不触发加载更早", async () => {

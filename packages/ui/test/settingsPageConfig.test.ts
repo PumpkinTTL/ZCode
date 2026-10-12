@@ -42,7 +42,8 @@ describe("settingsPageConfig", () => {
       },
       {
         id: "dataAndStats",
-        sections: ["usage"],
+        // providerQuota 是 Polaris 自有额度中心（Nimbus）分区，与上游的 usage 并列。
+        sections: ["usage", "providerQuota"],
       },
     ]);
 
@@ -60,6 +61,7 @@ describe("settingsPageConfig", () => {
       "browser",
       "shortcuts",
       "usage",
+      "providerQuota",
     ]);
   });
 
@@ -81,6 +83,7 @@ describe("settingsPageConfig", () => {
       "browser",
       "shortcuts",
       "usage",
+      "providerQuota",
     ]);
   });
 
@@ -104,8 +107,8 @@ describe("settingsPageConfig", () => {
     const usageSection = SETTINGS_SECTIONS.find((section) => section.id === "usage");
 
     expect(usageSection?.icon).toBe(BarChart3);
+    // Polaris 合并了上游重复的 settings.usage.sectionTitle，统一用 settings.usageTitle。
     expect(enUS["settings.usageTitle"]).toBe(enUS["sidebar.usage.plan.openStats"]);
-    expect(enUS["settings.usage.sectionTitle"]).toBe(enUS["sidebar.usage.plan.openStats"]);
     expect(zhCN["settings.usageTitle"]).toBe(zhCN["sidebar.usage.plan.openStats"]);
   });
 

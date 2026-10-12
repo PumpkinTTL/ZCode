@@ -209,12 +209,12 @@ describe("stageRelease", () => {
     });
 
     const releaseDir = staged.releaseDir;
-    expect(releaseDir.endsWith("zcode-server-linux-x64")).toBe(true);
+    expect(releaseDir.endsWith("polaris-server-linux-x64")).toBe(true);
 
-    const launcher = await readFile(join(releaseDir, "bin", "zcode"), "utf8");
+    const launcher = await readFile(join(releaseDir, "bin", "polaris"), "utf8");
     expect(launcher).toContain('"$DIR/runtime/node"');
     expect(launcher).toContain('"$DIR/runtime/server-cli.js"');
-    const launcherStat = await stat(join(releaseDir, "bin", "zcode"));
+    const launcherStat = await stat(join(releaseDir, "bin", "polaris"));
     // Bugfix: NTFS 不保留 POSIX exec 位（Windows 上 stat.mode 恒无 0o111 位），
     // 可执行性断言只在 POSIX 宿主上生效；Windows 宿主仍验证文件存在与内容。
     if (process.platform !== "win32") expect(launcherStat.mode & 0o111).not.toBe(0);
@@ -266,7 +266,7 @@ describe("stageRelease", () => {
       nodeVersion: string;
       entrypoints: { cli: string; core: string; agent: string };
     };
-    expect(manifest.product).toBe("zcode-server");
+    expect(manifest.product).toBe("polaris-server");
     expect(manifest.target).toBe("linux-x64");
     expect(manifest.appVersion).toBe("9.9.9-test");
     expect(manifest.nodeVersion).toBe("22.16.0");
@@ -304,7 +304,7 @@ describe("stageRelease", () => {
     await writeFakeNativeTools(toolsDir, { ripgrep: "rg.exe", ugrep: "ugrep.exe" });
     const staged = await stageRelease({ target: "win32-x64", appVersion: "9.9.9-test", nativeToolsDir: toolsDir, ...fixture });
     expect(staged.archivePath).toMatch(/\.zip$/u);
-    expect(await readFile(join(staged.releaseDir, "bin", "zcode.cmd"), "utf8")).toContain("node.exe");
+    expect(await readFile(join(staged.releaseDir, "bin", "polaris.cmd"), "utf8")).toContain("node.exe");
     await expect(stat(join(staged.releaseDir, "runtime", "node.exe"))).resolves.toBeTruthy();
     await expect(stat(join(staged.releaseDir, "runtime", "tools", "ripgrep", "rg.exe"))).resolves.toBeTruthy();
     await expect(stat(join(staged.releaseDir, "runtime", "tools", "ugrep", "ugrep.exe"))).resolves.toBeTruthy();

@@ -27,13 +27,14 @@ describe("NodeApiClient endpoint rewriting", () => {
     await client.request(`${DEFAULT_ZCODE_ENDPOINT_ORIGIN}/api/v1/event/report?x=1`);
     await client.request("https://example.com/static/config.json");
     await client.request("https://feedback.example.invalid/api/v1/tickets");
-    await client.request("https://api.z.ai/v1/models");
+    // Polaris：DEFAULT_ZCODE_ENDPOINT_ORIGIN 即自有后端；用第三方地址验证「非 endpoint 不重写」。
+    await client.request("https://third-party.example.invalid/v1/models");
 
     expect(fetchImpl.mock.calls.map(([input]) => String(input))).toEqual([
       "http://localhost:3030/api/v1/event/report?x=1",
       "https://example.com/static/config.json",
       "https://feedback.example.invalid/api/v1/tickets",
-      "https://api.z.ai/v1/models",
+      "https://third-party.example.invalid/v1/models",
     ]);
   });
 
@@ -41,18 +42,19 @@ describe("NodeApiClient endpoint rewriting", () => {
     const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
     const client = createNodeApiClient({
       fetchImpl: fetchImpl as typeof fetch,
-      resolveZCodeEndpointOrigin: async () => "https://zcode.z.ai",
+      resolveZCodeEndpointOrigin: async () => "https://nimbus.bitlesu.com",
     });
 
     await client.request(`${DEFAULT_ZCODE_ENDPOINT_ORIGIN}/api/v1/client/configs`);
-    await client.request("https://api.z.ai/v1/models");
+    // 第二条：外部地址（不重写、不注入 zcode 来源头），供下方 externalHeaders 断言。
+    await client.request("https://third-party.example.invalid/v1/models");
 
     const zcodeHeaders = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers);
-    expect(zcodeHeaders.get("User-Agent")).toMatch(/^ZCode\//);
+    expect(zcodeHeaders.get("User-Agent")).toMatch(/^Polaris\//);
     expect(zcodeHeaders.get("X-Title")).toBe(ZCODE_SOURCE_HEADERS["X-Title"]);
     expect(zcodeHeaders.get("X-OpenRouter-Title")).toBeNull();
     expect(zcodeHeaders.get("X-OpenRouter-Categories")).toBeNull();
-    expect(zcodeHeaders.get("HTTP-Referer")).toBe("https://zcode.z.ai");
+    expect(zcodeHeaders.get("HTTP-Referer")).toBe("https://nimbus.bitlesu.com");
     expect(zcodeHeaders.get("X-App-Version")).toBeNull();
     expect(zcodeHeaders.get("X-ZCode-App-Version")).toBeTruthy();
     expect(zcodeHeaders.get("X-Platform")).toBe(`${process.platform}-${process.arch}`);
@@ -76,7 +78,7 @@ describe("NodeApiClient endpoint rewriting", () => {
     const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
     const client = createNodeApiClient({
       fetchImpl: fetchImpl as typeof fetch,
-      resolveZCodeEndpointOrigin: async () => "https://zcode.z.ai",
+      resolveZCodeEndpointOrigin: async () => "https://nimbus.bitlesu.com",
     });
 
     await client.request(`${DEFAULT_ZCODE_ENDPOINT_ORIGIN}/api/v1/oauth/token`, {
@@ -95,7 +97,7 @@ describe("NodeApiClient endpoint rewriting", () => {
     expect(headers.get("X-OpenRouter-Categories")).toBeNull();
     expect(headers.get("Authorization")).toBe("Bearer token");
     expect(headers.get("X-Device-Mid")).toBe("caller-device-mid");
-    expect(headers.get("HTTP-Referer")).toBe("https://zcode.z.ai");
+    expect(headers.get("HTTP-Referer")).toBe("https://nimbus.bitlesu.com");
     expect(headers.get("x-request-id")).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
@@ -105,7 +107,7 @@ describe("NodeApiClient endpoint rewriting", () => {
     const dataBaseDir = mkdtempSync(join(tmpdir(), "zcode-device-mid-"));
     tempDirs.push(dataBaseDir);
     setDataBaseDir(dataBaseDir);
-    const configDir = join(dataBaseDir, ".zcode", "v2");
+    const configDir = join(dataBaseDir, ".polaris", "v2");
     mkdirSync(configDir, { recursive: true });
     writeFileSync(
       join(configDir, "telemetry-state.json"),
@@ -116,7 +118,7 @@ describe("NodeApiClient endpoint rewriting", () => {
     const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
     const client = createNodeApiClient({
       fetchImpl: fetchImpl as typeof fetch,
-      resolveZCodeEndpointOrigin: async () => "https://zcode.z.ai",
+      resolveZCodeEndpointOrigin: async () => "https://nimbus.bitlesu.com",
     });
 
     await client.request(`${DEFAULT_ZCODE_ENDPOINT_ORIGIN}/api/v1/client/configs`);
@@ -134,7 +136,7 @@ describe("NodeApiClient endpoint rewriting", () => {
     const dataBaseDir = mkdtempSync(join(tmpdir(), "zcode-device-mid-invalid-"));
     tempDirs.push(dataBaseDir);
     setDataBaseDir(dataBaseDir);
-    const configDir = join(dataBaseDir, ".zcode", "v2");
+    const configDir = join(dataBaseDir, ".polaris", "v2");
     mkdirSync(configDir, { recursive: true });
     if (content !== null) {
       writeFileSync(join(configDir, "telemetry-state.json"), content, "utf-8");
@@ -143,7 +145,7 @@ describe("NodeApiClient endpoint rewriting", () => {
     const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
     const client = createNodeApiClient({
       fetchImpl: fetchImpl as typeof fetch,
-      resolveZCodeEndpointOrigin: async () => "https://zcode.z.ai",
+      resolveZCodeEndpointOrigin: async () => "https://nimbus.bitlesu.com",
     });
 
     await client.request(`${DEFAULT_ZCODE_ENDPOINT_ORIGIN}/api/v1/client/configs`);

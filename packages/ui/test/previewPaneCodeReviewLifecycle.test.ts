@@ -4,6 +4,25 @@ import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
 
+// Node 25 自带一个空的 native localStorage，会遮蔽 jsdom 的实现（getItem 不存在），
+// PreviewPane 的 readLastSelectedEditorId 在首次渲染就会抛 TypeError。这里装回内存实现。
+const localStorageValues = new Map<string, string>();
+Object.defineProperty(globalThis, "localStorage", {
+  configurable: true,
+  value: {
+    getItem: (key: string) => localStorageValues.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      localStorageValues.set(key, value);
+    },
+    removeItem: (key: string) => {
+      localStorageValues.delete(key);
+    },
+    clear: () => {
+      localStorageValues.clear();
+    },
+  },
+});
+
 const mocks = vi.hoisted(() => {
   const fileService = {
     readTextFile: vi.fn(async () => ({

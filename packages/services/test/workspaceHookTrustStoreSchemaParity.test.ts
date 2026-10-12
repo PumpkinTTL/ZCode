@@ -40,7 +40,7 @@ function setupWorkspaceWithHook(): { home: string; workspace: string } {
   const home = makeRoot();
   const workspace = makeRoot();
   mkdirSync(join(workspace, ".git"));
-  writeJson(join(workspace, ".zcode", "config.json"), {
+  writeJson(join(workspace, ".polaris", "config.json"), {
     hooks: {
       enabled: true,
       events: {
@@ -54,7 +54,7 @@ function setupWorkspaceWithHook(): { home: string; workspace: string } {
 }
 
 function trustStorePath(home: string): string {
-  return join(home, ".zcode", "security", "workspace-hook-trust-v1.json");
+  return join(home, ".polaris", "security", "workspace-hook-trust-v1.json");
 }
 
 const VALID_DIGEST = "a".repeat(64);

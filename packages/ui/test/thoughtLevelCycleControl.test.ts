@@ -94,7 +94,8 @@ describe("ThoughtLevelCycleControl", () => {
     );
 
     expect(html).toContain('data-thought-level-fixed="true"');
-    expect(html).toContain("最高");
+    // 分级档位显示配置名（Polaris：与「编辑模型 → 推理档位」一致），不用本地化档位词。
+    expect(html).toContain("Max");
     expect(html).not.toContain('role="combobox"');
   });
 
@@ -146,7 +147,7 @@ describe("ThoughtLevelCycleControl", () => {
       }),
     );
 
-    expect(html).toContain("最高");
+    expect(html).toContain("Max");
   });
 
   it("进度条仅在 sm 到 xl 的中间宽度显示", () => {
@@ -228,9 +229,9 @@ describe("ThoughtLevelCycleControl", () => {
       }),
     );
 
-    expect(html).toContain('aria-label="最高"');
-    expect(html).toContain('title="最高"');
-    expect(html).toContain("最高");
+    expect(html).toContain('aria-label="Max"');
+    expect(html).toContain('title="Max"');
+    expect(html).toContain("Max");
   });
 
   it("保留 cycle 模式用于恢复旧版点击循环交互", () => {
@@ -257,7 +258,7 @@ describe("ThoughtLevelCycleControl", () => {
     );
 
     expect(html).toContain('type="button"');
-    expect(html).toContain("最高");
+    expect(html).toContain("Max");
   });
 
   it("Ctrl+T 快速切换按展示顺序选择下一个思考档位", () => {

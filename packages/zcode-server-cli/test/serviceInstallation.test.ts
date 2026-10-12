@@ -11,7 +11,7 @@ describe("service installation compatibility", () => {
       const secondRoot = "/var/lib/zcode-second/.zcode/server";
       const descriptor = createServiceDescriptor({
         platform,
-        command: join(firstRoot, "bin", platform === "win32" ? "zcode.cmd" : "zcode"),
+        command: join(firstRoot, "bin", platform === "win32" ? "polaris.cmd" : "zcode"),
         args: ["serve", "--supervisor", "--server-root", firstRoot],
       });
 

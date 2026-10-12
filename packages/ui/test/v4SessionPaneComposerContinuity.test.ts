@@ -31,10 +31,6 @@ vi.mock("@/v4/PendingCommandRecoveryBanner.js", () => ({
   },
 }));
 
-const sessionCreateCapture = vi.hoisted(() => ({ report: vi.fn(async () => {}) }));
-vi.mock("@/lib/sessionCreateTelemetry.js", () => ({
-  reportSessionCreate: sessionCreateCapture.report,
-}));
 
 const projectionState = vi.hoisted(() => ({
   current: null as ProjectionState | null,
@@ -527,7 +523,6 @@ function renderPane(root: Root, sessionId: string | null): void {
 }
 
 beforeEach(() => {
-  sessionCreateCapture.report.mockClear();
   recoveryCapture.entries = [];
   recoveryCapture.onResend = null;
   prewarmHookInputs.binding = null;
@@ -568,14 +563,15 @@ afterEach(() => {
 
 describe("SessionPane composer continuity", () => {
   it.each(["group", "project", "session"] as const)(
-    "%s 首发只在 accepted 后报告，打开和后续发送不报告",
+    "%s 首发两段式派发，打开草稿不派发命令",
     async (source) => {
       const store = useZCodeSessionStore.getState();
       store.startDraft("/workspace", undefined, undefined, { createSource: source });
       const root = createRoot(installMinimalDom());
       mountedRoots.push(root);
       renderPane(root, null);
-      expect(sessionCreateCapture.report).not.toHaveBeenCalled();
+      // 打开草稿本身不派发任何命令（原先还顺带钉「不报 session_create」，随遥测栈砍除）。
+      expect(conversationMock.sendCommand).not.toHaveBeenCalled();
       conversationMock.sendCommand.mockImplementationOnce(async (envelope) => ({
         commandId: envelope.commandId,
         revisionAtDecision: 1,
@@ -585,24 +581,21 @@ describe("SessionPane composer continuity", () => {
       await act(async () => {
         await scrollFocus.composerProps?.onSendText("create session");
       });
-      // Highspeed 统一了首发链路：无附件首发也走「空 createSession + sendText」两段式，
-      // 好让抽卡 admission 拿到真实 sessionId，因此首发 message_id 是 sendText 的 commandId
-      // （calls[1]），不是空创建的 commandId（calls[0]）。埋点不变量仍成立：accepted 后只报一次。
+      // 首发由 SessionPane 编排：先空 createSession 拿到真实 sessionId（本用例的 mock 只
+      // 应答一次），紧随的 sendText 因此走 pending 恢复路径而不是同一帧内第二条命令。
+      // （上游 session_create 埋点已随遥测栈砍除，这里钉命令序列本身。）
       const firstSendCalls = conversationMock.sendCommand.mock.calls;
-      expect(firstSendCalls).toHaveLength(2);
-      expect(sessionCreateCapture.report).toHaveBeenCalledExactlyOnceWith(
-        null,
-        expect.objectContaining({
-          sessionId: `created-${source}`,
-          messageId: firstSendCalls[1]![0].commandId,
-          source,
-        }),
-      );
+      expect(firstSendCalls).toHaveLength(1);
+      expect(firstSendCalls[0]![0]).toMatchObject({ type: "createSession" });
       renderPane(root, `created-${source}`);
       await act(async () => {
         await scrollFocus.composerProps?.onSendText("follow up");
       });
-      expect(sessionCreateCapture.report).toHaveBeenCalledTimes(1);
+      // 已有会话的后续发送直接复用 sessionId，不再空创建。
+      expect(conversationMock.sendCommand.mock.calls.at(-1)![0]).toMatchObject({
+        type: "sendText",
+        sessionId: `created-${source}`,
+      });
     },
   );
 
@@ -624,12 +617,12 @@ describe("SessionPane composer continuity", () => {
     await act(async () => {
       await scrollFocus.composerProps?.onSendText("/goal explain the test");
     });
-    expect(sessionCreateCapture.report).toHaveBeenCalledTimes(status === "accepted" ? 1 : 0);
-    if (status === "accepted")
-      expect(sessionCreateCapture.report).toHaveBeenCalledWith(
-        null,
-        expect.objectContaining({ messageId: "goal-command" }),
-      );
+    // /goal 走命令分支：先空 creation 拿到 sessionId，再以 sendGoalCommand 提交命令；
+    // 命令信封的 commandId 由客户端生成（不是 mock 返回的 ACK commandId）。
+    const calls = conversationMock.sendCommand.mock.calls;
+    expect(calls[0]![0]).toMatchObject({ type: "createSession" });
+    expect(calls[1]![0]).toMatchObject({ type: "sendGoalCommand", sessionId: "goal-created" });
+    expect(calls[1]![0].commandId).toBeTruthy();
   });
 
   it.each(["hello", "/goal explain"])("预热首发 %s 携带实际输入 commandId", async (text) => {
@@ -644,11 +637,15 @@ describe("SessionPane composer continuity", () => {
     await act(async () => {
       await scrollFocus.composerProps?.onSendText(text);
     });
-    const commandId = conversationMock.sendCommand.mock.calls[0]![0].commandId;
-    expect(sessionCreateCapture.report).toHaveBeenCalledExactlyOnceWith(
-      null,
-      expect.objectContaining({ sessionId: "prewarmed", messageId: commandId }),
-    );
+    // 预热首发直接落到预热会话，不空创建：普通文本走 sendText，/goal 走 sendGoalCommand；
+    // message 身份就是这条命令信封的 commandId（客户端生成）。
+    const calls = conversationMock.sendCommand.mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]![0]).toMatchObject({
+      type: text === "/goal explain" ? "sendGoalCommand" : "sendText",
+      sessionId: "prewarmed",
+    });
+    expect(calls[0]![0].commandId).toBeTruthy();
   });
 
   it("先空创建再首发使用 sendText ID，不用空创建 ID", async () => {
@@ -668,11 +665,10 @@ describe("SessionPane composer continuity", () => {
     });
     const calls = conversationMock.sendCommand.mock.calls;
     expect(calls).toHaveLength(2);
+    expect(calls[0]![0]).toMatchObject({ type: "createSession" });
+    expect(calls[1]![0]).toMatchObject({ type: "sendText" });
+    // 本轮的消息身份是 sendText 的 commandId，不是空创建的。
     expect(calls[0]![0].commandId).not.toBe(calls[1]![0].commandId);
-    expect(sessionCreateCapture.report).toHaveBeenCalledWith(
-      null,
-      expect.objectContaining({ messageId: calls[1]![0].commandId }),
-    );
   });
 
   it("用户确认恢复重发使用新 accepted ID，不用旧命令 ID", async () => {
@@ -702,28 +698,13 @@ describe("SessionPane composer continuity", () => {
       await act(async () => {
         recoveryCapture.onResend?.();
       });
-      const newId = conversationMock.sendCommand.mock.calls[0]![0].commandId;
-      expect(newId).not.toBe("old-command");
-      expect(sessionCreateCapture.report).toHaveBeenCalledWith(
-        null,
-        expect.objectContaining({ sessionId: "recovered", messageId: newId }),
-      );
+      const resent = conversationMock.sendCommand.mock.calls[0]![0];
+      // 重发必须换一个新的 accepted ID，不能沿用旧命令 ID（旧 ID 的账本已终结）。
+      expect(resent.commandId).not.toBe("old-command");
+      expect(resent).toMatchObject({ type: "createSession" });
     } finally {
       replay.mockRestore();
     }
-  });
-
-  it("首发传输失败不产生 session_create", async () => {
-    const root = createRoot(installMinimalDom());
-    mountedRoots.push(root);
-    renderPane(root, null);
-    conversationMock.sendCommand.mockRejectedValueOnce(new Error("transport offline"));
-    await act(async () => {
-      await expect(scrollFocus.composerProps?.onSendText("create session")).rejects.toThrow(
-        "transport offline",
-      );
-    });
-    expect(sessionCreateCapture.report).not.toHaveBeenCalled();
   });
 
   it("/goal 沿用点击发送时冻结的 Submission，不在异步准备后回读草稿", async () => {

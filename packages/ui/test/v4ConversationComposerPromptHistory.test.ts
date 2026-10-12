@@ -31,22 +31,12 @@ const { attachmentState, chatPromptEditorProps, dialogOpenStates, inputClear } =
   inputClear: vi.fn(),
 }));
 
-function expectedTelemetrySendOptions() {
-  return expect.objectContaining({
-    telemetrySeed: {
-      sendTime: expect.any(Number),
-      extraDetail: {
-        ask_mode: "",
-        model_name: "",
-        model_provider: "glm",
-        agent: "glm",
-        plan_status: "unknown",
-        plan_product_id: "",
-        message_source: "chat",
-        task_trigger: "",
-      },
-    },
-  });
+// Polaris：上游遥测栈（send funnel / prompt telemetry seed）整批砍除，Composer 的
+// onSendText 不再携带 telemetrySeed。这些用例只挂最小 Composer（不注入
+// createSubmissionFromComposer），因此本轮 Submission 为 null —— Host 不得从已运行
+// Session 反推补齐（见 ConversationComposerSendOptions.submission 注释）。
+function expectedSendOptions() {
+  return expect.objectContaining({ submission: null });
 }
 
 vi.mock("@/components/ui/dialog.js", async () => {
@@ -149,6 +139,14 @@ vi.mock("@/v4/composer/useComposerAttachments.js", () => ({
     retryAttachment: vi.fn(),
     setAttachmentError: vi.fn(),
   }),
+}));
+
+// 本文件跑在最小 DOM 里：Composer 的「模型未选完禁止提交」分支会 toast，
+// 而真 toast 需要 document.body 宿主 + requestAnimationFrame 轮询（本文件都没有）。
+// 断言面不是 toast 本身，直接桩掉，避免未处理拒绝污染整场跑批。
+vi.mock("@/components/ui/toast.js", () => ({
+  toast: vi.fn(),
+  dismissToast: vi.fn(),
 }));
 
 vi.mock("@/v4/composer/V4ComposerToolbar.js", async () => {
@@ -410,7 +408,7 @@ describe("ConversationComposer prompt history", () => {
     await act(async () => root.unmount());
   });
 
-  it("prewarm snapshot 未到时仍用冻结草稿 config 建立 send telemetry seed", async () => {
+  it("prewarm snapshot 未到时仍用冻结草稿 config 提交本轮", async () => {
     const onSendText = vi.fn(async () => {});
     const { root } = renderComposer(onSendText, {
       mode: "build",
@@ -424,18 +422,12 @@ describe("ConversationComposer prompt history", () => {
       await flushAsyncWork();
     });
 
-    expect(onSendText).toHaveBeenCalledWith(
-      "立即发送草稿",
-      expect.objectContaining({
-        telemetrySeed: expect.objectContaining({
-          extraDetail: expect.objectContaining({
-            ask_mode: "build",
-            model_name: "custom:e2e-deepseek:deepseek-v4-flash",
-            model_provider: "e2e-deepseek",
-          }),
-        }),
-      }),
-    );
+    // 遥测 seed 已随上游遥测栈移除。本用例不注入 createSubmissionFromComposer（=Host
+    // 尚未建立投影），Composer 必须仍然把文本交给 onSendText，且 submission 保持 null，
+    // 不拿 prewarm 之外的旧 config 冒充本轮选择。
+    expect(onSendText).toHaveBeenCalledWith("立即发送草稿", expect.objectContaining({
+      submission: null,
+    }));
 
     await act(async () => root.unmount());
   });
@@ -654,7 +646,7 @@ describe("ConversationComposer prompt history", () => {
       await flushAsyncWork();
     });
 
-    expect(onSendText).toHaveBeenCalledWith("你回答 1", expectedTelemetrySendOptions());
+    expect(onSendText).toHaveBeenCalledWith("你回答 1", expectedSendOptions());
     expect(readPromptHistoryEntries("/workspace")).toEqual(["你回答 1"]);
 
     await act(async () => {
@@ -679,7 +671,7 @@ describe("ConversationComposer prompt history", () => {
       await flushAsyncWork();
     });
 
-    expect(onSendText).toHaveBeenCalledWith("失败的消息", expectedTelemetrySendOptions());
+    expect(onSendText).toHaveBeenCalledWith("失败的消息", expectedSendOptions());
     expect(readPromptHistoryEntries("/workspace")).toEqual(["上一条"]);
 
     await act(async () => {
@@ -697,7 +689,7 @@ describe("ConversationComposer prompt history", () => {
       await flushAsyncWork();
     });
 
-    expect(onSendText).toHaveBeenCalledWith("/goal 保留这段输入", expectedTelemetrySendOptions());
+    expect(onSendText).toHaveBeenCalledWith("/goal 保留这段输入", expectedSendOptions());
     expect(inputClear).not.toHaveBeenCalled();
     expect(attachmentState.adoptSentAttachments).not.toHaveBeenCalled();
     expect(readPromptHistoryEntries("/workspace")).toEqual([]);
@@ -750,7 +742,7 @@ describe("ConversationComposer prompt history", () => {
       await flushAsyncWork();
     });
 
-    expect(onSendText).toHaveBeenNthCalledWith(2, "重复消息", expectedTelemetrySendOptions());
+    expect(onSendText).toHaveBeenNthCalledWith(2, "重复消息", expectedSendOptions());
     expect(readPromptHistoryEntries("/workspace")).toEqual(["重复消息"]);
     expect(setItem).not.toHaveBeenCalled();
 

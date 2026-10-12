@@ -213,7 +213,10 @@ describe("WindowsCaptionMenuButton", () => {
       }),
     );
     expect(capturedWindowsCaptionMenu.openFeatureRequest).toHaveBeenCalledTimes(1);
-    expect(capturedWindowsCaptionMenu.openExternal).toHaveBeenCalledWith("https://zcode.z.ai/docs");
+    // Polaris：产品文档指向自有域名（src/lib/productDocs.ts）。
+    expect(capturedWindowsCaptionMenu.openExternal).toHaveBeenCalledWith(
+      "https://nimbus.bitlesu.com/docs",
+    );
     expect(capturedWindowsCaptionMenu.exportLogs).toHaveBeenCalledTimes(1);
   });
 

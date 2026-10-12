@@ -110,43 +110,43 @@ describe("ModelConfigSelect menu hierarchy", () => {
 });
 
 describe("ModelConfigSelect badge style", () => {
-  it("个人和团队连接标签使用无边框的弱表面 pill", () => {
+  // Polaris：徽章样式已在 c82ffc3d 统一为「圆角方 pill + 弱表面描边」，
+  // 与 ModelInputCapabilityBadge 共用同一套 token，不再是无边框圆形。
+  it("个人和团队连接标签使用弱表面描边的圆角 pill", () => {
     const classTokens = MODEL_CONFIG_SELECT_BADGE_CLASS_NAME.split(/\s+/);
 
     expect(classTokens).toEqual(
       expect.arrayContaining([
-        "rounded-full",
-        "bg-surface",
-        "px-1",
-        "py-px",
+        "rounded-md",
+        "border",
+        "border-border/70",
+        "bg-surface/70",
+        "px-1.5",
+        "h-5",
         "text-ui-xs",
         "font-medium",
-        "text-foreground-subtle",
       ]),
     );
-    expect(classTokens).not.toContain("border");
-    expect(classTokens).not.toContain("border-border");
     expect(classTokens).not.toContain("bg-secondary");
     expect(classTokens).not.toContain("text-ui-base");
   });
 
-  it("视觉标签与连接方式标签使用一致的轻量圆形 pill", () => {
+  it("视觉标签与连接方式标签使用一致的轻量 pill", () => {
     const classTokens = MODEL_INPUT_CAPABILITY_BADGE_CLASS_NAME.split(/\s+/);
 
     expect(classTokens).toEqual(
       expect.arrayContaining([
-        "rounded-full",
+        "rounded-md",
         "border",
-        "border-border",
-        "bg-surface",
-        "px-1",
-        "py-px",
+        "border-border/70",
+        "bg-surface/70",
+        "px-1.5",
+        "h-5",
         "text-ui-xs",
         "font-medium",
         "text-foreground-subtle",
       ]),
     );
-    expect(classTokens).not.toContain("rounded-md");
     expect(classTokens).not.toContain("text-ui-sm");
     expect(classTokens).not.toContain("font-mono");
   });
@@ -236,7 +236,9 @@ describe("ModelConfigSelect trigger label", () => {
       }),
     );
 
-    expect(html).toContain("lucide-package");
+    // Polaris：触发器图标由 ModelBrandIcon 承担（认不出品牌退回 generic 方盒标），
+    // 不再使用上游的 lucide-package。
+    expect(html).toContain("data-model-icon=");
     expect(html).toContain("inline-flex @sm/composer:hidden");
     expect(html).toContain("GLM-5");
     expect(html).toContain("lucide-chevron-down");

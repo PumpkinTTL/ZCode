@@ -15,12 +15,12 @@ import {
 } from "../src/cli.js";
 import { createControlServer } from "../src/ipc/controlServer.js";
 import { currentServerTarget } from "../src/runtime/manifest.js";
-import { resolveServerLayout } from "../src/runtime/paths.js";
+import { resolveCanonicalServerLayout, resolveServerLayout } from "../src/runtime/paths.js";
 import { ReleaseManager } from "../src/runtime/releaseManager.js";
 import { DataRootLock } from "../src/runtime/lock.js";
 
 async function createTestReleaseArchive(root: string, version: string): Promise<{ archivePath: string; archiveSha256: string }> {
-  const archiveRoot = join(root, `zcode-server-${currentServerTarget()}`);
+  const archiveRoot = join(root, `polaris-server-${currentServerTarget()}`);
   await mkdir(join(archiveRoot, "runtime"), { recursive: true });
   await writeFile(join(archiveRoot, "runtime", "node"), "node", "utf8");
   await writeFile(join(archiveRoot, "runtime", "server-cli.js"), "", "utf8");
@@ -30,7 +30,7 @@ async function createTestReleaseArchive(root: string, version: string): Promise<
   await writeFile(
     join(archiveRoot, "manifest.json"),
     JSON.stringify({
-      product: "zcode-server",
+      product: "polaris-server",
       target: currentServerTarget(),
       appVersion: version,
       nodeVersion: "22.16.0",
@@ -128,7 +128,7 @@ describe("Server CLI routing", () => {
 
   it("uses an explicit absolute --server-root for status instead of the process default", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-r2-cli-explicit-root-"));
-    const serverRoot = join(root, ".zcode", "server");
+    const serverRoot = join(root, ".polaris", "server");
     const layout = resolveServerLayout(serverRoot);
     await mkdir(layout.runDir, { recursive: true });
     await writeFile(layout.statusFile, `${JSON.stringify({
@@ -167,7 +167,7 @@ describe("Server CLI routing", () => {
 
   it("rejects update before fetching or installing when tasks are running", async () => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zcode-r2-cli-update-guard-"));
-    const layout = resolveServerLayout(join(root, ".zcode", "server"));
+    const layout = await resolveCanonicalServerLayout(join(root, ".polaris", "server"));
     const commands: string[] = [];
     const control = await createControlServer(layout.controlEndpoint, async (request) => {
       commands.push(request.command);
@@ -215,7 +215,7 @@ describe("Server CLI routing", () => {
 
   it("discards a prepared release when a task starts during preparation", async () => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zcode-r2-cli-update-race-"));
-    const layout = resolveServerLayout(join(root, "server"));
+    const layout = await resolveCanonicalServerLayout(join(root, "server"));
     const release = await createTestReleaseArchive(root, "4.0.0");
     const commands: string[] = [];
     let prepareCalls = 0;
@@ -269,7 +269,7 @@ describe("Server CLI routing", () => {
 
   it("discards a prepared release when apply-update observes a late task", async () => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zcode-r2-cli-update-late-guard-"));
-    const layout = resolveServerLayout(join(root, "server"));
+    const layout = await resolveCanonicalServerLayout(join(root, "server"));
     const release = await createTestReleaseArchive(root, "4.0.1");
     const commands: string[] = [];
     const control = await createControlServer(layout.controlEndpoint, async (request) => {
@@ -320,7 +320,7 @@ describe("Server CLI routing", () => {
 
   it("returns a successful up-to-date outcome without sending apply-update", async () => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zcode-r2-cli-up-to-date-"));
-    const layout = resolveServerLayout(join(root, ".zcode", "server"));
+    const layout = await resolveCanonicalServerLayout(join(root, ".polaris", "server"));
     const releases = new ReleaseManager(layout);
     await releases.ensure();
     const releaseDir = join(layout.releasesDir, "current");
@@ -395,7 +395,7 @@ describe("Server CLI routing", () => {
 
   it("reports a clear source error when neither catalog nor pending release exists", async () => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zcode-r2-cli-no-source-"));
-    const layout = resolveServerLayout(join(root, ".zcode", "server"));
+    const layout = await resolveCanonicalServerLayout(join(root, ".polaris", "server"));
     const errors: string[] = [];
     vi.stubEnv("ZCODE_SERVER_RELEASE_MANIFEST_URL", "");
     const control = await createControlServer(layout.controlEndpoint, async (request) => {
@@ -416,7 +416,7 @@ describe("Server CLI routing", () => {
 
   it("applies an offline pending release when no catalog is configured", async () => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zcode-r2-offline-"));
-    const layout = resolveServerLayout(join(root, ".zcode", "server"));
+    const layout = await resolveCanonicalServerLayout(join(root, ".polaris", "server"));
     const releases = new ReleaseManager(layout);
     await releases.ensure();
     const releaseDir = join(layout.releasesDir, "offline");

@@ -213,7 +213,8 @@ describe("WorkspaceHeaderActionSection", () => {
     expect(html).toContain("workspaceHeader.help.menu");
     expect(html).toContain("workspaceHeader.help.issueReport");
     expect(html).toContain("workspaceHeader.help.productRequest");
-    expect(html).toContain("workspaceHeader.help.community");
+    // Polaris：社群入口由 COMMUNITY_ENTRY_ENABLED 统一收口为关闭。
+    expect(html).not.toContain("workspaceHeader.help.community");
     expect(html).toContain("workspaceHeader.help.docs");
     expect(html).not.toContain("titleBar.menu.help.exportLogs");
     expect(html).toContain("terminal.toggle");
@@ -285,11 +286,11 @@ describe("WorkspaceHeaderActionSection", () => {
       }),
     );
 
-    expect(capturedHeaderHelp.menuItems).toHaveLength(4);
-    await capturedHeaderHelp.menuItems[2]?.onSelect?.();
-    capturedHeaderHelp.menuItems[1]?.onSelect?.();
+    // Polaris：菜单顺序 = docs / issueReport / productRequest（社群入口关闭后三项）。
+    expect(capturedHeaderHelp.menuItems).toHaveLength(3);
+    await capturedHeaderHelp.menuItems[1]?.onSelect?.();
+    capturedHeaderHelp.menuItems[2]?.onSelect?.();
     capturedHeaderHelp.menuItems[0]?.onSelect?.();
-    capturedHeaderHelp.menuItems[3]?.onSelect?.();
 
     expect(capturedHeaderHelp.captureWindowScreenshot).not.toHaveBeenCalled();
     expect(capturedHeaderHelp.openSubmit).toHaveBeenNthCalledWith(
@@ -301,8 +302,8 @@ describe("WorkspaceHeaderActionSection", () => {
       }),
     );
     expect(capturedHeaderHelp.openFeatureRequest).toHaveBeenCalledTimes(1);
-    expect(capturedHeaderHelp.openCommunity).toHaveBeenCalledTimes(1);
-    expect(capturedHeaderHelp.openExternal).toHaveBeenCalledWith("https://zcode.z.ai/docs");
+    expect(capturedHeaderHelp.openCommunity).not.toHaveBeenCalled();
+    expect(capturedHeaderHelp.openExternal).toHaveBeenCalledWith("https://nimbus.bitlesu.com/docs");
     expect(capturedHeaderHelp.exportLogs).not.toHaveBeenCalled();
   });
 
@@ -324,7 +325,8 @@ describe("WorkspaceHeaderActionSection", () => {
       }),
     );
 
-    await capturedHeaderHelp.menuItems[2]?.onSelect?.();
+    // 社群入口关闭后 issueReport 落到 index 1。
+    await capturedHeaderHelp.menuItems[1]?.onSelect?.();
 
     expect(capturedHeaderHelp.openSubmit).toHaveBeenCalledWith(
       expect.objectContaining({

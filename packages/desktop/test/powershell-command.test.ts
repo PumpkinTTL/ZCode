@@ -49,7 +49,10 @@ describe("powershell-command", () => {
       const output = execFileSync(
         "powershell.exe",
         createEncodedPowerShellArgs(
-          "[Console]::Out.Write($zcodeArg0 + [Environment]::NewLine + $zcodeArg1)",
+          // Windows PowerShell 5.1 的 stdout 走系统 ANSI 代码页（本机 GBK），
+          // 显式切 UTF-8 才能让 Node 端按 utf8 还原中文与元字符。
+          "[Console]::OutputEncoding=[Text.Encoding]::UTF8;"
+            + "[Console]::Out.Write($zcodeArg0 + [Environment]::NewLine + $zcodeArg1)",
           values,
         ),
         { encoding: "utf8" },

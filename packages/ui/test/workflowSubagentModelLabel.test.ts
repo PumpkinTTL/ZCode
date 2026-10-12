@@ -30,19 +30,21 @@ const zh = formatter(zhCN);
 const TEAM_PLAN_PROVIDER = "4fc7f541-2382-4c32-be11-f021b8d7ed1d";
 
 describe("describeWorkflowSubagentModel", () => {
-  it("内置家族只说模型名，档位单独成词（zh 说「高」，en 说「High」）", () => {
+  // Polaris（f917dd01）：分级档位显示**配置里的名字**（low/high/max… 就是用户在
+  // 「编辑模型 → 推理档位」里设定的那一份），只有开关型档位才走本地化词表。
+  it("内置家族只说模型名，档位原样显示配置名", () => {
     const canonical = "account:zai-team-coding-plan/GLM-5.3-Flash$high";
     // 连接名属于产品固定入口，就算查得到也不拼进去。
     const providerName = () => "Coding Plan";
 
     expect(describeWorkflowSubagentModel(canonical, { formatMessage: zh, providerName })).toEqual({
       canonical,
-      level: "高",
+      level: "high",
       name: "GLM-5.3-Flash",
     });
     expect(describeWorkflowSubagentModel(canonical, { formatMessage: en, providerName })).toEqual({
       canonical,
-      level: "High",
+      level: "high",
       name: "GLM-5.3-Flash",
     });
   });
@@ -66,7 +68,7 @@ describe("describeWorkflowSubagentModel", () => {
       }),
     ).toEqual({
       canonical: "myproxy/glm-4.7$medium",
-      level: "中",
+      level: "medium",
       name: "MyProxy/glm-4.7",
     });
   });
@@ -116,18 +118,18 @@ describe("子代理模型的成句与 tooltip", () => {
   });
 
   it("确认窗那一句把强度接在模型名后面", () => {
-    expect(workflowSubagentModelText(en, label)).toBe("GLM-5.3-Flash · thinking High");
+    expect(workflowSubagentModelText(en, label)).toBe("GLM-5.3-Flash · thinking high");
     expect(
       workflowSubagentModelText(
         zh,
         describeWorkflowSubagentModel(label.canonical, { formatMessage: zh }),
       ),
-    ).toBe("GLM-5.3-Flash · 思考 高");
+    ).toBe("GLM-5.3-Flash · 思考 high");
   });
 
   it("tooltip 一句解释 + 换行 + 规范串：规范串只住在这里", () => {
     expect(workflowSubagentModelTooltip(en, label)).toBe(
-      `Subagents run on GLM-5.3-Flash · thinking High. The main agent stays on the session model.\n${label.canonical}`,
+      `Subagents run on GLM-5.3-Flash · thinking high. The main agent stays on the session model.\n${label.canonical}`,
     );
   });
 

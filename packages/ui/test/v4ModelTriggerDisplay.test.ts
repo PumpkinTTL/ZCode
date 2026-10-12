@@ -33,7 +33,9 @@ function createGroup({
 }
 
 describe("resolveV4ModelTriggerLabel", () => {
-  it("供应商名称缺失时使用 providerId 和精确命中的模型名称", () => {
+  // Polaris（7198f5b2）：触发器**可见**文案只有模型名——Provider 层已从模型菜单移除，
+  // 品牌身份改由模型前的图标承担，把 `Provider/模型` 拼回触发器等于把删掉的那层写回来。
+  it("触发器只显示精确命中的模型名称，不拼 providerId 前缀", () => {
     const group = createGroup({
       key: "dev-model",
       label: "devModel",
@@ -47,7 +49,7 @@ describe("resolveV4ModelTriggerLabel", () => {
         fallbackLabel: "glm-4.7",
         providerId: "dev-model",
       }),
-    ).toBe("dev-model/glm-5.2");
+    ).toBe("glm-5.2");
   });
 
   it.each([
@@ -73,7 +75,7 @@ describe("resolveV4ModelTriggerLabel", () => {
     ).toBe("GLM-5.2");
   });
 
-  it("DeepSeek 自定义 provider 收起后显示 providerName/modelName", () => {
+  it("DeepSeek 自定义 provider 收起后仍只显示模型名", () => {
     const group = createGroup({
       key: "default-deepseek",
       label: "deepseek",
@@ -88,10 +90,10 @@ describe("resolveV4ModelTriggerLabel", () => {
         providerId: "default-deepseek",
         providerName: "deepseek",
       }),
-    ).toBe("deepseek/deepseek-v4-flash");
+    ).toBe("deepseek-v4-flash");
   });
 
-  it("手机 Web 与桌面共享完整身份文案，由 composer 容器断点负责视觉裁剪", () => {
+  it("手机 Web 与桌面共享同一条可见文案，由 composer 容器断点负责视觉裁剪", () => {
     const group = createGroup({
       key: "default-deepseek",
       label: "deepseek",
@@ -106,10 +108,10 @@ describe("resolveV4ModelTriggerLabel", () => {
         providerId: "default-deepseek",
         providerName: "deepseek",
       }),
-    ).toBe("deepseek/deepseek-v4-flash");
+    ).toBe("deepseek-v4-flash");
   });
 
-  it("桌面宽视口打开 Web 远控时仍显示自定义供应商名", () => {
+  it("桌面宽视口打开 Web 远控时也走同一条可见文案", () => {
     const group = createGroup({
       key: "default-deepseek",
       label: "deepseek",
@@ -124,7 +126,7 @@ describe("resolveV4ModelTriggerLabel", () => {
         providerId: "default-deepseek",
         providerName: "deepseek",
       }),
-    ).toBe("deepseek/deepseek-v4-flash");
+    ).toBe("deepseek-v4-flash");
   });
 
   it("当前编码值失效时使用既有占位回落", () => {
@@ -140,8 +142,10 @@ describe("resolveV4ModelTriggerLabel", () => {
 });
 
 describe("resolveV4ModelTriggerDisplay", () => {
+  // Polaris（7198f5b2）：`V4ModelTriggerDisplay` 不再有 `providerPrefix`——响应式前缀
+  // 节点随「触发器只显示模型名」一起取消；完整身份保留在 fullLabel（tooltip/aria-label）。
   it.each([undefined, "", "   "])(
-    "名称为 %s 时以 providerId 保留完整身份和前缀",
+    "名称为 %s 时退回模型名，不把 providerId 摆上屏",
     (providerName) => {
       const group = createGroup({
         key: "bigmodel-api",
@@ -157,14 +161,13 @@ describe("resolveV4ModelTriggerDisplay", () => {
           providerName,
         }),
       ).toEqual({
-        fullLabel: "bigmodel-api/GLM-5.3",
-        providerPrefix: "bigmodel-api/",
+        fullLabel: "GLM-5.3",
         modelLabel: "GLM-5.3",
       });
     },
   );
 
-  it("保留完整身份并把自定义供应商前缀拆成响应式展示节点", () => {
+  it("保留完整身份，可见文案仍只有模型名", () => {
     const group = createGroup({
       key: "default-deepseek",
       label: "deepseek",
@@ -181,7 +184,6 @@ describe("resolveV4ModelTriggerDisplay", () => {
       }),
     ).toEqual({
       fullLabel: "deepseek/deepseek-v4-flash",
-      providerPrefix: "deepseek/",
       modelLabel: "deepseek-v4-flash",
     });
   });

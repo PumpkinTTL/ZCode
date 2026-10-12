@@ -253,9 +253,10 @@ describe("WorkspaceHelpMenuButton", () => {
   it("桌面两组一条分隔线，导出日志位于桌面组首项，Web 仅帮助组", async () => {
     for (const desktop of [true, false]) {
       const html = await render(desktop);
+      // Polaris：社群入口由 COMMUNITY_ENTRY_ENABLED 统一收口为关闭（自有社群接入前
+      // 官方地址对用户不可达），菜单项位置保留但不渲染。
       expect(captured.menuItems.map((item) => item.label)).toEqual([
         "workspaceHeader.help.docs",
-        "workspaceHeader.help.community",
         "workspaceHeader.help.issueReport",
         "workspaceHeader.help.productRequest",
         ...(desktop
@@ -277,11 +278,12 @@ describe("WorkspaceHelpMenuButton", () => {
       for (const id of [
         "workspaceHeader.help.issueReport",
         "workspaceHeader.help.productRequest",
-        "workspaceHeader.help.community",
         "workspaceHeader.help.docs",
       ]) {
         expect(html).toContain(id);
       }
+      // 社群入口默认关闭：地址不可达时宁可不出，也不给一个点了没反应的坏链接。
+      expect(html).not.toContain("workspaceHeader.help.community");
     }
   });
 });

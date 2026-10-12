@@ -572,7 +572,7 @@ describe("WorkflowRunSidePane 子代理模型", () => {
     expect(document.body.textContent).not.toContain("4fc7f541");
     expect(segment.getAttribute("title")).toContain(TEAM_PLAN_MODEL);
     // 强度不上屏，它跟规范串一起住在 tooltip 里。
-    expect(segment.getAttribute("title")).toContain("thinking High");
+    expect(segment.getAttribute("title")).toContain("thinking high");
   });
 
   it("zh-CN 下同一段说中文，模型名原样不译", () => {

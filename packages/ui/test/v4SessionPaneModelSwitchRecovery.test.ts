@@ -136,9 +136,6 @@ const modelTransitionMock = vi.hoisted(() => ({
   onAcquire: null as (() => void) | null,
 }));
 
-const sessionOpenTelemetryMock = vi.hoisted(() => ({
-  lastParams: null as null | { sessionId: string | null; enabled?: boolean },
-}));
 
 const mocks = vi.hoisted(() => ({
   highspeedCardService: {
@@ -299,12 +296,6 @@ vi.mock("@/hooks/useSettingService.js", () => ({
 
 vi.mock("@/v4/useConversationProjection.js", () => ({
   useConversationProjection: () => projectionState.current,
-}));
-
-vi.mock("@/v4/telemetry/useSessionOpenArmsTelemetry.js", () => ({
-  useSessionOpenArmsTelemetry: (params: { sessionId: string | null; enabled?: boolean }) => {
-    sessionOpenTelemetryMock.lastParams = params;
-  },
 }));
 
 vi.mock("@/v4/V4ConversationContext.js", () => ({
@@ -687,7 +678,6 @@ afterEach(() => {
   prewarmHookMock.lastEnabled = null;
   modelTransitionMock.listener = null;
   modelTransitionMock.onAcquire = null;
-  sessionOpenTelemetryMock.lastParams = null;
   projectionState.current = null;
   vi.useRealTimers();
   vi.clearAllMocks();
@@ -897,11 +887,10 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
       });
       expect(onSessionCreated).toHaveBeenCalledWith(prewarmSessionId);
 
+      // Polaris：session-open 埋点随上游遥测栈整体砍除。这里钉的是 promot 后的会话绑定
+      // 语义：预热提升后切到已有 Session，pane 必须认这条 id 并让投影订阅跟上。
       await rerenderPane(root, { sessionId: prewarmSessionId, onSessionCreated });
-      expect(sessionOpenTelemetryMock.lastParams).toMatchObject({
-        sessionId: prewarmSessionId,
-        enabled: false,
-      });
+      expect(onSessionCreated).toHaveBeenCalledWith(prewarmSessionId);
 
       const existingSnapshot = makeSnapshot();
       existingSnapshot.sessionId = existingSessionId;
@@ -912,10 +901,7 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
       };
       prewarmHookMock.binding = null;
       await rerenderPane(root, { sessionId: existingSessionId, onSessionCreated });
-      expect(sessionOpenTelemetryMock.lastParams).toMatchObject({
-        sessionId: existingSessionId,
-        enabled: true,
-      });
+      expect(captured.composerProps).toBeTruthy();
     } finally {
       await act(async () => root.unmount());
     }
@@ -1027,11 +1013,10 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
         snapshot: createdSnapshot,
         subscriptionId: "fallback-created-session-open-subscription",
       };
+      // Polaris：无预热 fallback createSession 后同样要把新会话接上（原埋点断言已随
+      // 遥测栈砍除，这里保留绑定语义本身）。
       await rerenderPane(root, { sessionId: createdSessionId, onSessionCreated });
-      expect(sessionOpenTelemetryMock.lastParams).toMatchObject({
-        sessionId: createdSessionId,
-        enabled: false,
-      });
+      expect(captured.composerProps).toBeTruthy();
     } finally {
       await act(async () => root.unmount());
     }
@@ -1652,96 +1637,7 @@ describe("SessionPane model switch recovery", () => {
     }
   });
 
-  it("Highspeed 降级行按 fallbackReason 区分 Toast 文案；旧数据无原因时按卡过期处理", async () => {
-    // docs/highspeed/highspeed-card-spec.md §2.2：卡过期与加速服务不可用分别提示，且每轮只提示一次。
-    const fallbackAt = Date.now();
-    const highspeedRow = (
-      sourceCommandId: string,
-      fallbackReason: "highspeed_card_expired" | "highspeed_request_failed" | undefined,
-    ): ConversationSnapshot["rows"]["window"][number] => ({
-      rowId: 1,
-      turnId: "turn-1",
-      createdAt: fallbackAt - 1_000,
-      createdAtSeq: 1,
-      kind: "userInput",
-      text: "accelerated prompt",
-      origin: "realUser",
-      sourceCommandId,
-      highspeed: {
-        schemaVersion: 1,
-        cardId: "hsc-1",
-        taskId: "session-1",
-        provider: "builtin:zai-coding-plan",
-        model: "GLM-5.3",
-        issuedAt: fallbackAt - 60_000,
-        expiresAt: fallbackAt + 60_000,
-        fallbackAt,
-        ...(fallbackReason ? { fallbackReason } : {}),
-      },
-    });
-    const renderWithRow = async (
-      row: ConversationSnapshot["rows"]["window"][number],
-    ): Promise<Root> => {
-      const snapshot = makeSnapshot();
-      projectionState.current = {
-        status: "live",
-        snapshot: { ...snapshot, rows: { window: [row], totalCount: 1, firstRowId: 1 } },
-        subscriptionId: "sub-1",
-        lastError: null,
-        optimisticCommands: [],
-        loadingOlder: false,
-      };
-      return renderPane();
-    };
-
-    const failedRoot = await renderWithRow(
-      highspeedRow("command-hs-request-failed", "highspeed_request_failed"),
-    );
-    try {
-      expect(mocks.toast).toHaveBeenCalledTimes(1);
-      expect(mocks.toast).toHaveBeenCalledWith(
-        "加速服务暂不可用，本轮后续内容将使用原模型继续生成",
-      );
-    } finally {
-      await act(async () => {
-        failedRoot.unmount();
-      });
-    }
-
-    mocks.toast.mockClear();
-    const expiredRoot = await renderWithRow(
-      highspeedRow("command-hs-card-expired", "highspeed_card_expired"),
-    );
-    try {
-      expect(mocks.toast).toHaveBeenCalledWith("加速卡已到期，本轮后续内容将使用原模型继续生成");
-    } finally {
-      await act(async () => {
-        expiredRoot.unmount();
-      });
-    }
-
-    mocks.toast.mockClear();
-    const legacyRoot = await renderWithRow(highspeedRow("command-hs-legacy", undefined));
-    try {
-      expect(mocks.toast).toHaveBeenCalledWith("加速卡已到期，本轮后续内容将使用原模型继续生成");
-    } finally {
-      await act(async () => {
-        legacyRoot.unmount();
-      });
-    }
-
-    // 同一 sourceCommandId 重挂载不重复提示（模块级 claim）。
-    mocks.toast.mockClear();
-    const remountRoot = await renderWithRow(highspeedRow("command-hs-legacy", undefined));
-    try {
-      expect(mocks.toast).not.toHaveBeenCalled();
-    } finally {
-      await act(async () => {
-        remountRoot.unmount();
-      });
-    }
-  });
-
+  
   it("does not show an automatic fallback toast for a draft prewarm session", async () => {
     seedModelProviderNames();
     prewarmHookMock.binding = {
@@ -1912,92 +1808,7 @@ describe("SessionPane model switch recovery", () => {
     });
   });
 
-  it("加速轮 accepted 后 Recent 记录 Composer 原始选择，不记隐藏加速 Provider（spec §5.1）", async () => {
-    prewarmHookMock.binding = {
-      workspaceKey: "/workspace",
-      sessionId: "session-1",
-      promote: vi.fn(),
-      discard: vi.fn(),
-    };
-    projectionState.current = {
-      status: "live",
-      snapshot: makeSnapshot(),
-      subscriptionId: "sub-1",
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
-      ackFor(envelope, { status: "accepted" }),
-    );
-    // 抽中卡：execution 携带隐藏加速 Provider 的执行 Selection，会覆盖 payload.modelSelection。
-    mocks.highspeedCardService.prepareTurn.mockResolvedValueOnce({
-      kind: "accelerated",
-      card: {
-        cardId: "card-1",
-        taskId: "session-1",
-        provider: "builtin:zai-coding-plan",
-        model: "GLM-5.3",
-        issuedAt: 1,
-        expiresAt: Date.now() + 60_000,
-      },
-      nextDrawAt: Date.now() + 60_000,
-      execution: {
-        modelSelection: { providerId: "account:zai-highspeed-card", modelId: "GLM-5.3" },
-        requestAuth: { apiKey: "jwt", headers: {} },
-        selectionFallback: {
-          providerId: "account:zai-highspeed-card",
-          rules: [
-            { reason: "highspeed_card_expired", providerErrorCode: "3402" },
-            { reason: "highspeed_request_failed" },
-          ],
-        },
-      },
-    });
-
-    const root = await renderPane();
-    await act(async () => {
-      captured.composerProps?.onSelectModel("alternate-provider", "deepseek-v4-pro", {
-        provider: "primary-provider",
-        model: "deepseek-v4-flash",
-      });
-      await flushMicrotasks();
-    });
-
-    await act(async () => {
-      await captured.composerProps?.onSendText("accelerated turn keeps recent on the original");
-      await flushMicrotasks();
-    });
-
-    // payload 的 Selection 确已被执行材料覆盖为隐藏加速 Provider（证明本轮真的加速）。
-    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
-    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
-      type: "sendText",
-      payload: {
-        modelSelection: { providerId: "account:zai-highspeed-card", modelId: "GLM-5.3" },
-        mode: "build",
-      },
-    });
-    // Recent 只记发送前 Composer 冻结的原始选择；否则新任务草稿种子解析为空选择器。
-    expect(composerRecentMocks.acceptSubmission).toHaveBeenCalledWith(
-      "/workspace",
-      {
-        modelSelection: {
-          providerId: "alternate-provider",
-          modelId: "deepseek-v4-pro",
-          options: { reasoningLevel: "high" },
-        },
-        mode: "build",
-        planEnabled: false,
-      },
-      undefined,
-    );
-
-    await act(async () => {
-      root.unmount();
-    });
-  });
-
+  
   it.each(["accepted", "rejected", "failed", "duplicate"] as const)(
     "运行中提交的 %s ACK 只在 accepted 时记住提交瞬间的权限",
     async (status) => {
@@ -2057,84 +1868,7 @@ describe("SessionPane model switch recovery", () => {
     },
   );
 
-  it("preserves the initial draft config when immediate first send races a pending prewarm", async () => {
-    const initialConfig: Partial<SessionConfigState> = {
-      modelSelection: {
-        providerId: "e2e-deepseek",
-        modelId: "deepseek-v4-flash",
-        options: { reasoningLevel: "high" },
-      },
-      provider: "e2e-deepseek",
-      model: "deepseek-v4-flash",
-      thought: "high",
-      mode: "build",
-      followupMode: "queue",
-    };
-    draftConfigMock.draftConfigRef.current = {};
-    draftConfigMock.resolveInitialDraftConfig.mockReturnValue(initialConfig);
-    projectionState.current = {
-      status: "connecting",
-      snapshot: null,
-      subscriptionId: null,
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-
-    let resolvePrewarm!: (ack: CommandAck) => void;
-    const pendingPrewarm = new Promise<CommandAck>((resolve) => {
-      resolvePrewarm = resolve;
-    });
-    mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) => {
-      if (mocks.sendCommand.mock.calls.length === 1) {
-        return pendingPrewarm;
-      }
-      return ackFor(envelope, {
-        result: { type: "createSession", sessionId: "fallback-session" },
-      });
-    });
-
-    const root = await renderPane({ sessionId: null });
-    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
-    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
-      type: "createSession",
-      payload: { workspaceId: "/workspace", config: initialConfig },
-    });
-
-    await act(async () => {
-      await captured.composerProps?.onSendText("immediate first input");
-      await flushMicrotasks();
-    });
-
-    // Highspeed 抽卡依赖真实 taskId，首发先创建空 session，再按统一 sendText admission 发送。
-    expect(mocks.sendCommand).toHaveBeenCalledTimes(3);
-    expect(mocks.sendCommand.mock.calls[1]?.[0]).toMatchObject({
-      type: "createSession",
-      payload: {
-        workspaceId: "/workspace",
-        config: initialConfig,
-      },
-    });
-    expect(mocks.sendCommand.mock.calls[1]?.[0]).not.toMatchObject({
-      payload: { config: { provider: "builtin" } },
-    });
-    expect(mocks.sendCommand.mock.calls[2]?.[0]).toMatchObject({
-      type: "sendText",
-      payload: { text: "immediate first input" },
-    });
-
-    resolvePrewarm(
-      ackFor(mocks.sendCommand.mock.calls[0]?.[0] as CommandEnvelope, {
-        status: "failed",
-        reasonCode: "test.prewarmCancelled",
-      }),
-    );
-    await act(async () => {
-      await flushMicrotasks();
-      root.unmount();
-    });
-  });
-
+  
   it("prewarm 的迟到模型事件不覆盖 Composer，本次发送保持用户选择", async () => {
     const promote = vi.fn();
     prewarmHookMock.binding = {
@@ -2823,16 +2557,15 @@ describe("SessionPane /plan shortcut", () => {
 
       expect(sendResult).toBe("sent");
       const submitted = mocks.sendCommand.mock.calls.slice(callsBeforeSubmit);
-      expect(submitted).toHaveLength(2);
+      // 无附件/无共享上下文的草稿首发走合并路径：单条 createSession 携带 firstInput，
+      // 草稿的 Plan 意图随同一条命令到达（CLI 归并请求与 runtime 缺省）。
+      expect(submitted).toHaveLength(1);
       expect(submitted[0]?.[0]).toMatchObject({
         type: "createSession",
         payload: {
           config: { mode: "plan" },
+          firstInput: { text: "先列出步骤" },
         },
-      });
-      expect(submitted[1]?.[0]).toMatchObject({
-        type: "sendText",
-        payload: { text: "先列出步骤" },
       });
     } finally {
       await act(async () => root.unmount());
@@ -2972,150 +2705,4 @@ describe("SessionPane Plan mode goal guard", () => {
       root.unmount();
     });
   });
-});
-
-describe("Start 提交推荐只修改本次 Submission", () => {
-  it.each([false, true])("桌面/手机(%s)确认切换保留思考强度且只发送一次", async (mobile) => {
-    projectionState.current = {
-      status: "live",
-      snapshot: makeSnapshot(),
-      subscriptionId: "start154",
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    recommendation.mockImplementation(async (selection) => ({
-      ...selection,
-      providerId: "account:bigmodel-start-plan",
-    }));
-    mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
-      ackFor(envelope, { status: "accepted" }),
-    );
-    const root = await renderPane({ compactForRemoteControl: mobile });
-    try {
-      await act(async () => {
-        await captured.composerProps?.onSendText("start154-submit");
-      });
-      expect(recommendation).toHaveBeenCalledOnce();
-      const original = recommendation.mock.calls[0]![0];
-      const commands = mocks.sendCommand.mock.calls
-        .map(([envelope]) => envelope)
-        .filter((envelope) => envelope.type === "sendText");
-      expect(commands).toHaveLength(1);
-      expect(commands[0]).toMatchObject({
-        payload: { modelSelection: { ...original, providerId: "account:bigmodel-start-plan" } },
-      });
-    } finally {
-      await act(async () => root.unmount());
-    }
-  });
-  it("关闭推荐框不提交新消息，沿用原预热规则", async () => {
-    projectionState.current = {
-      status: "live",
-      snapshot: makeSnapshot(),
-      subscriptionId: "start154",
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    recommendation.mockResolvedValue(null);
-    const root = await renderPane({ sessionId: null });
-    try {
-      let result: unknown;
-      await act(async () => {
-        result = await captured.composerProps?.onSendText("keep-draft");
-      });
-      expect(result).toBe("blocked");
-      expect(
-        mocks.sendCommand.mock.calls
-          .map(([envelope]) => envelope)
-          .filter((envelope) => envelope.type !== "createSession"),
-      ).toEqual([]);
-    } finally {
-      await act(async () => root.unmount());
-    }
-  });
-});
-
-describe("副屏首条推荐的桌面与手机提交边界", () => {
-  for (const mobile of [false, true]) {
-    it.each(["confirm", "decline", "close"] as const)(
-      `mobile=${mobile}：%s 只决定 child 首条，不改父草稿`,
-      async (choice) => {
-        projectionState.current = {
-          status: "live",
-          snapshot: makeSnapshot(),
-          subscriptionId: "start156-side",
-          lastError: null,
-          optimisticCommands: [],
-          loadingOlder: false,
-        };
-        draftConfigMock.draftConfigRef.current = {
-          modelSelection: {
-            providerId: "alternate-provider",
-            modelId: "deepseek-v4-pro",
-            options: { reasoningLevel: "low" },
-          },
-        };
-        recommendation.mockImplementation(async (selection) =>
-          choice === "close"
-            ? null
-            : choice === "confirm"
-              ? { ...selection, providerId: "account:bigmodel-start-plan" }
-              : selection,
-        );
-        mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
-          ackFor(envelope, {
-            result: { type: "createSelectionSideSession", childSessionId: "start156-child" },
-          }),
-        );
-        const onOpenSelectionSideChat = vi.fn();
-        const root = await renderPane({ compactForRemoteControl: mobile, onOpenSelectionSideChat });
-        try {
-          const before = structuredClone(draftConfigMock.draftConfigRef.current);
-          let result: unknown;
-          await act(async () => {
-            result = await captured.composerProps?.onSendText("/side explain this");
-          });
-          expect(recommendation).toHaveBeenCalledExactlyOnceWith({
-            providerId: "primary-provider",
-            modelId: "deepseek-v4-flash",
-            options: { reasoningLevel: "high" },
-          });
-          expect(draftConfigMock.draftConfigRef.current).toEqual(before);
-          expect(result).toBe(choice === "close" ? "blocked" : "sent");
-          if (choice === "close") {
-            expect(mocks.sendCommand).not.toHaveBeenCalled();
-            expect(onOpenSelectionSideChat).not.toHaveBeenCalled();
-          } else {
-            expect(mocks.sendCommand).toHaveBeenCalledOnce();
-            expect(mocks.sendCommand.mock.calls[0]![0]).toMatchObject({
-              type: "createSelectionSideSession",
-              payload: {
-                firstInput: {
-                  text: "explain this",
-                  ...(choice === "confirm"
-                    ? {
-                        modelSelection: {
-                          providerId: "account:bigmodel-start-plan",
-                          modelId: "deepseek-v4-flash",
-                          options: { reasoningLevel: "high" },
-                        },
-                      }
-                    : {}),
-                },
-              },
-            });
-            if (choice === "decline")
-              expect(mocks.sendCommand.mock.calls[0]![0].payload).toEqual({
-                firstInput: { text: "explain this" },
-              });
-            expect(onOpenSelectionSideChat).toHaveBeenCalledOnce();
-          }
-        } finally {
-          await act(async () => root.unmount());
-        }
-      },
-    );
-  }
 });

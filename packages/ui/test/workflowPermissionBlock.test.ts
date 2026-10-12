@@ -457,7 +457,7 @@ describe("WorkflowPermissionBlock", () => {
       buildWorkflowRequest({ raw: { script: SCRIPT, subagent_model: "anthropic/opus-5$high" } }),
     );
 
-    expect(querySubagentModel()?.textContent).toBe("Subagents run on opus-5 · thinking High");
+    expect(querySubagentModel()?.textContent).toBe("Subagents run on opus-5 · thinking high");
   });
 
   // 与可调的两句同一个次序（docs/dynamic-workflow/presentation.md「The confirmation window」）：模型在上、上界在下。
@@ -484,7 +484,7 @@ describe("WorkflowPermissionBlock", () => {
       "zh-CN",
     );
 
-    expect(querySubagentModel()?.textContent).toBe("子代理运行在 opus-5 · 思考 高");
+    expect(querySubagentModel()?.textContent).toBe("子代理运行在 opus-5 · 思考 high");
   });
 
   it.each([

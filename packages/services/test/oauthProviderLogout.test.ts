@@ -1,29 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS, ZAI_PROVIDER_ID } from "@zcode/shared";
+import { ZAI_PROVIDER_ID } from "@zcode/shared";
 import { createOAuthProviderLogoutHandler } from "../src/oauth/oauthProviderLogout.js";
 
-function createAccountProviderCredentialStoreStub() {
-  return {
-    deleteApiKey: vi.fn(async (_credentialKey: string) => undefined),
-  };
-}
-
 describe("oauthProviderLogout", () => {
-  it("新 Provider Runtime 登出后只清理账号凭据并刷新 Account Source", async () => {
-    const accountProviderCredentialStore = createAccountProviderCredentialStoreStub();
+  // Polaris fork：官方账号体系移除后，派生 Coding Plan / Start Plan provider key 的清理
+  // 已无对象（accountProviderCredentialStore 依赖一并删除）；保留的契约只剩
+  // 「通知 Account Source 刷新」这一个扩展点。
+  it("新 Provider Runtime 登出后只刷新 Account Source", async () => {
     const refreshAccountProviders = vi.fn(async () => {});
     const handleLogout = createOAuthProviderLogoutHandler({
-      accountProviderCredentialStore,
       refreshAccountProviders,
     });
 
     await handleLogout(ZAI_PROVIDER_ID, "account-a");
 
-    expect(accountProviderCredentialStore.deleteApiKey).toHaveBeenNthCalledWith(
-      1,
-      `account-provider:coding-plan:${BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan}:account:account-a:api-key`,
-    );
-    expect(accountProviderCredentialStore.deleteApiKey).toHaveBeenCalledTimes(1);
+    expect(refreshAccountProviders).toHaveBeenCalledOnce();
     expect(refreshAccountProviders).toHaveBeenCalledWith("oauth-logout:zai");
+  });
+
+  it("未注入刷新回调时登出是安全空操作", async () => {
+    const handleLogout = createOAuthProviderLogoutHandler();
+
+    await expect(handleLogout(ZAI_PROVIDER_ID, "account-a")).resolves.toBeUndefined();
   });
 });

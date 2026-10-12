@@ -92,7 +92,7 @@ function makeFetchApiClient(): ApiClient {
 }
 
 function makeClient(
-  baseUrl = "https://zcode.z.ai/api/v1",
+  baseUrl = "https://nimbus.bitlesu.com/api/v1",
   logger?: ServiceLogger,
 ): FeedbackHttpClient {
   return new FeedbackHttpClient({
@@ -136,7 +136,7 @@ describe("FeedbackHttpClient", () => {
     vi.stubGlobal("fetch", globalFetch);
 
     const client = new FeedbackHttpClient({
-      baseUrl: "https://zcode.z.ai/api/v1",
+      baseUrl: "https://nimbus.bitlesu.com/api/v1",
       getAuthHeaders: async () => ({
         Authorization: "Bearer test-jwt",
         "X-Device-Mid": "desktop-device-mid-test",
@@ -162,7 +162,7 @@ describe("FeedbackHttpClient", () => {
     expect(apiClient.request).toHaveBeenCalledTimes(1);
     expect(globalFetch).not.toHaveBeenCalled();
     const [url, init] = vi.mocked(apiClient.request).mock.calls[0];
-    expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket");
+    expect(String(url)).toBe("https://nimbus.bitlesu.com/api/v1/feedback/ticket");
     const headers = init?.headers as Record<string, string>;
     expect(headers.Authorization).toBe("Bearer test-jwt");
     expect(headers["X-Device-Mid"]).toBe("desktop-device-mid-test");
@@ -187,7 +187,7 @@ describe("FeedbackHttpClient", () => {
         environment?: Record<string, unknown>;
       };
 
-      expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket");
+      expect(String(url)).toBe("https://nimbus.bitlesu.com/api/v1/feedback/ticket");
       expect(headers.Authorization).toBe("Bearer test-jwt");
       expect(headers["X-Device-Mid"]).toBe("desktop-device-mid-test");
       expect(headers["Accept-Language"]).toBe("en-US");
@@ -305,7 +305,7 @@ describe("FeedbackHttpClient", () => {
       ],
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      "https://zcode.z.ai/api/v1/feedback/ticket?limit=50&offset=10",
+      "https://nimbus.bitlesu.com/api/v1/feedback/ticket?limit=50&offset=10",
     );
   });
 
@@ -330,7 +330,7 @@ describe("FeedbackHttpClient", () => {
       total: 0,
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      "https://zcode.z.ai/api/v1/feedback/ticket?limit=0",
+      "https://nimbus.bitlesu.com/api/v1/feedback/ticket?limit=0",
     );
   });
 
@@ -389,7 +389,7 @@ describe("FeedbackHttpClient", () => {
     const ticket = await makeClient().get("fbk_3");
 
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      "https://zcode.z.ai/api/v1/feedback/ticket/fbk_3",
+      "https://nimbus.bitlesu.com/api/v1/feedback/ticket/fbk_3",
     );
     expect(ticket).toMatchObject({
       id: "fbk_3",
@@ -420,7 +420,7 @@ describe("FeedbackHttpClient", () => {
       const body = JSON.parse(String(init?.body ?? "{}")) as {
         content?: { text?: string };
       };
-      expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket/fbk_4/message");
+      expect(String(url)).toBe("https://nimbus.bitlesu.com/api/v1/feedback/ticket/fbk_4/message");
       expect(body).toEqual({ content: { text: "追加说明" } });
       return new Response(
         JSON.stringify({
@@ -452,7 +452,7 @@ describe("FeedbackHttpClient", () => {
       undefined,
       "反馈 HTTP 请求开始",
       expect.objectContaining({
-        url: "https://zcode.z.ai/api/v1/feedback/ticket/:ticketId/message",
+        url: "https://nimbus.bitlesu.com/api/v1/feedback/ticket/:ticketId/message",
       }),
     );
     expect(JSON.stringify(vi.mocked(logger.info).mock.calls)).not.toContain("fbk_4");
@@ -547,7 +547,7 @@ describe("FeedbackHttpClient", () => {
         ),
       );
     const client = new FeedbackHttpClient({
-      baseUrl: "https://zcode.z.ai/api/v1",
+      baseUrl: "https://nimbus.bitlesu.com/api/v1",
       apiClient: createNodeApiClient({ fetchImpl: fetchMock as typeof fetch }),
       getAuthHeaders: async () => ({ "X-Device-Mid": "desktop-device-mid-test" }),
     });
@@ -581,7 +581,7 @@ describe("FeedbackHttpClient", () => {
         ),
       );
     const client = new FeedbackHttpClient({
-      baseUrl: "https://zcode.z.ai/api/v1",
+      baseUrl: "https://nimbus.bitlesu.com/api/v1",
       apiClient: createNodeApiClient({ fetchImpl: fetchMock as typeof fetch }),
       getAuthHeaders: async () => ({ "X-Device-Mid": "desktop-device-mid-test" }),
     });
@@ -601,7 +601,7 @@ describe("FeedbackHttpClient", () => {
       }),
     );
     const client = new FeedbackHttpClient({
-      baseUrl: "https://zcode.z.ai/api/v1",
+      baseUrl: "https://nimbus.bitlesu.com/api/v1",
       apiClient: createNodeApiClient({ fetchImpl: fetchMock as typeof fetch }),
       getAuthHeaders: async () => ({ "X-Device-Mid": "desktop-device-mid-test" }),
     });
@@ -627,7 +627,7 @@ describe("FeedbackHttpClient", () => {
       error: vi.fn(),
     };
     const client = new FeedbackHttpClient({
-      baseUrl: "https://zcode.z.ai/api/v1",
+      baseUrl: "https://nimbus.bitlesu.com/api/v1",
       apiClient: createNodeApiClient({ fetchImpl: fetchMock as typeof fetch }),
       getAuthHeaders: async () => ({ "X-Device-Mid": "desktop-device-mid-test" }),
       logger,
@@ -643,7 +643,7 @@ describe("FeedbackHttpClient", () => {
       expect.objectContaining({
         attemptCount: 3,
         errorCodes: ["UND_ERR_CONNECT_TIMEOUT"],
-        url: "https://zcode.z.ai/api/v1/feedback/ticket",
+        url: "https://nimbus.bitlesu.com/api/v1/feedback/ticket",
       }),
     );
   });
@@ -676,7 +676,7 @@ describe("FeedbackHttpClient", () => {
                 attachment_id: "att_oss",
                 max_size: 100 * 1024 * 1024,
                 callback: {
-                  url: "https://zcode.z.ai/api/v1/feedback/attachment/callback",
+                  url: "https://nimbus.bitlesu.com/api/v1/feedback/attachment/callback",
                   body: "callback-body",
                   content_type: "application/json",
                 },
@@ -753,7 +753,7 @@ describe("FeedbackHttpClient", () => {
       expect(multipart).toContain('name="callback"');
       // callback should be base64-encoded JSON with callbackUrl, callbackBody, callbackBodyType
       const expectedCallbackJson = JSON.stringify({
-        callbackUrl: "https://zcode.z.ai/api/v1/feedback/attachment/callback",
+        callbackUrl: "https://nimbus.bitlesu.com/api/v1/feedback/attachment/callback",
         callbackBody: "callback-body",
         callbackBodyType: "application/json",
       });
@@ -799,7 +799,7 @@ describe("FeedbackHttpClient", () => {
       }),
     };
     const client = new FeedbackHttpClient({
-      baseUrl: "https://zcode.z.ai/api/v1",
+      baseUrl: "https://nimbus.bitlesu.com/api/v1",
       apiClient,
       getAuthHeaders: async () => ({
         Authorization: "Bearer test-jwt",
@@ -813,7 +813,7 @@ describe("FeedbackHttpClient", () => {
       ).rejects.toThrow(`Feedback attachment exceeds max size ${ONE_GIB_BYTES - 1}`);
       expect(apiClient.request).toHaveBeenCalledTimes(1);
       expect(apiClient.request).toHaveBeenCalledWith(
-        "https://zcode.z.ai/api/v1/feedback/attachment/upload-credential",
+        "https://nimbus.bitlesu.com/api/v1/feedback/attachment/upload-credential",
         expect.objectContaining({
           body: JSON.stringify({
             ticket_id: "fbk_large",
@@ -838,7 +838,7 @@ describe("FeedbackHttpClient", () => {
       }),
     };
     const client = new FeedbackHttpClient({
-      baseUrl: "https://zcode.z.ai/api/v1",
+      baseUrl: "https://nimbus.bitlesu.com/api/v1",
       apiClient,
       getAuthHeaders: async () => ({
         Authorization: "Bearer test-jwt",
@@ -867,7 +867,7 @@ describe("FeedbackHttpClient", () => {
       }),
     };
     const client = new FeedbackHttpClient({
-      baseUrl: "https://zcode.z.ai/api/v1",
+      baseUrl: "https://nimbus.bitlesu.com/api/v1",
       apiClient,
       getAuthHeaders: async () => ({
         Authorization: "Bearer test-jwt",
@@ -902,7 +902,7 @@ describe("createFeedbackService", () => {
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
       // Bugfix: feedback 默认 base 已收敛到统一 ZCode endpoint resolver；
       // ZCODE_ENV=test 不能继续断言生产域，否则会掩盖测试环境请求边界。
-      expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket");
+      expect(String(url)).toBe("https://nimbus.bitlesu.com/api/v1/feedback/ticket");
       return new Response(JSON.stringify({ code: 0, msg: "ok", data: { items: [] } }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -929,7 +929,7 @@ describe("createFeedbackService", () => {
     vi.stubEnv("ZCODE_BASE_URL", "");
     vi.stubEnv("ZCODE_ENDPOINT_ORIGIN", "");
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
-      expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket");
+      expect(String(url)).toBe("https://nimbus.bitlesu.com/api/v1/feedback/ticket");
       return new Response(JSON.stringify({ code: 0, msg: "ok", data: { items: [] } }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -1015,7 +1015,7 @@ describe("createFeedbackService", () => {
     try {
       const service = createFeedbackService({
         apiClient: makeFetchApiClient(),
-        apiBaseUrl: "https://zcode.z.ai/api/v1",
+        apiBaseUrl: "https://nimbus.bitlesu.com/api/v1",
         getDeviceMid: () => hostDeviceMid,
         credentialService,
         oauthService: makeOAuthService(),
@@ -1047,7 +1047,7 @@ describe("createFeedbackService", () => {
     const updatedAt = epochSeconds(2026, 6, 25, 13);
     const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       const headers = init?.headers as Record<string, string>;
-      expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket");
+      expect(String(url)).toBe("https://nimbus.bitlesu.com/api/v1/feedback/ticket");
       expect(headers.Authorization).toBe("Bearer shared-backend-jwt");
       expect(headers["X-Device-Mid"]).toBe("desktop-device-mid-222");
       expect(headers["X-Feedback-Client-Id"]).toBeUndefined();
@@ -1076,7 +1076,7 @@ describe("createFeedbackService", () => {
     try {
       const service = createFeedbackService({
         apiClient: makeFetchApiClient(),
-        apiBaseUrl: "https://zcode.z.ai/api/v1",
+        apiBaseUrl: "https://nimbus.bitlesu.com/api/v1",
         getDeviceMid: () => "desktop-device-mid-222",
         credentialService: makeCredentialService((key) => {
           if (key === "zcodejwttoken") return "shared-backend-jwt";
@@ -1121,7 +1121,7 @@ describe("createFeedbackService", () => {
     };
     const service = createFeedbackService({
       apiClient,
-      apiBaseUrl: "https://zcode.z.ai/api/v1",
+      apiBaseUrl: "https://nimbus.bitlesu.com/api/v1",
       getDeviceMid: () => "desktop-device-mid-cancel",
       credentialService: makeCredentialService(),
       oauthService: makeOAuthService(),

@@ -1401,6 +1401,9 @@ export function createZCodeAgentService(
       providerId: request.providerId,
       modelId: request.modelSelection.modelId,
       accountAccess: request.accountAccess,
+      // 作用域/指纹必须原样透传：解析器要靠它们拒绝跨账号或已失效的 Project Token。
+      expectedAccountScope: request.expectedAccountScope,
+      rejectedProjectTokenFingerprint: request.rejectedProjectTokenFingerprint,
       reason: request.reason,
     });
   }

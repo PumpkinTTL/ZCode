@@ -77,7 +77,7 @@ describe("node repl tool display", () => {
         },
         output: {
           type: "text",
-          value: "# Selected Browser\n- Name: ZCode In-app Browser",
+          value: "# Selected Browser\n- Name: Polaris In-app Browser",
         },
         status: "completed",
       }),
@@ -85,7 +85,7 @@ describe("node repl tool display", () => {
       operation: "run",
       userTitle: "选择浏览器并读取操作说明",
       code: "globalThis.browser = await agent.browsers.getDefault();",
-      resultText: "# Selected Browser\n- Name: ZCode In-app Browser",
+      resultText: "# Selected Browser\n- Name: Polaris In-app Browser",
     });
   });
 
@@ -159,7 +159,8 @@ describe("node repl tool display", () => {
 
     expect(model.resultText).toBeUndefined();
     expect(model.images).toEqual([{ base64: "AAAA", mimeType: "image/png" }]);
-    expect(html).toContain('src="data:image/png;base64,AAAA"');
+    // 同上：Polaris 截图走 objectURL 缓存，src 可能是 data URL 或解码后的 blob URL。
+    expect(html).toMatch(/src="(?:data:image\/png;base64,AAAA|blob:[^"]+)"/);
     expect(html).toContain("w-fit max-w-1/2 cursor-zoom-in overflow-hidden rounded-xl");
     expect(html).toContain("h-auto max-h-90 max-w-full rounded-xl border border-border");
     expect(html).not.toContain("Attached image");
@@ -259,7 +260,10 @@ describe("node repl tool display", () => {
     );
 
     expect(model.displaySource).toBe("browser_turn_end");
-    expect(html).toContain('src="data:image/png;base64,AAAA"');
+    // Polaris：截图经 screenshotObjectUrlCache 渲染期解析——后台解码完成后以
+    // blob objectURL 交给 <img>（未命中时首帧仍是 data URL），断言只要求 src 指向
+    // 这张 png，避免把内存优化写死成 data URL 契约。
+    expect(html).toMatch(/src="(?:data:image\/png;base64,AAAA|blob:[^"]+)"/);
     expect(html).toContain("w-fit max-w-1/2 cursor-zoom-in overflow-hidden rounded-xl");
     expect(html).toContain("h-auto max-h-90 max-w-full rounded-xl");
     expect(html).not.toContain("查看执行详情");

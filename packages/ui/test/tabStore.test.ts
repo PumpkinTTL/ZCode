@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyWorkspaceTriggerSelection } from "../src/WorkspaceSidebar.js";
 import {
   createTabStore,
   isWorkspaceReadOnly,
@@ -320,35 +319,9 @@ describe("tabStore", () => {
     ]);
   });
 
-  it("reopens a collapsed workspace without toggling it shut again", () => {
-    const activateTab = vi.fn();
-    const toggleWorkspaceExpanded = vi.fn();
-
-    applyWorkspaceTriggerSelection({
-      tabId: "tab-a",
-      workspacePath: "/tmp/a",
-      isExpanded: false,
-      activateTab,
-      toggleWorkspaceExpanded,
-    });
-
-    expect(activateTab).toHaveBeenCalledWith("tab-a");
-    expect(toggleWorkspaceExpanded).not.toHaveBeenCalled();
-  });
-
-  it("collapses an expanded workspace after activating it", () => {
-    const activateTab = vi.fn();
-    const toggleWorkspaceExpanded = vi.fn();
-
-    applyWorkspaceTriggerSelection({
-      tabId: "tab-a",
-      workspacePath: "/tmp/a",
-      isExpanded: true,
-      activateTab,
-      toggleWorkspaceExpanded,
-    });
-
-    expect(activateTab).toHaveBeenCalledWith("tab-a");
-    expect(toggleWorkspaceExpanded).toHaveBeenCalledWith("/tmp/a");
-  });
+  // 「reopens a collapsed workspace without toggling it shut again」与
+  // 「collapses an expanded workspace after activating it」两例测的是上游
+  // WorkspaceSidebar/workspaceSidebarSelection.applyWorkspaceTriggerSelection；
+  // Polaris 已删除该 helper，展开/收起职责拆到 WorkspaceSidebarItem.handleWorkspaceOpenChange
+  // （展开只走草稿导航、收起只 toggle），此处随之移除。
 });

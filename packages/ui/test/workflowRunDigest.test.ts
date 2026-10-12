@@ -289,7 +289,7 @@ describe("WorkflowRunDigest 子代理模型", () => {
     expect(detail.textContent).toBe("2 phases · 1 agent working · GLM-5.3-Flash");
     expect(document.body.textContent).not.toContain("4fc7f541");
     expect(detail.getAttribute("title")).toContain(TEAM_PLAN_MODEL);
-    expect(detail.getAttribute("title")).toContain("thinking High");
+    expect(detail.getAttribute("title")).toContain("thinking high");
   });
 
   it("宿主给得出 provider 名时才拼「名字/模型」", () => {

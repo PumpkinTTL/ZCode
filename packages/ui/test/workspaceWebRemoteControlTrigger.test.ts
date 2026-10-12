@@ -1,5 +1,8 @@
+// @vitest-environment jsdom
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { resolvedRemoteSessionIdMock } = vi.hoisted(() => ({
@@ -117,6 +120,41 @@ async function renderTriggerWithEnv(
   );
 }
 
+async function renderTriggerInDom(
+  options?: {
+    initialTaskId?: string;
+    featureEnabled?: boolean;
+    workspaceIdentity?: string;
+    remoteSessionId?: string;
+  },
+) {
+  vi.resetModules();
+  vi.doMock("@zcode/shared", () => ({ ZCODE_ENV: "test" }));
+
+  const { WorkspaceWebRemoteControlTrigger } =
+    await import("../src/WorkspaceWebRemoteControlTrigger.js");
+
+  // Polaris（d58ef034）：dialog 改为 lazy import（整条链含 qrcode，不再拖进首屏），
+  // 静态渲染只会拿到 Suspense 空 fallback；弹层 props 必须在客户端渲染下断言。
+  const { render } = await import("@testing-library/react");
+  const view = render(
+    createElement(WorkspaceWebRemoteControlTrigger, {
+      workspacePath: "/tmp/project",
+      workspaceIdentity: options?.workspaceIdentity,
+      remoteSessionId: options?.remoteSessionId,
+      initialTaskId: options?.initialTaskId,
+    }),
+  );
+  await waitFor(() => {
+    expect(view.queryByTestId("web-remote-control-dialog")).not.toBeNull();
+  });
+  const dialog = view.getByTestId("web-remote-control-dialog");
+  return {
+    initialTaskId: dialog.getAttribute("data-initial-task-id") ?? "",
+    remoteSessionId: dialog.getAttribute("data-remote-session-id") ?? "",
+  };
+}
+
 afterEach(() => {
   resolvedRemoteSessionIdMock.mockReset();
   vi.resetModules();
@@ -144,17 +182,17 @@ describe("WorkspaceWebRemoteControlTrigger", () => {
   });
 
   it("把当前 active task 作为 Web 远程控制初始 task 传给弹层", async () => {
-    const html = await renderTriggerWithEnv("test", {
+    const dialog = await renderTriggerInDom({
       initialTaskId: "task-from-desktop",
     });
 
-    expect(html).toContain('data-initial-task-id="task-from-desktop"');
+    expect(dialog.initialTaskId).toBe("task-from-desktop");
   });
 
   it("用 workspaceIdentity 精确解析远控 session，并只向弹层传递已验证结果", async () => {
     resolvedRemoteSessionIdMock.mockReturnValue(null);
 
-    const html = await renderTriggerWithEnv("test", {
+    const dialog = await renderTriggerInDom({
       workspaceIdentity: "remote:ssh:localhost:2222:root:/tmp/project",
       remoteSessionId: "stale-session",
     });
@@ -164,8 +202,8 @@ describe("WorkspaceWebRemoteControlTrigger", () => {
       "stale-session",
       "remote:ssh:localhost:2222:root:/tmp/project",
     );
-    expect(html).toContain('data-remote-session-id=""');
-    expect(html).not.toContain('data-remote-session-id="stale-session"');
+    expect(dialog.remoteSessionId).toBe("");
+    expect(dialog.remoteSessionId).not.toBe("stale-session");
   });
 
   it("把入口名称和手机连接状态合并到同一个 tooltip", async () => {

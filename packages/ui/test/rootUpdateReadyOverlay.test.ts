@@ -352,6 +352,10 @@ describe("Root update ready overlay", () => {
     tabStoreState.tabs = [{ id: "settings", type: "settings" }];
     tabStoreState.activeTabId = "settings";
 
+    // Polaris 把 SettingsPage 改成 lazy（首屏懒加载），SSR 首轮会落到 Suspense fallback，
+    // 等 lazy chunk 就绪后第二轮才渲染真实内容；这里先预热再取断言用的那一轮。
+    await renderRoot();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     const html = await renderRoot();
 
     expect(html).toContain('data-testid="settings-page"');

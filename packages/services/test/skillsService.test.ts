@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -46,11 +47,11 @@ function writeSkillMeta(basePath: string, folder: string, metadata: unknown): vo
 }
 
 function workspaceSkillRoot(workspacePath: string): string {
-  return join(workspacePath, ".zcode", "skills");
+  return join(workspacePath, ".polaris", "skills");
 }
 
 function userSkillRoot(home: string): string {
-  return join(home, ".zcode", "skills");
+  return join(home, ".polaris", "skills");
 }
 
 function userAgentsSkillRoot(home: string): string {
@@ -60,11 +61,11 @@ function userAgentsSkillRoot(home: string): string {
 function officialPluginRoot(home: string, pluginName: string, version = "0.1.0"): string {
   return join(
     home,
-    ".zcode",
+    ".polaris",
     "cli",
     "plugins",
     "cache",
-    "zcode-plugins-official",
+    "polaris-plugins-official",
     pluginName,
     version,
   );
@@ -78,7 +79,7 @@ function marketplacePluginRoot(
 ): string {
   return join(
     home,
-    ".zcode",
+    ".polaris",
     "cli",
     "plugins",
     "cache",
@@ -115,7 +116,7 @@ function writeInstalledPluginRecord(
     version?: string;
   },
 ): void {
-  const pluginsRoot = join(home, ".zcode", "cli", "plugins");
+  const pluginsRoot = join(home, ".polaris", "cli", "plugins");
   mkdirSync(pluginsRoot, { recursive: true });
   writeFileSync(
     join(pluginsRoot, "installed_plugins.json"),
@@ -144,8 +145,8 @@ function writeInstalledPluginRecord(
 }
 
 function writeCliConfig(home: string, config: Record<string, unknown>): void {
-  const configPath = join(home, ".zcode", "cli", "config.json");
-  mkdirSync(join(home, ".zcode", "cli"), { recursive: true });
+  const configPath = join(home, ".polaris", "cli", "config.json");
+  mkdirSync(join(home, ".polaris", "cli"), { recursive: true });
   writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
 }
 
@@ -176,7 +177,7 @@ description: from zcode
 zcode-body`,
     );
     writeSkill(
-      join(workspacePath, ".zcode", "cli", "skills"),
+      join(workspacePath, ".polaris", "cli", "skills"),
       "old-glm",
       `---
 name: old-glm
@@ -464,7 +465,7 @@ description: agents version
 agents-review-body`,
     );
     writeSkill(
-      join(home, ".zcode", "cli", "skills"),
+      join(home, ".polaris", "cli", "skills"),
       "old-global",
       `---
 name: old-global
@@ -483,10 +484,14 @@ body`,
       "shared-review",
       "zcode-global",
     ]);
+    // SkillSummary.path 是 realpath 归一化后的 SKILL.md 文件路径；Windows 上 tmpdir
+    // 可能是 8.3 短路径（ADMINI~1），而异步 realpath 会展开成长路径，需用 .native 对齐，
+    // 否则断言会因环境路径形式不同而假红。
+    const canonicalUserSkillRoot = realpathSync.native(join(home, ".polaris", "skills"));
     expect(result.skills.find((skill) => skill.name === "copied-global")?.path)
-      .toContain(join(home, ".zcode", "skills", "copied-global"));
+      .toContain(join(canonicalUserSkillRoot, "copied-global"));
     expect(result.skills.find((skill) => skill.name === "shared-review")?.path)
-      .toContain(join(home, ".zcode", "skills", "current-review"));
+      .toContain(join(canonicalUserSkillRoot, "current-review"));
     expect(result.skills.every((skill) => skill.scope === "user")).toBe(true);
   });
 
@@ -600,7 +605,7 @@ android-body`,
     writeCliConfig(home, {
       plugins: {
         enabledPlugins: {
-          "ios-simulator@zcode-plugins-official": true,
+          "ios-simulator@polaris-plugins-official": true,
         },
       },
     });
@@ -699,9 +704,9 @@ diagnosing-body`,
     writeCliConfig(home, {
       plugins: {
         suppressedBuiltins: [
-          "browser-use@zcode-plugins-official",
-          "documents@zcode-plugins-official",
-          "zcode-guide@zcode-plugins-official",
+          "browser-use@polaris-plugins-official",
+          "documents@polaris-plugins-official",
+          "zcode-guide@polaris-plugins-official",
         ],
       },
     });
@@ -905,7 +910,7 @@ body`,
       provider: "glm",
     });
     const config = JSON.parse(
-      readFileSync(join(home, ".zcode", "cli", "config.json"), "utf-8"),
+      readFileSync(join(home, ".polaris", "cli", "config.json"), "utf-8"),
     ) as { skills?: Record<string, { enable?: boolean }> };
     expect(disabled.skills[0]?.enabled).toBe(false);
     expect(enabled.skills[0]?.enabled).toBe(false);
@@ -926,7 +931,7 @@ body`,
       provider: "glm",
     });
     const reenabledConfig = JSON.parse(
-      readFileSync(join(home, ".zcode", "cli", "config.json"), "utf-8"),
+      readFileSync(join(home, ".polaris", "cli", "config.json"), "utf-8"),
     ) as { skills?: Record<string, { enable?: boolean }> };
     expect(reenabled.skills[0]?.enabled).toBe(true);
     expect(reenabledConfig.skills?.[skill.path]).toBeUndefined();
@@ -936,8 +941,8 @@ body`,
     const home = makeTempHome();
     const workspacePath = join(home, "workspace");
     const legacySkillId = "workspace:legacy-skill";
-    const legacyStatePath = join(home, ".zcode", "v2", "skills-state.json");
-    mkdirSync(join(home, ".zcode", "v2"), { recursive: true });
+    const legacyStatePath = join(home, ".polaris", "v2", "skills-state.json");
+    mkdirSync(join(home, ".polaris", "v2"), { recursive: true });
     writeFileSync(
       legacyStatePath,
       JSON.stringify({ disabledByWorkspace: { [workspacePath]: [legacySkillId] } }),
@@ -951,7 +956,7 @@ body`,
       disabledByWorkspace?: Record<string, string[]>;
     };
     expect(state.disabledByWorkspace).toEqual({ [workspacePath]: [legacySkillId] });
-    expect(existsSync(join(home, ".zcode", "cli", "config.json"))).toBe(false);
+    expect(existsSync(join(home, ".polaris", "cli", "config.json"))).toBe(false);
   });
 
   it("buildPromptContext 只注入启用且被提及的技能正文", async () => {
@@ -988,7 +993,7 @@ plan-body`,
     expect(context.prompt).toContain("review-body");
     expect(context.prompt).not.toContain("plan-body");
     expect(context.activatedSkillNames).toEqual(["code-review"]);
-    expect(existsSync(join(home, ".zcode", "v2", "skills-audit.log"))).toBe(true);
+    expect(existsSync(join(home, ".polaris", "v2", "skills-audit.log"))).toBe(true);
   });
 
   it("被禁用的技能即便被提及也不会注入", async () => {

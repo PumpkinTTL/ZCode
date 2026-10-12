@@ -821,13 +821,13 @@ describe("botsService messageFlow", () => {
             value: "gpt-5.3",
             name: "GPT-5.3",
             modelProviderId: "glm",
-            modelProviderName: "ZCode Agent",
+            modelProviderName: "Polaris Agent",
           },
           {
             value: "gpt-5.4",
             name: "GPT-5.4",
             modelProviderId: "glm",
-            modelProviderName: "ZCode Agent",
+            modelProviderName: "Polaris Agent",
           },
         ],
       },
@@ -1361,7 +1361,7 @@ describe("botsService messageFlow", () => {
               value: "gpt-5.4",
               name: "GPT-5.4",
               modelProviderId: "glm",
-              modelProviderName: "ZCode Agent",
+              modelProviderName: "Polaris Agent",
             },
           ],
         },
@@ -4202,7 +4202,7 @@ describe("botsService messageFlow", () => {
       actor,
     });
 
-    expect(helpReplies[0]?.text).toContain("ZCode 机器人命令");
+    expect(helpReplies[0]?.text).toContain("Polaris 机器人命令");
     expect(statusReplies[0]?.text).toContain("状态: 远端未连接");
     expect(statusReplies[0]?.text).toContain("**/重连**");
     expect(legacyTaskService.listTasks).not.toHaveBeenCalled();

@@ -261,8 +261,8 @@ describe("node repl tool interaction", () => {
       expect(lightbox.className).toContain("sm:w-[calc(100vw-2rem)]");
       expect(lightbox.className).toContain("pointer-events-auto");
       expect(lightbox.className).toContain("[app-region:no-drag]");
-      expect(previewImage.getAttribute("src")).toBe(
-        "data:image/png;base64,AAAA",
+      expect(previewImage.getAttribute("src")).toMatch(
+        /^(?:data:image\/png;base64,AAAA|blob:.+)$/,
       );
       expect(previewImage.className).toContain("max-h-full");
       expect(previewImage.className).toContain("max-w-full");
@@ -342,14 +342,19 @@ describe("node repl tool interaction", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "打开图片预览 1" }));
-    expect(
-      screen.getByTestId("node-repl-image-lightbox-image").getAttribute("src"),
-    ).toBe("data:image/png;base64,AAAA");
+    // Polaris：截图 src 走 objectURL 缓存（首帧可能是 data URL，解码后是 blob URL），
+    // 这里只校验两张图在共享预览里按顺序切换。
+    const firstPreviewSrc = screen
+      .getByTestId("node-repl-image-lightbox-image")
+      .getAttribute("src");
+    expect(firstPreviewSrc).toMatch(/^(?:data:image\/png;base64,AAAA|blob:.+)$/);
 
     fireEvent.click(screen.getByRole("button", { name: "下一张图片" }));
-    expect(
-      screen.getByTestId("node-repl-image-lightbox-image").getAttribute("src"),
-    ).toBe("data:image/png;base64,BBBB");
+    const secondPreviewSrc = screen
+      .getByTestId("node-repl-image-lightbox-image")
+      .getAttribute("src");
+    expect(secondPreviewSrc).toMatch(/^(?:data:image\/png;base64,BBBB|blob:.+)$/);
+    expect(secondPreviewSrc).not.toBe(firstPreviewSrc);
 
     fireEvent.keyDown(screen.getByTestId("node-repl-image-lightbox"), {
       key: "ArrowLeft",
@@ -357,7 +362,7 @@ describe("node repl tool interaction", () => {
     });
     expect(
       screen.getByTestId("node-repl-image-lightbox-image").getAttribute("src"),
-    ).toBe("data:image/png;base64,AAAA");
+    ).toBe(firstPreviewSrc);
   });
 
   it("falls back to browser-native navigation when a remote image rejects CORS fetch", async () => {

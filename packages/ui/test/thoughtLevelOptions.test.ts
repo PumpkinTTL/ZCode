@@ -14,27 +14,40 @@ const option: ZCodeConfigOption = {
   type: "select",
   currentValue: "",
 };
-const expectedLabels = [
+// 开关型档位（关闭/开启）走本地化词表；分级档位（minimal…ultra）在 Polaris 里
+// 显示「编辑模型 → 推理档位」配置的那一份名字，不再硬翻成中文档位词
+// （见 f917dd01「档位显示配置里的名字」）。
+const localizedLabels = [
   [["disabled", "false", "no", "none", "nothink", "no-think", "no_think", "off"], "关闭", "Off"],
   [["enable", "enabled", "on", "true"], "开启", "On"],
-  [["minimal"], "极低", "Minimal"],
-  [["low"], "低", "Low"],
-  [["medium"], "中", "Medium"],
-  [["high"], "高", "High"],
-  [["xhigh", "extra-high", "extra_high"], "极高", "Extra high"],
-  [["max"], "最高", "Max"],
-  [["ultra"], "极致", "Ultra"],
 ] as const;
+const configuredNameLabels = [
+  ["minimal"],
+  ["low"],
+  ["medium"],
+  ["high"],
+  ["xhigh", "extra-high", "extra_high"],
+  ["max"],
+  ["ultra"],
+] as const;
+const CONFIGURED_ENTRY_NAME = "原始名称";
 
 describe.each([
   ["zh-CN", zhCN, 1],
   ["en-US", enUS, 2],
 ] as const)("思考档位 %s", (_locale, messages, column) => {
   const intl = { formatMessage: ({ id }: { id: string }) => messages[id] ?? id };
-  for (const row of expectedLabels) {
+  for (const row of localizedLabels) {
     it.each(row[0])("%s 使用约定文案且不改原始值", (value) => {
       const entry = Object.freeze({ value: ` ${value.toUpperCase()} `, name: "原始名称" });
       expect(getThoughtLevelLabel(intl, "glm", option, entry)).toBe(row[column]);
+      expect(entry.value).toBe(` ${value.toUpperCase()} `);
+    });
+  }
+  for (const row of configuredNameLabels) {
+    it.each(row)("%s 使用配置名且不改原始值", (value) => {
+      const entry = Object.freeze({ value: ` ${value.toUpperCase()} `, name: CONFIGURED_ENTRY_NAME });
+      expect(getThoughtLevelLabel(intl, "glm", option, entry)).toBe(CONFIGURED_ENTRY_NAME);
       expect(entry.value).toBe(` ${value.toUpperCase()} `);
     });
   }

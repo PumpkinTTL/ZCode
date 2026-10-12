@@ -362,7 +362,8 @@ describe("AutomationEditView session-created dirty state", () => {
       expect(stableHookValues.selectionInputs.at(-1)).toEqual({ selection: original }),
     );
     expect(screen.getByTestId("automation-model-trigger-label").textContent).toBe(
-      "DeepSeek Provider/deepseek-v4-flash",
+      // Polaris：触发器可见文案只有模型名（Provider 由模型图标承担），与会话侧一致。
+      "deepseek-v4-flash",
     );
     expect(onSubmit).not.toHaveBeenCalled();
     expect(editing.modelSelection).toEqual(original);
@@ -430,7 +431,7 @@ describe("AutomationEditView session-created dirty state", () => {
     expect(promptInput.value).toBe("用户编辑后的指令");
   });
 
-  it("编辑任务时模型触发器与会话侧一致显示 providerName/modelName", () => {
+  it("编辑任务时模型触发器与会话侧一致只显示模型名", () => {
     stableHookValues.modelSelectionView = modelSelectionView;
     render(
       createElement(AutomationEditView, {
@@ -442,8 +443,9 @@ describe("AutomationEditView session-created dirty state", () => {
       }),
     );
 
+    // 会话侧触发器同样只显示模型名：Automations 不能再自行拼 Provider/模型。
     expect(screen.getByTestId("automation-model-trigger-label").textContent).toBe(
-      "DeepSeek Provider/deepseek-v4-flash",
+      "deepseek-v4-flash",
     );
   });
 

@@ -63,7 +63,7 @@ function makeMarketplace(
 describe("pluginStoreListing", () => {
   it("only falls back to a listing when the plugin name is unique", () => {
     const official = makeSummary({
-      id: "computer-use@zcode-plugins-official",
+      id: "computer-use@polaris-plugins-official",
       listing: { displayName: "Computer Use" },
     });
     const custom = makeSummary({
@@ -106,8 +106,8 @@ describe("pluginStoreListing", () => {
   });
 
   it("formats marketplace slugs as display names", () => {
-    expect(formatCanonicalMarketplaceName("zcode-plugins-official", "en-US")).toBe(
-      "ZCode Plugins Official",
+    expect(formatCanonicalMarketplaceName("polaris-plugins-official", "en-US")).toBe(
+      "Polaris Plugins Official",
     );
     expect(formatCanonicalMarketplaceName("claude-plugins-official", "en-US")).toBe(
       "Claude Plugins Official",
@@ -124,45 +124,45 @@ describe("pluginStoreListing", () => {
 
   it("joins catalog, runtime, and installed records into store items", () => {
     const items = buildStoreItems({
-      marketplaces: [makeMarketplace({ id: "zcode-plugins-official" })],
+      marketplaces: [makeMarketplace({ id: "polaris-plugins-official" })],
       marketplaceAvailabilityKnown: true,
       availablePlugins: [
-        makeSummary({ id: "a@zcode-plugins-official", installed: true }),
-        makeSummary({ id: "b@zcode-plugins-official" }),
+        makeSummary({ id: "a@polaris-plugins-official", installed: true }),
+        makeSummary({ id: "b@polaris-plugins-official" }),
       ],
       installedPlugins: [
         {
-          id: "a@zcode-plugins-official",
+          id: "a@polaris-plugins-official",
           name: "a",
-          marketplace: "zcode-plugins-official",
+          marketplace: "polaris-plugins-official",
           enabled: true,
           scope: "user",
         } as ZCodeInstalledPluginSummary,
       ],
       plugins: [
-        makeInfo({ id: "a@zcode-plugins-official" }),
+        makeInfo({ id: "a@polaris-plugins-official" }),
         // 运行时独有（inline）插件也要出现在条目集合里。
         makeInfo({ id: "c@inline", source: "inline" }),
       ],
-      restorableBuiltins: [makeSummary({ id: "d@zcode-plugins-official" })],
+      restorableBuiltins: [makeSummary({ id: "d@polaris-plugins-official" })],
     });
     const byId = new Map(items.map((item) => [item.id, item]));
-    expect(byId.get("a@zcode-plugins-official")?.installed).toBe(true);
-    expect(byId.get("a@zcode-plugins-official")?.info).toBeDefined();
-    expect(byId.get("a@zcode-plugins-official")?.installedMeta).toBeDefined();
-    expect(byId.get("b@zcode-plugins-official")?.installed).toBe(false);
+    expect(byId.get("a@polaris-plugins-official")?.installed).toBe(true);
+    expect(byId.get("a@polaris-plugins-official")?.info).toBeDefined();
+    expect(byId.get("a@polaris-plugins-official")?.installedMeta).toBeDefined();
+    expect(byId.get("b@polaris-plugins-official")?.installed).toBe(false);
     expect(byId.get("c@inline")?.installed).toBe(true);
     expect(byId.get("c@inline")?.orphaned).toBe(false);
-    expect(byId.get("d@zcode-plugins-official")?.restorable).toBe(true);
+    expect(byId.get("d@polaris-plugins-official")?.restorable).toBe(true);
   });
 
   it("merges a restorable built-in with its catalog entry instead of dropping detail metadata", () => {
     const [item] = buildStoreItems({
-      marketplaces: [makeMarketplace({ id: "zcode-plugins-official" })],
+      marketplaces: [makeMarketplace({ id: "polaris-plugins-official" })],
       marketplaceAvailabilityKnown: true,
       availablePlugins: [
         makeSummary({
-          id: "document-skills@zcode-plugins-official",
+          id: "document-skills@polaris-plugins-official",
           listing: {
             category: "productivity",
             displayName: "Document Skills",
@@ -172,11 +172,11 @@ describe("pluginStoreListing", () => {
       ],
       installedPlugins: [],
       plugins: [],
-      restorableBuiltins: [makeSummary({ id: "document-skills@zcode-plugins-official" })],
+      restorableBuiltins: [makeSummary({ id: "document-skills@polaris-plugins-official" })],
     });
 
     expect(item).toMatchObject({
-      id: "document-skills@zcode-plugins-official",
+      id: "document-skills@polaris-plugins-official",
       installed: false,
       restorable: true,
       listing: {
@@ -220,26 +220,26 @@ describe("pluginStoreListing", () => {
 
   it("keeps marketplace ownership when a stale restorable marker overlaps an installed record", () => {
     const [item] = buildStoreItems({
-      marketplaces: [makeMarketplace({ id: "zcode-plugins-official" })],
+      marketplaces: [makeMarketplace({ id: "polaris-plugins-official" })],
       marketplaceAvailabilityKnown: true,
       availablePlugins: [
-        makeSummary({ id: "document-skills@zcode-plugins-official", installed: true }),
+        makeSummary({ id: "document-skills@polaris-plugins-official", installed: true }),
       ],
       installedPlugins: [
         {
-          id: "document-skills@zcode-plugins-official",
+          id: "document-skills@polaris-plugins-official",
           name: "document-skills",
-          marketplace: "zcode-plugins-official",
+          marketplace: "polaris-plugins-official",
           enabled: true,
           scope: "user",
         } as ZCodeInstalledPluginSummary,
       ],
-      plugins: [makeInfo({ id: "document-skills@zcode-plugins-official", enabled: true })],
-      restorableBuiltins: [makeSummary({ id: "document-skills@zcode-plugins-official" })],
+      plugins: [makeInfo({ id: "document-skills@polaris-plugins-official", enabled: true })],
+      restorableBuiltins: [makeSummary({ id: "document-skills@polaris-plugins-official" })],
     });
 
     expect(item).toMatchObject({
-      id: "document-skills@zcode-plugins-official",
+      id: "document-skills@polaris-plugins-official",
       installed: true,
       restorable: false,
       info: { enabled: true },
@@ -298,13 +298,13 @@ describe("pluginStoreListing", () => {
 
   it("does not turn missing configuration into an installable item without a catalog source", () => {
     const missing = makeInfo({
-      id: "document-skills@zcode-plugins-official",
+      id: "document-skills@polaris-plugins-official",
       source: "missing",
       packageStatus: "missing",
       rootPath: "",
     });
     const input = {
-      marketplaces: [makeMarketplace({ id: "zcode-plugins-official" })],
+      marketplaces: [makeMarketplace({ id: "polaris-plugins-official" })],
       marketplaceAvailabilityKnown: true,
       availablePlugins: [],
       installedPlugins: [],
@@ -329,7 +329,7 @@ describe("pluginStoreListing", () => {
       installedPlugins: [],
       plugins: [
         makeInfo({
-          id: "builtin@zcode-plugins-official",
+          id: "builtin@polaris-plugins-official",
           source: "official",
         }),
       ],
@@ -362,22 +362,22 @@ describe("pluginStoreListing", () => {
   it("selects featured items from public marketplaces in catalog order", () => {
     const items = buildStoreItems({
       marketplaces: [
-        makeMarketplace({ id: "zcode-plugins-official" }),
+        makeMarketplace({ id: "polaris-plugins-official" }),
         makeMarketplace({ id: "claude-plugins-official" }),
       ],
       marketplaceAvailabilityKnown: true,
       availablePlugins: [
-        makeSummary({ id: "alpha@zcode-plugins-official" }),
-        makeSummary({ id: "beta@zcode-plugins-official" }),
+        makeSummary({ id: "alpha@polaris-plugins-official" }),
+        makeSummary({ id: "beta@polaris-plugins-official" }),
         makeSummary({ id: "gamma@claude-plugins-official" }),
       ],
       installedPlugins: [],
       plugins: [],
       restorableBuiltins: [],
     });
-    const publicItems = items.filter((item) => item.marketplace === "zcode-plugins-official");
+    const publicItems = items.filter((item) => item.marketplace === "polaris-plugins-official");
     const featured = selectFeaturedItems(publicItems, [
-      makeMarketplace({ id: "zcode-plugins-official", featured: ["beta", "missing", "alpha"] }),
+      makeMarketplace({ id: "polaris-plugins-official", featured: ["beta", "missing", "alpha"] }),
       // 非公开市场的 featured 名单不参与。
       makeMarketplace({ id: "claude-plugins-official", featured: ["gamma"] }),
     ]);
@@ -386,17 +386,17 @@ describe("pluginStoreListing", () => {
 
   it("orders category groups identically across locales with a fixed product order", () => {
     const items = buildStoreItems({
-      marketplaces: [makeMarketplace({ id: "zcode-plugins-official" })],
+      marketplaces: [makeMarketplace({ id: "polaris-plugins-official" })],
       marketplaceAvailabilityKnown: true,
       availablePlugins: [
-        makeSummary({ id: "a@zcode-plugins-official", listing: { category: "productivity" } }),
-        makeSummary({ id: "b@zcode-plugins-official", listing: { category: "developer-tools" } }),
-        makeSummary({ id: "c@zcode-plugins-official", listing: { category: "legal" } }),
-        makeSummary({ id: "d@zcode-plugins-official", listing: { category: "template" } }),
-        makeSummary({ id: "e@zcode-plugins-official", listing: { category: "utilities" } }),
-        makeSummary({ id: "f@zcode-plugins-official", listing: { category: "zebra-unknown" } }),
-        makeSummary({ id: "h@zcode-plugins-official", listing: { category: "finance" } }),
-        makeSummary({ id: "g@zcode-plugins-official" }),
+        makeSummary({ id: "a@polaris-plugins-official", listing: { category: "productivity" } }),
+        makeSummary({ id: "b@polaris-plugins-official", listing: { category: "developer-tools" } }),
+        makeSummary({ id: "c@polaris-plugins-official", listing: { category: "legal" } }),
+        makeSummary({ id: "d@polaris-plugins-official", listing: { category: "template" } }),
+        makeSummary({ id: "e@polaris-plugins-official", listing: { category: "utilities" } }),
+        makeSummary({ id: "f@polaris-plugins-official", listing: { category: "zebra-unknown" } }),
+        makeSummary({ id: "h@polaris-plugins-official", listing: { category: "finance" } }),
+        makeSummary({ id: "g@polaris-plugins-official" }),
       ],
       installedPlugins: [],
       plugins: [],
@@ -421,11 +421,11 @@ describe("pluginStoreListing", () => {
 
   it("prefers listing display name with locale resolution", () => {
     const [item] = buildStoreItems({
-      marketplaces: [makeMarketplace({ id: "zcode-plugins-official" })],
+      marketplaces: [makeMarketplace({ id: "polaris-plugins-official" })],
       marketplaceAvailabilityKnown: true,
       availablePlugins: [
         makeSummary({
-          id: "a@zcode-plugins-official",
+          id: "a@polaris-plugins-official",
           listing: { displayName: "Alpha", displayNameI18n: { "zh-CN": "阿尔法" } },
         }),
       ],
@@ -440,11 +440,11 @@ describe("pluginStoreListing", () => {
 
   it("formats a canonical plugin name when no display name is configured", () => {
     const [item] = buildStoreItems({
-      marketplaces: [makeMarketplace({ id: "zcode-plugins-official" })],
+      marketplaces: [makeMarketplace({ id: "polaris-plugins-official" })],
       marketplaceAvailabilityKnown: true,
       availablePlugins: [
         makeSummary({
-          id: "cloudbase-skills@zcode-plugins-official",
+          id: "cloudbase-skills@polaris-plugins-official",
           name: "cloudbase-skills",
         }),
       ],
@@ -454,7 +454,7 @@ describe("pluginStoreListing", () => {
     });
     expect(item).toBeDefined();
     expect(resolveItemDisplayName(item!, "en-US")).toBe("Cloudbase Skills");
-    expect(formatCanonicalPluginName("zcode-guide", "en-US")).toBe("ZCode Guide");
+    expect(formatCanonicalPluginName("zcode-guide", "en-US")).toBe("Polaris Guide");
     expect(formatCanonicalPluginName("aws-mcp-server", "en-US")).toBe("AWS MCP Server");
     expect(formatCanonicalPluginName("AWS_mCp_tools", "en-US")).toBe("AWS MCP Tools");
   });
@@ -463,7 +463,7 @@ describe("pluginStoreListing", () => {
     const items = buildStoreItems({
       marketplaces: [
         makeMarketplace({ id: "m" }),
-        makeMarketplace({ id: "zcode-plugins-official" }),
+        makeMarketplace({ id: "polaris-plugins-official" }),
       ],
       marketplaceAvailabilityKnown: true,
       availablePlugins: [],
@@ -485,9 +485,9 @@ describe("pluginStoreListing", () => {
           installedAt: "2026-07-01T00:00:00Z",
         } as ZCodeInstalledPluginSummary,
         {
-          id: "builtin@zcode-plugins-official",
+          id: "builtin@polaris-plugins-official",
           name: "builtin",
-          marketplace: "zcode-plugins-official",
+          marketplace: "polaris-plugins-official",
           enabled: true,
           scope: "user",
           installedAt: "2025-01-01T00:00:00Z",
@@ -497,7 +497,7 @@ describe("pluginStoreListing", () => {
         makeInfo({ id: "old@m" }),
         makeInfo({ id: "new@m" }),
         makeInfo({ id: "inline@inline", source: "inline" }),
-        makeInfo({ id: "builtin@zcode-plugins-official", source: "official" }),
+        makeInfo({ id: "builtin@polaris-plugins-official", source: "official" }),
       ],
       restorableBuiltins: [],
     });
@@ -549,8 +549,8 @@ describe("pluginStoreListing", () => {
           lastUpdated: "2026-01-01T00:00:00Z",
         }),
         makeMarketplace({
-          id: "zcode-plugins-official",
-          name: "zcode-plugins-official",
+          id: "polaris-plugins-official",
+          name: "polaris-plugins-official",
           lastUpdated: "2026-08-20T23:00:00Z",
         }),
         makeMarketplace({
@@ -563,7 +563,7 @@ describe("pluginStoreListing", () => {
     );
 
     expect(sorted.map((marketplace) => marketplace.id)).toEqual([
-      "zcode-plugins-official",
+      "polaris-plugins-official",
       "claude-plugins-official",
       "zcode-labs",
       "zcode-plugins-test",
@@ -574,21 +574,21 @@ describe("pluginStoreListing", () => {
 
 describe("document plugin default order", () => {
   const names = ["pdf", "presentations", "spreadsheets", "documents"];
-  const ids = names.map((name) => `${name}@zcode-plugins-official`);
+  const ids = names.map((name) => `${name}@polaris-plugins-official`);
   const items = buildStoreItems({
     marketplaces: [],
     installedPlugins: [],
     restorableBuiltins: [],
     availablePlugins: ["aaa", ...names.toReversed()].map((name) =>
       makeSummary({
-        id: `${name}@zcode-plugins-official`,
+        id: `${name}@polaris-plugins-official`,
         installed: true,
         listing: { category: "productivity" },
       }),
     ),
     plugins: ["aaa", ...names].map((name) =>
       makeInfo({
-        id: `${name}@zcode-plugins-official`,
+        id: `${name}@polaris-plugins-official`,
         source: "official",
         enabled: false,
       }),
@@ -615,7 +615,7 @@ describe("document plugin default order", () => {
       items.filter((item) => item.name !== "pdf"),
       "en-US",
       {
-        pluginOrder: { productivity: ["aaa@zcode-plugins-official"] },
+        pluginOrder: { productivity: ["aaa@polaris-plugins-official"] },
       },
     );
     expect(groups[0]?.items.map((item) => item.name)).toEqual([

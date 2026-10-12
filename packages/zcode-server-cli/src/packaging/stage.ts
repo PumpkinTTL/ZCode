@@ -245,6 +245,8 @@ async function copyDirectoryIfPresent(sourceDir: string | undefined, targetDir: 
   const names = (await (await import("node:fs/promises")).readdir(sourceDir, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory() && entry.name.endsWith("-plugin"))
     .map((entry) => entry.name)
+    // superpowers 按需下载，不进发行包（上游同款排除；merge 时该行曾被丢弃）。
+    .filter((name) => name !== "superpowers-plugin")
     .sort();
   for (const name of names) {
     await copyPackageDir(join(sourceDir, name), join(targetDir, name));

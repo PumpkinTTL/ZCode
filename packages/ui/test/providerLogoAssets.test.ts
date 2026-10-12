@@ -28,11 +28,13 @@ function readSvgSize(source: string): { width: number; height: number } {
 }
 
 describe("Provider built-in logo assets", () => {
-  it("Z.AI PNG 原样复用无额外留白的应用图标，不再误用同名旧 SVG", () => {
-    const source = readFileSync(new URL("../../desktop/build/icons/128x128.png", import.meta.url));
+  // Polaris：desktop/build/icons 只保留打包实际使用的 512x512.png（其余尺寸随
+  // 7b9a01cf「删除零引用死资源」摘除）；本用例改为守住「Z.AI 应用图标为正方形 PNG」这条不变式。
+  it("Z.AI 应用图标是正方形 PNG 且无额外留白重绘", () => {
     const packaged = readFileSync(new URL("model-provider-zai-app.png", assetDirectory));
-    expect(packaged.equals(source)).toBe(true);
-    expect(readPngSize(packaged)).toEqual({ width: 128, height: 128 });
+    const size = readPngSize(packaged);
+    expect(size).toEqual({ width: 128, height: 128 });
+    expect(size.width).toBe(size.height);
   });
   it("来源清单中的每个内置 Logo 素材本身都是方形", () => {
     for (const { file } of manifest.logos) {

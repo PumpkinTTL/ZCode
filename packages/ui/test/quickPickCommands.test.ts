@@ -68,6 +68,7 @@ describe("createQuickPickCommands", () => {
       handlers: createHandlers(),
     });
 
+    // Polaris：COMMUNITY_ENTRY_ENABLED 恒为 false，官方社群命令不注册（坏链接入口摘除）。
     expect(commands.map((command) => command.id)).toEqual([
       "new-task",
       "open-workspace",
@@ -83,7 +84,6 @@ describe("createQuickPickCommands", () => {
       "skills-settings",
       "mcp-settings",
       "feedback",
-      "community",
       "product-docs",
       "login",
     ]);
@@ -286,7 +286,7 @@ describe("createQuickPickCommands", () => {
     ]);
   });
 
-  it("uses logout instead of login for authenticated users", () => {
+  it("keeps only the connect command for app auth", () => {
     const commands = createQuickPickCommands({
       allowOpenWorkspace: true,
       canOpenCommunity: false,
@@ -297,18 +297,17 @@ describe("createQuickPickCommands", () => {
       handlers: createHandlers(),
     });
 
+    // Polaris：官方账号登出链路（OAuth 登出死链）已随 be2d0b9b 摘除，
+    // 已登录时不再注册 login/logout 命令；社群命令同样恒不注册。
     expect(commands.some((command) => command.id === "login")).toBe(false);
-    expect(commands.find((command) => command.id === "logout")).toMatchObject({
-      sectionId: "app",
-      titleId: "quickPick.command.logout",
-    });
+    expect(commands.some((command) => command.id === "logout")).toBe(false);
     expect(commands.some((command) => command.id === "community")).toBe(false);
   });
 
-  it("uses connection wording for app auth commands", () => {
+  it("uses connection wording for the app auth command", () => {
     expect(zhCN["quickPick.command.login"]).toBe("连接");
-    expect(zhCN["quickPick.command.logout"]).toBe("断开连接");
+    expect(zhCN["quickPick.command.logout"]).toBeUndefined();
     expect(enUS["quickPick.command.login"]).toBe("Connect");
-    expect(enUS["quickPick.command.logout"]).toBe("Disconnect");
+    expect(enUS["quickPick.command.logout"]).toBeUndefined();
   });
 });

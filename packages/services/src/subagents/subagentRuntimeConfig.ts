@@ -197,7 +197,9 @@ export function createSubagentRuntimeConfigCache(reader: ConfigReader) {
       if (workspace) {
         const workspaceKey = key(workspace);
         workspaces.get(workspaceKey)?.dispose();
-        const project = documentScope(join(workspace.workspacePath, ".zcode", "agents"), "project");
+        // workspace 级 agents 根与 resolveWorkspaceSubagentRoot 保持一致（Polaris fork：`.polaris`），
+        // 否则 runtime 监听的目录与 SubagentsService 实际写入的目录分叉，项目级 agent 永远不会生效。
+        const project = documentScope(join(workspace.workspacePath, ".polaris", "agents"), "project");
         workspaces.set(workspaceKey, project);
         initializing.push(project);
       }
