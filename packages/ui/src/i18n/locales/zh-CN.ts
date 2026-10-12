@@ -625,9 +625,9 @@ const zhCN: Record<string, string> = {
   "settings.onboardingOpen": "打开引导",
 
   // 应用头部
-  "app.login": "连接使用",
+  "app.login": "登录",
   "app.logout": "断开连接",
-  "sidebar.profile.notLoggedIn": "连接使用",
+  "sidebar.profile.notLoggedIn": "登录",
   "browser.title": "浏览器",
   "browser.addressPlaceholder": "输入网址后回车",
   "browser.back": "后退",

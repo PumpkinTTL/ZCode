@@ -454,7 +454,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               <Wallet className="size-4" />
               {intl.formatMessage({ id: "sidebar.usage.quota.open" })}
             </DropdownMenuItem>
-            {/* Nimbus 已登录时隐藏「连接使用」入口（已连接无需再连），登出改走 Nimbus 账号。 */}
+            {/* Nimbus 已登录时隐藏「登录」入口（已连接无需再连），登出改走 Nimbus 账号。 */}
             {onLogin && !user && !nimbusLoggedIn ? (
               <>
                 <DropdownMenuSeparator />

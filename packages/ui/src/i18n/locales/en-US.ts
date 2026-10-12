@@ -679,9 +679,9 @@ const enUS: Record<string, string> = {
   "settings.onboardingOpen": "Open onboarding",
 
   // App header
-  "app.login": "Connect",
+  "app.login": "Sign in",
   "app.logout": "Disconnect",
-  "sidebar.profile.notLoggedIn": "Connect",
+  "sidebar.profile.notLoggedIn": "Sign in",
   "browser.title": "Browser",
   "browser.addressPlaceholder": "Enter a URL and press Enter",
   "browser.back": "Back",
