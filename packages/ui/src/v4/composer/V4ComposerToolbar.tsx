@@ -87,6 +87,7 @@ export interface V4ComposerToolbarProps {
   phase: SessionPhase | null;
   provider?: ZCodeProvider;
   /** 当前工具条是否运行在 Web 远控壳中。 */
+  isWebRemoteControl?: boolean;
   /** 当前视口是否为手机输入布局。 */
   isMobileViewport?: boolean;
   /** 草稿态（sessionId=null），仅区分新任务呈现，不改变选择来源。 */
@@ -126,6 +127,7 @@ function V4ComposerModelControlsImpl({
   modelSelectionState = MODEL_SELECTION_LOADING_STATE,
   modelSelectionReload,
   provider,
+  isWebRemoteControl = false,
   isMobileViewport = false,
   draftMode = false,
   draftConfig,
@@ -306,7 +308,7 @@ function V4ComposerModelControlsImpl({
     return effectiveConfig.model;
   }, [effectiveConfig, modelSelectionView]);
 
-  // 触发器显示兜底——`<synthetic>`（Claude SDK 恢复合成模型）或当前模型
+  // 触发器显示兜底——`<synthetic>`（SDK 恢复时合成的占位模型）或当前模型
   // 不在可选组（失效/下线/退登）→ 回落占位/默认「选择模型」，不直显协议内部占位符或失效
   // 模型 id。复用存活的 resolveModelSelectTriggerDisplay。
   const triggerDisplay = useMemo(
@@ -599,7 +601,12 @@ function V4ComposerModelControlsImpl({
   // 模型留空是正常的待选择状态，包括已有会话；不能因为没有已选模型隐藏重选入口。
   // 有可选组时正常显示；无组但有「管理模型」入口时也显示，避免用户零模型入口。
   const modelMenuVisible = modelSelectGroups.length > 0 || showManageModelsAction;
-  const providerSubmenuClassName = undefined;
+  // Bug 根因：手机端固定宽度的二级菜单没有消费 Radix 测得的当前方向可用宽度，
+  // 共享 min-w-32 还会阻止极窄空间继续收缩。保持二级交互，同时把窗口边缘作为硬上限。
+  const providerSubmenuClassName =
+    isWebRemoteControl && isMobileViewport
+      ? "w-40 min-w-0 max-w-(--radix-dropdown-menu-content-available-width)"
+      : undefined;
   useToolbarShortcutBindings({
     hasAnyOption: Boolean(modelOption) || Boolean(thoughtOption),
     toolbarDisabled: disabled || recoveryPending,
@@ -615,7 +622,7 @@ function V4ComposerModelControlsImpl({
     <>
       {/*
         e2e 契约（TID_V4_MODEL_CONFIG）：Composer/usage 状态的 data-* 属性锚点。
-        跨模型切换会主动清除源模型的显式 thought；此时可见控件已按目标模型
+        Bug 原因：跨模型切换会主动清除源模型的显式 thought；此时可见控件已按目标模型
         Option Spec 展示默认档位，但旧锚点仍暴露空的原始投影。data-thought 必须与用户
         实际看到的受控值一致，不能重新引入一份草稿状态。
       */}
@@ -681,7 +688,9 @@ function V4ComposerModelControlsImpl({
           lockReasonMessage={modelLockReasonMessage}
           isItemLocked={isModelOptionLocked}
           onValueChange={handleModelValueChange}
-          disabled={disabled || recoveryPending || modelSelectionState.status !== "ready"}
+          disabled={
+            disabled || recoveryPending || modelSelectionState.status !== "ready"
+          }
           tooltipTitle={modelTriggerDisplay.fullLabel}
           shortcutLabel={modelShortcutLabel}
           triggerRef={modelTriggerRef}

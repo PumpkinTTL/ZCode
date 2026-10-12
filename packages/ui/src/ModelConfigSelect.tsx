@@ -115,7 +115,7 @@ const EMPTY_MODEL_SELECT_FOOTER_ACTIONS: readonly ModelSelectFooterAction[] = []
 export const MODEL_CONFIG_SELECT_BADGE_CLASS_NAME =
   "inline-flex shrink-0 items-center justify-center rounded-md border border-border/70 bg-surface/70 px-1.5 h-5 text-ui-xs font-medium leading-none select-none";
 
-function shouldShowModelProviderLevel(modelGroups: readonly ModelSelectGroup[]): boolean {
+export function shouldShowModelProviderLevel(modelGroups: readonly ModelSelectGroup[]): boolean {
   return modelGroups.length > 0;
 }
 
@@ -129,7 +129,7 @@ function isFamilyConnectionGroup(
   );
 }
 
-function shouldRenderModelGroupSeparator(
+export function shouldRenderModelGroupSeparator(
   previousGroup: Pick<ModelSelectGroup, "connectionOptions" | "key" | "labelBadge"> | undefined,
   currentGroup: Pick<ModelSelectGroup, "connectionOptions" | "key" | "labelBadge">,
 ): boolean {
@@ -139,14 +139,14 @@ function shouldRenderModelGroupSeparator(
   return isFamilyConnectionGroup(previousGroup) || isFamilyConnectionGroup(currentGroup);
 }
 
-function isModelSelectGroupSelected(
+export function isModelSelectGroupSelected(
   group: Pick<ModelSelectGroup, "items">,
   normalizedValue: string,
 ): boolean {
   return group.items.some((item) => item.value === normalizedValue);
 }
 
-function getModelTriggerLabelClassName({
+export function getModelTriggerLabelClassName({
   labelVisibilityClassName,
   triggerLabelClassName,
 }: {
@@ -186,6 +186,7 @@ interface ModelConfigSelectProps {
   indicatorClassName?: string;
   triggerClassName?: string;
   triggerIconClassName?: string;
+  triggerIcon?: ReactNode;
   triggerLabelClassName?: string;
   triggerTestId?: string;
   formatTriggerLabel?: (label: string) => string;
@@ -233,6 +234,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
   indicatorClassName,
   triggerClassName,
   triggerIconClassName = "hidden",
+  triggerIcon,
   triggerLabelClassName: customTriggerLabelClassName,
   triggerTestId = TID_CHAT_MODEL_SELECT_TRIGGER,
   formatTriggerLabel,
@@ -589,11 +591,13 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
           triggerClassName,
         )}
       >
-        <ModelBrandIcon
-          modelId={triggerIconIdentity.modelId}
-          providerId={triggerIconIdentity.providerId}
-          className={cn("pointer-events-none size-4 shrink-0", triggerIconClassName)}
-        />
+        {triggerIcon ?? (
+          <ModelBrandIcon
+            modelId={triggerIconIdentity.modelId}
+            providerId={triggerIconIdentity.providerId}
+            className={cn("pointer-events-none size-4 shrink-0", triggerIconClassName)}
+          />
+        )}
         <span className={triggerLabelClassName} title={currentTriggerTitle}>
           <RollingToolbarLabel label={currentTriggerLabel} />
         </span>

@@ -8,6 +8,11 @@ export const modelExecutionSchema = z
     requestAuth: z
       .object({
         apiKey: z.string().min(1).optional(),
+        apiKeyId: z.string().trim().min(1).optional(),
+        accountScope: z
+          .string()
+          .regex(/^[a-f0-9]{64}$/)
+          .optional(),
         headers: z.record(z.string().min(1), z.string().min(1)).optional(),
       })
       .strict()
@@ -21,3 +26,5 @@ export const modelExecutionSchema = z
       .optional(),
   })
   .strict();
+
+export type ModelExecution = z.infer<typeof modelExecutionSchema>;

@@ -1,3 +1,5 @@
+import { getTurnTools } from "./turn-tool-visibility.js";
+
 import { beginLocalTurnPreparation } from "@zcode/contracts";
 import {
   CompactTrigger,
@@ -292,7 +294,10 @@ async function runModelBackedTurnStepImpl(
       state,
       turnNumber: this.turnNumber,
     });
-    if (!state.turnAbortSignal.aborted && admissionRetryDelayMs !== undefined) {
+    if (
+      !state.turnAbortSignal.aborted &&
+      admissionRetryDelayMs !== undefined
+    ) {
       // 第二轮及以后 Start Plan 可能在首 token 前被 admission 并发限制拒绝；
       // 这时没有文本或 tool anchor，旧 stream recovery 不会启动，必须关闭空 assistant 后短重试。
       const recoveryAttempt = beginStartPlanBusyAdmissionRetryAttempt(state);
@@ -362,6 +367,7 @@ async function runModelBackedTurnStepImpl(
       // 继续抛原 provider 文案会和首轮繁忙失败无法区分，UI 也就不能展示“自动重试达到最大次数”。
       finalError = createStartPlanBusyAutoRetryExhaustedError(finalError);
     }
+    // 工具 settlement 与失败收口是两个决定；失败终态仍要先提交已接受工具，再 abandon。
     await streamingToolCoordinator.abandon(
       state.turnAbortSignal.aborted ? "cancelled" : "model_failed",
     );
@@ -779,6 +785,7 @@ async function recoverModelStepAfterContextExceeded(
     {
       activeEntries,
       modelStepIndex,
+      agentListingTools: getTurnTools(this, state),
       rapidRefillCount: rapidRefill.consecutiveRapidRefills,
       model: state.model,
       turnRequestState: state.turnRequestState,

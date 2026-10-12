@@ -312,6 +312,9 @@ export interface ConversationEditTarget {
   transcriptMessageId: string;
   coveredByStableCompact: boolean;
   intent: {
+    inputOrigin?: "desktop" | "mobile";
+    conversationQuotes?: import("@zcode/contracts").TurnInputIntentMetadata["conversationQuotes"];
+    botGroupSource?: CanonicalUserIntentFact["botGroupSource"];
     kind: "sendText" | "sendGoalCommand";
     text: string;
     sourceCommandId?: string;
@@ -2089,10 +2092,16 @@ export class ProductProjection {
       const row: UserInputRow = {
         ...rowBase,
         kind: "userInput",
-        text: fact.input,
+        text:
+          fact.conversationQuotes || fact.botGroupSource
+            ? (fact.intentText ?? fact.input)
+            : fact.input,
         origin: fact.origin,
         ...(fact.sourceCommandId ? { sourceCommandId: fact.sourceCommandId } : {}),
         ...(rootSourceCommandId ? { rootSourceCommandId } : {}),
+        ...(fact.inputOrigin ? { inputOrigin: fact.inputOrigin } : {}),
+        ...(fact.conversationQuotes ? { conversationQuotes: fact.conversationQuotes } : {}),
+        ...(fact.botGroupSource ? { botGroupSource: fact.botGroupSource } : {}),
         ...(fact.clientId ? { clientId: fact.clientId } : {}),
         ...(fact.workflowLaunch ? { workflowLaunch: fact.workflowLaunch } : {}),
         ...(fact.epilogueStart === undefined ? {} : { epilogueStart: fact.epilogueStart }),
@@ -2115,6 +2124,9 @@ export class ProductProjection {
                 kind: fact.intentKind,
                 text: fact.intentText,
                 ...(fact.sourceCommandId ? { sourceCommandId: fact.sourceCommandId } : {}),
+                ...(fact.inputOrigin ? { inputOrigin: fact.inputOrigin } : {}),
+                ...(fact.conversationQuotes ? { conversationQuotes: fact.conversationQuotes } : {}),
+                ...(fact.botGroupSource ? { botGroupSource: fact.botGroupSource } : {}),
                 ...(fact.clientId ? { clientId: fact.clientId } : {}),
                 ...(fact.attachments ? { attachments: fact.attachments } : {}),
                 ...(fact.queueItemId ? { queueItemId: fact.queueItemId } : {}),
@@ -2152,6 +2164,8 @@ export class ProductProjection {
               ...(fact.foregroundExecutionId
                 ? { foregroundExecutionId: fact.foregroundExecutionId }
                 : {}),
+              // 自动中断必须关联实际执行输入，不能由客户端按最后一条消息猜测。
+              ...(fact.sourceCommandId ? { sourceCommandId: fact.sourceCommandId } : {}),
               startedAt: this.ms(event),
             },
           ],
@@ -2232,6 +2246,7 @@ export class ProductProjection {
           ? "completedInterrupted"
           : "error";
     const streamClose = payload.resultType === "success" ? "complete" : "interrupted";
+    const activeMs = this.activeMsForCompletion(event, payload.duration);
 
     // stopPausesActiveGoalTarget：stop 作用于任何 foreground work 时，
     // active/verifying 的 goal 强制进入 paused，等待显式 resumeGoal。
@@ -2261,12 +2276,7 @@ export class ProductProjection {
       // turn 终态一并收口在飞的 foreground tool row（收口不变量：被 profile
       // 过滤的 inputText 流必须被不可过滤的 row.upserted 蕴含，见 profiles.ts）。
       ...this.closeOpenToolRows(event, payload.resultType === "cancelled" ? "cancelled" : "error"),
-      ...this.upsertTurnHeader(
-        event,
-        headerState,
-        this.activeMsForCompletion(event, payload.duration),
-        payload.historyRoundCount,
-      ),
+      ...this.upsertTurnHeader(event, headerState, activeMs, payload.historyRoundCount),
       ...(payload.resultType === "success" ? this.markStableForkAssistant(event) : []),
       {
         op: "state.updated",
@@ -2433,6 +2443,7 @@ export class ProductProjection {
       // 不映射成重试/等待标签。
       case "model_request_queued":
       case "model_request_admitted":
+      case "model_request_observation":
         return [];
     }
   }
@@ -3277,7 +3288,10 @@ export class ProductProjection {
         summary: payload.reason,
         detail: payload.input,
         freeText: true,
-        ...(payload.fullAccessSupported === true && !payload.origin && !payload.optionsPolicy
+        ...(payload.approvalMode !== "user-once" &&
+        payload.fullAccessSupported === true &&
+        !payload.origin &&
+        !payload.optionsPolicy
           ? {
               fullAccessOption: {
                 optionId: PERMISSION_FULL_ACCESS_OPTION_ID,
@@ -3291,6 +3305,7 @@ export class ProductProjection {
         ...(askDisplay ? { display: askDisplay } : {}),
         options: [
           ...buildProtocolPermissionOptions({
+            approvalMode: payload.approvalMode,
             input: payload.input,
             suggestedPermissionUpdates: payload.suggestedPermissionUpdates,
             ...(payload.optionsPolicy ? { optionsPolicy: payload.optionsPolicy } : {}),
@@ -3509,6 +3524,16 @@ export class ProductProjection {
       planEnabled: payload.intent?.planEnabled ?? existing?.planEnabled,
       sharedContextRefs: payload.intent?.sharedContextRefs ?? existing?.sharedContextRefs,
       provenance: payload.intent?.provenance ?? existing?.provenance,
+      // 排队事件和原地编辑都必须保留可信接入来源，不能在 UI 投影时丢掉发送者。
+      ...((payload.intent?.inputOrigin ?? existing?.inputOrigin)
+        ? { inputOrigin: payload.intent?.inputOrigin ?? existing?.inputOrigin }
+        : {}),
+      ...((payload.intent?.conversationQuotes ?? existing?.conversationQuotes)
+        ? { conversationQuotes: payload.intent?.conversationQuotes ?? existing?.conversationQuotes }
+        : {}),
+      ...((payload.intent?.botGroupSource ?? existing?.botGroupSource)
+        ? { botGroupSource: payload.intent?.botGroupSource ?? existing?.botGroupSource }
+        : {}),
       delivery: {
         requested: requestedDelivery,
         admitted: admittedDelivery,
@@ -3684,11 +3709,19 @@ export class ProductProjection {
       const row = {
         ...this.rowBase(event, productTurnId, entityId),
         kind: "userInput" as const,
-        text: item.text,
+        text:
+          item.intent?.conversationQuotes || item.intent?.botGroupSource
+            ? (item.intent.text ?? item.text)
+            : item.text,
         origin: "realUser" as const,
         ...(delivery === "guide" ? { guided: true as const } : {}),
         ...(item.intent?.sourceCommandId ? { sourceCommandId: item.intent.sourceCommandId } : {}),
         ...(rootSourceCommandId ? { rootSourceCommandId } : {}),
+        ...(item.intent?.inputOrigin ? { inputOrigin: item.intent.inputOrigin } : {}),
+        ...(item.intent?.conversationQuotes
+          ? { conversationQuotes: item.intent.conversationQuotes }
+          : {}),
+        ...(item.intent?.botGroupSource ? { botGroupSource: item.intent.botGroupSource } : {}),
         ...(item.intent?.clientId ? { clientId: item.intent.clientId } : {}),
         ...(item.intent?.attachmentRefs?.length ? { attachments: item.intent.attachmentRefs } : {}),
         ...(item.intent?.source ? { source: item.intent.source } : {}),
@@ -3709,6 +3742,13 @@ export class ProductProjection {
                 text: item.intent?.text ?? item.text,
                 ...(item.intent?.sourceCommandId
                   ? { sourceCommandId: item.intent.sourceCommandId }
+                  : {}),
+                ...(item.intent?.inputOrigin ? { inputOrigin: item.intent.inputOrigin } : {}),
+                ...(item.intent?.conversationQuotes
+                  ? { conversationQuotes: item.intent.conversationQuotes }
+                  : {}),
+                ...(item.intent?.botGroupSource
+                  ? { botGroupSource: item.intent.botGroupSource }
                   : {}),
                 ...(item.intent?.clientId ? { clientId: item.intent.clientId } : {}),
                 ...(item.intent?.attachmentRefs ? { attachments: item.intent.attachmentRefs } : {}),
@@ -4460,7 +4500,7 @@ export class ProductProjection {
   // 所以持久、可回放、冷恢复免费（先例：subagents 键）。
   //
   // 归约本体在 @zcode/shared 的 workflow-runs-reducer（与状态 schema 同居）：TUI 镜像要用
-  // 同一份归约，两处各写一份就是两个时钟。
+  // 同一份归约，两处各写一份就是两个时钟（docs/dynamic-workflow/launch.md「The inline card」）。
   // 留在这里的只有投影的非纯部分——从事件信封取载荷、把新旧状态之差发成键级增量。
   private onDynamicWorkflowRunProgress(event: SessionEvent): ConversationDelta[] {
     // 先转 contracts 的有界 payload、再赋给 shared 的结构化入参：这行赋值就是"两边形状不漂移"
@@ -4473,7 +4513,7 @@ export class ProductProjection {
     if (workflowRuns === null) return [];
     // 发**差**而不是整键：一条引擎事件只动一个节点，整键重发是每事件 O(N) 字节、一条 run
     // 全程 O(N²)（workflow-runs-delta.ts 的文件头讲了这笔账怎么变成节点上界和 UI 卡死的）。
-    // `applyAll(prior, diff(prior, next))` 与 next **逐字节**一致是增量协议的契约，
+    // `applyAll(prior, diff(prior, next))` 与 next **逐字节**一致是被 property 测试钉住的契约，
     // 所以 applyEventInternal 把这串 delta 应用回去之后，this.snapshot.workflowRuns 仍是 next。
     return diffWorkflowRunsState(prior, workflowRuns);
   }
@@ -4639,28 +4679,41 @@ export class ProductProjection {
     // subagent ModelComplete 的 usage 仍不是主会话水位，但它携带的
     // fileChanges 是 child session 自己的 workspace 事实，必须独立投影到 child turn header。
     const supportsFileChangeSummary = isMainTurn || payload.querySource === "subagent";
+    const usage = payload.usage as ModelUsage;
     const deltas: ConversationDelta[] = [];
-    if (supportsFileChangeSummary && payload.fileChanges && payload.fileChanges.files > 0) {
-      const turnId = this.turnIdOf(event);
-      const headerRowId = this.turnHeaderRowIdByTurnId.get(turnId);
-      const headerRow = headerRowId !== undefined ? this.findRow(headerRowId) : undefined;
-      if (headerRow?.kind === "turnHeader") {
+    const turnId = this.turnIdOf(event);
+    const headerRowId = this.turnHeaderRowIdByTurnId.get(turnId);
+    const headerRow = headerRowId !== undefined ? this.findRow(headerRowId) : undefined;
+    if (headerRow?.kind === "turnHeader") {
+      const fileChanges =
+        supportsFileChangeSummary && payload.fileChanges && payload.fileChanges.files > 0
+          ? {
+              fileChanges: {
+                additions: payload.fileChanges.additions,
+                deletions: payload.fileChanges.deletions,
+                files: payload.fileChanges.files,
+                // Bug 根因：该条件对象随后与 headerRow 展开合并，TS 会把字面量扩宽为
+                // string，导致 CLI 启动前构建无法满足 TurnFileChangeSummary 契约。
+                state: "active" as const,
+              },
+            }
+          : {};
+      if (isMainTurn || "fileChanges" in fileChanges) {
         deltas.push({
           op: "row.upserted",
           row: {
             ...headerRow,
-            fileChanges: {
-              additions: payload.fileChanges.additions,
-              deletions: payload.fileChanges.deletions,
-              files: payload.fileChanges.files,
-              state: "active",
-            },
+            ...fileChanges,
+            // Bug 根因：Renderer 观察 running 快照的时机不可靠，continuous 可合并更新，
+            // replayable 也可能首次恢复即终态。单 Turn token 必须在权威事件投影中累计。
+            ...(isMainTurn
+              ? { outputTokens: (headerRow.outputTokens ?? 0) + (usage.outputTokens ?? 0) }
+              : {}),
           },
         });
       }
     }
     if (!isMainTurn) return [...deltas, ...retryClearDeltas];
-    const usage = payload.usage as ModelUsage;
     const usedTokens = getModelUsageContextTokens(usage) ?? 0;
     this.contextWindowState.usedTokens = usedTokens;
     const maxTokens = payload.contextWindow ?? this.contextWindowState.maxTokens;

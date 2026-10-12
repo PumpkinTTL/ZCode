@@ -17,6 +17,7 @@ This repository is a fork of [ZCode](https://github.com/zai-org/ZCode): branding
 
 ## Updates
 
+- 2026-10-10: Tracking upstream ZCode v3.15.1.
 - 2026-9-23: Tracking upstream ZCode v3.14.3.
 
 ## Setup

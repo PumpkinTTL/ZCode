@@ -41,9 +41,12 @@ import {
   hostModulePath,
   resolveBundledGlmBinaryPath,
 } from "./desktopRuntimeEnv.js";
+// Polaris：CLI/host 周期资源采样与网络遥测上报随遥测栈整体移除；
+// 资源管理器的网络抓包（resourceManagerNetwork）是能力面，保留。
 import { buildHostE2ECoverageEnv } from "./e2eCoverage.js";
 import { createFeedbackLogArchiveFromExportLogs } from "./exportLogs.js";
 import { createHostLogRelay } from "./hostLogRelay.js";
+import { ingestHostNetworkCapture } from "./resourceManagerNetwork.js";
 import { resolveHostResourceUsageResult } from "./resourceManagerHostSampling.js";
 import {
   registerHostAgentProcess,
@@ -83,7 +86,7 @@ export interface HostInitMessage {
   runtimeProcessEnvPatch?: Record<string, string>;
 }
 
-interface SpawnHostProcessOptions {
+export interface SpawnHostProcessOptions {
   internalChannel?: typeof InternalChannels.ServicePort | typeof InternalChannels.ScopedServicePort;
   internalPayload?: unknown;
   registerBroadcast?: boolean;
@@ -312,6 +315,11 @@ export function spawnHostProcess(
 
     if (result.data.type === HostResponseTypes.Log) {
       hostLogRelay.onStructuredLog(result.data);
+      return;
+    }
+
+    if (result.data.type === HostResponseTypes.NetworkCaptureBatch) {
+      ingestHostNetworkCapture(result.data.batch, child.pid ?? 0);
       return;
     }
 

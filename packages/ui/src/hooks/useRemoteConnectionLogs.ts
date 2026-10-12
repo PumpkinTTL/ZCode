@@ -48,7 +48,10 @@ export function appendRemoteConnectionRuntimeLog(
     let matchingProgressIndex = -1;
     for (let index = currentLogs.length - 1; index >= 0; index -= 1) {
       const currentLog = currentLogs[index];
-      if (currentLog && getRemoteTransferProgressKey(currentLog.message) === incomingProgressKey) {
+      if (
+        currentLog &&
+        getRemoteTransferProgressKey(currentLog.message) === incomingProgressKey
+      ) {
         matchingProgressIndex = index;
         break;
       }
@@ -87,7 +90,7 @@ export function appendRemoteConnectionRuntimeLog(
   return nextLogs.length > 500 ? nextLogs.slice(nextLogs.length - 500) : nextLogs;
 }
 
-function shouldAcceptRemoteConnectionRuntimeLog(
+export function shouldAcceptRemoteConnectionRuntimeLog(
   entry: Pick<RemoteConnectionRuntimeLog, "requestId">,
   activeRequestId?: string | null,
 ): boolean {
@@ -102,7 +105,9 @@ function shouldAcceptRemoteConnectionRuntimeLog(
 export function useRemoteConnectionLogs(activeRequestId?: string | null) {
   const platform = usePlatform();
   const activeRequestIdRef = useRef(activeRequestId);
-  const [connectionLogs, setConnectionLogs] = useState<RemoteConnectionLogEntry[]>([]);
+  const [connectionLogs, setConnectionLogs] = useState<
+    RemoteConnectionLogEntry[]
+  >([]);
 
   useEffect(() => {
     activeRequestIdRef.current = activeRequestId;

@@ -15,6 +15,7 @@ export function WorkspaceSettingsLayer({
   isDesktop,
   isMacDesktop,
   isWindowsDesktop,
+  isWebRemoteControl,
   captionWorkspacePath,
   onBack,
   onCreateTask,
@@ -39,6 +40,7 @@ export function WorkspaceSettingsLayer({
               isDesktop={isDesktop}
               isMacDesktop={isMacDesktop}
               isWindowsDesktop={isWindowsDesktop}
+              isWebRemoteControl={isWebRemoteControl}
               captionWorkspacePath={captionWorkspacePath}
               onBack={onBack}
               onCreateTask={onCreateTask}
@@ -53,6 +55,7 @@ export function WorkspaceSettingsLayer({
             isDesktop={isDesktop}
             isMacDesktop={isMacDesktop}
             isWindowsDesktop={isWindowsDesktop}
+            isWebRemoteControl={isWebRemoteControl}
             captionWorkspacePath={captionWorkspacePath}
             onBack={onBack}
             onCreateTask={onCreateTask}

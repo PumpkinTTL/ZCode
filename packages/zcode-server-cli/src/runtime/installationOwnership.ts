@@ -20,7 +20,7 @@ const serverInstallOwnershipSchema = z
   })
   .strict();
 
-type ServerInstallOwnership = z.infer<typeof serverInstallOwnershipSchema>;
+export type ServerInstallOwnership = z.infer<typeof serverInstallOwnershipSchema>;
 
 async function readOwnership(layout: ServerLayout): Promise<ServerInstallOwnership> {
   const markerStat = await lstat(layout.installFile).catch(() => null);
@@ -28,9 +28,7 @@ async function readOwnership(layout: ServerLayout): Promise<ServerInstallOwnersh
     throw new Error(`Polaris Server ownership marker is missing or invalid: ${layout.installFile}`);
   }
   try {
-    return serverInstallOwnershipSchema.parse(
-      JSON.parse(await readFile(layout.installFile, "utf8")),
-    );
+    return serverInstallOwnershipSchema.parse(JSON.parse(await readFile(layout.installFile, "utf8")));
   } catch (error) {
     throw new Error(`Polaris Server ownership marker is invalid: ${layout.installFile}`, {
       cause: error,
@@ -38,9 +36,7 @@ async function readOwnership(layout: ServerLayout): Promise<ServerInstallOwnersh
   }
 }
 
-export async function ensureServerInstallOwnership(
-  layout: ServerLayout,
-): Promise<ServerInstallOwnership> {
+export async function ensureServerInstallOwnership(layout: ServerLayout): Promise<ServerInstallOwnership> {
   await mkdir(layout.serverRoot, { recursive: true, mode: 0o700 });
   const canonicalServerRoot = await realpath(layout.serverRoot);
   const ownership: ServerInstallOwnership = {
@@ -72,9 +68,7 @@ export async function ensureServerInstallOwnership(
   }
 }
 
-export async function validateServerInstallOwnership(
-  layout: ServerLayout,
-): Promise<ServerInstallOwnership> {
+export async function validateServerInstallOwnership(layout: ServerLayout): Promise<ServerInstallOwnership> {
   const [ownership, canonicalServerRoot] = await Promise.all([
     readOwnership(layout),
     realpath(layout.serverRoot).catch((error: unknown) => {

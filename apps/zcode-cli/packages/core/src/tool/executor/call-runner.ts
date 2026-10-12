@@ -46,6 +46,8 @@ import {
 import { createToolModelStatusSink, withDefaultToolModelStatusSink } from "./model-status-sink.js";
 import { resolveToolCallCapabilityFlags } from "./permission-capability.js";
 import { resolveToolPermission } from "./permission-flow.js";
+import { snapshotPermissionInput } from "./permission-input.js";
+import { buildToolInputResolutionContext } from "./permission-input-adjustments.js";
 import { createMcpToolDisplay, createToolResultDisplay } from "./result-display.js";
 import { appendHookAdditionalContexts, serializeOutput } from "./result-serialization.js";
 import { runToolCallWithTelemetry } from "./telemetry.js";
@@ -230,17 +232,10 @@ async function executeToolCallImpl(
     // hook、权限规则、确认窗载荷、prepareApproval 与 handler 读的都是同一份输入，于是
     // 「策略看得到真正的脚本」「跨版本可见」「确认与执行同字节」三件事一次到位。
     if (entry.resolveInput) {
-      const workingDirectory = deps.getWorkingDirectory?.();
-      const resolution = await entry.resolveInput(executionInput, {
-        ...(workingDirectory === undefined ? {} : { workingDirectory }),
-        runtimeTaskRegistry: deps.runtimeTaskRegistry,
-        ...(deps.dynamicWorkflowRunPort === undefined
-          ? {}
-          : { dynamicWorkflowRunPort: deps.dynamicWorkflowRunPort }),
-        ...(deps.modelCatalogPort === undefined ? {} : { modelCatalogPort: deps.modelCatalogPort }),
-        sessionId: deps.sessionId,
-        ...(deps.hasLoadedSkill === undefined ? {} : { hasLoadedSkill: deps.hasLoadedSkill }),
-      });
+      const resolution = await entry.resolveInput(
+        executionInput,
+        buildToolInputResolutionContext(deps),
+      );
       if (isToolHandlerFailure(resolution)) {
         // 与 validateInput 同一条生命周期出口：解析不出来是模型该立刻拿回去修的东西，
         // 不该先弹一次注定失败的确认窗。
@@ -313,6 +308,10 @@ async function executeToolCallImpl(
       }
     }
 
+    // Shell 已由 session owner 固定；匹配和执行复用同一选择，不为不存在的热切换再建快照。
+    const bashShellSelection = deps.getBashShellSelection?.() ?? deps.bashShellSelection;
+    const guardedWorkingDirectory = mode === "guarded" ? deps.getWorkingDirectory() : undefined;
+    if (mode === "guarded") executionInput = snapshotPermissionInput(executionInput);
     const permissionResult = await resolveToolPermission(
       deps,
       canonicalToolCall,
@@ -323,6 +322,13 @@ async function executeToolCallImpl(
       traceContext,
       options?.signal,
       telemetry,
+      {
+        mode,
+        bashShellSelection,
+        ...(guardedWorkingDirectory === undefined
+          ? {}
+          : { workingDirectory: guardedWorkingDirectory }),
+      },
     );
     if (!permissionResult.allowed) {
       const result = appendPreToolAdditionalContextsToErrorResult(
@@ -349,6 +355,7 @@ async function executeToolCallImpl(
     }
     executionInput = permissionResult.executionInput;
     const permissionWaitMs = permissionResult.permissionWaitMs;
+    const inputAdjustments = permissionResult.inputAdjustments;
 
     const startTime = Date.now();
     // 按**执行入参**解析一次副作用旗标（Bash 的只读命令判定就在这里落定），随 ToolCallStarted 发出：
@@ -388,12 +395,11 @@ async function executeToolCallImpl(
             await deps.emitEvent(event);
           };
     let readFileStateMetadata: ToolExecutionResult["readFileStateMetadata"];
-    let failureStage: "handler" | "serialize" | "post_hook" = "handler";
     let skillTelemetryMetadata: SkillTelemetryMetadata | undefined;
+    let failureStage: "handler" | "serialize" | "post_hook" = "handler";
 
     try {
       const model = options?.model ?? deps.model;
-      const bashShellSelection = deps.getBashShellSelection?.() ?? deps.bashShellSelection;
       const embeddedSearchDecision = resolveEmbeddedSearchBranchCapability({
         bashAvailable: deps.registry.has("Bash"),
       });
@@ -435,6 +441,7 @@ async function executeToolCallImpl(
         artifactStore: deps.artifactStore,
         automationPort: deps.automationPort,
         offPeakPort: deps.offPeakPort,
+        topicResourcePort: deps.topicResourcePort,
         sessionStore: deps.sessionStore,
         sessionModePort: deps.sessionModePort,
         workflowPort: deps.workflowPort,
@@ -451,7 +458,7 @@ async function executeToolCallImpl(
         },
         bashShellSelection,
         setWorkingDirectory: deps.setWorkingDirectory,
-        workingDirectory: deps.getWorkingDirectory(),
+        workingDirectory: guardedWorkingDirectory ?? deps.getWorkingDirectory(),
         workspaceRoot: deps.getWorkspaceRoot(),
         workspaceIdentity: deps.workspaceIdentity,
         remoteSessionId: deps.remoteSessionId,
@@ -464,6 +471,7 @@ async function executeToolCallImpl(
           .filter((name) => deps.registry.getMetadata(name)?.providerVisible !== false),
         sessionId: deps.sessionId,
         turnId,
+        ...(inputAdjustments === undefined ? {} : { inputAdjustments }),
       };
 
       const output = await executeWithTimeout(

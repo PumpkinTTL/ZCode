@@ -73,7 +73,6 @@ import type {
   ForkCommitBundle,
   GoalStatus,
   MessageId,
-  ModelSelection,
   SessionEvent,
   SessionId,
   StableForkGoalBoundaryMetadata,
@@ -82,6 +81,7 @@ import type {
   WorkspaceId,
 } from "@zcode/contracts";
 import { HYDRATION_TRACE_ID } from "../zcode-protocol-v4/projection-state.js";
+import { cloneModelSelection, derivedSessionModelSelection } from "./fork-model-selection.js";
 import { resolveWorkspaceRefFromId } from "./mapper.js";
 import { buildLiveWorkspaceConfigStateV4 } from "./v4-workspace-config.js";
 import {
@@ -129,43 +129,19 @@ function sessionUsageSeedFromRuntimeContextUsage(
   };
 }
 
-const STABLE_FORK_MODES = new Set<CollaborationMode>(["plan", "build", "edit", "yolo", "auto"]);
+const STABLE_FORK_MODES = new Set<CollaborationMode>([
+  "plan",
+  "build",
+  "edit",
+  "yolo",
+  "guarded",
+  "auto",
+]);
 
 function stableForkMode(value: string, fallback: CollaborationMode): CollaborationMode {
   return STABLE_FORK_MODES.has(value as CollaborationMode)
     ? (value as CollaborationMode)
     : fallback;
-}
-
-function modelSelectionWithOptionFallback(
-  selection: ModelSelection | undefined,
-  fallback: ModelSelection | undefined,
-): ModelSelection | undefined {
-  if (!selection) return fallback && cloneModelSelection(fallback);
-  // 兼容旧 fork 消息可能缺少 reasoning；输出预算属于单次请求，不属于 Selection。
-  const reasoningLevel = selection.options?.reasoningLevel ?? fallback?.options?.reasoningLevel;
-  return {
-    providerId: selection.providerId,
-    modelId: selection.modelId,
-    ...(reasoningLevel !== undefined
-      ? {
-          options: {
-            ...(reasoningLevel !== undefined ? { reasoningLevel } : {}),
-          },
-        }
-      : {}),
-  };
-}
-
-function cloneModelSelection(
-  selection: ReturnType<ZCodeProtocolSessionRecord["app"]["runtime"]["getSessionModelSelection"]>,
-): ModelSelection | undefined {
-  if (!selection) return undefined;
-  return {
-    providerId: selection.providerId,
-    modelId: selection.modelId,
-    ...(selection.options ? { options: { ...selection.options } } : {}),
-  };
 }
 
 async function readConversationFileChanges(
@@ -261,6 +237,9 @@ async function previewConversationFileRewind(
 }
 
 interface InputCommandForAdmission {
+  inputOrigin?: "desktop" | "mobile";
+  conversationQuotes?: import("@zcode/contracts").TurnInputIntentMetadata["conversationQuotes"];
+  botGroupSource?: ConversationInputIntent["botGroupSource"];
   kind: ConversationInputIntent["kind"];
   text: string;
   attachments: readonly AttachmentRef[];
@@ -287,11 +266,9 @@ function admissionAttachmentRefs(
       attachment.ref
         ? [
             {
+              // 重试／编辑必须保留与原 row 相同的附件来源，不能重新枚举字段丢失文本材料标记。
+              ...attachment,
               ref: attachment.ref,
-              fileName: attachment.fileName,
-              mime: attachment.mime,
-              bytes: attachment.bytes,
-              ...(attachment.previewRef ? { previewRef: attachment.previewRef } : {}),
             },
           ]
         : [],
@@ -303,7 +280,7 @@ function admissionAttachmentRefs(
  * admission 只持久化真正会产生输入的命令。edit/retry 不能从 payload 猜 intent；
  * 必须复用 projection 的 canonical target，并把旧来源折叠进 provenance。
  */
-function resolveInputCommandForAdmission(
+export function resolveInputCommandForAdmission(
   envelope: CommandEnvelope,
   admissionSessionId: string,
   resolveRowTarget: ResolveAdmissionRowTarget,
@@ -341,12 +318,18 @@ function resolveInputCommandForAdmission(
       text: string;
       attachments?: AttachmentRef[];
       context_refs?: ConversationInputIntent["sharedContextRefs"];
+      inputOrigin?: "desktop" | "mobile";
+      conversationQuotes?: import("@zcode/contracts").TurnInputIntentMetadata["conversationQuotes"];
+      botGroupSource?: ConversationInputIntent["botGroupSource"];
     };
     return {
       kind: envelope.type,
       text: payload.text,
       attachments: payload.attachments ?? [],
       ...(payload.context_refs ? { sharedContextRefs: payload.context_refs } : {}),
+      ...(payload.inputOrigin ? { inputOrigin: payload.inputOrigin } : {}),
+      ...(payload.conversationQuotes ? { conversationQuotes: payload.conversationQuotes } : {}),
+      ...(payload.botGroupSource ? { botGroupSource: payload.botGroupSource } : {}),
     };
   }
   if (envelope.type === "compact") {
@@ -357,6 +340,7 @@ function resolveInputCommandForAdmission(
   const payload = envelope.payload as {
     target: { rowId: number; entityId: string };
     newText?: string;
+    conversationQuotes?: ConversationInputIntent["conversationQuotes"];
     attachments?: AttachmentRef[];
   };
   const resolution = resolveRowTarget(envelope.sessionId, payload.target, envelope.type);
@@ -368,6 +352,11 @@ function resolveInputCommandForAdmission(
     canonical.intent.provenance?.sourceCommandId ?? canonical.intent.sourceCommandId;
   return {
     kind: canonical.intent.kind,
+    ...(canonical.intent.inputOrigin ? { inputOrigin: canonical.intent.inputOrigin } : {}),
+    ...((payload.conversationQuotes ?? canonical.intent.conversationQuotes)
+      ? { conversationQuotes: payload.conversationQuotes ?? canonical.intent.conversationQuotes }
+      : {}),
+    ...(canonical.intent.botGroupSource ? { botGroupSource: canonical.intent.botGroupSource } : {}),
     text:
       envelope.type === "editUserQuery"
         ? (payload.newText ?? canonical.intent.text)
@@ -397,7 +386,7 @@ function resolveInputCommandForAdmission(
   };
 }
 
-function isConversationInputAdmissionCommand(type: CommandEnvelope["type"]): boolean {
+export function isConversationInputAdmissionCommand(type: CommandEnvelope["type"]): boolean {
   return (
     type === "sendText" ||
     type === "sendGoalCommand" ||
@@ -423,6 +412,9 @@ function buildForkInitialInput(
     queueItemId: admission.queueItemId,
     clientId: envelope.clientId || "cli",
     kind: input.kind,
+    ...(input.inputOrigin ? { inputOrigin: input.inputOrigin } : {}),
+    ...(input.conversationQuotes ? { conversationQuotes: input.conversationQuotes } : {}),
+    ...(input.botGroupSource ? { botGroupSource: input.botGroupSource } : {}),
     text: input.text,
     attachments: input.attachments,
     delivery: {
@@ -537,7 +529,7 @@ async function recordForkStartFailureBestEffort(
  * Fork bundle commit 是命令 PONR；后续 catalog/model/resume/snapshot 仅恢复 runtime 可达性。
  * 该阶段失败必须留下可重试事实与 warning，但不能把 durable accepted child 反转成 failed。
  */
-async function registerCommittedForkBestEffort(
+export async function registerCommittedForkBestEffort(
   context: ZCodeProtocolAgentServerContext,
   record: ZCodeProtocolSessionRecord,
   fork: Parameters<typeof registerForkedSession>[2],
@@ -759,6 +751,9 @@ export function createConversationV4Gateway(
             ? "startNow"
             : requestedDelivery);
       const conversationInputIntent = conversationInputIntentSchema.parse({
+        ...(input.inputOrigin ? { inputOrigin: input.inputOrigin } : {}),
+        ...(input.conversationQuotes ? { conversationQuotes: input.conversationQuotes } : {}),
+        ...(input.botGroupSource ? { botGroupSource: input.botGroupSource } : {}),
         sourceCommandId: envelope.commandId,
         queueItemId: admission.queueItemId,
         clientId: envelope.clientId || "cli",
@@ -1064,7 +1059,7 @@ export function createConversationV4Gateway(
           }),
       });
     },
-    // ── 过渡钩子──────────────────────────────
+    // ── 过渡钩子（死期 = M5 波次 2）──────────────────────────────
     ensureModelReady: (record) =>
       ensureSessionModelAvailableForNextTurn(context, record as ZCodeProtocolSessionRecord),
     // 切模型前确认目标 Provider 已存在于当前 Environment Registry。普通模型命令只提交
@@ -1107,7 +1102,11 @@ export function createConversationV4Gateway(
       mcpServers,
       offPeakToolEnabled,
       dynamicWorkflowEnabled,
+      dynamicWorkflowMode,
+      permissionScope,
     }) => {
+      if (permissionScope && !context.deps.sessionStore)
+        throw new Error("Group task permission scope requires persistence");
       // workspaceId 双形态（Workspace Identity 约束）：
       // - 本地工作区 = workspacePath（identity 缺省时的 fallback）；
       // - 远程 pane（跨 workspace 分屏）= 远程 identity
@@ -1119,7 +1118,8 @@ export function createConversationV4Gateway(
       // 本地 workspacePath 处理。
       const created = await createSessionRecordForV4(context, {
         workspace: resolveWorkspaceRefFromId(workspaceId),
-        // 一律 deferred（draft 不进 sqlite）；提升时机归原生 prompt-turn。
+        // 群任务已经由首条真实需求触发，先落盘隔离授权，再开放任务与配置。
+        // 普通 Desktop draft 仍保持 deferred。
         persistence: "deferred",
         // MCP 是 runtime 创建期配置；v4 createSession 必须与 legacy
         // session/create 等价透传，否则创建的 session 永远不会启动这些工具。
@@ -1130,7 +1130,23 @@ export function createConversationV4Gateway(
         // v4 createSession 必须与 legacy session/create 等价透传，否则无界面创建的会话
         // 会绕过 Host 的灰度判定，只剩进程级缺省。
         ...(dynamicWorkflowEnabled === true ? { dynamicWorkflowEnabled: true } : {}),
+        ...(dynamicWorkflowEnabled === true && dynamicWorkflowMode !== undefined
+          ? { dynamicWorkflowMode }
+          : {}),
       });
+      if (permissionScope) {
+        const record = context.sessions.get(created.sessionId);
+        if (!record) throw new Error("Group task runtime is unavailable");
+        await record.app.runtime.ensureSessionPersistedForExternalActivity("", {
+          traceContext: record.traceContext,
+        });
+        await context.deps.sessionStore!.updateSession({
+          id: created.sessionId as SessionId,
+          permission: { version: 1, scope: "session", mode: "build" },
+        });
+        await record.app.runtime.setExecutionState({ mode: "build" }, record.traceContext);
+        record.persistence = "immediate";
+      }
       return { sessionId: created.sessionId };
     },
     createSelectionSideSession: async (sessionId, options) => {
@@ -1174,7 +1190,8 @@ export function createConversationV4Gateway(
       if (boundary?.info.role !== "assistant") {
         throw new Error("guard.forkTargetAmbiguous");
       }
-      const modelSelection = modelSelectionWithOptionFallback(
+      // 分叉继承分叉点的会话选型；加速轮消息记录的是单轮执行 Selection，必须跳过后退回父会话常驻选型。
+      const modelSelection = derivedSessionModelSelection(
         boundary.info.providerId && boundary.info.modelId
           ? {
               providerId: boundary.info.providerId,
@@ -1184,7 +1201,7 @@ export function createConversationV4Gateway(
                 : {}),
             }
           : undefined,
-        cloneModelSelection(record.app.runtime.getSessionModelSelection()),
+        record.app.runtime.getSessionModelSelection(),
       );
       const fork = await record.app.runtime.forkStableConversationAtMessage({
         modelSelection,
@@ -1222,9 +1239,9 @@ export function createConversationV4Gateway(
       if (targetMessage?.info.role !== "user") {
         throw new Error("guard.latestQueryEditOnly");
       }
-      const modelSelection = modelSelectionWithOptionFallback(
-        cloneModelSelection(targetMessage.info.modelSelection),
-        cloneModelSelection(record.app.runtime.getSessionModelSelection()),
+      const modelSelection = derivedSessionModelSelection(
+        targetMessage.info.modelSelection,
+        record.app.runtime.getSessionModelSelection(),
       );
       const events = await record.eventStore.getEvents(sessionId as SessionId);
       const targetStarted = events.find(
@@ -1445,7 +1462,7 @@ export function createConversationV4Gateway(
           });
         });
     },
-    // Gateway 的单一 READY promise 负责并发与水位；binder 只恢复 runtime。
+    // Gateway 的单一 READY promise 负责并发与水位；binder 只恢复 runtime 并返回 M0/M1。
     resumePersistedSession: async (
       sessionId,
       resumeThoughtLevel,

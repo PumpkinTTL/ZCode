@@ -41,6 +41,7 @@ export { useZCodeAgentService } from "./useZCodeAgentService.js";
 export { useGitAutoRefresh } from "./useGitAutoRefresh.js";
 export { useGitRepository } from "./useGitRepository.js";
 // workspace provider 配置路径
+export { useWorkspaceProviderConfigFile } from "./useWorkspaceProviderConfigFile.js";
 export { useTaskNativeSessionLogFile } from "./useTaskNativeSessionLogFile.js";
 export { useTaskSessionFilePath } from "./useTaskSessionFilePath.js";
 export { useAppUsageStats } from "./useUsageStats.js";

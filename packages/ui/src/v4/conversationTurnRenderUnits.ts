@@ -8,6 +8,7 @@ import type {
   UserInputRow,
   WorkflowLaunchMeta,
 } from "@zcode/shared/zcode-protocol-v4";
+import type { BotTopicPreparation } from "@zcode/shared";
 import type { AssistantWorkRow, ConversationTurnFlowItem } from "@/v4/conversationTurnFlowItems.js";
 import type { PluginUiRowPinResolver } from "@/plugin-ui/index.js";
 import {
@@ -33,6 +34,8 @@ export type {
 export interface ConversationTurnRenderUnit {
   key: string;
   turnId: string;
+  /** 未接受的 Bot 消息展示投影，不写入 CLI rows 或导航/分享索引。 */
+  topicPreparations?: readonly BotTopicPreparation[];
   header?: TurnHeaderRow;
   visibleUserInputs: UserInputRow[];
   assistantWorkRows: AssistantWorkRow[];

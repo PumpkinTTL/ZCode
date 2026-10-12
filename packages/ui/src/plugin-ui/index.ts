@@ -12,8 +12,6 @@ export {
 } from "./domain/pluginUiRowPolicy.js";
 export {
   deriveLogicalUiInstances,
-  pluginUiInstanceDerivationsEqual,
-  EMPTY_PLUGIN_UI_INSTANCE_DERIVATION,
   type PluginUiInstanceDerivation,
 } from "./domain/pluginUiInstancePolicy.js";
 export {

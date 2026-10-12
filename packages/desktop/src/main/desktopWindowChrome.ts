@@ -37,6 +37,8 @@ import {
   type DesktopWindowSize,
 } from "./desktopWindowSize.js";
 import { getPluginSandboxHost, isPluginSandboxSrc } from "./pluginSandbox/index.js";
+import { installEmbeddedBrowserBluetoothDeviceGuard } from "./embeddedBrowserBluetoothGuard.js";
+import { getEmbeddedBrowserDevicePicker } from "./embeddedBrowserPermissionUiBridge.js";
 // CDP-on-guest pivot：内置浏览器改回 `<webview>` 渲染，宿主 BrowserWindow 需重新开 webviewTag，
 // 并在 will/did-attach-webview 里做 guest 硬化 + URL 白名单 + popup 路由回内部 tab。
 const ALLOWED_EMBEDDED_BROWSER_PROTOCOLS = new Set([
@@ -48,7 +50,8 @@ const ALLOWED_EMBEDDED_BROWSER_PROTOCOLS = new Set([
 ]);
 const ALLOWED_EMBEDDED_BROWSER_NEW_WINDOW_PROTOCOLS = new Set(["http:", "https:"]);
 const EXTERNAL_BROWSER_DISPOSITIONS = new Set(["background-tab"]);
-
+// Polaris：官方 Coding Plan 购买 webview / 邀请页（含 PayPal 中转白名单与独立 preload）
+// 整栈已移除，这里不再保留对应导航信任判定。
 const embeddedBrowserJavaScriptDialogPreloadPath = join(
   import.meta.dirname,
   "../preload/embeddedBrowserJavaScriptDialog.cjs",
@@ -443,6 +446,29 @@ export function createBrowserWindow(options: {
     { kind: "browser" } | { kind: "pluginSandbox"; sandboxId: string }
   > = [];
 
+  win.webContents.once("did-finish-load", () => {
+    // 生产包使用 loadFile(file://...) 导航时，Chromium 可能在页面加载完成后重放
+    // origin 级 zoom 状态，把窗口创建阶段设置的持久化缩放覆盖回默认值。
+    // did-finish-load 后再按 setting.json 的档位重放一次，确保生产包和开发态 localhost 行为一致。
+    win.webContents.setZoomFactor(initialDesktopZoomFactor);
+    syncWindowControlsOverlayForZoomLevel(win, initialDesktopZoomLevel);
+    syncWindowFullscreenState(win);
+  });
+  win.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame) return;
+      // 导航失败时 CDP target 元数据可能仍保留原 file:// URL，而 renderer
+      // 实际 document 已经进入 chrome-error://；记录主 frame 失败才能定位真实导航根因。
+      options.logger.warn("[desktop-window] renderer did-fail-load", {
+        errorCode,
+        errorDescription,
+        validatedURL,
+        webContentsId: win.webContents.id,
+      });
+    },
+  );
+
   win.webContents.on("will-attach-webview", (event, webPreferences, params) => {
     // CDP 在原生 Dialog 已创建后再替换 UI，macOS 仍可能显示已经排队的
     // Chromium NSAlert。固定 preload 在每个 frame 调用原生 API 前拦截，且隔离世界只
@@ -514,6 +540,14 @@ export function createBrowserWindow(options: {
       resolveBrowserViewOwner: options.resolveBrowserViewOwner,
       logger: options.logger,
     });
+    // 蓝牙设备选择事件挂在 guest WebContents 上（Session 只覆盖 hid/usb/serial）；
+    // 仅内置浏览器 guest 安装守卫，阻断 Electron 未监听时静默授权第一个设备的默认行为。
+    if (guestKind.kind === "browser") {
+      installEmbeddedBrowserBluetoothDeviceGuard(guestWebContents, options.logger.warn, {
+        devicePicker: getEmbeddedBrowserDevicePicker(),
+        hostWebContentsId: win.webContents.id,
+      });
+    }
   });
 
   win.webContents.on("context-menu", (_event, params) => {

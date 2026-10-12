@@ -49,7 +49,7 @@ function resolveTargetWindow(senderWindow?: BrowserWindow | null) {
 
   return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
 }
-function updateDesktopZoomLevel(
+export function updateDesktopZoomLevel(
   targetWindow: BrowserWindow | null | undefined,
   action: "reset" | "in" | "out",
 ) {
@@ -134,7 +134,7 @@ async function fetchRemoteAppConfig(fetchRemoteConfig?: () => Promise<unknown>):
   return fetchRemoteConfig();
 }
 
-function resolveLocalAppConfigPath(options?: {
+export function resolveLocalAppConfigPath(options?: {
   appPath?: string;
   isPackaged?: boolean;
   resourcesPath?: string;

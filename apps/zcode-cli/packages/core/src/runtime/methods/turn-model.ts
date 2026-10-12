@@ -1,4 +1,5 @@
 import {
+  ModelRetryBudget,
   SESSION_ENTRY_MODEL_SELECTION,
   type Model,
   type ModelSelection,
@@ -17,12 +18,14 @@ export function createTurnModel(
   options: {
     selection?: ModelSelection;
     requestDependencies?: import("@zcode/contracts").ModelRequestDependencies;
+    retryBudget?: ModelRetryBudget;
   } = {},
 ): Model {
   const selection = options.selection ?? runtime.getSessionModelSelection();
   const model = createRuntimeModel(runtime, {
     selection,
     requestDependencies: options.requestDependencies,
+    retryBudget: options.retryBudget,
   });
   return withModelInvocationContext(model, (request) => ({
     refreshRuntimeHeadersBeforeAttempt: createRefreshRuntimeHeadersBeforeModelAttempt(runtime, {

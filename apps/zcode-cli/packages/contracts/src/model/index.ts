@@ -28,6 +28,7 @@ export type ModelId = string & { readonly __brand: "ModelId" };
 export const ModelRequestSessionType = {
   Main: "main",
   Other: "other",
+  SideChat: "side_chat",
   Subagent: "subagent",
 } as const;
 
@@ -37,10 +38,13 @@ export const ModelRequestSessionType = {
  * - `unbounded`：**瞬态**失败无上限重试（退避曲线不变、封顶 60s 后无限探测），永久失败照旧立即抛。
  *   给 workflow actor（taskType workflow_child / nested_workflow_child）使用：模型错误绝不是
  *   workflow 错误，唯一出口是用户 cancel。
+ * - `single-attempt`：本次请求 maxAttempts 收敛为 1，瞬态失败也不重试、首次失败即上抛。
+ *   给失败即终态、由上层自行决策后续动作的执行作用域请求使用。
  */
 export const ModelRetryBudget = {
   Default: "default",
   Unbounded: "unbounded",
+  SingleAttempt: "single-attempt",
 } as const;
 
 export type ModelRetryBudget = (typeof ModelRetryBudget)[keyof typeof ModelRetryBudget];

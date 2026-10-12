@@ -40,9 +40,13 @@ export function readComposerRecent(
       "modelSelection" in record ? record.modelSelection : record,
     );
     const mode = submissionModeSchema.safeParse("mode" in record ? record.mode : undefined);
-    if (!selection.success && !mode.success) return null;
+    // 自愈（spec §5.1）：存量 Recent 可能被加速轮覆盖写入隐藏加速 Provider，模型视图里它
+    // 解析为 provider-not-found，会让新任务草稿的模型选择器卡在空态。按叶子丢弃模型、保留
+    // mode，新草稿回落默认选择；与 readSessionModelSelection 丢弃无效 entry 同口径。
+    const healedSelection = selection.success ? selection.data : undefined;
+    if (!healedSelection && !mode.success) return null;
     return {
-      ...(selection.success ? { modelSelection: selection.data } : {}),
+      ...(healedSelection ? { modelSelection: healedSelection } : {}),
       ...(mode.success ? { mode: mode.data } : {}),
     };
   } catch {
@@ -131,7 +135,7 @@ export function resolveDraftInitialModelSelection(
   };
 }
 
-function isSelectionInView(view: ModelSelectionView, selection: ModelSelection): boolean {
+export function isSelectionInView(view: ModelSelectionView, selection: ModelSelection): boolean {
   const model = findModel(view, selection);
   if (!model) return false;
   const reasoning = selection.options?.reasoningLevel;

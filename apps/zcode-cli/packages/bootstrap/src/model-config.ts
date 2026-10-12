@@ -44,7 +44,7 @@ function normalizeAiSdkNetworkConfig(
   };
 }
 
-function buildCliZCodeSourceHeaders(
+export function buildCliZCodeSourceHeaders(
   env: EnvRecord,
   options: Pick<RuntimeExecutionConfigOptions, "appVersion" | "sourceTitle"> = {},
 ): Record<string, string> {

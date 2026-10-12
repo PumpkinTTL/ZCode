@@ -1,6 +1,7 @@
 {
   "name": "@zcode/zcode-cua",
   "version": "0.6.3",
+  "zcodeCuaPlaceholder": true,
   "private": true,
   "description": "Polaris Computer Use runtime: broker client, Windows Helper (cua-driver backed), and the producer-side contracts consumed across the repo. Dev seam: ZCODE_CUA_DEV_ROOT.",
   "license": "Apache-2.0",

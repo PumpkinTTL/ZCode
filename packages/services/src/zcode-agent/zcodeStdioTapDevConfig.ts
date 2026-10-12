@@ -8,11 +8,11 @@ interface ZCodeStdioTapStateFile {
   enabled?: boolean;
 }
 
-function isZCodeStdioTapDevVisible(): boolean {
+export function isZCodeStdioTapDevVisible(): boolean {
   return isEffectiveDevelopmentNodeEnv();
 }
 
-function getZCodeStdioTapDevDir(): string {
+export function getZCodeStdioTapDevDir(): string {
   return join(getAppConfigDir(), "dev");
 }
 
