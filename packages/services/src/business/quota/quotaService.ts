@@ -23,6 +23,7 @@ import {
 } from "./quotaClient.js";
 import {
   IProviderQuotaService,
+  NIMBUS_AGENT_KEY_ACCOUNT_CREDENTIAL_PREFIX,
   NIMBUS_AGENT_KEY_CREDENTIAL_KEY,
   NIMBUS_AGENT_KEY_NAME,
   NIMBUS_CLIENT_ID,
@@ -194,6 +195,16 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
     await credentialService.delete(QUOTA_USERNAME_CREDENTIAL_KEY);
   }
 
+  /**
+   * 当前登录账号键（用户名小写；NIMBUS 账号在服务端唯一）。账号级凭据档案的
+   * 主键：切号时据此定位该账号名下的设备行与明文，绝不为另一账号做吊销/重建。
+   * 缺失（未登录/旧凭据）= null → 退化为单账号行为（legacy 单槽 + 前缀校验兜底）。
+   */
+  async function currentAccountKey(): Promise<string | null> {
+    const raw = (await credentialService.load(QUOTA_USERNAME_CREDENTIAL_KEY))?.trim() ?? "";
+    return raw ? raw.toLowerCase() : null;
+  }
+
   /** 401 = token 过期/已登出：清凭证并回落到未登录态，不向 UI 抛错。 */
   function isTokenInvalid(error: unknown): boolean {
     return error instanceof QuotaApiError && error.status === 401;
@@ -262,8 +273,17 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
    * 有 active 且本地明文前缀对得上 → 复用；明文断链 → 吊销旧 key 重签发；
    * 无 active → 创建（明文仅此一次，立即入凭证库）。409 竞态按服务端回读的
    * existing_key_id 走同一套复用/轮换判定，绝不静默失败。
+   *
+   * 多账号隔离（accountKey 非空时）：明文与档案引用都按账号存放——
+   * `provider-quota:agent-key:<账号>` 与 identity.accounts[账号]；legacy 单槽
+   * 仅作升级迁移兜底（两者都过前缀校验，不会把另一账号的明文当本账号复用）。
+   * 同一账号重复登录、A⇄B 来回切：零吊销、零重建。
    */
-  async function claimDeviceKey(token: string, identity: NimbusDeviceIdentity): Promise<string> {
+  async function claimDeviceKey(
+    token: string,
+    identity: NimbusDeviceIdentity,
+    accountKey: string | null,
+  ): Promise<string> {
     if (!deviceKeys || identity.deviceId === null) {
       throw new QuotaApiError(500, "Nimbus 设备未配对，无法认领调用密钥");
     }
@@ -273,13 +293,47 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
       deviceId: identity.deviceId,
       sign,
     } as const;
-    const localKey = (await credentialService.load(NIMBUS_AGENT_KEY_CREDENTIAL_KEY))?.trim() || null;
+    const accountCredentialKey = accountKey
+      ? `${NIMBUS_AGENT_KEY_ACCOUNT_CREDENTIAL_PREFIX}${accountKey}`
+      : null;
+    const accountLocalKey = accountCredentialKey
+      ? (await credentialService.load(accountCredentialKey))?.trim() || null
+      : null;
+    // 账号明文优先；legacy 单槽兜底（升级迁移场景，前缀校验防跨账号误用）。
+    const localKey =
+      accountLocalKey ??
+      ((await credentialService.load(NIMBUS_AGENT_KEY_CREDENTIAL_KEY))?.trim() || null);
 
-    /** 明文与清单条目比对通过 → 写回身份并复用本地明文。 */
+    /** 认领回执落档：明文入凭证库（账号键 + legacy 同步）+ 账号档案引用写回身份。 */
+    const persistClaimState = async (
+      keyId: string | number | null,
+      keyPrefix: string | null,
+      plaintext: string,
+    ): Promise<void> => {
+      await credentialService.save(NIMBUS_AGENT_KEY_CREDENTIAL_KEY, plaintext);
+      if (accountCredentialKey) {
+        await credentialService.save(accountCredentialKey, plaintext);
+      }
+      const accounts =
+        accountKey && identity.deviceId !== null
+          ? {
+              ...(identity.accounts ?? {}),
+              [accountKey]: { deviceId: identity.deviceId, keyId, keyPrefix },
+            }
+          : identity.accounts;
+      await deviceKeys!.save({
+        ...identity,
+        keyId,
+        keyPrefix,
+        ...(accounts ? { accounts } : {}),
+      });
+    };
+
+    /** 明文与清单条目比对通过 → 落档并复用本地明文。 */
     const reuse = async (entry: Record<string, unknown>): Promise<string | null> => {
       const prefix = keyEntryPrefix(entry);
       if (!localKey || (prefix !== null && !localKey.startsWith(prefix))) return null;
-      await deviceKeys!.save({ ...identity, keyId: keyEntryId(entry), keyPrefix: prefix });
+      await persistClaimState(keyEntryId(entry), prefix, localKey);
       return localKey;
     };
 
@@ -302,8 +356,7 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
     );
     if (claim.created) {
       // 明文仅此一次：先落本机凭证库（保住它是最高优先级），再写回身份。
-      await credentialService.save(NIMBUS_AGENT_KEY_CREDENTIAL_KEY, claim.key);
-      await deviceKeys.save({ ...identity, keyId: claim.keyId, keyPrefix: null });
+      await persistClaimState(claim.keyId, null, claim.key);
       return claim.key;
     }
 
@@ -324,8 +377,7 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
           sign,
         );
         if (retry.created) {
-          await credentialService.save(NIMBUS_AGENT_KEY_CREDENTIAL_KEY, retry.key);
-          await deviceKeys.save({ ...identity, keyId: retry.keyId, keyPrefix: null });
+          await persistClaimState(retry.keyId, null, retry.key);
           return retry.key;
         }
       }
@@ -458,27 +510,36 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
     /**
      * 确保拿到本设备可用的调用密钥（设备专属 agent key 方案，与 Lyra 同一契约）：
      *
-     *   1. 取/生成本机 Ed25519 设备身份（未配对 → registerDevice 拿 device_id；
+     *   1. 账号级凭据档案（多账号共机）：账号键 = 当前登录用户名（小写）——
+     *      切号只换指针（设备定位读该账号档案），不对旧设备发 404 探测；
+     *   2. 取/生成本机 Ed25519 设备身份（未配对 → registerDevice 拿 device_id；
      *      同公钥重复注册幂等，撞设备上限服务端默认先进先出淘汰最早设备）；
-     *   2. 认领 agent key（每 (user, client_id, device) 限一把 active，
+     *   3. 认领 agent key（每 (user, client_id, device) 限一把 active，
      *      **不占用户手建 key 名额**）：有 active 且本地明文可用 → 复用；
      *      明文断链（重装丢凭证/key 在别处更换）→ 吊销本设备旧 key 重签发；
-     *      无 active → 创建（明文仅此一次，立即存本机凭证库）；
-     *   3. 设备被撤销（403「设备已撤销」）→ 同公钥重注册复活原行，重试一次。
+     *      无 active → 创建（明文仅此一次，立即按账号存本机凭证库）；
+     *   4. 设备被撤销（403）/ 与账号失配（404）→ 同公钥重注册，重试一次。
      *
-     * 多端登录互不影响：每台设备各自配对、各持一把 key，吊销也只动本设备。
+     * 多端/多账号互不影响：每台设备各自配对、各持一把 key，吊销也只动本设备；
+     * 同一账号重复登录与 A⇄B 来回切零吊销、零重建（服务端 key/设备行稳定）。
      */
     async ensureApiKey(): Promise<string> {
       const token = await requireToken();
       if (!deviceKeys) {
         throw new QuotaApiError(500, "Nimbus 设备密钥能力未配置（宿主装配缺失）");
       }
+      const accountKey = await currentAccountKey();
       let identity = await deviceKeys.loadOrCreate();
-      if (identity.deviceId === null) {
+      const vault = accountKey ? identity.accounts?.[accountKey] : undefined;
+      if (vault && identity.deviceId !== vault.deviceId) {
+        // 切号快路径：直接对到该账号名下的设备行（写回身份，签名头跟随）。
+        identity = { ...identity, deviceId: vault.deviceId };
+        await deviceKeys.save(identity);
+      } else if (identity.deviceId === null) {
         identity = await pairDevice(token, identity);
       }
       try {
-        return await claimDeviceKey(token, identity);
+        return await claimDeviceKey(token, identity, accountKey);
       } catch (error) {
         // 设备与账号失配的两种形态都走「同公钥重注册」自愈，重试一次：
         //   403「设备已撤销」——被控制台撤销/淘汰，同公钥重注册=复活原行；
@@ -486,7 +547,7 @@ export function createQuotaService(options: CreateQuotaServiceOptions): IProvide
         //     重注册会为当前账号建/复活自己的 device 行（多用户共用一台装机自此可用）。
         if (error instanceof QuotaApiError && (error.status === 403 || error.status === 404)) {
           const revived = await pairDevice(token, { ...identity, deviceId: null });
-          return await claimDeviceKey(token, revived);
+          return await claimDeviceKey(token, revived, accountKey);
         }
         throw error;
       }

@@ -21,6 +21,7 @@ import type { ICredentialService } from "../../credential/credential.js";
 import {
   NIMBUS_CLIENT_ID,
   NIMBUS_DEVICE_CREDENTIAL_KEY,
+  type NimbusAccountKeyRef,
   type NimbusDeviceIdentity,
   type NimbusDeviceKeyProvider,
 } from "./quota.js";
@@ -109,7 +110,40 @@ function parseIdentityJson(raw: string | null): NimbusDeviceIdentity | null {
     (typeof rec.key_id === "string" && rec.key_id) ||
     (typeof rec.key_id === "number" ? rec.key_id : null);
   const keyPrefix = typeof rec.key_prefix === "string" && rec.key_prefix ? rec.key_prefix : null;
-  return { deviceId, publicKeyPem, privateKeyPem, keyId, keyPrefix };
+  const accounts = parseAccountRefs(rec.accounts);
+  return {
+    deviceId,
+    publicKeyPem,
+    privateKeyPem,
+    keyId,
+    keyPrefix,
+    ...(accounts ? { accounts } : {}),
+  };
+}
+
+/**
+ * accounts 映射容错解析（多账号凭据档案）：缺 device_id 的条目一律丢弃——
+ * 坏一条不拖垮整份身份（文件是自产自销的，出现坏形状按无该条目处理即可）。
+ */
+function parseAccountRefs(
+  raw: unknown,
+): Record<string, NimbusAccountKeyRef> | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return undefined;
+  const out: Record<string, NimbusAccountKeyRef> = {};
+  for (const [accountKey, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!accountKey || typeof value !== "object" || value === null || Array.isArray(value)) {
+      continue;
+    }
+    const rec = value as Record<string, unknown>;
+    const deviceId = typeof rec.device_id === "string" && rec.device_id ? rec.device_id : null;
+    if (!deviceId) continue;
+    const keyId =
+      (typeof rec.key_id === "string" && rec.key_id) ||
+      (typeof rec.key_id === "number" ? rec.key_id : null);
+    const keyPrefix = typeof rec.key_prefix === "string" && rec.key_prefix ? rec.key_prefix : null;
+    out[accountKey] = { deviceId, keyId, keyPrefix };
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**
@@ -139,6 +173,14 @@ export function createNodeNimbusDeviceKeyProvider(options: {
   }
 
   async function save(identity: NimbusDeviceIdentity): Promise<void> {
+    const accounts: Record<string, Record<string, unknown>> = {};
+    for (const [accountKey, ref] of Object.entries(identity.accounts ?? {})) {
+      accounts[accountKey] = {
+        device_id: ref.deviceId,
+        key_id: ref.keyId ?? undefined,
+        key_prefix: ref.keyPrefix ?? undefined,
+      };
+    }
     await credentialService.save(
       NIMBUS_DEVICE_CREDENTIAL_KEY,
       JSON.stringify({
@@ -149,6 +191,8 @@ export function createNodeNimbusDeviceKeyProvider(options: {
         private_key: identity.privateKeyPem,
         key_id: identity.keyId ?? undefined,
         key_prefix: identity.keyPrefix ?? undefined,
+        // 文件整体重写（无 spread 残留）：空 accounts 直接不落键，不存在旧值复活
+        ...(Object.keys(accounts).length > 0 ? { accounts } : {}),
       }),
     );
   }

@@ -32,14 +32,33 @@ export const QUOTA_USERNAME_CREDENTIAL_KEY = "provider-quota:username";
 export const NIMBUS_DEVICE_CREDENTIAL_KEY = "provider-quota:device-identity";
 /** 本设备 agent key 明文的凭证存储键（创建响应仅回一次，本地延续靠它）。 */
 export const NIMBUS_AGENT_KEY_CREDENTIAL_KEY = "provider-quota:agent-key";
+/**
+ * agent key 明文按账号隔离的凭证键前缀（多账号共机：`provider-quota:agent-key:<账号>`）。
+ * 账号键 = 用户名小写（NIMBUS 登录账号在服务端唯一）。切号只换指针：
+ * 本账号明文读本账号键，绝不为另一账号的凭据做吊销/重建。legacy 单槽
+ * （NIMBUS_AGENT_KEY_CREDENTIAL_KEY）只作升级迁移兜底并保持「最后使用」语义。
+ */
+export const NIMBUS_AGENT_KEY_ACCOUNT_CREDENTIAL_PREFIX = "provider-quota:agent-key:";
 /** agent key 归属的客户端 ID（后端 apps 表主键，运维侧预插行）。 */
 export const NIMBUS_CLIENT_ID = "polaris";
 /** agent key 显示名（不占用户手建 key 名额，固定名字便于在门户识别）。 */
 export const NIMBUS_AGENT_KEY_NAME = "Polaris";
 
 /**
+ * 单账号的密钥档案引用（身份 JSON 内 accounts 映射的值）：切号时据此定位
+ * 该账号名下的设备行与 key 标识。**明文不放这里**——明文在凭证服务按账号
+ * 隔离存放（NIMBUS_AGENT_KEY_ACCOUNT_CREDENTIAL_PREFIX），与 token 同加密边界。
+ */
+export interface NimbusAccountKeyRef {
+  readonly deviceId: string;
+  readonly keyId: string | number | null;
+  readonly keyPrefix: string | null;
+}
+
+/**
  * 本机设备身份。deviceId=null 表示尚未配对；私钥只进凭证存储（与 token 同一
- * 加密边界），绝不进日志/设置文件。
+ * 加密边界），绝不进日志/设置文件。accounts = 多账号凭据档案（账号键 →
+ * 设备/key 引用），保证同机多账号切换零吊销、零重建。
  */
 export interface NimbusDeviceIdentity {
   readonly deviceId: string | null;
@@ -47,6 +66,7 @@ export interface NimbusDeviceIdentity {
   readonly privateKeyPem: string;
   readonly keyId: string | number | null;
   readonly keyPrefix: string | null;
+  readonly accounts?: Readonly<Record<string, NimbusAccountKeyRef>>;
 }
 
 /**
