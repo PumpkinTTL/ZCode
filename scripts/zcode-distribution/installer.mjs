@@ -5,7 +5,7 @@ export function installScriptSource(baseUrl) {
 set -eu
 
 BASE_URL="\${ZCODE_DIST_BASE_URL:-${baseUrl}}"
-INSTALL_DIR="\${ZCODE_DIST_HOME:-$HOME/.zcode/runtime}"
+INSTALL_DIR="\${ZCODE_DIST_HOME:-$HOME/.polaris/runtime}"
 BIN_DIR="\${ZCODE_DIST_BIN_DIR:-$HOME/.local/bin}"
 
 need_cmd() {
@@ -42,11 +42,14 @@ mv "$TARGET.new/${packageDirName}" "$TARGET"
 rm -rf "$TARGET.new"
 ln -sfn "$TARGET" "$INSTALL_DIR/current"
 
-cat > "$BIN_DIR/zcode" <<SH
+# polaris 为主命令；zcode 保留兼容别名（同一执行体）
+for shim in polaris zcode; do
+  cat > "$BIN_DIR/$shim" <<SH
 #!/usr/bin/env sh
 exec node "$INSTALL_DIR/current/bin/zcode.mjs" "\\$@"
 SH
-chmod +x "$BIN_DIR/zcode"
+  chmod +x "$BIN_DIR/$shim"
+done
 
 echo "Polaris $VERSION installed."
 echo "Run: polaris (TUI) or polaris --web (Web)"

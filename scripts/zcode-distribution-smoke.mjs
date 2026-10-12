@@ -56,7 +56,7 @@ try {
     }),
   );
   await until(
-    () => /ZCode/.test(screen) && /(?:登录|\/login|输入提示词|Type a prompt)/i.test(screen),
+    () => /Polaris/.test(screen) && /(?:登录|\/login|输入提示词|Type a prompt)/i.test(screen),
     "TUI initialized render",
     () => screen,
   );

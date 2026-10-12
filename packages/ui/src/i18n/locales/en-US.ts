@@ -2333,7 +2333,7 @@ const enUS: Record<string, string> = {
   "settings.mcp.failure.not_authenticated":
     "You are not signed in. Sign in to Polaris to use this MCP server.",
   "settings.mcp.failure.coding_plan_required":
-    "This account has no Coding Plan. Purchase or configure a Coding Plan to use this MCP server.",
+    "This account has no eligible plan. Purchase or configure a plan to use this MCP server.",
   "settings.mcp.failure.server_not_found":
     "The MCP server was not found. Check the plugin or server configuration.",
   "settings.mcp.failure.server_unavailable":
@@ -2519,7 +2519,7 @@ const enUS: Record<string, string> = {
     "Reading local app session history, so it can take a moment.",
   "settings.usage.checkApiKey": "Check account",
   "usage.error.stats.credential":
-    "Unable to load usage stats. Reconnect the Coding Plan account or confirm that the account has an active plan.",
+    "Unable to load usage stats. Reconnect the service account or confirm that it has an active plan.",
   "usage.error.stats.generic":
     "Unable to load usage stats. Try again later or check the network and provider configuration.",
   "settings.usage.emptyTitle": "No usage data yet",
@@ -2774,8 +2774,8 @@ const enUS: Record<string, string> = {
   "settings.plugins.store.viewMoreFew": "See {names}",
   "settings.plugins.store.showLess": "Show less",
   "settings.plugins.store.install": "Install",
-  "settings.plugins.store.paidPlanBadge": "Coding Plan",
-  "settings.plugins.store.requiresPaidPlan": "This plugin works better with a Coding Plan",
+  "settings.plugins.store.paidPlanBadge": "Plan",
+  "settings.plugins.store.requiresPaidPlan": "This plugin works better with a paid plan",
   "settings.plugins.store.tryNow": "Try now",
   "settings.plugins.store.sourceMissing":
     "Marketplace source is missing. This plugin remains usable, but updates are unavailable.",

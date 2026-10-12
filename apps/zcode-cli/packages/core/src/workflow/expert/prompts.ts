@@ -28,7 +28,7 @@ export function buildPhasePrompt(
         ]
       : [];
   return [
-    `You are running the ZCode workflow phase: ${definition.phase}.`,
+    `You are running the Polaris workflow phase: ${definition.phase}.`,
     `Workflow run: ${snapshot.runId}`,
     `Working directory: ${snapshot.cwd}`,
     "",

@@ -100,8 +100,8 @@ const COPY: Record<ConversationShareLandingLocale, Copy> = {
     loginDescription: "请登录后确认你是否有权限查看这个分享。",
     login: "登录",
     loginWith: {
-      zai: "连接 Z.ai 继续使用",
-      bigmodel: "连接 BigModel 继续使用",
+      zai: "连接 Nimbus 继续使用",
+      bigmodel: "连接 Nimbus 继续使用",
     },
     loginRegion: { zai: "全球", bigmodel: "中国" },
     expiredTitle: "分享已过期",
@@ -109,7 +109,7 @@ const COPY: Record<ConversationShareLandingLocale, Copy> = {
     notFoundTitle: "找不到分享内容",
     notFoundDescription: "链接可能无效、分享已被移除，或当前登录账号无法访问。",
     notFoundAccountHint:
-      "Z.ai 与 BigModel 的账号数据不互通。请检查是否选错了登录平台或使用了其他账号。",
+      "当前登录账号无法访问这份分享。请确认使用的是分享者的账号，或让对方重新生成分享链接。",
     backToHome: "回到首页",
     networkTitle: "暂时无法加载分享",
     networkDescription: "请检查网络后重试。",
@@ -137,8 +137,8 @@ const COPY: Record<ConversationShareLandingLocale, Copy> = {
     loginDescription: "Sign in to check whether you can view this shared conversation.",
     login: "Sign in",
     loginWith: {
-      zai: "Connect to Z.ai",
-      bigmodel: "Connect to BigModel",
+      zai: "Connect with Nimbus",
+      bigmodel: "Connect with Nimbus",
     },
     loginRegion: { zai: "Global", bigmodel: "CN" },
     expiredTitle: "Share expired",
@@ -147,7 +147,7 @@ const COPY: Record<ConversationShareLandingLocale, Copy> = {
     notFoundDescription:
       "The link may be invalid, the share may have been removed, or your current account may not have access.",
     notFoundAccountHint:
-      "Z.ai and BigModel do not share account data. Check whether you selected the wrong sign-in platform or used a different account.",
+      "The signed-in account cannot access this share. Make sure you are using the sharer's account, or ask them to create a new link.",
     backToHome: "Back to home",
     networkTitle: "Unable to load share",
     networkDescription: "Check your network connection and try again.",

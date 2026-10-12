@@ -2204,7 +2204,7 @@ const zhCN: Record<string, string> = {
   "settings.mcp.failure.official_origin_untrusted": "MCP 服务器地址未通过安全校验，连接已阻止。",
   "settings.mcp.failure.not_authenticated": "当前未登录，请先登录 Polaris。",
   "settings.mcp.failure.coding_plan_required":
-    "当前账号没有 Coding Plan，请先购买或配置 Coding Plan。",
+    "当前账号没有可用套餐，请先购买或配置套餐。",
   "settings.mcp.failure.server_not_found": "找不到该 MCP 服务器，请检查插件或服务器配置。",
   "settings.mcp.failure.server_unavailable": "MCP 服务暂时不可用，请稍后重试。",
   "settings.mcp.failure.rate_limited": "MCP 请求过于频繁，请稍后重试。",
@@ -2290,7 +2290,7 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.apiKeyPlaceholder": "输入 API Key",
   "settings.modelProvider.getApiKey": "获取 API Key",
   "settings.modelProvider.connectionMode.apiKeyBadge": "API",
-  // Coding Plan 卡片直接使用这些 id，中文漏配会把 key 原样渲染到界面。
+  // 套餐卡片直接使用这些 id，中文漏配会把 key 原样渲染到界面。
   "settings.modelProvider.disabledStatus": "未启用",
   "settings.modelProvider.unavailableStatus": "未就绪",
   "settings.modelProvider.readyStatus": "就绪",
