@@ -283,19 +283,8 @@ describe("ChatEmptyWorkspacePreviewMenu", () => {
     expect(html).toContain("workspace.openFolder");
   });
 
-  it("Start from scratch 默认路径为空名称后缀，非法名称有校验", async () => {
-    const {
-      getScratchWorkspaceLocationHint,
-      getScratchWorkspaceNameErrorKind,
-    } = await import("../src/ChatEmptyState.js");
-
-    expect(getScratchWorkspaceLocationHint("")).toBe("~/ZCodeProject/");
-    expect(getScratchWorkspaceLocationHint("demo")).toBe("~/ZCodeProject/demo");
-    expect(getScratchWorkspaceNameErrorKind("")).toBe("required");
-    expect(getScratchWorkspaceNameErrorKind("bad/name")).toBe("separator");
-    expect(getScratchWorkspaceNameErrorKind("bad\\name")).toBe("separator");
-    expect(getScratchWorkspaceNameErrorKind("demo")).toBeNull();
-  });
+  // Start from scratch 工作区对话框是上游 v3.15.1 新特性，合并决议未引入
+  // （默认路径提示 ~/ZCodeProject/ 需品牌改造）；对应 helper 未随 src 合入，用例移除。
 
   it("在允许远程入口时展示远程连接项", async () => {
     const html = await renderMenu(true);

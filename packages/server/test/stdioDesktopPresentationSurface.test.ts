@@ -82,8 +82,8 @@ describe("stdio Desktop presentation surface", () => {
       "--stdio",
     ]);
     const zcodeBuiltinProviderConfigFilePath = join(home, "zcode-builtin.json");
-    const personalConfigFilePath = join(home, ".zcode", "v2", "provider_config.json");
-    await mkdir(join(home, ".zcode", "v2"), { recursive: true });
+    const personalConfigFilePath = join(home, ".polaris", "v2", "provider_config.json");
+    await mkdir(join(home, ".polaris", "v2"), { recursive: true });
     await writeFile(
       personalConfigFilePath,
       JSON.stringify({
@@ -212,7 +212,7 @@ describe("stdio Desktop presentation surface", () => {
         }),
       ).resolves.toMatchObject({
         available: false,
-        reason: expect.stringContaining("ZCode agent server command is not configured"),
+        reason: expect.stringContaining("Polaris agent server command is not configured"),
       });
 
       expect(bootstrap.authorityModeParseResult.mode).toBe("desktop-attached-remote");

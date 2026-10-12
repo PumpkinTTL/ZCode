@@ -29,9 +29,9 @@ describe("dialog shell radius", () => {
     "GitActionMenu",
     "settings/AutomationEditView",
     // 原生购买面板已下线（购买走 webview 弹窗），不再纳入 dialog 圆角契约。
+    // cloud-content-dialog 云内容业务已随红线裁剪移除，不再纳入 dialog 圆角契约。
     "quickpick/TaskFindDialog",
     "components/ui/command",
-    "components/cloud-content-dialog/CloudContentDialog",
     "v4/ConversationComposer",
   ]) {
     it(`${file} does not override the standard shell with xl or 3xl`, async () => {

@@ -22,7 +22,7 @@ const h = vi.hoisted(() => {
   const pluginState = {
     plugins: [
       {
-        id: "browser-use@zcode-plugins-official",
+        id: "browser-use@polaris-plugins-official",
         name: "browser-use",
         enabled: true,
       },
@@ -215,7 +215,7 @@ describe("BrowserSettingsSection", () => {
 
     await waitFor(() => {
       expect(h.setEnabled).toHaveBeenCalledWith(
-        "browser-use@zcode-plugins-official",
+        "browser-use@polaris-plugins-official",
         false,
         expect.anything(),
       );

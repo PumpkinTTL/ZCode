@@ -33,12 +33,24 @@ describe("resolveZCodeBuiltinProviderConfigFilePath", () => {
     ).toBe("/repo/config/provider/zcode-builtin.test.json");
   });
 
-  it("显式 ZCode Built-in Config Source 优先于安装布局", () => {
+  it("显式 ZCode Built-in Config Source 仅在开发态优先于安装布局", () => {
+    // Polaris fork：打包版忽略 ZCODE_BUILTIN_PROVIDER_CONFIG_FILE 环境变量残留
+    // （rev30 事故同型：残留路径会把模型/供应商链改道上游），env 覆盖仅 dev 生效。
+    expect(
+      toPosixPath(
+        resolveZCodeBuiltinProviderConfigFilePath({
+          env: { ZCODE_BUILTIN_PROVIDER_CONFIG_FILE: "/fixtures/zcode-builtin.json" },
+          isPackaged: true,
+          resourcesPath: "/Applications/ZCode.app/Contents/Resources",
+        }),
+      ),
+    ).toBe("/Applications/ZCode.app/Contents/Resources/config/provider/zcode-builtin.json");
+
     expect(
       resolveZCodeBuiltinProviderConfigFilePath({
         env: { ZCODE_BUILTIN_PROVIDER_CONFIG_FILE: "/fixtures/zcode-builtin.json" },
-        isPackaged: true,
-        resourcesPath: "/Applications/ZCode.app/Contents/Resources",
+        isPackaged: false,
+        appPath: "/repo/packages/desktop",
       }),
     ).toBe("/fixtures/zcode-builtin.json");
   });

@@ -4,8 +4,32 @@ import type { IBroadcastService } from "@zcode/services";
 import { INTERFACE_MODE_STORAGE_KEY, normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import { createZCodeStore } from "@/store/index.js";
 
+// TODO(polaris-sync): 环境依赖——Node ≥25 的内置 localStorage 桩缺少 clear 等方法且会遮蔽
+// jsdom 实现，这里与 intlProviderLocalePreference.test.ts 一致安装内存版 shim。
+function installMemoryLocalStorage() {
+  const values = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        values.set(key, value);
+      },
+      removeItem: (key: string) => {
+        values.delete(key);
+      },
+      clear: () => {
+        values.clear();
+      },
+    },
+  });
+}
+
 describe("界面模式偏好", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    installMemoryLocalStorage();
+    localStorage.clear();
+  });
 
   it.each([
     [null, "coding"],

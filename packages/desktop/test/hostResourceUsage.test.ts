@@ -50,7 +50,8 @@ describe("hostResourceUsage", () => {
           pid: 100,
           category: "base",
           groupKey: "cli",
-          name: "zcode-agent-glm-demo",
+          // Polaris fork：进程名前缀已品牌化（zcode-agent → polaris-agent）
+          name: "polaris-agent-glm-demo",
         }),
         expect.objectContaining({
           pid: 120,

@@ -1152,14 +1152,14 @@ export async function createFeedbackLogArchiveFromExportLogs(
       },
       {
         directory: getZCodeCliDir(),
-        archivePrefix: ".zcode/cli",
+        archivePrefix: posix.join(DATA_ROOT_DIR_NAME, "cli"),
         includeFileNames: ["config.json"],
         onlyCurrentDay: false,
         contentPolicy: "cli-config",
       },
       {
         directory: join(getZCodeCliDir(), "rollout"),
-        archivePrefix: ".zcode/cli/rollout",
+        archivePrefix: posix.join(DATA_ROOT_DIR_NAME, "cli", "rollout"),
       },
       {
         directory: getCuaHelperRunDir(),

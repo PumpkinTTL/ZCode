@@ -146,9 +146,9 @@ describe("ZCode Built-in Release", () => {
       join("/environment", "runtime", "provider", "darwin-aarch64", "3.0.0"),
     );
     expect(basename(dirname(first.activeFilePath))).toMatch(/^endpoint-[a-f0-9]{32}$/u);
-    expect(basename(first.activeFilePath)).toBe("zcode-builtin.json");
+    expect(basename(first.activeFilePath)).toBe("polaris-builtin.json");
     expect(first.controlFilePath).toBe(
-      join(dirname(first.activeFilePath), "zcode-builtin-refresh.json"),
+      join(dirname(first.activeFilePath), "polaris-builtin-refresh.json"),
     );
     expect(second.activeFilePath).not.toBe(first.activeFilePath);
     expect(() =>

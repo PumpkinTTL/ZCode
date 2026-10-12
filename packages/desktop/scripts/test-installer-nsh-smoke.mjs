@@ -91,6 +91,8 @@ function compileFixture({
 }) {
   const args = [
     "/V2",
+    // Windows 中文代码页下 makensis 默认按 ANSI 读脚本，UTF-8 中文注释会报 Bad text encoding。
+    "/INPUTCHARSET", "UTF8",
     ...(buildUninstaller ? ["/WX", "/DBUILD_UNINSTALLER"] : []),
     `/DNSIS_INCLUDE_DIR=${resolve(nsisDir, "Include")}`,
     `/DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${resolve(appBuilderLibDir, "templates/nsis/include")}`,
@@ -169,7 +171,8 @@ async function main() {
       runFixture(installerPath, installDir, customLogPath);
       assertInstallerLog(customLogPath ?? join(tempRoot, `${scenario}-default.log`), "silent");
 
-      const appExe = join(installDir, "ZCode.exe");
+      // Polaris fork：安装产物主程序名随 productName（desktop/package.json:117）。
+      const appExe = join(installDir, "Polaris.exe");
       const startMenuLink = join(installDir, "start-menu.lnk");
       const desktopLink = join(installDir, "desktop.lnk");
       const launchLink = readFileSync(join(installDir, "launch-link.txt"), "utf-8");

@@ -21,6 +21,9 @@ const forkIsolatedTests = [
   "packages/desktop/test/uploadOssScript.test.ts",
   // 全量并发时真实心跳与嵌套构建会被调度延迟打穿；单独运行均通过，沿用串行组保留原时限。
   "packages/desktop/test/webRemoteControlTransport.test.ts",
+  // Windows: threads 池里 spawn 的子进程会被 Job 对象拒绝（AssignProcessToJobObject 50），
+  // 该测试真实 spawn node 子进程验证 stdio proxy，必须 fork 隔离。
+  "packages/desktop/test/subagentConfigProxy.test.ts",
   "packages/provider-node/test/builtin-provider-build.test.ts",
   "packages/provider-node/test/builtin-provider-test-config-sync.test.ts",
   "packages/server/test/remoteDeploy.test.ts",

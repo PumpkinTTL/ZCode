@@ -90,7 +90,7 @@ describe("processResourceTelemetry 事件契约", () => {
           .flatMap((line) => [...(line.split("|")[2] ?? "").matchAll(/`([^`]+)`/g)])
           .map((match) => match[1]);
         // 全局四项与事件属性合并才是最终 ARMS 契约；重复列出属性同样应失败。
-        expect(["platform", "app_version", "arms_env", "device_mid", ...properties].sort()).toEqual(
+        expect(["platform", "app_version", "telemetry_env", "device_mid", ...properties].sort()).toEqual(
           [...keys].sort(),
         );
       }

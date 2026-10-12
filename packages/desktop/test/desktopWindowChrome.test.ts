@@ -241,22 +241,30 @@ describe("desktopWindowChrome", () => {
   });
 
   it("logs a rejected renderer navigation promise", async () => {
-    const warn = vi.fn();
-    const navigationError = new Error("renderer navigation failed");
-    electronMocks.loadWindow.mockRejectedValueOnce(navigationError);
-    const { createBrowserWindow } = await import("../src/main/desktopWindowChrome.js");
+    // 上游 v3.15.1 起导航带重试（DEFAULT_MAIN_WINDOW_LOAD_RETRY_DELAYS_MS 共 4 次退避）：
+    // 单次 reject 不再直接落 onFailure，需要等重试耗尽后的最终失败日志。
+    vi.useFakeTimers();
+    try {
+      const warn = vi.fn();
+      const navigationError = new Error("renderer navigation failed");
+      electronMocks.loadWindow.mockRejectedValue(navigationError);
+      const { createBrowserWindow } = await import("../src/main/desktopWindowChrome.js");
 
-    createBrowserWindow({
-      iconPath: "icon.png",
-      preloadPath: "preload.js",
-      logger: { warn },
-    });
-    await Promise.resolve();
+      createBrowserWindow({
+        iconPath: "icon.png",
+        preloadPath: "preload.js",
+        logger: { warn },
+      });
 
-    expect(warn).toHaveBeenCalledWith(
-      "[desktop-window] renderer navigation rejected",
-      navigationError,
-    );
+      await vi.runAllTimersAsync();
+
+      expect(warn).toHaveBeenCalledWith(
+        "[desktop-window] renderer navigation rejected",
+        navigationError,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("enables webviewTag so the embedded browser can render via <webview> (CDP-on-guest pivot)", async () => {

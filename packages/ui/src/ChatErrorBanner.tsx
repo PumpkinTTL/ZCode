@@ -5,6 +5,7 @@
  */
 import { useState } from "react";
 import {
+  isOffPeakTicketExpiredError,
   MEDIA_BUDGET_CURRENT_ATTACHMENT_TOO_LARGE_ERROR_CODE,
   MEDIA_BUDGET_CURRENT_IMAGE_TOO_LARGE_ERROR_CODE,
   MEDIA_BUDGET_CURRENT_VIDEO_TOO_LARGE_ERROR_CODE,
@@ -97,6 +98,14 @@ export function resolveChatErrorBannerDisplayMessage(
 ): string {
   if (isModelConfigMissingError(error)) {
     return intl.formatMessage({ id: "chat.error.noAvailableModel" });
+  }
+
+  // 闲时票据不可用（上游 3102）：适配层会把业务码包成 `off-peak-ticket-expired: <上游原文>`
+  // 落到 turn 错误里，外层 code 被压成包装码时靠稳定标记兜底，否则横幅会把
+  // "off peak ticket is invaliad or expired" 原文直接怼给用户。只保留闲时这一条
+  // 与 Polaris 保留功能相关的映射；官方套餐/安全校验等业务码不接回。
+  if (error.code?.trim() === "3102" || isOffPeakTicketExpiredError(error.message)) {
+    return intl.formatMessage({ id: "zcode.error.providerBusiness.3102" });
   }
 
   if (error.code === "CLAUDE_UNKNOWN_COMMAND") {

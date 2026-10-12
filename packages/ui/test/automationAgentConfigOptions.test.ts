@@ -111,7 +111,7 @@ describe("automation model/thought linkage", () => {
     expect(resolveAutomationModelItem(groups, "demo/model-a")?.name).toBe("model-a");
   });
 
-  it("模型触发器从 Registry View 显示 providerName/modelName", () => {
+  it("模型触发器可见文案一律只显示模型名（Polaris：Provider 由品牌图标承担）", () => {
     expect(
       resolveAutomationModelTriggerLabel({
         modelGroups: groups,
@@ -129,10 +129,10 @@ describe("automation model/thought linkage", () => {
         modelValue: "demo/model-a",
         fallbackLabel: "选择模型",
       }),
-    ).toBe("Demo Provider/model-a");
+    ).toBe("model-a");
   });
 
-  it("Registry View 已发布时使用其中的 Provider label", () => {
+  it("Registry View 已发布时触发器也不拼 Provider 前缀", () => {
     expect(
       resolveAutomationModelTriggerLabel({
         modelGroups: groups,
@@ -157,7 +157,7 @@ describe("automation model/thought linkage", () => {
         modelValue: "demo/model-a",
         fallbackLabel: "选择模型",
       }),
-    ).toBe("Registry Provider/model-a");
+    ).toBe("model-a");
   });
 
   it("模型触发器继续遵循会话侧内置 family 的裁剪规则", () => {

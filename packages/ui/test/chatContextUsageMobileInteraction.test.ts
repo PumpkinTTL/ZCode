@@ -31,9 +31,10 @@ vi.mock("@/chat-input-toolbar/CodingPlanContextUsage.js", () => ({
   hasChatCodingPlanUsageRemaining: () => false,
 }));
 
-vi.mock("@/chat-input-toolbar/StartPlanContextBalance.js", () => ({
-  ChatStartPlanBalancePanel: () => null,
-  hasChatStartPlanBalance: (config?: { onAccess?: unknown }) => Boolean(config?.onAccess),
+// StartPlan 余额块（官方套餐业务）已裁剪；Polaris 以 NimbusContextQuotaBlock 承担额度块，
+// 其依赖 ServiceProvider，与本文件无关的交互用例里直接 mock 掉。
+vi.mock("@/chat-input-toolbar/NimbusContextQuotaBlock.js", () => ({
+  NimbusContextQuotaBlock: () => null,
 }));
 
 function renderContextUsage() {
@@ -74,36 +75,8 @@ describe("ChatContextUsage mobile interaction", () => {
     expect(screen.getByText("chat.contextUsage.title")).toBeTruthy();
   });
 
-  it("refreshes plan usage through the normal open handler on touch", () => {
-    const onAccess = vi.fn();
-    vi.stubGlobal("matchMedia", (query: string) => ({
-      matches: query === "(hover: none)",
-      media: query,
-    }));
-
-    render(
-      createElement(ChatContextUsage, {
-        intl: {
-          formatMessage: ({ id }: { id: string }) => id,
-        } as never,
-        locale: "en-US",
-        selectedProvider: "glm",
-        startPlanBalance: {
-          loading: false,
-          onAccess,
-          snapshot: null,
-        },
-        taskUsage: null,
-      }),
-    );
-
-    const trigger = screen.getByRole("button", {
-      name: "settings.modelProvider.startPlan.balance.title",
-    });
-    fireEvent.pointerDown(trigger, { pointerType: "touch" });
-
-    expect(onAccess).toHaveBeenCalledTimes(1);
-  });
+  // StartPlan 余额触发（settings.modelProvider.startPlan.balance.title）随官方套餐业务裁剪移除；
+  // 触摸打开行为由上面 "opens the context panel from a touch pointer" 用例继续覆盖。
 
   it("keeps a desktop pointer from changing the hover card contract", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({

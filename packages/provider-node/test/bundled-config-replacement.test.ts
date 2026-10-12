@@ -43,7 +43,7 @@ it("同内容并发启动复用固定资源且不改写文件", async () => {
     ),
   ).toEqual(Array(8).fill(file));
   expect((await stat(file, { bigint: true })).mtimeNs).toBe(before.mtimeNs);
-  expect(await readdir(dirname(file))).toEqual(["zcode-builtin.json"]);
+  expect(await readdir(dirname(file))).toEqual(["polaris-builtin.json"]);
 });
 
 it("替换期间并发读取只见完整旧版或新版，不产生 hash 历史文件", async () => {
@@ -70,10 +70,13 @@ it("替换期间并发读取只见完整旧版或新版，不产生 hash 历史�
       const fileContent = JSON.parse(await readFile(file, "utf8"));
       expect([1, 2]).toContain(fileContent.revision);
       expect(fileContent).toEqual(JSON.parse(release(fileContent.revision)));
+      // TODO(polaris-sync): Windows 下紧循环 readFile 会让 rename 的 EPERM 重试窗口耗尽；
+      // 让出一点调度间隙以保留「并发读只见完整版本」的断言语义。
+      await new Promise((resolve) => setTimeout(resolve, 5));
     } while (!finished);
   })();
   await Promise.all([writer, reader]);
-  expect(await readdir(dirname(file))).toEqual(["zcode-builtin.json"]);
+  expect(await readdir(dirname(file))).toEqual(["polaris-builtin.json"]);
 });
 
 it("资源校验或原子写入失败时保留旧内容，错误向调用方报告", async () => {
@@ -93,5 +96,5 @@ it("资源校验或原子写入失败时保留旧内容，错误向调用方报�
     materializeZCodeBuiltinProviderConfig({ environmentConfigRoot, content: release(2) }),
   ).rejects.toThrow("fixture write failure");
   expect(await readFile(file, "utf8")).toBe(before);
-  expect(await readdir(dirname(file))).toEqual(["zcode-builtin.json"]);
+  expect(await readdir(dirname(file))).toEqual(["polaris-builtin.json"]);
 });

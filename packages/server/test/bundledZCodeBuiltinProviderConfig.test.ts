@@ -27,7 +27,7 @@ describe("materializeBundledZCodeBuiltinProviderConfig", () => {
 
     expect(secondPath).toBe(firstPath);
     expect(firstPath).toBe(
-      join(runtimeRoot, "runtime", "provider", "bundled", "zcode-builtin.json"),
+      join(runtimeRoot, "runtime", "provider", "bundled", "polaris-builtin.json"),
     );
     await expect(readFile(firstPath, "utf8")).resolves.toBe(`${content}\n`);
   });

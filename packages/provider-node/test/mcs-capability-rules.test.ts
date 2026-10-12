@@ -48,20 +48,8 @@ describe("MCS published capability boundaries", () => {
         ).toBe(false);
       }
     }
-    for (const provider of release.config.providerConfigRules.providerRules) {
-      const { api } = provider.config;
-      const config = rules.resolve({
-        providerId: provider.providerId,
-        modelId: "GLM-5.3-Flash",
-        apiType: api.type,
-        baseUrl: api.baseUrl,
-      });
-      expect(config.properties?.supportsMidConversationSystem, provider.providerId).toBe(true);
-      // 闲时保留 MCS，但按 Todo140 关闭内置搜索；普通套餐不能随之回退。
-      expect(config.properties?.supportsNativeWebSearch, provider.providerId).toBe(
-        provider.config.access.mode !== "off-peak",
-      );
-    }
+    // Polaris：官方套餐 provider 已全部下线，仅存的 nimbus 不在 MCS 站点白名单内，
+    // 原「自有 provider 全家保留 MCS」的 provider 循环随之删除；站点白名单本身由下方 URL 断言守护。
     for (const baseUrl of [
       "https://zcode.z.ai/api/v1/off-peak/anthropic/",
       "https://zcode.z.ai/api/v1/zcode-plan/anthropic/",

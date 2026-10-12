@@ -1,13 +1,13 @@
 import { fileURLToPath } from "node:url";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import {
+  ApiKeyAccessConfig,
   ModelConfigRules,
   ModelConfig,
   ModelOptionSpecsConfig,
+  ProviderConfig,
   ProviderConfigMap,
   ProviderConfigResolver,
-  ProviderConfig,
-  ZhipuAccountAccessConfig,
   createRegistryModelConfig,
   createRegistryProviderConfig,
   type ModelSelection,
@@ -43,28 +43,21 @@ function view(modelId: string, level: string, personalModels = ModelConfigRules.
   const account = {
     revision: "a",
     basedOnZCodeBuiltinRevision: "b",
-    providers: new ProviderConfigMap([
-      [
-        "account:bigmodel-individual-coding-plan",
-        new ProviderConfig({ access: new ZhipuAccountAccessConfig({ entitled: true }) }),
-      ],
-    ]),
-    states: {
-      "account:bigmodel-individual-coding-plan": {
-        availability: "available" as const,
-        entitled: true,
-        current: true,
-      },
-    },
+    providers: ProviderConfigMap.empty(),
+    states: {},
   };
   // 真实 Built-in 规则和 Resolver；补入模型成员用于独立覆盖 GLM 的不同代际。
+  // Polaris：官方套餐 account provider 已下线，改用保留的 builtin provider nimbus 做载体。
   const resolution = new ProviderConfigResolver().resolve({
     ...config,
     accountProviders: account.providers,
     accountStates: account.states,
   });
-  const providerId = "account:bigmodel-individual-coding-plan";
-  const providerConfig = resolution.effectiveProviders.get(providerId)!;
+  const providerId = "nimbus";
+  // nimbus 的 access 是运行期注入的 api-key；fixture 需要补一枚 key 才能通过 registry 完整性校验。
+  const providerConfig = resolution.effectiveProviders.get(providerId)!.overlay(
+    new ProviderConfig({ access: new ApiKeyAccessConfig({ apiKey: "fixture-key" }) }),
+  );
   const modelConfig = ModelConfigRules.composeEffective(builtin.models, personalModels).resolve({
     providerId,
     modelId,
@@ -163,7 +156,7 @@ describe("Todo95C 来源限定的只读关闭档位改名", () => {
       new ModelConfigRules([
         {
           type: "provider-model",
-          providerId: "account:bigmodel-individual-coding-plan",
+          providerId: "nimbus",
           modelId: "GLM-5.2",
           config: new ModelConfig({
             optionSpecs: new ModelOptionSpecsConfig({ reasoningLevel: { values } }),

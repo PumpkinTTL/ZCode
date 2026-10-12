@@ -308,3 +308,11 @@ export * from "./attachment-source.js";
 
 export * from "./channel-mention.js";
 
+// Polaris fork：request-security 已被裁剪为本文件的空实现 stub（无验证头、无遥测），
+// 但上游测试/工具仍从包入口引用这两个名字，保留 re-export 以维持模块契约。
+export {
+  requestSecuritySensitiveHeaders,
+  isRequestSecurityFailure,
+} from "./request-security-edition/policy.js";
+export * from "./request-security-edition/verification-policy.js";
+

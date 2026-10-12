@@ -597,7 +597,7 @@ describe("ProviderConfigService", () => {
     });
   });
 
-  it("普通 Provider 保存忽略陈旧成员字段，并保留 Repository 当前成员", async () => {
+  it("普通 Provider 保存缺省成员字段时保留 Repository 当前成员，显式成员以传入为准", async () => {
     const personal = new MemoryPersonalRepository(
       layerSnapshot(
         "personal-1",
@@ -609,12 +609,12 @@ describe("ProviderConfigService", () => {
       personalRepository: personal,
     });
 
+    // 设置页表单只提交连接信息（不携带成员字段），当前成员名单必须原样保留。
     await service.savePersonalProviderOverlay(
       "personal",
       createApiKeyProviderConfig({
         group: "standard-personal",
         apiKey: "new-key",
-        personalModels: ["stale-model"],
       }),
     );
 
@@ -623,6 +623,17 @@ describe("ProviderConfigService", () => {
       type: "api-key",
       apiKey: "new-key",
     });
+
+    // 显式携带成员字段的保存（远端目录同步 / 全量表单）以传入为准。
+    await service.savePersonalProviderOverlay(
+      "personal",
+      createApiKeyProviderConfig({
+        group: "standard-personal",
+        apiKey: "new-key",
+        personalModels: ["fresh-model"],
+      }),
+    );
+    expect(personal.current.providers.get("personal")?.personalModelIds).toEqual(["fresh-model"]);
   });
 
   it("保存 Built-in Overlay 时规范化 Personal 重复成员并保留 Built-in 身份", async () => {
@@ -1291,7 +1302,8 @@ describe("ProviderConfigService", () => {
 
     await service.savePersonalProviderOverlay("personal", personalProvider(["model-a"]));
 
-    expect(personal.current.providers.get("personal")?.personalModelIds).toEqual(["stale-model"]);
+    // 成员字段按字段合并：本次显式传入的名单生效（member-merge，见 savePersonalProviderOverlay）。
+    expect(personal.current.providers.get("personal")?.personalModelIds).toEqual(["model-a"]);
     expect(personal.current.models.rules()).toEqual([
       { type: "model", modelMatch: ".*", config: pattern },
       {

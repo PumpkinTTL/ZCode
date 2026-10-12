@@ -45,6 +45,8 @@ it("compiles real UAC calls when the plugin directory follows the custom include
       // 只编译不执行：载荷复用当前文件，所有平台都能验证真实 NSIS 插件解析。
       const args = [
         "-V2",
+        // Windows 中文代码页下 makensis 默认按 ANSI 读脚本，UTF-8 中文注释会报 Bad text encoding。
+        "-INPUTCHARSET", "UTF8",
         ...(uninstaller ? ["-WX", "-DBUILD_UNINSTALLER"] : []),
         `-DNSIS_INCLUDE_DIR=${join(nsisDir, "Include")}`,
         `-DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${join(builderDir, "templates/nsis/include")}`,

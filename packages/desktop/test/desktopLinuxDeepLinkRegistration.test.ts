@@ -35,7 +35,8 @@ describe("desktop Linux deep link registration helpers", () => {
 
     expect(command.executablePath).toBe("/home/alice/Downloads/ZCode-2.8.0-linux-x64.AppImage");
     expect(entry).toContain('Exec="/home/alice/Downloads/ZCode-2.8.0-linux-x64.AppImage" %U');
-    expect(entry).toContain("MimeType=x-scheme-handler/zcode;");
+    // Polaris：entry 同时声明 polaris 与 legacy zcode 两种 scheme，新旧链接都归本应用处理。
+    expect(entry).toContain("MimeType=x-scheme-handler/polaris;x-scheme-handler/zcode;");
   });
 
   it("keeps AppImage sandbox and GPU launch switches for protocol callbacks", async () => {
@@ -103,14 +104,14 @@ describe("desktop Linux deep link registration helpers", () => {
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
 
     const entry = createLinuxDeepLinkDesktopEntry({
-      executablePath: "/opt/ZCode Preview/zcode-preview",
-      productName: "ZCode Preview",
+      executablePath: "/opt/Polaris Preview/polaris-preview",
+      productName: "Polaris Preview",
     });
 
-    expect(entry).toContain("Name=ZCode Preview");
-    expect(entry).toContain("StartupWMClass=ZCode Preview");
-    expect(entry).toContain('Exec="/opt/ZCode Preview/zcode-preview" %U');
-    expect(entry).toContain("MimeType=x-scheme-handler/zcode;");
+    expect(entry).toContain("Name=Polaris Preview");
+    expect(entry).toContain("StartupWMClass=Polaris Preview");
+    expect(entry).toContain('Exec="/opt/Polaris Preview/polaris-preview" %U');
+    expect(entry).toContain("MimeType=x-scheme-handler/polaris;x-scheme-handler/zcode;");
   });
 
   it("escapes AppImage callback switches before writing desktop Exec", async () => {
@@ -160,7 +161,7 @@ describe("desktop Linux deep link registration helpers", () => {
       });
 
       expect(result).toEqual({
-        iconFilePath: join(dataDir, "icons", "hicolor", "512x512", "apps", "zcode.png"),
+        iconFilePath: join(dataDir, "icons", "hicolor", "512x512", "apps", "polaris.png"),
         installed: true,
         changed: true,
       });
@@ -220,7 +221,7 @@ describe("desktop Linux deep link registration helpers", () => {
         },
       });
 
-      const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+      const desktopFilePath = join(homeDir, ".local", "share", "applications", "polaris.desktop");
       expect(existsSync(desktopFilePath)).toBe(true);
       expect(readFileSync(desktopFilePath, "utf8")).toContain(
         'Exec="/home/alice/Applications/ZCode.AppImage" %U',
@@ -235,7 +236,11 @@ describe("desktop Linux deep link registration helpers", () => {
         },
         {
           command: "xdg-mime",
-          args: ["default", "zcode.desktop", "x-scheme-handler/zcode"],
+          args: ["default", "polaris.desktop", "x-scheme-handler/polaris"],
+        },
+        {
+          command: "xdg-mime",
+          args: ["default", "polaris.desktop", "x-scheme-handler/zcode"],
         },
       ]);
     } finally {
@@ -273,11 +278,11 @@ describe("desktop Linux deep link registration helpers", () => {
     const commandCalls: CommandCall[] = [];
 
     try {
-      // 模拟 rpm/deb 安装产物：/usr/share/applications/zcode.desktop。
+      // 模拟 rpm/deb 安装产物：/usr/share/applications/polaris.desktop。
       mkdirSync(systemApplicationsDir, { recursive: true });
       writeFileSync(
-        join(systemApplicationsDir, "zcode.desktop"),
-        "[Desktop Entry]\nName=ZCode\nExec=/opt/ZCode/zcode %U\n",
+        join(systemApplicationsDir, "polaris.desktop"),
+        "[Desktop Entry]\nName=Polaris\nExec=/opt/ZCode/zcode %U\n",
         "utf8",
       );
       // 模拟旧 AppImage 时代遗留的用户级条目（含归属标记 Comment 行）。
@@ -312,6 +317,10 @@ describe("desktop Linux deep link registration helpers", () => {
 
       // 用户级遗留条目必须被清掉，让系统级条目在 XDG 解析中生效。
       expect(existsSync(desktopFilePath)).toBe(false);
+      // 有系统级条目时不再写用户级 polaris.desktop。
+      expect(
+        existsSync(join(homeDir, ".local", "share", "applications", "polaris.desktop")),
+      ).toBe(false);
       expect(commandCalls).toEqual([
         {
           command: "update-desktop-database",
@@ -319,7 +328,11 @@ describe("desktop Linux deep link registration helpers", () => {
         },
         {
           command: "xdg-mime",
-          args: ["default", "zcode.desktop", "x-scheme-handler/zcode"],
+          args: ["default", "polaris.desktop", "x-scheme-handler/polaris"],
+        },
+        {
+          command: "xdg-mime",
+          args: ["default", "polaris.desktop", "x-scheme-handler/zcode"],
         },
       ]);
       expect(
@@ -390,8 +403,8 @@ describe("desktop Linux deep link registration helpers", () => {
     try {
       mkdirSync(systemApplicationsDir, { recursive: true });
       writeFileSync(
-        join(systemApplicationsDir, "zcode.desktop"),
-        "[Desktop Entry]\nName=ZCode\nExec=/opt/ZCode/zcode %U\n",
+        join(systemApplicationsDir, "polaris.desktop"),
+        "[Desktop Entry]\nName=Polaris\nExec=/opt/ZCode/zcode %U\n",
         "utf8",
       );
 
@@ -412,7 +425,7 @@ describe("desktop Linux deep link registration helpers", () => {
       expect(existsSync(desktopFilePath)).toBe(false);
       expect(
         existsSync(
-          join(homeDir, ".local", "share", "icons", "hicolor", "512x512", "apps", "zcode.png"),
+          join(homeDir, ".local", "share", "icons", "hicolor", "512x512", "apps", "polaris.png"),
         ),
       ).toBe(false);
       expect(commandCalls).toEqual([
@@ -422,7 +435,11 @@ describe("desktop Linux deep link registration helpers", () => {
         },
         {
           command: "xdg-mime",
-          args: ["default", "zcode.desktop", "x-scheme-handler/zcode"],
+          args: ["default", "polaris.desktop", "x-scheme-handler/polaris"],
+        },
+        {
+          command: "xdg-mime",
+          args: ["default", "polaris.desktop", "x-scheme-handler/zcode"],
         },
       ]);
     } finally {
@@ -435,7 +452,7 @@ describe("desktop Linux deep link registration helpers", () => {
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
     const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-no-system-"));
     const homeDir = join(tempRoot, "home");
-    const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+    const desktopFilePath = join(homeDir, ".local", "share", "applications", "polaris.desktop");
 
     try {
       registerLinuxDeepLinkProtocol({
@@ -459,12 +476,12 @@ describe("desktop Linux deep link registration helpers", () => {
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
     const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-dir-system-"));
     const homeDir = join(tempRoot, "home");
-    // 系统目录下的 zcode.desktop 是一个目录而非普通文件，不得视为有效系统条目。
+    // 系统目录下的 polaris.desktop 是一个目录而非普通文件，不得视为有效系统条目。
     const systemApplicationsDir = join(tempRoot, "system", "applications");
-    const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+    const desktopFilePath = join(homeDir, ".local", "share", "applications", "polaris.desktop");
 
     try {
-      mkdirSync(join(systemApplicationsDir, "zcode.desktop"), { recursive: true });
+      mkdirSync(join(systemApplicationsDir, "polaris.desktop"), { recursive: true });
       registerLinuxDeepLinkProtocol({
         executablePath: "/opt/ZCode/zcode",
         homeDir,
@@ -494,8 +511,8 @@ describe("desktop Linux deep link registration helpers", () => {
     try {
       mkdirSync(systemApplicationsDir, { recursive: true });
       writeFileSync(
-        join(systemApplicationsDir, "zcode.desktop"),
-        "[Desktop Entry]\nName=ZCode\nExec=/opt/ZCode/zcode %U\n",
+        join(systemApplicationsDir, "polaris.desktop"),
+        "[Desktop Entry]\nName=Polaris\nExec=/opt/ZCode/zcode %U\n",
         "utf8",
       );
       mkdirSync(dirname(desktopFilePath), { recursive: true });
@@ -533,7 +550,11 @@ describe("desktop Linux deep link registration helpers", () => {
         },
         {
           command: "xdg-mime",
-          args: ["default", "zcode.desktop", "x-scheme-handler/zcode"],
+          args: ["default", "polaris.desktop", "x-scheme-handler/polaris"],
+        },
+        {
+          command: "xdg-mime",
+          args: ["default", "polaris.desktop", "x-scheme-handler/zcode"],
         },
       ]);
     } finally {

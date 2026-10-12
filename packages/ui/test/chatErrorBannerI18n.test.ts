@@ -75,7 +75,7 @@ describe("ChatErrorBanner i18n", () => {
         { code: "3102", message: "off peak ticket is invaliad or expired" },
         zhIntl,
       ),
-    ).toBe("已超过单次最长运行时间，请创建新的闲时任务继续。");
+    ).toBe("单次运行时长已达上限，请稍后重试。");
 
     // 外层 code 被压成包装码时靠适配层写入的稳定标记兜底。
     expect(
@@ -86,8 +86,6 @@ describe("ChatErrorBanner i18n", () => {
         },
         enIntl,
       ),
-    ).toBe(
-      "This run exceeded the maximum single-run time. Create a new off-peak task to continue.",
-    );
+    ).toBe("This run exceeded the maximum single-run time. Please try again later.");
   });
 });

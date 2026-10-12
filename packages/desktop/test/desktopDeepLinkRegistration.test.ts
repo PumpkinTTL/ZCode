@@ -50,8 +50,11 @@ describe("Windows Deep Link 启动参数边界", () => {
     registerDeepLinkProtocol(logger);
     registerDeepLinkProtocol(logger);
 
+    // Polaris 对外主 scheme 是 polaris://，zcode:// 作为历史链接兼容一并注册。
     expect(mocks.register.mock.calls).toEqual([
+      ["polaris", process.execPath, ["--"]],
       ["zcode", process.execPath, ["--"]],
+      ["polaris", process.execPath, ["--"]],
       ["zcode", process.execPath, ["--"]],
     ]);
   });

@@ -11,10 +11,6 @@ function readWorkspaceFile(path: string): Buffer {
   return readFileSync(resolve(process.cwd(), path));
 }
 
-function readWorkspaceFileDataUrl(path: string, mimeType: string): string {
-  return `data:${mimeType};base64,${readWorkspaceFile(path).toString("base64")}`;
-}
-
 function readCssRule(source: string, selector: string): string {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = source.match(new RegExp(`${escapedSelector}\\s*\\{(?<body>[^}]*)\\}`));
@@ -41,19 +37,17 @@ describe("web remote control bootstrap shell", () => {
     const document = new JSDOM(html).window.document;
     const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"][type="image/png"]');
 
-    expect(icon?.href).toBe(readWorkspaceFileDataUrl("public/logo/icons/32x32.png", "image/png"));
+    // Polaris：32x32 PNG 图标直接内嵌为 data URL（public/logo 下的独立图标文件已移除）。
+    expect(icon?.href).toMatch(/^data:image\/png;base64,/);
     expect(icon?.getAttribute("sizes")).toBe("32x32");
     expect(readWorkspaceFile("packages/web/public/favicon.ico")).toEqual(
-      readWorkspaceFile("packages/desktop/build/icon.ico"),
-    );
-    expect(readWorkspaceFile("public/logo/icons/icon.ico")).toEqual(
       readWorkspaceFile("packages/desktop/build/icon.ico"),
     );
   });
 
   it("预渲染 loading 容器自身兜底主题背景，避免全局透明 body 露出白底", () => {
     const html = readWebIndexHtml();
-    const loadingRule = readCssRule(html, ".zcode-boot-loading");
+    const loadingRule = readCssRule(html, ".polaris-boot-loading");
 
     expect(loadingRule).toContain("background: var(--zcode-bootstrap-bg");
     expect(loadingRule).toContain("#0f172a");

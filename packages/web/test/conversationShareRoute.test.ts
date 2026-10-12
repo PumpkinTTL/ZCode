@@ -75,7 +75,8 @@ describe("conversation share route", () => {
       /showContinueHelp \? \(\s*(?:\/\/[^\n]*\n\s*)*<ShareContentInset>/u,
     );
     // Bug 根因二：站点首页本身就是下载入口，/download 这个 path 是 404。
-    expect(source).toContain('const ZCODE_DOWNLOAD_URL = "https://zcode.z.ai"');
+    // Polaris：下载入口指向自有域名（待部署），不再跳 ZCode 官方站点。
+    expect(source).toContain('const ZCODE_DOWNLOAD_URL = "https://nimbus.bitlesu.com"');
     expect(source).not.toContain("zcode.z.ai/download");
   });
 });

@@ -119,7 +119,7 @@ describe("resourceManagerWindow", () => {
       const snapshot = await module.buildResourceUsageSnapshot({ includeHosts: false });
       const byPid = new Map(snapshot.processes.map((row) => [row.pid, row]));
       expect(byPid.get(mainPid)).toMatchObject({
-        name: "zcode-main",
+        name: "polaris-main",
         category: "base",
         groupKey: "main",
         cpuPercent: 1.2,
@@ -131,7 +131,7 @@ describe("resourceManagerWindow", () => {
         groupKey: "gpu",
       });
       expect(byPid.get(rendererPid)).toMatchObject({
-        name: formatZCodeRendererProcessName("ZCode"),
+        name: formatZCodeRendererProcessName("Polaris"),
         groupKey: "renderer",
       });
       expect(byPid.get(hostPid)).toMatchObject({
@@ -181,7 +181,7 @@ describe("resourceManagerWindow", () => {
             processes: [
               {
                 pid: agentPid,
-                name: "zcode-agent-glm-demo",
+                name: "polaris-agent-glm-demo",
                 category: "base",
                 groupKey: "cli",
                 groupLabel: "cli",

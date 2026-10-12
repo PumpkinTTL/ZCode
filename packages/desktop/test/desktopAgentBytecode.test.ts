@@ -39,11 +39,14 @@ process.stdout.write(JSON.stringify({value, args:process.argv.slice(2),
   const result = await execFileAsync(electronPath, [artifact.loaderPath, "app-server", "--stdio"], {
     env: runtimeEnv,
   });
-  expect(JSON.parse(result.stdout)).toEqual({
+  const bytecodeRuntimeInfo = JSON.parse(result.stdout);
+  // Windows 的 %TEMP% 可能是 8.3 短路径（ADMINI~1），__dirname 保留 argv 传入的形态，
+  // 归一化（realpath）后再比较目录本身。
+  expect(await realpath(bytecodeRuntimeInfo.directory)).toBe(await realpath(dir));
+  expect(bytecodeRuntimeInfo).toMatchObject({
     value: 42,
     args: ["app-server", "--stdio"],
     filename: "zcode.cjs",
-    directory: await realpath(dir),
     dynamic: 7,
     hasDynamicSource: true,
   });

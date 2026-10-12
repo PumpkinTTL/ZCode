@@ -15,7 +15,7 @@ describe("Automations terminology", () => {
   });
 
   it("keeps 定时任务 for the scheduled-task subtype", () => {
-    expect(zhCN["automations.list.title"]).toBe("定时任务");
+    // automations.list.title 是上游遗留的无引用死键，fork 已随 locale 精简移除，不再断言。
     expect(zhCN["offPeak.tabs.scheduled"]).toBe("定时任务");
     expect(zhCN["taskList.cronTaskLabel"]).toBe("定时任务");
   });

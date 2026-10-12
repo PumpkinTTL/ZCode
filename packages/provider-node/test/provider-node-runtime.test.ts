@@ -152,16 +152,6 @@ describe("@zcode/provider-node", () => {
       supportsMidConversationSystem: true,
       supportsNativeWebSearch: false,
     });
-    expect(snapshot.providers.get("account:zai-start-plan")?.access).toMatchObject({
-      type: "zhipu-account",
-      accountType: "zai",
-      mode: "start-plan",
-    });
-    expect(snapshot.providers.get("account:zai-offpeak-idle-plan")?.access).toMatchObject({
-      type: "zhipu-account",
-      accountType: "zai",
-      mode: "off-peak",
-    });
     expect(snapshot.providerTemplates?.get("deepseek")?.config.access).toMatchObject({
       type: "api-key",
     });
@@ -191,13 +181,12 @@ describe("@zcode/provider-node", () => {
         providerConfigRules: {
           providerRules: [
             {
-              providerId: "zcodeBuiltin",
+              providerId: "nimbus",
               config: {
-                group: "zai-family",
+                group: "nimbus",
                 access: {
-                  type: "zhipu-account",
-                  accountType: "zai",
-                  mode: "start-plan",
+                  type: "api-key",
+                  apiKeyManagementUrl: "https://nimbus.bitlesu.com",
                 },
                 builtinModelIds: [],
               },
@@ -229,11 +218,11 @@ describe("@zcode/provider-node", () => {
     });
 
     expect(repeatedPath).toBe(firstPath);
-    expect(firstPath).toBe(join(root, "runtime", "provider", "bundled", "zcode-builtin.json"));
+    expect(firstPath).toBe(join(root, "runtime", "provider", "bundled", "polaris-builtin.json"));
     expect(secondPath).toBe(firstPath);
     expect(JSON.parse(await readFile(secondPath, "utf8"))).toEqual(JSON.parse(secondContent));
     expect(await readdir(join(root, "runtime", "provider", "bundled"))).toEqual([
-      "zcode-builtin.json",
+      "polaris-builtin.json",
     ]);
   });
 

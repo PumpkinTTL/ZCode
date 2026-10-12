@@ -34,6 +34,8 @@ if (process.platform !== "win32") {
       makensisPath,
       [
         "/V2",
+    // Windows 中文代码页下 makensis 默认按 ANSI 读脚本，UTF-8 中文注释会报 Bad text encoding。
+    "/INPUTCHARSET", "UTF8",
         "/WX",
         "/DBUILD_UNINSTALLER",
         `/DNSIS_INCLUDE_DIR=${resolve(nsisDir, "Include")}`,
@@ -76,7 +78,7 @@ if (process.platform !== "win32") {
       if (!existsSync(join(installDir, "user-data.txt"))) {
         throw new Error(`${scenario}: unrelated file was removed`);
       }
-      if (readFileSync(join(installDir, "ZCode.exe")).length === 0) {
+      if (readFileSync(join(installDir, "Polaris.exe")).length === 0) {
         throw new Error(`${scenario}: application payload was not installed`);
       }
     }

@@ -53,8 +53,7 @@ describe("BotsDialog config", () => {
     for (const key of [
       "bots.bind",
       "bots.unbind",
-      "bots.unbindSuccess",
-      "bots.unbindFailed",
+      // bots.unbindSuccess/unbindFailed 是上游遗留的无引用死键，fork 已随 locale 精简移除。
       "bots.copyBindCommand",
       "bots.bindCommandGuide",
       "bots.bindCommandStep.copy",

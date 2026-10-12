@@ -106,45 +106,18 @@ describe("composerRecent", () => {
     expect(readComposerRecent("/repo", undefined, target)?.mode).toBe("edit");
   });
 
-  it("指向加速卡 Provider 的提交不写入 Recent，保留上一次合法记录（spec §5.1）", () => {
-    const target = storage();
-    captureComposerRecentSubmission(
-      "/repo",
-      { modelSelection: selection, mode: "build" },
-      undefined,
-      target,
-    )();
-    const accelerated = captureComposerRecentSubmission(
-      "/repo",
-      {
-        modelSelection: { providerId: "account:zai-highspeed-card", modelId: "GLM-5.3" },
-        mode: "build",
-      },
-      undefined,
-      target,
-    );
-    accelerated();
-    expect(JSON.parse(target.values.get(key)!)).toEqual({
-      modelSelection: selection,
-      mode: "build",
-    });
-  });
-
-  it("读取自愈：指向加速卡 Provider 的存量模型叶子被丢弃，mode 保留（spec §5.1）", () => {
+  it("读取自愈：schema 非法的存量模型叶子被丢弃，mode 保留", () => {
     const target = storage();
     target.values.set(
       key,
       JSON.stringify({
-        modelSelection: { providerId: "account:bigmodel-highspeed-card", modelId: "GLM-5.3" },
+        modelSelection: { providerId: "provider-x" },
         mode: "yolo",
       }),
     );
     expect(readComposerRecent("/repo", undefined, target)).toEqual({ mode: "yolo" });
-    // 旧版纯 ModelSelection 格式同样丢弃，避免新草稿种子指向隐藏加速身份。
-    target.values.set(
-      key,
-      JSON.stringify({ providerId: "account:zai-highspeed-card", modelId: "GLM-5.3" }),
-    );
+    // 旧版纯 ModelSelection 格式同样按叶子校验，整体非法时丢弃，避免新草稿种子指向失效身份。
+    target.values.set(key, JSON.stringify({ providerId: "" }));
     expect(readComposerRecent("/repo", undefined, target)).toBeNull();
   });
 
