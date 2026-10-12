@@ -1,4 +1,6 @@
-export const USAGE_STATS_RANGE_DAYS: Record<Exclude<import("@zcode/shared").UsageStatsRange, "all">, number> =
+type UsageStatsRange = "7d" | "30d" | "all";
+
+export const USAGE_STATS_RANGE_DAYS: Record<Exclude<UsageStatsRange, "all">, number> =
   {
     "7d": 7,
     "30d": 30,

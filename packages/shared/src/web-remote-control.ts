@@ -1036,3 +1036,6 @@ export type RelayDesktopControlEvent =
   | WebRemoteControlWorkspaceControlResponse
   | WebRemoteControlWindowControlRequest
   | WebRemoteControlWindowControlResponse;
+
+/** 用户触发移动端连接的入口（上游语义保持一致：新会话/重连/恢复）。 */
+export type RemoteWorkspaceConnectTrigger = "new" | "reconnect" | "restore";

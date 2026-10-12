@@ -197,7 +197,7 @@ export async function resolveOffPeakCredentials(
         reason: "off-peak",
       });
       codingPlanApiKey = auth.apiKey?.trim() ?? "";
-      accountScope = auth.accountScope;
+      accountScope = undefined;
     } catch (error) {
       if (error instanceof AccountRequestCredentialUnavailableError) {
         throw new OffPeakCredentialsUnavailableError("codingPlanApiKey");

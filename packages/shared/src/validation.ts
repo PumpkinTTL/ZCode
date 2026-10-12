@@ -39,7 +39,6 @@ import { wslUserSchema } from "./wslUserValidation.js";
 import { legacyZCodeProviderSchema } from "./zcode-agent-policy.js";
 import { errorAttributionSchema } from "./zcode-protocol-v4/snapshot.js";
 import {
-  zcodeMcpResourceSamplesSchema,
   zcodeMcpTelemetryEventSchema,
   zcodeProcessResourceSampleSchema,
   zcodeToolExecResourceSchema,

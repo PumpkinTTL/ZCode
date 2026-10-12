@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- Root 当前集中编排启动和 workspace shell wiring，先保持入口收口避免跨层状态拆散。 */
 import { Suspense, useCallback, useEffect, lazy, useMemo, useRef, useState } from "react";
+import type { WorkspaceTabState } from "@/store/tabStore.js";
 import { LucideProvider, RefreshCw } from "lucide-react";
 import {
   APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,

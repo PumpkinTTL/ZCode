@@ -1,6 +1,7 @@
 import { IGenUiService } from "./gen-ui/contract.js";
 import { createGenUiService } from "./gen-ui/node.js";
 import { channelReplyHostRequestSchema, channelReplyResultSchema } from "@zcode/shared";
+import { isProviderProvisioningAccountCredentialKey } from "@zcode/shared";
 /* eslint-disable max-lines -- host process 服务注册和启动装配需要集中维护，拆散后会更难追踪依赖注入顺序 */
 // Node.js service implementations — NOT safe to import in browser code
 import { randomBytes } from "node:crypto";
@@ -502,7 +503,7 @@ import {
   getStableCuaPipeName,
   resolveStableCuaWinRecipe,
 } from "#src/cua-permission-broker/stableCuaTransport.js";
-import { HELPER_APP_NAME } from "@zcode/zcode-cua/broker/helperConstants";
+import { DEV_HELPER_APP_NAME, HELPER_APP_NAME } from "@zcode/zcode-cua/broker/helperConstants";
 import { resolveBrokerSocketPath } from "@zcode/zcode-cua/broker/socketPath";
 import {
   DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
@@ -1129,6 +1130,11 @@ export function createLocalServices(options: {
   };
   /** 所属 Environment 的 ZCode Built-in Provider Config 物理路径。 */
   zcodeBuiltinProviderConfigFilePath: string;
+  /** 桌面主进程下发的运行时上下文（deviceMid 用于在线心跳身份键等）。 */
+  agentRuntimeContext?: {
+    getDeviceMid?: () => string | undefined;
+    runtimeSurface?: "desktop_local_host" | "remote_workspace_host";
+  };
   /** HTTP Server 只有在调用方明确配置认证时才暴露跨 Environment Provisioning target。 */
   providerProvisioningTargetEnabled?: boolean;
   /** Desktop Host 私有通知；只在 Source 成功持久化后请求 Main 调度远端镜像。 */

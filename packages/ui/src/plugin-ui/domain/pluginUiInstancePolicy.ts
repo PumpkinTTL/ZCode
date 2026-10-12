@@ -104,3 +104,13 @@ export function deriveLogicalUiInstances(
   }
   return { instances, byToolCallId };
 }
+
+/** Polaris 增量推导：相等时时间线复用旧裁决对象，避免每帧重渲染插件卡片。 */
+export function pluginUiInstanceDerivationsEqual(
+  a: PluginUiInstanceDerivation,
+  b: PluginUiInstanceDerivation,
+): boolean {
+  if (a === b) return true;
+  if (a.instances.length !== b.instances.length) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}

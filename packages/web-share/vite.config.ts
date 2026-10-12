@@ -35,6 +35,15 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": resolve(REPO_ROOT, "packages/ui/src"),
+        // 子路径 import 必须显式映射：对象 alias 会做前缀替换，@zcode/shared/mcp-apps
+        // 会被改写成 index.ts/mcp-apps 导致断链（web-share 以源码方式消费 ui/shared）。
+        "@zcode/shared/gen-ui": resolve(REPO_ROOT, "packages/shared/src/gen-ui/index.ts"),
+        "@zcode/shared/mcp-apps": resolve(REPO_ROOT, "packages/shared/src/mcp-apps/index.ts"),
+        "@zcode/shared/zcode-protocol-v4": resolve(REPO_ROOT, "packages/shared/src/zcode-protocol-v4/index.ts"),
+        "@zcode/shared/zcode-protocol": resolve(REPO_ROOT, "packages/shared/src/zcode-protocol/index.ts"),
+        "@zcode/shared/model-config": resolve(REPO_ROOT, "packages/shared/src/model-config.ts"),
+        "@zcode/shared/model-selection": resolve(REPO_ROOT, "packages/shared/src/model-selection.ts"),
+        "@zcode/shared/workspace-hook-review-monotonicity": resolve(REPO_ROOT, "packages/shared/src/workspace-hook-review-monotonicity.ts"),
         "@zcode/shared": resolve(REPO_ROOT, "packages/shared/src/index.ts"),
         // Share 镜像不安装 @zcode/ui（它会带入 services/rpc 闭包），子路径导入必须显式指向源码。
         "@zcode/ui/useTheme": resolve(REPO_ROOT, "packages/ui/src/useTheme.ts"),

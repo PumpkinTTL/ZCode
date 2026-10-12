@@ -6,6 +6,7 @@ import type { ProviderFamilyConnectionSelectionSettings } from "./provider-famil
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 import type { DynamicWorkflowMode } from "./dynamic-workflow-feature.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
+import type { ZCodeProvider } from "./zcode-task-types-core.js";
 
 // ── Domain types ──
 

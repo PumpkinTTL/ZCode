@@ -200,13 +200,13 @@ export function resolveRuntimeZCodeEndpointOrigin(
 }
 
 export function buildRuntimeZCodeEndpointUrls(
-  env: RuntimeZCodeEndpointEnv = readProductEndpointEnv(),
+  env: RuntimeZCodeEndpointEnv = {} as RuntimeZCodeEndpointEnv,
 ): ZCodeEndpointUrls {
   return buildZCodeEndpointUrls(resolveRuntimeZCodeEndpointOrigin(env));
 }
 
 export function buildRuntimeZCodeApiUrl(
-  env: RuntimeZCodeEndpointEnv = readProductEndpointEnv(),
+  env: RuntimeZCodeEndpointEnv = {} as RuntimeZCodeEndpointEnv,
   path: string,
 ): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -248,7 +248,7 @@ export function buildBigModelApiUrl(env: RuntimeBigModelApiEnv = {}, path: strin
 }
 
 export function buildBigModelCodingPlanTeamManageUrl(
-  env: RuntimeBigModelApiEnv = readProductEndpointEnv(),
+  env: RuntimeBigModelApiEnv = {} as RuntimeBigModelApiEnv,
 ): string {
   return buildBigModelApiUrl(env, "/coding-plan/team/plans");
 }

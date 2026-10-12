@@ -1401,8 +1401,6 @@ export function createZCodeAgentService(
       providerId: request.providerId,
       modelId: request.modelSelection.modelId,
       accountAccess: request.accountAccess,
-      expectedAccountScope: request.expectedAccountScope,
-      rejectedProjectTokenFingerprint: request.rejectedProjectTokenFingerprint,
       reason: request.reason,
     });
   }
@@ -5492,10 +5490,6 @@ export function createZCodeAgentService(
         accountRequestAuth?.apiKey || Object.keys(requestHeaders).length > 0
           ? {
               ...(accountRequestAuth?.apiKey ? { apiKey: accountRequestAuth.apiKey } : {}),
-              ...(accountRequestAuth?.apiKeyId ? { apiKeyId: accountRequestAuth.apiKeyId } : {}),
-              ...(accountRequestAuth?.accountScope
-                ? { accountScope: accountRequestAuth.accountScope }
-                : {}),
               ...(Object.keys(requestHeaders).length > 0 ? { headers: requestHeaders } : {}),
             }
           : undefined;
