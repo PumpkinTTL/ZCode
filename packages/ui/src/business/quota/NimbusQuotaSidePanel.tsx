@@ -204,8 +204,9 @@ export function NimbusQuotaSidePanel({
                   resetCardCount={account.resetCardCount}
                   onOpenResetCards={() => setResetCardsOpen(true)}
                 />
-                {/* 每日签到：连签天数 + 签到按钮（连签/奖励反馈走全局 toast） */}
-                <NimbusCheckinCard />
+                {/* 每日签到：连签天数 + 签到按钮（连签/奖励反馈走全局 toast）；
+                    compact 变体收敛到面板卡片尺度（默认路径行为不变）。 */}
+                <NimbusCheckinCard compact />
               </>
             ) : loading ? (
               <div className="flex h-28 items-center justify-center gap-2 text-foreground-subtle">

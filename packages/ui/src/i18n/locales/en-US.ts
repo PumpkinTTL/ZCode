@@ -1984,6 +1984,8 @@ const enUS: Record<string, string> = {
   "business.quota.manage": "Manage",
   "business.quota.notActivated": "Starts on first use",
   "business.appUpdate.title": "Release Notes",
+  "business.appUpdate.badge": "New version",
+  "business.appUpdate.badgeTitle": "Version v{version} is available — click to view release notes",
   "business.appUpdate.loading": "Checking…",
   "business.appUpdate.noReleases": "No releases published yet",
   "business.appUpdate.upToDate": "You're up to date",

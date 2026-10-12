@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CalendarCheckIcon, Loader2Icon } from "lucide-react";
 import type { QuotaCheckinStatus } from "@zcode/services";
+import { cn } from "@/components/lib/utils.js";
 import { toast } from "@/components/ui/toast.js";
 import { Button } from "@/components/ui/button.js";
 import { useServices } from "@/hooks/useServices.js";
@@ -17,7 +18,18 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { refreshNimbusAccountState } from "./nimbusAccountState.js";
 
-export function NimbusCheckinCard({ embedded = false }: { embedded?: boolean } = {}) {
+export function NimbusCheckinCard({
+  embedded = false,
+  compact = false,
+}: {
+  embedded?: boolean;
+  /**
+   * 紧凑变体（侧边额度面板用）：卡容器/字号/图标盒收敛到面板卡片尺度
+   * （p-4 / text-ui-sm 标题 / size-9 图标盒），与相邻的余额、套餐卡同一节奏。
+   * 默认 false——设置页两处用法的渲染路径保持逐像素不变。
+   */
+  compact?: boolean;
+} = {}) {
   const { intl } = useZCodeIntl();
   const { providerQuotaService } = useServices();
   const [status, setStatus] = useState<QuotaCheckinStatus | null>(null);
@@ -111,19 +123,31 @@ export function NimbusCheckinCard({ embedded = false }: { embedded?: boolean } =
   return (
     <div
       className={
-        embedded
-          ? "flex items-center justify-between gap-4 border-t border-border/60 px-6 py-4"
-          : "flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-6 py-4 shadow-xs"
+        compact
+          ? "flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-surface p-4"
+          : embedded
+            ? "flex items-center justify-between gap-4 border-t border-border/60 px-6 py-4"
+            : "flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-6 py-4 shadow-xs"
       }
       data-quota-checkin=""
     >
-      <div className="flex items-center gap-3.5 min-w-0">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-          <CalendarCheckIcon className="size-5" />
+      <div className={cn("flex min-w-0 items-center", compact ? "gap-3" : "gap-3.5")}>
+        <div
+          className={cn(
+            "flex shrink-0 items-center justify-center border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+            compact ? "size-9 rounded-lg" : "size-10 rounded-xl",
+          )}
+        >
+          <CalendarCheckIcon className={compact ? "size-4" : "size-5"} />
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-ui-base font-semibold text-foreground">
+            <span
+              className={cn(
+                "font-semibold text-foreground",
+                compact ? "text-ui-sm" : "text-ui-base",
+              )}
+            >
               {intl.formatMessage({ id: "business.quota.checkinTitle" })}
             </span>
             {status.streak > 0 ? (
@@ -132,7 +156,12 @@ export function NimbusCheckinCard({ embedded = false }: { embedded?: boolean } =
               </span>
             ) : null}
           </div>
-          <p className="mt-0.5 truncate text-ui-sm text-foreground-subtle">
+          <p
+            className={cn(
+              "mt-0.5 truncate text-foreground-subtle",
+              compact ? "text-ui-xs" : "text-ui-sm",
+            )}
+          >
             {checked
               ? intl.formatMessage(
                   { id: "business.quota.checkinRewardTomorrow" },
