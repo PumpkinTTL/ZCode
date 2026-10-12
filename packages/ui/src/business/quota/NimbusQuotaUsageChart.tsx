@@ -132,7 +132,11 @@ export function NimbusQuotaUsageChart({ usage }: { usage: readonly QuotaUsageDay
     [intl],
   );
 
-  if (rows.length === 0) {
+  // 空态口径：无行（窗口内没有记录）或**全零行**（有日期行但 charged 全 0 且
+  // 缓存命中率全 null——空账号的常态）都显示占位文案。全零时若照常渲染，会出
+  // 一个只有坐标轴和图例的空心图表，观感像渲染故障（gxy 空账号实测）。
+  const hasAnyValue = rows.some((row) => row.charged > 0 || row.cacheHitRate !== null);
+  if (rows.length === 0 || !hasAnyValue) {
     return (
       <p className="rounded-lg bg-surface px-3 py-6 text-center text-ui-base text-foreground-subtle">
         {intl.formatMessage({ id: "business.quota.usageEmpty" })}
