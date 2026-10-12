@@ -66,8 +66,7 @@ import {
   ensureOfficialDefaultModel,
   provisionNimbusProvider,
 } from "@/business/quota/provisionNimbusProvider.js";
-import { setPendingSettingsSection } from "@/lib/settingsNavigation.js";
-import { useTabStore } from "@/store/TabStoreProvider.js";
+import { NimbusQuotaSidePanel } from "@/business/quota/NimbusQuotaSidePanel.js";
 import { logger } from "@/logger.js";
 import {
   notifyNimbusAccountChanged,
@@ -274,19 +273,10 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
       : intl.formatMessage({ id: "settings.title" });
   const usageButtonClick = onUsageClick ?? onSettingsButtonClick;
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const openSettingsTab = useTabStore((state) => state.openSettingsTab);
-  /** 「用量额度」菜单项：跳设置页「我的额度」分区。三通道（sessionStorage 意图 /
-   * CustomEvent / Tab initialSection）现在都认 providerQuota（此前运行时白名单漏了它
-   * 导致三条通道对该分区双双静默失效），无论设置 Tab 是否已开都会正确落位。 */
-  const openQuotaSettings = useCallback(() => {
-    setPendingSettingsSection("providerQuota");
-    openSettingsTab("providerQuota");
-    // 未登录直接拉起统一登录（站长令：用量额度未登录就该跳登录）。必须是
-    // 一次性用户动作——曾挂在设置页挂载 effect 里，X 关闭后设置页重挂载会
-    // 再开，形成「登录页永远关不掉」的死循环。关掉登录页落在「我的额度」
-    // 引导卡，不再弹回。
-    if (!nimbusLoggedIn) onLogin?.();
-  }, [openSettingsTab, nimbusLoggedIn, onLogin]);
+  /** 「用量额度」菜单项：就地打开侧边额度面板（不再走设置页跳转链；设置页
+   * 「我的额度」分区经面板底部「偏好设置」仍可达）。未登录的登录引导由面板内承接。 */
+  const [quotaPanelOpen, setQuotaPanelOpen] = useState(false);
+  const openQuotaPanel = useCallback(() => setQuotaPanelOpen(true), []);
   const [desktopZoomLevel, setDesktopZoomLevel] = useState(0);
   const runDesktopZoomCommand = useCallback(
     (command: (typeof DesktopCommandIds)["ZoomIn" | "ZoomOut" | "ResetZoom"]) => {
@@ -456,10 +446,10 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
             ) : null}
             {/* 升级入口状态不再以菜单开关为生命周期边界。*/}
             <WorkspaceSidebarFooterUsageSummaryContent onUsageClick={usageButtonClick} />
-            {/* 「用量额度」：跳设置页「我的额度」分区。 */}
+            {/* 「用量额度」：打开侧边额度面板（就地弹层，设置页入口经面板底部保留）。 */}
             <DropdownMenuItem
               data-testid={TID_SIDEBAR_QUOTA_USAGE_BUTTON}
-              onSelect={openQuotaSettings}
+              onSelect={openQuotaPanel}
             >
               <Wallet className="size-4" />
               {intl.formatMessage({ id: "sidebar.usage.quota.open" })}
@@ -517,6 +507,12 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
         </div>
       </div>
       <NimbusAppUpdateDialog open={appUpdateOpen} onClose={() => setAppUpdateOpen(false)} />
+      {/* 「用量额度」侧边面板：挂在菜单之外独立存活（入口见上方菜单项）。 */}
+      <NimbusQuotaSidePanel
+        open={quotaPanelOpen}
+        onOpenChange={setQuotaPanelOpen}
+        onLogin={onLogin}
+      />
       {/* 登出确认：防误触（与上游 OAuth 登出同款交互模式）。 */}
       <AlertDialog open={nimbusLogoutConfirmOpen} onOpenChange={setNimbusLogoutConfirmOpen}>
         <AlertDialogContent>
