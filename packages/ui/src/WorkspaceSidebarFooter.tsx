@@ -261,14 +261,6 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
       </Avatar>
       <div className="min-w-0 flex-1 overflow-hidden text-left">
         <div className="flex min-w-0 items-center gap-1.5">
-          {/* 已登录的在线点：状态色的唯一来源是共享快照的 loggedIn。 */}
-          {nimbusLoggedIn ? (
-            <span
-              className="size-1.5 shrink-0 rounded-full bg-emerald-500"
-              role="img"
-              aria-label={intl.formatMessage({ id: "business.quota.online" })}
-            />
-          ) : null}
           <span className="min-w-0 truncate text-ui-base font-semibold text-foreground">
             {profileBadge}
           </span>
