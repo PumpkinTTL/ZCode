@@ -17,6 +17,17 @@ function getLogDir() {
 const LOG_DIR = getLogDir();
 mkdirSync(LOG_DIR, { recursive: true });
 
+// 性能修复：write()/writeDedicated() 曾对每行日志重复执行 getLogDir() + mkdirSync
+// （主进程每条日志 2-3 次同步文件系统调用，高频日志时直接拖慢主进程）。
+// 目录在进程生命周期内不会消失，按目录缓存「已确保存在」，把每行日志的目录开销降为零。
+const ensuredDirs = new Set<string>();
+
+function ensureLogDirOnce(dir: string): void {
+  if (ensuredDirs.has(dir)) return;
+  mkdirSync(dir, { recursive: true });
+  ensuredDirs.add(dir);
+}
+
 const logRetentionResult = cleanupExpiredLogFiles(LOG_DIR);
 if (logRetentionResult.failedFiles.length > 0) {
   safeConsoleWrite(
@@ -76,9 +87,8 @@ function write(level: LogLevel, source: string, ...args: unknown[]) {
   const pid = process.pid;
   const message = args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
   const line = `[${ts}] [${level}] [pid:${pid}] [${source}] ${message}\n`;
-  const logDir = getLogDir();
-  mkdirSync(logDir, { recursive: true });
-  const filePath = join(logDir, `${formatDate(now)}.log`);
+  const filePath = join(LOG_DIR, `${formatDate(now)}.log`);
+  ensureLogDirOnce(LOG_DIR);
 
   // 同时保留 console 输出，方便开发调试；console 也加时间戳和 PID，与文件格式对齐
   safeConsoleWrite(level, `[${ts}] [pid:${pid}] [${source}]`, ...args);
@@ -97,12 +107,10 @@ function writeDedicated(filePrefix: string, level: LogLevel, source: string, ...
   const pid = process.pid;
   const message = args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
   const line = `[${ts}] [${level}] [pid:${pid}] [${source}] ${message}\n`;
-  const logDir = getLogDir();
-  mkdirSync(logDir, { recursive: true });
   // Bugfix: 远控 relay trace 与主日志混放时，目录内文件会快速增多，人工排查不直观。
   // 这里把高频 trace 分流到 logs 子目录，避免影响主日志浏览与导出定位。
-  const dedicatedDir = join(logDir, "web-remote-control");
-  mkdirSync(dedicatedDir, { recursive: true });
+  const dedicatedDir = join(LOG_DIR, "web-remote-control");
+  ensureLogDirOnce(dedicatedDir);
   const filePath = join(dedicatedDir, `${filePrefix}-${formatDate(now)}.log`);
 
   try {
