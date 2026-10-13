@@ -1598,7 +1598,6 @@
     "packages/share-ui/package.json": "bf4e08759bc010d24d2559aa82a538832bee7c749c07c230158ee8d810cfdf41",
     "packages/shared/package.json": "c11d49fc3d0f22483b3e9859c54c53a5c080a7f4a1a2fc1e6e535ec41ca95023",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
-    "packages/stream-animate/package.json": "31cb25ed87e64dbcd695bbc932729ac30499107d45f747b96a5c3de832afdc28",
     "packages/ui/package.json": "981f0047fa0bc00d20368fc4f7af9500d8906f3d825ff9cf00dfe95e17d61c5e",
     "packages/ui/src/components/ai-elements/agent.tsx": "830e7ea9e927de1524851337f1d35bda0e5690e3e4fa307fff854b60006b16c7",
     "packages/ui/src/components/ai-elements/artifact.tsx": "7d73f08864d6280ac86c77d32e56d0e702f8aa6208e5910820139d0fb08ce64c",

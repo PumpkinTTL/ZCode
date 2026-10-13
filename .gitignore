@@ -40,8 +40,6 @@ openclaw/
 # 旧开发目录：开发版运行时已改名为 .zcode-runtime，老机器上残留的目录仍需忽略，避免误提交 Electron.app 副本。
 .codex-runtime/
 .worktrees/
-packages/stream-animate/dist-server/
-packages/stream-animate/.stream-animate-data/
 .freebuff/
 .claude/worktrees/
 .codegraph

@@ -107,15 +107,19 @@ Z.ai 原站的 manifest 声明名是**历史名** `zcode-plugins-official`（官
 OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS = [
   https://nimbus.bitlesu.com/api/v1/public/plugin-marketplace.json // 优先级 1（Polaris 动态端点）
   https://nimbus.bitlesu.com/plugins/marketplace.json               // 优先级 2（Polaris 静态清单镜像）
-  https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json     // 优先级 3（Z.ai 原站，兼容镜像）
 ]
 ```
 
 - 刷新官方目录时按顺序逐个尝试：**前一个不可达、或目录为空（0 插件）就降级到下一个**，
-  全部失败才记账、全部为空才接受空目录（站长令 2026-10-10：自有市场内容就绪前，
-  先用上游目录撑消费端市场；内容就绪后移除 Z.ai 镜像并恢复原口径）。
-  未打包开发实例的镜像链为 [本地 cbcn (127.0.0.1:8000) → Polaris 静态 → Z.ai 原站]。
-- 实测：主源（未部署）DNS 失败约 1.1s 后回退到 Z.ai 原站，成功拉到 26 个插件，无 error。
+  全部失败才记账、全部为空才接受空目录。
+  未打包开发实例的镜像链为 [本地 cbcn (127.0.0.1:8000) → Polaris 静态]。
+- **上游 Z.ai 镜像已移出默认链（2026-10-13）**：站长令 2026-10-10 的临时口径曾是「链尾挂 Z.ai 原站，
+  先用上游目录撑消费端市场」，但实测该口径下商店每次刷新都必然走到上游——自有动态端点返回
+  `{"plugins":[]}`（HTTP 200 空目录）、静态清单路径返回 HTML，按「空目录继续降级」的规则只能靠
+  第三项拿到内容，于是既出网又留下降级/失败日志。现按「上游业务一律砍除」把该项移出默认链，
+  只保留常量与 `POLARIS_PLUGIN_MARKETPLACE_MIRRORS` 显式 opt-in（见 §6.1.1）。
+  代价与边界：自有静态清单路径 `/plugins/marketplace.json` 目前返回站点 HTML（需服务端补 JSON），
+  在补上之前商店「公开」分段为空——内置/本地 seed 的插件不受影响。
 - 成功后 `known_marketplaces.json` 的 `source` 会指向本次成功的镜像；下一次刷新仍按镜像列表顺序重试。
 - 命中的镜像目录会写入官方目录的 CDN 分片（`cdn-marketplace.json`），与内置 seed 合并。
 
@@ -213,10 +217,10 @@ POLARIS_PLUGIN_MARKETPLACE_SOURCES=my-org/my-hub,https://git.example.com/team/pl
 #### 6.1.1 官方目录镜像优先级（手动可调）
 
 ```bash
-# 只保留 Z.ai 原站
-POLARIS_PLUGIN_MARKETPLACE_MIRRORS=https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json
+# 只走自己的镜像
+POLARIS_PLUGIN_MARKETPLACE_MIRRORS=https://mirror.example.com/marketplace.json
 
-# 把自己的镜像提到最前，Z.ai 作兜底
+# 显式把上游 Z.ai 目录追加到自己的镜像之后（默认链不含它；仅确需回退时使用）
 POLARIS_PLUGIN_MARKETPLACE_MIRRORS=https://mirror.example.com/marketplace.json,https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json
 ```
 

@@ -42,6 +42,10 @@ const TAB_LABEL_IDS: Record<ResourceManagerTab, string> = {
 };
 
 const DEFAULT_REFRESH_INTERVAL_MS = 1_000;
+
+function isDocumentVisible(): boolean {
+  return typeof document === "undefined" || document.visibilityState !== "hidden";
+}
 const CATEGORY_LABEL_IDS: Record<ResourceUsageCategory, string> = {
   base: "resourceManager.category.base",
   "builtin-plugin": "resourceManager.category.builtinPlugin",
@@ -62,8 +66,17 @@ export function ResourceManagerApp({
 }: ResourceManagerAppProps) {
   const { intl } = useZCodeIntl();
   const [tab, setTab] = useState<ResourceManagerTab>(initialTab);
+  const [documentVisible, setDocumentVisible] = useState(isDocumentVisible);
+  // 窗口不可见（最小化/被遮挡）时停采样：这一秒一次的采样在 Windows 上每次都要起一次
+  // PowerShell 枚举全机进程，而隐藏时用户看不到数值；恢复可见时下面的 effect 会重跑并立刻补一次，
+  // 感知上无差别。（存储 tab 那层闸门不加：切回可见后仍应保持停表。）
+  useEffect(() => {
+    const handleVisibilityChange = () => setDocumentVisible(isDocumentVisible());
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
   // CPU / 内存共用一份进程快照；存储 tab 激活时停止轮询，避免和扫盘争抢 IO。
-  const pollingActive = tab === "cpu" || tab === "memory";
+  const pollingActive = (tab === "cpu" || tab === "memory") && documentVisible;
   const [snapshot, setSnapshot] = useState<ResourceUsageSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<ResourceUsageCategory, boolean>>({

@@ -401,8 +401,10 @@ export async function ensureMarketplaceManifestAvailable(input: {
   // 受信任的内部懒加载：用 known record 的规范 source 拉取，并以 record.id 作为 trustedId，
   // 使官方 id 只能由本来就是该官方 id 的记录刷新得到。
   // 官方目录按镜像优先级逐个尝试，前一个不可达就降级到下一个；全部失败才抛最后一个错误。
-  // 空目录不算终态：官方 catalog 命中「可用但 0 插件」的镜像（自有源已上线但内容未就绪）
-  // 时继续往后降级到有内容的镜像，全部为空才接受空目录——先用上游内容撑消费端市场（站长令）。
+  // 空目录不算终态：官方 catalog 命中「可用但 0 插件」的镜像（自有动态端点已上线但条目未就绪）
+  // 时继续往后降级到有内容的镜像（自有静态清单），全部为空才接受空目录。
+  // 2026-10-13 起镜像链只含自有源（上游 Z.ai 镜像已移出，见 shared/src/plugin-marketplaces.ts）：
+  // 自有目录没内容时商店「公开」分段就是空的，这是有意的口径，不再打上游。
   // 注意此分支只对官方目录生效：非官方记录 resolveMarketplaceRefreshSources 只有一个候选，
   // 行为不变。
   let lastError: unknown;

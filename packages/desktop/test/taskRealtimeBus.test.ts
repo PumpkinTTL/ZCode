@@ -409,6 +409,64 @@ describe("TaskRealtimeBus", () => {
     vi.useRealTimers();
   });
 
+  it("drops the exited host's stream batches so replay buffers don't leak in main", () => {
+    vi.useFakeTimers();
+    const hostA = new FakeHostProcess();
+    const hostB = new FakeHostProcess();
+    const logger = makeLogger();
+    const bus = new TaskRealtimeBus({ logger });
+
+    bus.registerHost({
+      hostId: "host-a",
+      windowId: 1,
+      child: asUtilityProcess(hostA),
+      workspaceKeys: ["/repo/a"],
+    });
+    bus.registerHost({
+      hostId: "host-b",
+      windowId: 2,
+      child: asUtilityProcess(hostB),
+      workspaceKeys: ["/repo/b"],
+    });
+    const chunkFor = (workspaceKey: string, content: string) => ({
+      type: HostResponseTypes.TaskStreamOpPublish,
+      target: makeStreamTarget({ workspacePath: workspaceKey, workspaceKey }),
+      op: {
+        kind: "stream_event",
+        event: { type: "agent_message_chunk", taskId: "task-1", traceId: "trace-1", content },
+      },
+    });
+    hostA.emitMessage(
+      makeLeaseRequest("lease-a", { workspacePath: "/repo/a", workspaceKey: "/repo/a" }),
+    );
+    hostB.emitMessage(
+      makeLeaseRequest("lease-b", { workspacePath: "/repo/b", workspaceKey: "/repo/b" }),
+    );
+    // 两个 host 各起一个 run：两条批次都在飞，且都没有终态事件（host 崩掉/任务被 kill 的场景）。
+    hostA.emitMessage(chunkFor("/repo/a", "a-partial"));
+    hostB.emitMessage(chunkFor("/repo/b", "b-partial"));
+    expect(bus.collectMemoryDiagnostics().streamBatches).toBe(2);
+
+    hostA.emitExit();
+
+    // 只回收退出 host 自己的批次；另一个 host 的批次必须保留（跨窗口观察者靠它补齐）。
+    expect(bus.collectMemoryDiagnostics().streamBatches).toBe(1);
+    expect(logger.info).toHaveBeenCalledWith(
+      "[task-realtime] unregistered host",
+      expect.objectContaining({ hostId: "host-a", droppedStreamBatches: 1 }),
+    );
+
+    // 存活 host 的链路不受影响：它的流仍能正常合帧投递。
+    hostB.postedMessages.length = 0;
+    hostB.emitMessage(chunkFor("/repo/b", "b-more"));
+    vi.advanceTimersByTime(1000);
+    expect(hostB.postedMessages[0]).toMatchObject({
+      type: HostMessageTypes.TaskRealtimeDeliver,
+      event: { type: "task_stream_mirror_batch", originHostId: "host-b" },
+    });
+    vi.useRealTimers();
+  });
+
   it("flushes mirrored user messages before user_message_saved invalidation", () => {
     vi.useFakeTimers();
     const hostA = new FakeHostProcess();

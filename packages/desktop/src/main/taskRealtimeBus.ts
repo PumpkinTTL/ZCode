@@ -206,10 +206,14 @@ export class TaskRealtimeBus {
     for (const lease of releasedLeases) {
       this.deliverSnapshotInvalidation(lease, hostId, "stream_mirror_owner_lost");
     }
+    // flush 之后才能清：releaseLeasesForHost 会先把该 host 的 pending ops 冲出去
+    //（保持既有投递行为），这里只回收批次本身与它的 replay 缓冲。
+    const droppedStreamBatches = this.dropStreamBatchesForHost(hostId);
 
     this.logger.info("[task-realtime] unregistered host", {
       hostId,
       windowId: registered.windowId,
+      droppedStreamBatches,
     });
   }
 
@@ -380,6 +384,49 @@ export class TaskRealtimeBus {
       taskId: target.taskId,
       runId: target.runId,
     });
+  }
+
+  /**
+   * 回收某个 host 自己的 stream mirror 批次。
+   *
+   * 为什么需要：批次只在「收到终态事件」时删除（见 flushBatch / deliverOversizedStreamBatchFallback）。
+   * 任务被 kill 或 Host 崩溃（没有终态事件）时，批次连同最多 512KB 的 replay 缓冲会永久留在
+   * main 进程，表现为 memory 诊断里 `streamBatches` 只增不减。
+   *
+   * 为什么可以删：`hostId` 由 `desktopHostProcess` 用 `randomUUID()` 生成，重连必然是**新 id**；
+   * 批次键（workspaceKey+taskId+**runId**）也含 runId，新 run 不会复用旧键。因此已退出 host 的批次
+   * 不会再被任何人消费：新的 host 注册时若它已死，`replayVisibleRunsToHost` 也只会把死 run 的尾巴
+   * 重放一遍。owner host 退出时这里已给可见 host 发过 `stream_mirror_owner_lost` 快照失效，
+   * 消费侧走快照补齐，不会留历史流缺口。
+   *
+   * 其他 host 的批次一律不动：跨窗口观察者仍靠它们补齐。只顺手摘掉退出 host 在那些批次里的
+   * replay 记账项（`replayInitializedHostIds` 按 hostId 前缀记账），避免 host 反复起落时它们无界增长。
+   */
+  private dropStreamBatchesForHost(hostId: string): number {
+    const replayKeyPrefix = `${hostId}\u0000`;
+    let dropped = 0;
+    for (const [batchKey, batch] of this.streamBatches) {
+      // 迭代中删除当前项对 Set 是安全的，不需要先快照。
+      for (const replayKey of batch.replayInitializedHostIds) {
+        if (replayKey.startsWith(replayKeyPrefix)) {
+          batch.replayInitializedHostIds.delete(replayKey);
+        }
+      }
+      if (batch.ownerHostId !== hostId) {
+        continue;
+      }
+      if (batch.timer) {
+        clearTimeout(batch.timer);
+        batch.timer = null;
+      }
+      // 引用清空只为让缓冲尽早可回收（长度表是 WeakMap，随事件对象一起失效）。
+      batch.pendingOps = [];
+      batch.replay = [];
+      batch.replayTotalChars = 0;
+      this.streamBatches.delete(batchKey);
+      dropped += 1;
+    }
+    return dropped;
   }
 
   private releaseLeasesForHost(hostId: string): TaskRunLease[] {

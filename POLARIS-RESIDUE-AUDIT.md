@@ -2174,3 +2174,189 @@ pnpm install --lockfile-only（依赖清扫后）    ✅ lockfile -307 行一致
 2. computerUse 设置分区休眠代码（ComputerUseSection 等）：CUA 引擎已复现（§26/§29），
    设置入口是否重新放开由产品决定。
 3. katex 惰性化与 5.7MB styles vendor chunk 拆分（§31a 遗留，非平凡改造）。
+
+## 33. 深挖一轮：插件商店上游回退源砍除 + 零消费方 dev 包删除（2026-10-13）
+
+基线：`enterprise` HEAD `04302491`（v3.15.1 合并后 22 个提交，工作树干净）。
+方法：不重复前几轮的面，改为**从出网面反查**（源码里所有 URL 字面量按 host 汇总：1195 www.w3.org 命名空间之外，
+只剩 16 nimbus / 14 github.com / 3 zcode.z.ai / 3 open.feishu.cn / 2 cdn-zcode.z.ai …）
+＋**计时器全景**（61 个文件含 `setInterval`，逐条看回调是否出网/写日志）。
+
+### 33a. 已确认并处置：插件商店每次刷新都打上游（本轮主项）
+
+证据链（全部可复现）：
+
+| # | 事实 | 出处 |
+| --- | --- | --- |
+| 1 | 官方目录镜像链第三项是上游 CDN（站长令 2026-10-10 的临时口径） | `packages/shared/src/plugin-marketplaces.ts`（`ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL`、`OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS`） |
+| 2 | 降级规则是「不可达**或目录 0 插件**就继续下一个」 | `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts` `ensureMarketplaceManifestAvailable` |
+| 3 | 商店页**每次进入**都自动刷新官方目录（10 分钟窗口节流） | `packages/ui/src/settings/PluginStorePage.tsx:139` + `officialMarketplaceAutoRefresh.ts` |
+| 4 | 自有动态端点返回**空目录** | `curl https://nimbus.bitlesu.com/api/v1/public/plugin-marketplace.json` → 200 `{"plugins":[]}` |
+| 5 | 自有静态清单路径返回**站点 HTML**（不是 JSON） | `curl https://nimbus.bitlesu.com/plugins/marketplace.json` → 200 `<!DOCTYPE html>` |
+
+⇒ 按 2 的规则，第 4/5 条永远不满足，**每次刷新都必然降级到第 3 条（上游 CDN）才拿到内容**——
+这正是「某个界面一直请求上游自己的接口」，且前两条每次各产生一次失败/空目录记账。
+
+处置：把上游镜像**移出默认链**（生产链与开发链都不再包含）；常量与 `POLARIS_PLUGIN_MARKETPLACE_MIRRORS`
+显式 opt-in 保留（要临时回退不用改代码）。adapter 注释、`POLARIS-PLUGIN-MARKETPLACE.md` §4.3 / §6.1.1 同步。
+
+代价与边界（如实记账）：自有静态清单仍是 HTML，服务端补 JSON 之前商店「公开」分段为空；
+内置/本地 seed 插件（`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`）不受影响。
+
+### 33b. 已确认并处置：零消费方上游 dev playground
+
+`packages/stream-animate`（`@zcode/stream-animate`，22 文件，vite + `deepseekRunner` 的上游开发用取帧 playground）：
+
+- 全仓唯一引用是它自己的 `package.json` —— 同名 DOM 属性 `data-zcode-stream-animate`（`packages/ui/src/**`、e2e）
+  与它无关，别当成引用。
+- 无 CI / knip / tsconfig / 根脚本引用；但作为 `packages/*` 工作区成员参与 install/build。
+
+处置：删除包目录 + `architecture-policy.yaml` 条目 + `.gitignore` 两行 + lockfile importer +
+`scripts/bootstrap.mjs` 专为它写的 `runBootstrapStreamAnimateBuild()`（删包后该函数会去 tsc 一个不存在的目录）+
+`third-party/inventory.json` 输入项。
+
+验证：`pnpm install --frozen-lockfile --offline` → “Lockfile is up to date”（node_modules −146 包）；
+`architecture:check --changed` 0 违规；`pnpm typecheck` 0 错误；受影响测试 8/8 通过。
+
+### 33c. 本轮新发现，未处置（按优先级）
+
+1. **第三方 notices/inventory 链已断（真 bug，非本轮引入）**：`third-party/inventory.json` 3060 条 `inputs` 里
+   **224 条文件已不存在**（`apps/dev-docs/**`、`docs/knip/**`、`packages/zcode-cua-plugin/package.json` 等，
+   多为前几轮清理/合并删掉的路径），且 `noticesSha256` 与 `THIRD-PARTY-NOTICES.md` 当前字节不一致——
+   **HEAD 即红**。`readVerifiedNotices`（`scripts/third-party-notices.mjs:20-25`）会逐条读文件哈希，
+   因此 `node scripts/licenses.mjs check` 必抛 ENOENT。需在健康环境跑 `node scripts/licenses.mjs notices` 重生成；
+   本机跑不动（`pnpm -r ls --prod` 报 EMFILE: too many open files，Windows 句柄上限，与改动无关）。
+2. **自有静态清单路径 `/plugins/marketplace.json` 返回 HTML**（§33a 第 5 条）——服务端修复项，代码侧无法自证。
+3. **`packages/android`**：上游 Android 远控客户端（Gradle 工程，不在 pnpm workspace，无 package.json），
+   `RemoteControlUrlPolicy.kt` / `AndroidManifest.xml` 硬编码 `host=zcode.z.ai`。既不参与本仓构建、又指上游，
+   删或改指自有需拍板（涉及是否要自研手机端）。
+4. **实测为「已绿」、无需再动的面（避免下轮重复）**：provider 内置配置远端同步已砍
+   （`endpoint-scoped-zcode-builtin-source.ts:55,105-106`：未注入 `fetchRelease` 即显式 no-op，“绝不出网”，
+   `provider-config-runtime.ts` 的 60s 检查因此不产生出网）；`remoteCdn.ts` 双根均为 nimbus；
+   `featureSuggestedPrompts` 图标已本地化；`autoUpdater` 轮询仅在下载中生效且 feed URL 必须由开关/环境变量显式提供。
+5. **上一次报告的既有红项仍在**（非本轮范围）：`pnpm lint` 1 error（`conversationTurnRenderUnits.ts` 403 > 400）、
+   `pnpm fmt:check` 1645 文件、`pnpm test:unit` 2 个用例失败（3 个文件）。
+
+### 33d. 本轮验证
+
+```
+pnpm typecheck（12 工作区）              ✅ 0 错误
+architecture:check --changed            ✅ violations 0
+vitest（受影响 2 文件）                  ✅ 8/8
+oxlint（改动文件）                       ✅ 0 error
+oxfmt --check（改动文件）                ✅ 通过
+pnpm install --frozen-lockfile --offline ✅ Lockfile is up to date
+node --check scripts/bootstrap.mjs        ✅
+node scripts/licenses.mjs check           ⚠️ 环境受限（EMFILE），未执行
+```
+
+| 路径 | 内容 |
+| --- | --- |
+| `packages/shared/src/plugin-marketplaces.ts` | 上游镜像移出默认链（生产 + 开发） |
+| `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts` | 降级注释与实际口径对齐 |
+| `packages/ui/src/settings/PluginStorePage.tsx` | 未改（仍按自有端点自动刷新，10 分钟窗口） |
+| `architecture-policy.yaml` / `.gitignore` / `pnpm-lock.yaml` / `scripts/bootstrap.mjs` / `third-party/inventory.json` | stream-animate 删除的连带清理 |
+| `POLARIS-PLUGIN-MARKETPLACE.md` | §4.3 镜像链 + §6.1.1 opt-in 说明 |
+
+### 33e. 本次未覆盖的口子（下轮候选，如实标注）
+
+- **日志侧**：插件刷新链路上没有任何 `logger.*` 调用（已 grep 确认），本轮**没有**找到「每次轮询写一行日志」的证据；
+  若观察到的日志来自别处，需一段真实日志片段才能定位（比如时间戳 + 级别 + 文案）。
+- 未实测 UI（本轮只做静态证据 + 端点探针，没起 dev 实例看商店页）。
+- `setTimeout` 类定时器（295 文件）只做了抽样，未逐条审。
+
+## 34. 性能收口（本轮）：泄漏回收 / 共享订阅 / 可见性闸门（2026-10-13）
+
+基线：接 §33，同一工作树（未提交）。原则：只做「回收 / 去重 / 封顶 / 闸门」类等价优化，不改可观察行为。
+
+### 34a. `taskRealtimeBus`：host 退出时回收自己的 stream mirror 批次（真泄漏）
+
+- 证据：`unregisterHost` 释放 lease / sessionRoutes / ownerCommands，但从不碰 `streamBatches`；
+  批次只在**收到终态事件**时删除（`flushBatch` / `deliverOversizedStreamBatchFallback`）。
+  任务被 kill 或 Host 崩溃（没有终态事件）时，该批次连同最多 512KB 的 replay 缓冲常驻 main 进程
+  → memory 诊断里 `streamBatches` 只增不减。
+- 改动：新增 `dropStreamBatchesForHost(hostId)`，在 `releaseLeasesForHost`（**先 flush**，保持既有投递行为）
+  之后调用；只删 `ownerHostId === hostId` 的批次，并顺手摘掉退出 host 在其它批次里的 replay 记账项
+  （`replayInitializedHostIds` 按 hostId 前缀记账）。日志补 `droppedStreamBatches` 便于观测。
+- 为何不丢历史流：`hostId` 由 `desktopHostProcess` 的 `randomUUID()` 生成（重连必是新 id）；
+  批次键含 `runId`（新 run 不复用旧键）；owner host 退出时已给可见 host 发过
+  `stream_mirror_owner_lost` 快照失效，消费侧走快照补齐。
+- 测试：`taskRealtimeBus.test.ts` 新增「drops the exited host's stream batches…」：两个 host 各一条
+  在飞批次（无终态），A 退出后 `streamBatches` 2→1，且 B 的合帧投递链路仍正常。
+
+### 34b. `useWebRemoteControlStatus`：3 路 1Hz 轮询 → 每窗口一份共享订阅
+
+- 证据：`Root.tsx:503` / `WorkspaceSidebar.tsx:695` / `WorkspaceWebRemoteControlTrigger.tsx:136`
+  同窗同时挂载 → 每秒 3 次 `getWebRemoteControlStatus` IPC + 3 组状态对象逐字段比较，
+  且三份 state 之间没有一致性保证。
+- 改动：改为按 platform 实例隔离的共享 store（WeakMap）+ `useSyncExternalStore`；
+  首个订阅者接 main 事件推送并立刻同步一次（与原挂载行为一致），轮询间隔取订阅者最小值，
+  `syncInFlight` 防止 IPC 卡顿时并发叠加；最后一个订阅者退订时停表、解事件订阅并复位为 idle
+  （保证下一次挂载与「新挂载的 hook」表现完全一致，不会先渲染上一轮遗留值）。
+- 语义保持：仍是 1s 轮询、挂载即同步、main 推送优先、值无变化不触发重渲染。
+- 测试：新增 `useWebRemoteControlStatusSharedPoll.test.ts`（4 条）：3 处挂载时 3s 内 IPC 共 4 次
+  （旧行为 12 次）、事件只订阅一份且对三个消费方同时生效、卸载停表且重新挂载再同步、
+  `enabled=false` 不订阅不发 IPC。
+
+### 34c. 资源管理器：按窗口可见性停采样
+
+- 证据：`ResourceManagerApp` 只在切到 storage/network tab 时停轮询，**没有可见性闸门**；
+  Windows 上每次采样都要起一次 PowerShell 枚举全机进程，窗口最小化/被遮挡时仍每秒一次。
+- 改动：新增 `documentVisible` 状态并入 `pollingActive`；隐藏时 effect 清理会
+  `setSamplingActive(false)`（Host 在途采样随之取消），恢复可见时 effect 重跑立刻补一次。
+- 测试：`resourceManagerPolling.test.ts` 新增一条（可见时逐秒采样、隐藏后不再采样且通知 Host 停止、
+  恢复可见立刻补一次）。
+
+### 34d. 检查后判定「不改」（避免下轮重复）
+
+- `ConversationStatusPanel` 的 3 个 1s 时钟：分属 `BackgroundWorkStatusSection` / `WorkflowStatusSection` /
+  `SubagentStatusSection` 三个**独立且已按列表非空门控**的子组件。合并成共享 ticker 只省 timer、不减渲染；
+  要减渲染得把 `now` 提到面板层，那会让整个面板每秒重渲染 —— 反而更差。
+- `useGlobalTaskList` 的两处渲染期 `JSON.stringify`：§32e 已实测「tab 个位数、微秒级，不值得动」；
+  改 `useMemo` 需以 `params.workspaceTabs` 引用为依赖，会漏检「同引用内容变更」，风险大于收益。
+- `useDeveloperToolsVisibility` 的 1s 轮询：本就调 `refreshIfVisible`，且已有 storage/focus/
+  visibilitychange 三条事件兜底，每秒一次 localStorage 读可忽略。
+
+### 34e. 本轮验证
+
+```
+pnpm typecheck                        ✅ 0 错误
+oxlint / oxfmt --check（改动文件）     ✅ 0 warning / 全部符合格式
+vitest 定点（3 个测试文件）            ✅ 24/24
+pnpm test:unit（全量）                ❌→✅ 首次 1 个文件失败，定位后修复并复跑
+```
+
+**复核订正（第三方复审）**：原稿「1645 passed / 2 failed，失败仍是上一轮既有两项」与实测不符。实测
+`15105 passed / 87 skipped`，**唯一失败**是 `packages/ui/test/useWorkspaceTaskListsMembershipEvents.test.ts`
+（`Failed Suites`：0 用例执行）：
+
+```
+Error: Cannot find package '@/lib/taskListWorkspaceEventCoordinator.js'
+  imported from packages/ui/test/useWorkspaceTaskListsMembershipEvents.test.ts:16
+```
+
+这是 **§33 死代码清理（`dd80312d`）自己留下的回归**：该提交删掉了
+`src/lib/taskListWorkspaceEventCoordinator.ts`（判死正确 —— 生产代码零消费方）以及它自己的测试
+`taskListWorkspaceEventCoordinator.test.ts`，但**漏了另一个文件**
+`useWorkspaceTaskListsMembershipEvents.test.ts` —— 它只在 `afterEach` 里 import 了
+`clearTaskListWorkspaceEventCoordinatorForTest` 做缓存复位。`typecheck` 抓不到这类断链：根
+tsconfig 的 `include` 只覆盖 `src/**`，不含 `test/**`。
+
+- 修复：摘掉该 import 与 `afterEach` 里的对应调用（模块已不存在，复位本身已无意义）；复跑 6/6 通过。
+- 同批**未受影响**的悬空引用（核对后判定为惰性，不改）：`.agents/skills/ai-elements/scripts/*.tsx`
+  共 30 处 import 已删的 `@/components/ai-elements/*`。该目录是上游开源的 shadcn 技能示例脚本
+  （`872ad960 feat: open source` 引入），不在 pnpm workspace、不进 tsc、不进 vitest、不进打包，
+  且在 `knip.json` 的 `ignore` 列表内，仅作文档示例存在。
+- 新增工具 `scripts/audit/scan-dangling-deleted-refs.mjs`：按 import **说明符**解析后比对删除集合
+  （避免 basename 全文匹配的误报），供后续批量删除后自查。
+
+| 路径 | 内容 |
+| --- | --- |
+| `packages/desktop/src/main/taskRealtimeBus.ts` | host 退出回收自己的批次 + 记账项清理 |
+| `packages/desktop/test/taskRealtimeBus.test.ts` | 新增泄漏回收用例 |
+| `packages/ui/src/hooks/useWebRemoteControlStatus.ts` | 改为每窗口一份共享订阅（重写） |
+| `packages/ui/test/useWebRemoteControlStatusSharedPoll.test.ts` | 新增（4 条） |
+| `packages/ui/src/resource-manager/ResourceManagerApp.tsx` | 可见性闸门 |
+| `packages/ui/test/resourceManagerPolling.test.ts` | 新增可见性用例 |
+| `packages/ui/test/useWorkspaceTaskListsMembershipEvents.test.ts` | 摘除指向已删模块的 import（本轮回溯修复） |
+| `scripts/audit/scan-dangling-deleted-refs.mjs` | 新增：批量删除后的悬空引用自查工具 |

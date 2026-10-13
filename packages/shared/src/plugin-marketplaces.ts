@@ -35,12 +35,17 @@ export const DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL =
   "http://127.0.0.1:8000/api/v1/public/plugin-marketplace.json";
 
 /**
- * 上游（Z.ai 原站）兼容镜像：同一 `polaris-plugins-official` 目录的历史来源。
+ * 上游（Z.ai 原站）兼容镜像的 URL——**已退出默认镜像链，仅作为显式 opt-in 保留**。
  *
- * 站长令（2026-10-10）：自有市场内容（nimbus 动态端点/静态清单的插件条目）就绪前，
- * 暂时保留此回退源，先把它家的目录当消费端市场用；自有源内容就绪后应移除本项，
- * 恢复「不自动打上游」的口径。仅刷新时按镜像顺序尝试，且只贡献内容——
- * manifest 声明的历史名会被 adapter 归一化（身份归 Polaris，镜像只供内容）。
+ * 历史：站长令 2026-10-10 曾把它挂在默认链末尾（自有目录内容就绪前先用上游目录撑消费端市场）。
+ * 该口径下商店每次刷新都必然打上游：自有动态端点返回 `plugins: []`（实测 200 + 空目录）、
+ * 静态清单路径返回 HTML 而非 JSON，按「不可达或空目录继续降级」的规则走到本项才拿到内容——
+ * 既是上游业务出网，也是每次刷新的失败/降级日志来源。
+ *
+ * 2026-10-13 按「上游业务一律砍除」的红线把本项移出默认链（生产链与开发链都不再包含它）。
+ * 需要临时回退时用环境变量显式指定，不改代码：
+ * `POLARIS_PLUGIN_MARKETPLACE_MIRRORS=<本 URL>`（见 `POLARIS-PLUGIN-MARKETPLACE.md` §6.1.1）。
+ * 镜像只贡献内容——manifest 声明的历史名会被 adapter 归一化（身份归 Polaris，镜像只供内容）。
  */
 export const ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL =
   "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json";
@@ -54,7 +59,6 @@ export const ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL =
 export const OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS: readonly string[] = [
   NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
   POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
-  ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
 ];
 
 /**
@@ -79,11 +83,7 @@ export function resolveOfficialPluginMarketplaceMirrors(env?: NodeJS.ProcessEnv)
   if (overridden.length > 0) return overridden;
   const runtimeEnv = resolvedEnv ? resolveZCodeRuntimeEnv(resolvedEnv) : "production";
   return runtimeEnv === "development"
-    ? [
-        DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
-        POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL,
-        ZAI_OFFICIAL_PLUGIN_MARKETPLACE_MIRROR_URL,
-      ]
+    ? [DEV_NIMBUS_OFFICIAL_PLUGIN_MARKETPLACE_URL, POLARIS_OFFICIAL_PLUGIN_MARKETPLACE_URL]
     : [...OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS];
 }
 
