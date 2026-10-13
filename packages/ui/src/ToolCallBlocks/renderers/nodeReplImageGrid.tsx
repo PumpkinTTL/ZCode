@@ -23,7 +23,12 @@ export function NodeReplImageGrid({
   const { intl } = useZCodeIntl();
   // 截图解码完成/驱逐后重渲染：src 渲染期经缓存解析（objectURL 优先，
   // 未命中回落 data URL 并后台解码），避免整条会话的 base64 字符串常驻 DOM。
-  useSyncExternalStore(subscribeScreenshotObjectUrls, getScreenshotObjectUrlVersion);
+  // 第三个参数是 SSR 快照（renderToStaticMarkup 路径必需）。
+  useSyncExternalStore(
+    subscribeScreenshotObjectUrls,
+    getScreenshotObjectUrlVersion,
+    getScreenshotObjectUrlVersion,
+  );
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);

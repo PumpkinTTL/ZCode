@@ -21,7 +21,12 @@ interface WeixinChannelRuntimeDeps {
   readConfig(): Promise<BotsConfigFile>;
   readWeixinGetUpdatesBuf(botId: string): Promise<string | undefined>;
   writeWeixinGetUpdatesBuf(botId: string, buf: string): Promise<void>;
-  processProviderCallback(provider: "weixin", payload: unknown): Promise<BotProviderCallbackResult>;
+  processProviderCallback(
+    provider: "weixin",
+    payload: unknown,
+  ): Promise<BotProviderCallbackResult>;
+  getUpdates?: typeof getWeixinUpdates;
+  acquirePollingLock?: typeof acquireWeixinPollingLock;
 }
 
 export function createWeixinChannelRuntime(deps: WeixinChannelRuntimeDeps) {
@@ -60,7 +65,10 @@ export function createWeixinChannelRuntime(deps: WeixinChannelRuntimeDeps) {
     while (!signal.aborted) {
       let lock: Awaited<ReturnType<typeof acquireWeixinPollingLock>>;
       try {
-        lock = await acquireWeixinPollingLock(token, bot.id);
+        lock = await (deps.acquirePollingLock ?? acquireWeixinPollingLock)(
+          token,
+          bot.id,
+        );
       } catch (error) {
         if (signal.aborted) return;
         // Bugfix：每个窗口都有独立 host。微信锁 I/O 失败必须退避重试，不能让后台 Promise 退出。
@@ -94,7 +102,7 @@ export function createWeixinChannelRuntime(deps: WeixinChannelRuntimeDeps) {
         });
         while (!signal.aborted) {
           const buf = await deps.readWeixinGetUpdatesBuf(bot.id);
-          const result = await getWeixinUpdates({
+          const result = await (deps.getUpdates ?? getWeixinUpdates)({
             bot,
             deps: { loadCredential: (key) => deps.credentialService.load(key) },
             buf,

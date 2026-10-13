@@ -57,14 +57,9 @@ export function deriveLogicalUiInstances(
   options: { autoExpandTurns?: number } = {},
 ): PluginUiInstanceDerivation {
   // domain 不用 Map / Set（模块边界约束），全部用数组与普通对象。
-  // includes 去重是 O(rows×turns)，长会话每帧全量重算会退化成 O(N²)；
-  // 普通对象当集合用（Object.create(null) 防原型键碰撞）降为 O(rows)。
   const turnOrder: string[] = [];
-  const seenTurnIds: Record<string, true> = Object.create(null);
   for (const row of rows) {
-    if (seenTurnIds[row.turnId] === true) continue;
-    seenTurnIds[row.turnId] = true;
-    turnOrder.push(row.turnId);
+    if (!turnOrder.includes(row.turnId)) turnOrder.push(row.turnId);
   }
   const recentTurns = turnOrder.slice(-(options.autoExpandTurns ?? PLUGIN_UI_AUTO_EXPAND_TURNS));
   const groupKeys: string[] = [];
@@ -110,48 +105,12 @@ export function deriveLogicalUiInstances(
   return { instances, byToolCallId };
 }
 
-/**
- * 内容等价比较：流式期间 rows 每帧变化，但推导结果绝大多数帧逐字段相同。
- * 调用方用它复用上一次推导的引用，让依赖推导身份的下游 memo（pinResolver、
- * renderUnits 增量缓存）不被无关行的变化无效化。纯函数、不含 Map/Set（模块边界约束）。
- */
+/** Polaris 增量推导：相等时时间线复用旧裁决对象，避免每帧重渲染插件卡片。 */
 export function pluginUiInstanceDerivationsEqual(
-  previous: PluginUiInstanceDerivation,
-  next: PluginUiInstanceDerivation,
+  a: PluginUiInstanceDerivation,
+  b: PluginUiInstanceDerivation,
 ): boolean {
-  if (previous === next) return true;
-  const previousInstances = previous.instances;
-  const nextInstances = next.instances;
-  if (previousInstances.length !== nextInstances.length) return false;
-  for (let index = 0; index < nextInstances.length; index += 1) {
-    const a = previousInstances[index]!;
-    const b = nextInstances[index]!;
-    if (
-      a.key !== b.key ||
-      a.activeToolCallId !== b.activeToolCallId ||
-      a.supersededToolCallIds.length !== b.supersededToolCallIds.length
-    ) {
-      return false;
-    }
-    for (let slot = 0; slot < b.supersededToolCallIds.length; slot += 1) {
-      if (a.supersededToolCallIds[slot] !== b.supersededToolCallIds[slot]) return false;
-    }
-  }
-  const previousKeys = Object.keys(previous.byToolCallId);
-  const nextKeys = Object.keys(next.byToolCallId);
-  if (previousKeys.length !== nextKeys.length) return false;
-  for (const toolCallId of nextKeys) {
-    const a = previous.byToolCallId[toolCallId];
-    const b = next.byToolCallId[toolCallId];
-    if (a === undefined || b === undefined) return false;
-    if (
-      a.key !== b.key ||
-      a.superseded !== b.superseded ||
-      a.autoExpand !== b.autoExpand ||
-      a.forcedInline !== b.forcedInline
-    ) {
-      return false;
-    }
-  }
-  return true;
+  if (a === b) return true;
+  if (a.instances.length !== b.instances.length) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
 }

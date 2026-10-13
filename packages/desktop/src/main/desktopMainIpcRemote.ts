@@ -15,9 +15,13 @@ import {
   parseOAuthStateRegistration,
   registerOAuthState,
 } from "./desktopOAuthDeepLink.js";
-import { openPathInDefaultApp } from "./desktopMainIpcHelpers.js";
+import { openFileUrlInDefaultApp, openPathInDefaultApp } from "./desktopMainIpcHelpers.js";
+import {
+  registerWebRemoteControlIpcHandlers,
+  type WebRemoteControlIpcManager,
+} from "./desktopWebRemoteControlIpc.js";
 
-function isAllowedExternalOpenUrl(value: string): boolean {
+export function isAllowedExternalOpenUrl(value: string): boolean {
   try {
     const url = new URL(value);
     return url.protocol === "http:" || url.protocol === "https:" || url.protocol === "file:";
@@ -48,12 +52,15 @@ function parseOpenExternalRequest(payload: unknown): OpenExternalRequest | null 
   };
 }
 
+// Polaris：官方 Coding Plan 购买 webview（含 PayPal 授权中转）整栈已移除，
+// 对应的导航信任判定与 openExternal 白名单分支不再引入。
 export function registerRemoteIpcHandlers(options: {
   logger: {
     info: (...args: unknown[]) => void;
     warn: (...args: unknown[]) => void;
     error: (...args: unknown[]) => void;
   };
+  webRemoteControlManager: WebRemoteControlIpcManager;
   createRemoteWorkspaceSession: (
     win: BrowserWindow,
     target: RemoteTarget,
@@ -93,6 +100,11 @@ export function registerRemoteIpcHandlers(options: {
     if (!sessionId || !attachmentId) return;
     options.confirmRendererAttachmentReady(event.sender.id, { sessionId, attachmentId });
   });
+  // Web 远程控制（上游新能力）：manager 由 main 组合根创建并注入。
+  // Polaris：本地遥测栈已整体移除，上游在此处接入的 renderer 用量埋点通道已一并剥除。
+  registerWebRemoteControlIpcHandlers({
+    webRemoteControlManager: options.webRemoteControlManager,
+  });
   ipcMain.on(PlatformChannels.OAuthRegisterState, (event, payload: unknown) => {
     const registration = parseOAuthStateRegistration(payload);
     if (!registration) {
@@ -112,6 +124,10 @@ export function registerRemoteIpcHandlers(options: {
     const { url } = request;
     if (!isAllowedExternalOpenUrl(url)) {
       options.logger.warn("[open-external] blocked unsupported url", url);
+      return;
+    }
+    if (new URL(url).protocol === "file:") {
+      void openFileUrlInDefaultApp(url, options.logger);
       return;
     }
     void Promise.resolve(shell.openExternal(url)).catch((error: unknown) => {

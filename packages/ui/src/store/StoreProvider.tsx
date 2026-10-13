@@ -9,7 +9,8 @@ import { createZCodeStore, type ZCodeStore } from "./index.js";
 import { StoreContext } from "./storeContext.js";
 
 // Context 与 hook 放在无运行时依赖的 storeContext.ts，避免 HMR 重载本模块时换掉 Context 身份。
-export { useZCodeStore, useZCodeStoreWithDefault } from "./storeContext.js";
+// StoreContext 继续对外 re-export，保持测试直接注入 store 实例的既有用法。
+export { StoreContext, useZCodeStore, useZCodeStoreWithDefault } from "./storeContext.js";
 
 export function StoreProvider({
   broadcastService,

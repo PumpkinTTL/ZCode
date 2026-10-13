@@ -32,5 +32,13 @@ function subscribe(notify: () => void): () => void {
 }
 
 export function useRunningWorkClock(): number {
-  return useSyncExternalStore(subscribe, () => currentNowMs);
+  // 上游 v3.15.1 的会话渲染用例用 renderToStaticMarkup（react-dom/server）走 SSR 路径。
+  // useSyncExternalStore 在服务端渲染时必须提供第三个参数 getServerSnapshot，否则整棵
+  // 会话树在 SSR 下抛 "Missing getServerSnapshot"。服务端快照取当前模块时钟即可——它是
+  // 纯展示用时长锚，水合后立刻切到订阅值。
+  return useSyncExternalStore(
+    subscribe,
+    () => currentNowMs,
+    () => currentNowMs,
+  );
 }

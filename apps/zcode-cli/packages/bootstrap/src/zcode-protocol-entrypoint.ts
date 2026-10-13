@@ -47,8 +47,9 @@ import { ZCodeProtocolNdjsonConnection } from "./zcode-protocol/transport.js";
 import { cleanupProtocolRuntime } from "./zcode-protocol/runtime-cleanup.js";
 import { acquireProtocolStartupResource } from "./zcode-protocol/startup-resource.js";
 import { prepareZCodeTelemetryEnv, shutdownZCodeTelemetry } from "./telemetry-bootstrap.js";
+import type { ZCodeProcessResourceSampler } from "./process-resource-sampler.js";
 
-function applyProtocolPresentationSurface(
+export function applyProtocolPresentationSurface(
   options: Omit<ZCodeAppOptions, "providerRegistry">,
   presentationSurface: PresentationSurface,
 ): Omit<ZCodeAppOptions, "providerRegistry"> {
@@ -66,7 +67,7 @@ function applyProtocolPresentationSurface(
  *
  * 旧 workspace snapshot 不再参与 Provider 和 Model 执行。
  */
-function applyProtocolProviderRegistry(
+export function applyProtocolProviderRegistry(
   options: Omit<ZCodeAppOptions, "providerRegistry">,
   providerRegistry: ZCodeAppOptions["providerRegistry"],
   configuredDefaultModelSelection?: ModelSelection,
@@ -182,11 +183,11 @@ export async function runZCodeProtocolAgent(
       configResult.config.features.mcp === false
         ? undefined
         : createMcpTelemetryTracker({
-            idSalt: traceContext.traceId,
+            idSalt: telemetryDeviceMid ?? traceContext.traceId,
             onEvent: (event) => mcpTelemetrySink?.(event),
             onResourceSamples: (samples) => mcpResourceSink?.(samples),
           });
-    // 官方 MCP 身份头端口：连接池构造早于 server，故用惰性 holder 回填。
+    // 官方 MCP 身份头端口（spec §7.1/§7.2）：连接池构造早于 server，故用惰性 holder 回填。
     // server 就绪前该端口返回 official_auth_unavailable；HTTP tools/call 会匿名交给服务端
     // 返回结构化权限错误，stdio 则把 reason 下发给插件。连接与工具发现都不受影响。
     let officialMcpAuthContext: OfficialMcpAuthRequestContext | undefined;

@@ -2,7 +2,7 @@ import type { ZCodeProvider } from "@zcode/shared";
 
 type SkillSourceType = "glm" | "unknown";
 
-function resolveSkillSourceType(skillPath: string): SkillSourceType {
+export function resolveSkillSourceType(skillPath: string): SkillSourceType {
   const normalized = skillPath.replaceAll("\\", "/").toLowerCase();
   // 用户级技能根跟数据根走（Polaris fork：`.polaris/skills`）；workspace 级仍是既定的
   // `.zcode/skills` 点文件契约。两种形态都是原生来源，必须同时判到。

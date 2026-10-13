@@ -1,6 +1,6 @@
 import { ensureDeviceMid as ensureSharedDeviceMid } from "@zcode/services/node";
 
-interface EnsureRemoteServerDeviceMidOptions {
+export interface EnsureRemoteServerDeviceMidOptions {
   /** 仅测试注入；生产固定使用 services 的 ensureDeviceMid。 */
   ensureDeviceMid?: () => Promise<string>;
   log: (...args: unknown[]) => void;

@@ -10,11 +10,13 @@ interface ChromiumHardwareAccelerationApp {
 // 本文件在 Electron app ready 之前就被加载，为避免为此拉入 @zcode/services/node 依赖图，这里保留字面量。
 const DATA_ROOT_DIR_NAME = ".polaris";
 
-function resolveChromiumHardwareAccelerationSettingsFile(homePath: string = homedir()): string {
+export function resolveChromiumHardwareAccelerationSettingsFile(
+  homePath: string = homedir(),
+): string {
   return join(homePath, DATA_ROOT_DIR_NAME, "v2", "setting.json");
 }
 
-function extractBootstrapChromiumHardwareAccelerationEnabled(rawValue: unknown): boolean {
+export function extractBootstrapChromiumHardwareAccelerationEnabled(rawValue: unknown): boolean {
   if (!rawValue || typeof rawValue !== "object" || Array.isArray(rawValue)) {
     return true;
   }

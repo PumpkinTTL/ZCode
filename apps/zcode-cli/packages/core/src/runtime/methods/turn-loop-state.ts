@@ -52,6 +52,7 @@ export type CompactAttemptOutcome = "skipped" | "compacted" | "failed";
 export type AutoCompactOutcome = CompactAttemptOutcome | "rapid_refill_blocked";
 
 export interface AutoCompactLoopContext {
+  getAgentListingTools?: () => readonly { name: string }[];
   compactReason: CompactReason;
   modelStepIndex: number;
   phase: CompactPhase;
@@ -61,6 +62,7 @@ export interface AutoCompactLoopContext {
 }
 
 export interface ReactiveCompactLoopContext {
+  agentListingTools?: readonly { name: string }[];
   activeEntries?: readonly RuntimeMessageEntry[];
   modelStepIndex: number;
   model: Model;
@@ -91,6 +93,7 @@ export interface RegularTurnLoopState {
   drainedSteerForNextRequest?: DrainedPendingInputDiagnostics;
   events: SessionEvent[];
   input: string;
+  inputId?: string;
   modelResponse: string;
   /** 本轮固定使用的可调用模型；配置变化只影响以后创建的 Loop。 */
   model: Model;
@@ -101,6 +104,7 @@ export interface RegularTurnLoopState {
   modelStepCount: number;
   /** 当前 query 已成功写入 provider 可见持久历史的 assistant/compact 产物数量。 */
   historyRoundCount: number;
+  completedRealToolResultBatch: boolean;
   reactiveCompactAttemptedInCurrentModelStep: boolean;
   repeatedToolCallSignature?: string;
   repeatedToolCallStreakCount: number;

@@ -5,6 +5,7 @@ export type ZCodeProductFlavor = "production" | "preview";
 // 非构建环境（如 e2e 测试的 mocha）下 define 不存在，用 typeof 检查 + fallback 避免 ReferenceError
 declare const __ZCODE_ENV__: string;
 declare const __ZCODE_PRODUCT_FLAVOR__: string;
+declare const __ZCODE_AUTO_UPDATE_ENABLED__: boolean;
 
 export function normalizeZCodeEnv(value: string | undefined): ZCodeEnv {
   return value?.trim().toLowerCase() === "production" ? "production" : "test";
@@ -36,6 +37,10 @@ export const ZCODE_PRODUCT_FLAVOR = normalizeZCodeProductFlavor(
 );
 export const ZCODE_APP_VERSION_ENV = "ZCODE_APP_VERSION" as const;
 export const ZCODE_BUILD_COMMIT_ID_ENV = "ZCODE_BUILD_COMMIT_ID" as const;
+
+/** 桌面自动更新是否启用（构建期可选能力；未注入 define 时关闭）。 */
+export const ZCODE_AUTO_UPDATE_ENABLED: boolean =
+  typeof __ZCODE_AUTO_UPDATE_ENABLED__ !== "undefined" ? __ZCODE_AUTO_UPDATE_ENABLED__ : false;
 
 // ── 运行时环境变量（不经过编译打包，启动时从 process.env 读取） ──
 // 启用调试模式，值为 inspect-brk 的端口号，如 ZCODE_DEBUG=9230

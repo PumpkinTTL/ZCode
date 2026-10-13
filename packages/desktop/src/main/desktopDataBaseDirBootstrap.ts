@@ -12,11 +12,12 @@ import { setDataBaseDir } from "@zcode/services/node";
  */
 const DATA_ROOT_DIR_NAME = ".polaris";
 
-function resolveBootstrapSettingsFile(homePath: string = homedir()): string {
+// 导出供上游单测（desktopDataBaseDirBootstrap.test.ts）使用；实现保持 Polaris 数据根。
+export function resolveBootstrapSettingsFile(homePath: string = homedir()): string {
   return join(homePath, DATA_ROOT_DIR_NAME, "v2", "setting.json");
 }
 
-function extractBootstrapDataBaseDir(rawValue: unknown): string | null {
+export function extractBootstrapDataBaseDir(rawValue: unknown): string | null {
   if (!rawValue || typeof rawValue !== "object") {
     return null;
   }

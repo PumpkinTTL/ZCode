@@ -23,6 +23,13 @@ import {
   type SettingsModelProviderTarget,
 } from "@/lib/settingsNavigation.js";
 
+// 端点建议工具的纯函数从本模块再导出，保持既有测试与调用方的 import 面不变。
+export {
+  fuzzyMatch,
+  handleEndpointSuggestionPopoverOpenAutoFocus,
+  resolveEndpointSuggestionOpenRequest,
+} from "./model-provider-section/utils.js";
+
 /**
  * 模型 Provider 设置只由 SettingsPage 注入 Local Host；这里不接收 workspaceIdentity，
  * 防止远程 workspace 误将 Provider Settings 的读写路由到远端 Environment。

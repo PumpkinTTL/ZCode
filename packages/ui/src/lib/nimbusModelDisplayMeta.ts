@@ -99,5 +99,7 @@ export function useNimbusModelDisplayMetaVersion(): number {
   return useSyncExternalStore(
     subscribeNimbusModelDisplayMeta,
     () => version,
+    // SSR（含 renderToStaticMarkup 单测）必须有 serverSnapshot，否则 React 回退整树客户端渲染。
+    () => version,
   );
 }

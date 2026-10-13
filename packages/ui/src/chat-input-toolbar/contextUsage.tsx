@@ -37,7 +37,7 @@ const CONTEXT_PROGRESS_TONE_COLORS = [
 const PERCENT_MAX = 100;
 const CACHE_HIT_RATE_DISPLAY_THRESHOLD = 0.78;
 
-function formatContextUsageTokenCount(
+export function formatContextUsageTokenCount(
   value: number,
   locale: string,
   options: { maximumFractionDigits?: number } = {},
@@ -45,7 +45,7 @@ function formatContextUsageTokenCount(
   return formatCompactTokenNumber(locale, value, options);
 }
 
-function formatContextUsageSummary({
+export function formatContextUsageSummary({
   locale,
   percent,
   size,
@@ -69,7 +69,7 @@ function formatContextUsageSummary({
   )} (${percentageFormatter.format(percent)})`;
 }
 
-function formatContextCacheHitRateLabel(
+export function formatContextCacheHitRateLabel(
   hitRate: number | null | undefined,
   locale: string,
   options: { showBelowThreshold?: boolean } = {},
@@ -118,7 +118,7 @@ const BREAKDOWN_SOURCE_ORDER: Record<ContextUsageBreakdownSource, number> = {
   mcp_tool_schemas: 6,
 };
 
-function buildContextUsageBreakdownSegments(
+export function buildContextUsageBreakdownSegments(
   breakdown: readonly ZCodeContextUsageBreakdownItem[] | undefined,
 ): ContextUsageBreakdownSegment[] {
   const charsBySource = new Map<ContextUsageBreakdownSource, number>();
@@ -147,7 +147,7 @@ function buildContextUsageBreakdownSegments(
     );
 }
 
-function buildContextUsageProgressSegments(segments: readonly ContextUsageBreakdownSegment[]) {
+export function buildContextUsageProgressSegments(segments: readonly ContextUsageBreakdownSegment[]) {
   return segments.map((segment, index) => ({
     id: segment.source,
     percent: segment.percent,
@@ -178,6 +178,15 @@ export function getRenderableTaskUsage<T extends { used: number; size: number }>
 
 export function getContextCompressionCommand(_provider: ZCodeProvider): string {
   return "/compact";
+}
+
+export function refreshContextUsageOnOpen(
+  open: boolean,
+  onAccess: (() => Promise<void> | void) | undefined,
+): void {
+  if (open) {
+    void onAccess?.();
+  }
 }
 
 export function ChatContextUsage({

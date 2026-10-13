@@ -100,7 +100,11 @@ export type {
   WindowsCuaHelperHostOptions,
 } from "./windowsCuaDevHelperHost.js";
 
-export { createCuaPipSessionService } from "./cuaPipSessionService.js";
+export {
+  createCuaPipSessionService,
+} from "./cuaPipSessionService.js";
 export { ICuaPipSessionService } from "./cuaPipSession.js";
-export type { CuaPipPresentationCredentials } from "./cuaPipSessionService.js";
+export type {
+  CuaPipPresentationCredentials,
+} from "./cuaPipSessionService.js";
 export type { CuaPipSessionService } from "./cuaPipSession.js";

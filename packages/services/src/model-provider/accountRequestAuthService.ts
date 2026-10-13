@@ -14,12 +14,24 @@ import type { ZCodeAccountAccess, ZCodeProviderAccountAccess } from "@zcode/shar
 export interface AccountRequestAuthMaterial {
   apiKey?: string;
   headers?: Record<string, string>;
+  /**
+   * 账号作用域标识：随派发下传到私有 requestAuth，供后续请求刷新时校验凭据是否仍属于
+   * 同一账号。自有账号体系接回前实际恒为空，但契约必须保留（Off-Peak 派发链路依赖它）。
+   */
+  accountScope?: string;
 }
 
 export interface AccountRequestAuthInput {
   providerId: string;
   modelId?: string;
   accountAccess: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+  /**
+   * 请求方（CLI runner）声明的期望账号作用域：解析器必须在同一次校验里确认当前凭据
+   * 仍属于该作用域，否则不能把材料用于这次请求。空壳实现忽略它，但契约必须原样透传。
+   */
+  expectedAccountScope?: string;
+  /** 已被判定失效的 Project Token 指纹：解析器据此拒绝复用同一凭据。 */
+  rejectedProjectTokenFingerprint?: string;
   reason: "model-request" | "off-peak" | "usage";
 }
 

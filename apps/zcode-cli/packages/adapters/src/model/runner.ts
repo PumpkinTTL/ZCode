@@ -31,6 +31,7 @@ import {
   type AiSdkModelRetryOptions,
   type ResolvedAiSdkModelRetryOptions,
 } from "./retry-policy.js";
+import { resolveRetryOptionsForBudget } from "./retry-budget.js";
 import { DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS } from "./stream-idle-timeout.js";
 import { runGenerateText } from "./runner-generate.js";
 import { runStreamText } from "./runner-stream.js";
@@ -299,7 +300,8 @@ export class AiSdkModelAdapter {
       request: projectedRequest,
       resolveModel,
       resolved,
-      retry: this.retry,
+      // 按请求预算档位收敛 maxAttempts（single-attempt 供执行作用域请求使用）。
+      retry: resolveRetryOptionsForBudget(this.retry, projectedRequest.modelRetryBudget),
       runtime: this.runtime,
       statusSink: this.statusSink,
       modelIoFullRetentionEnabled: this.modelIoFullRetentionEnabled,
@@ -319,7 +321,8 @@ export class AiSdkModelAdapter {
       request: projectedRequest,
       resolveModel,
       resolved,
-      retry: this.retry,
+      // single-attempt 预算把 maxAttempts 收敛为 1。
+      retry: resolveRetryOptionsForBudget(this.retry, projectedRequest.modelRetryBudget),
       runtime: this.runtime,
       statusSink: this.statusSink,
       streamIdleTimeoutMs: this.streamIdleTimeoutMs,

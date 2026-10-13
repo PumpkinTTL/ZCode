@@ -4,30 +4,30 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./runtime-env": "./src/runtimeEnv.ts",
+    "./account-provider-state": "./src/account-provider-state.ts",
     "./channels": "./src/channels.ts",
-    "./process-names": "./src/process-names.ts",
+    "./config-schema": "./src/config-schema.ts",
     "./database-startup": "./src/database-startup.ts",
     "./e2e-test-bridge": "./src/e2e-test-bridge.ts",
+    "./gen-ui": "./src/gen-ui/index.ts",
     "./mcp": "./src/mcp.ts",
-    "./runtime-tool-runtime": "./src/runtime-tool-runtime.ts",
+    "./mcp-apps": "./src/mcp-apps/index.ts",
+    "./model-config": "./src/model-config.ts",
+    "./model-selection": "./src/model-selection.ts",
+    "./node": "./src/node.ts",
     "./node-repl-browser-broker": "./src/browser-use/nodeReplBroker.ts",
     "./process-diagnostic": "./src/process-diagnostic.ts",
-    "./model-selection": "./src/model-selection.ts",
-    "./account-provider-state": "./src/account-provider-state.ts",
-    "./model-config": "./src/model-config.ts",
-    "./config-schema": "./src/config-schema.ts",
-    "./node": "./src/node.ts",
-    "./zcodeEndpoint": "./src/zcodeEndpoint.ts",
-    "./workspaceFileSearch": "./src/workspaceFileSearch.ts",
-    "./workspaceFileEntriesCodec": "./src/workspaceFileEntriesCodec.ts",
-    "./zcode-protocol-v4": "./src/zcode-protocol-v4/index.ts",
-    "./mcp-apps": "./src/mcp-apps/index.ts",
+    "./process-names": "./src/process-names.ts",
+    "./runtime-env": "./src/runtimeEnv.ts",
+    "./runtime-tool-runtime": "./src/runtime-tool-runtime.ts",
     "./workspace-hook-discovery": "./src/workspace-hook-discovery.ts",
     "./workspace-hook-mutation": "./src/workspace-hook-mutation.ts",
     "./workspace-hook-review-monotonicity": "./src/workspace-hook-review-monotonicity.ts",
     "./workspace-hook-trust-store-file": "./src/workspace-hook-trust-store-file.ts",
-    "./gen-ui": "./src/gen-ui/index.ts"
+    "./workspaceFileEntriesCodec": "./src/workspaceFileEntriesCodec.ts",
+    "./workspaceFileSearch": "./src/workspaceFileSearch.ts",
+    "./zcode-protocol-v4": "./src/zcode-protocol-v4/index.ts",
+    "./zcodeEndpoint": "./src/zcodeEndpoint.ts"
   },
   "scripts": {
     "lint": "oxlint",
@@ -38,6 +38,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@modelcontextprotocol/ext-apps": "2.0.0"
+    "@modelcontextprotocol/ext-apps": "2.0.0",
+    "typescript": "^6.0.2"
   }
 }

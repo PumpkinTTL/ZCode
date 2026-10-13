@@ -12,8 +12,6 @@ export {
 } from "./domain/pluginUiRowPolicy.js";
 export {
   deriveLogicalUiInstances,
-  pluginUiInstanceDerivationsEqual,
-  EMPTY_PLUGIN_UI_INSTANCE_DERIVATION,
   type PluginUiInstanceDerivation,
 } from "./domain/pluginUiInstancePolicy.js";
 export {
@@ -22,6 +20,10 @@ export {
   subscribePluginUiDisclosure,
 } from "./app/pluginUiDisclosureStore.js";
 export { setPluginUiInstanceDerivation } from "./app/pluginUiInstanceStore.js";
+export {
+  EMPTY_PLUGIN_UI_INSTANCE_DERIVATION,
+  pluginUiInstanceDerivationsEqual,
+} from "./domain/pluginUiInstancePolicy.js";
 export {
   buildPromptWithPluginUiContexts,
   parsePromptPluginUiContexts,

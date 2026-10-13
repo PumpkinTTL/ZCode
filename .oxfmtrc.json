@@ -8,6 +8,8 @@
     "third-party/upstream/**",
     "third-party/native-search/licenses/**",
     "third-party/runtime/*.txt",
-    "packages/zcode-cua-plugin/**"
+    "packages/zcode-cua-plugin/**",
+    "docs/knip/docs/LICENSE",
+    "docs/knip/docs/licenses/**"
   ]
 }

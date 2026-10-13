@@ -121,12 +121,15 @@ function migratePluginConfigInFile(value: unknown): Record<string, unknown> | un
 
   if (isRecord(plugins.enabledPlugins)) {
     const enabledPlugins = { ...plugins.enabledPlugins };
-    for (const [id, enabled] of Object.entries(plugins.enabledPlugins)) {
-      if (LEGACY_CUA_PLUGIN_IDS.includes(id)) {
+    // 从最新到最旧遍历：多个历史 id 并存时，更新的那个才代表用户最近一次选择；
+    // 显式写下的现行规范 id 优先于任何历史 id。
+    for (const legacyId of [...LEGACY_CUA_PLUGIN_IDS].reverse()) {
+      const enabled = plugins.enabledPlugins[legacyId];
+      if (enabled !== undefined) {
         if (enabledPlugins[CANONICAL_CUA_PLUGIN_ID] === undefined) {
           enabledPlugins[CANONICAL_CUA_PLUGIN_ID] = enabled;
         }
-        delete enabledPlugins[id];
+        delete enabledPlugins[legacyId];
         changed = true;
       }
     }
@@ -143,12 +146,13 @@ function migratePluginConfigInFile(value: unknown): Record<string, unknown> | un
 
   if (isRecord(plugins.options)) {
     const options = { ...plugins.options };
-    for (const [id, pluginOptions] of Object.entries(plugins.options)) {
-      if (LEGACY_CUA_PLUGIN_IDS.includes(id)) {
+    for (const legacyId of [...LEGACY_CUA_PLUGIN_IDS].reverse()) {
+      const pluginOptions = plugins.options[legacyId];
+      if (pluginOptions !== undefined) {
         if (options[CANONICAL_CUA_PLUGIN_ID] === undefined) {
           options[CANONICAL_CUA_PLUGIN_ID] = pluginOptions;
         }
-        delete options[id];
+        delete options[legacyId];
         changed = true;
       }
     }

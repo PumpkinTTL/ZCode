@@ -21,9 +21,9 @@ export function formatIncomingMessage(
     case "coordinator_input":
       return body;
     case "subagent_reply_steer":
-      return `Another ZCode session sent a message while you were working:\n${body}\n\n${PEER_PERMISSION_GUIDANCE}${PEER_REPLY_GUIDANCE}`;
+      return `Another Polaris session sent a message while you were working:\n${body}\n\n${PEER_PERMISSION_GUIDANCE}${PEER_REPLY_GUIDANCE}`;
     case "subagent_reply":
-      return `Another ZCode session sent a message:\n${body}\n\n${PEER_PERMISSION_GUIDANCE}`;
+      return `Another Polaris session sent a message:\n${body}\n\n${PEER_PERMISSION_GUIDANCE}`;
     case "task_notification_steer":
     case "task_notification":
       return `${TASK_NOTIFICATION_PREFIX}${body}`;

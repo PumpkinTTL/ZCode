@@ -121,5 +121,11 @@ export function getScreenshotObjectUrlVersion(): number {
 
 /** React 订阅钩子：解码完成/驱逐后触发重渲染，渲染期取最新 src。 */
 export function useScreenshotObjectUrlVersion(): number {
-  return useSyncExternalStore(subscribeScreenshotObjectUrls, getScreenshotObjectUrlVersion);
+  // 上游 v3.15.1 的会话渲染用例走 renderToStaticMarkup（SSR）路径，useSyncExternalStore
+  // 在服务端必须有 getServerSnapshot；服务端无 objectURL 缓存演进，返回当前版本号即可。
+  return useSyncExternalStore(
+    subscribeScreenshotObjectUrls,
+    getScreenshotObjectUrlVersion,
+    getScreenshotObjectUrlVersion,
+  );
 }

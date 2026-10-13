@@ -71,7 +71,7 @@ const DIRECTORY_MCP_DESCRIPTORS: readonly DirectoryMcpDescriptor[] = [
   AGENTS_MCP_DESCRIPTOR,
 ];
 
-interface McpSyncServiceDependencies {
+export interface McpSyncServiceDependencies {
   /**
    * MCP server 运行态状态检查的执行面。真实 connect/listTools 必须发生在
    * agent 进程（workspace 的 PATH/cwd 环境），host 侧没有可替代实现；无该依赖的
@@ -99,7 +99,9 @@ export function createMcpSyncService(
     async listLocalUserMcpCandidates() {
       const localHomeDir = resolveUserHomeDir();
       return {
-        candidates: (await collectEffectiveUserMcpRecords()).map(recordToCandidate),
+        candidates: (await collectEffectiveUserMcpRecords()).map(
+          recordToCandidate,
+        ),
         localHomeDir,
       };
     },
@@ -110,13 +112,19 @@ export function createMcpSyncService(
         remoteHomeDir,
         statuses: params.names.map((name): McpSyncRemoteStatus => {
           const existing = existingByName.get(normalizeMcpNameKey(name));
-          return existing ? { name, exists: true, path: existing.path } : { name, exists: false };
+          return existing
+            ? { name, exists: true, path: existing.path }
+            : { name, exists: false };
         }),
       };
     },
     async exportMcpServers(params) {
-      const candidates = (await collectEffectiveUserMcpRecords()).map(recordToCandidate);
-      const candidateById = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+      const candidates = (await collectEffectiveUserMcpRecords()).map(
+        recordToCandidate,
+      );
+      const candidateById = new Map(
+        candidates.map((candidate) => [candidate.id, candidate]),
+      );
       return {
         localHomeDir: resolveUserHomeDir(),
         servers: params.serverIds.map((id): McpSyncExportedServer => {
@@ -148,7 +156,9 @@ export function createMcpSyncService(
 }
 
 function resolveUserHomeDir(): string {
-  return process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || homedir();
+  return (
+    process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || homedir()
+  );
 }
 
 function buildDirectoryConfigPath(
@@ -163,7 +173,9 @@ function buildDirectoryConfigPath(
     );
   }
   const segments =
-    scope === "user" ? descriptor.userConfigDirSegments : descriptor.workspaceConfigDirSegments;
+    scope === "user"
+      ? descriptor.userConfigDirSegments
+      : descriptor.workspaceConfigDirSegments;
   return join(baseDir, ...segments, descriptor.fileName);
 }
 
@@ -189,12 +201,16 @@ function buildDirectoryMcpLocation(
   };
 }
 
-function findDescriptorByLocation(location: SettingsDirectoryLocation): DirectoryMcpDescriptor {
+function findDescriptorByLocation(
+  location: SettingsDirectoryLocation,
+): DirectoryMcpDescriptor {
   const descriptor = DIRECTORY_MCP_DESCRIPTORS.find(
     (item) => item.directorySource === location.source,
   );
   if (!descriptor) {
-    throw new Error(`Unsupported MCP settings directory source: ${location.source}`);
+    throw new Error(
+      `Unsupported MCP settings directory source: ${location.source}`,
+    );
   }
   return descriptor;
 }
@@ -204,10 +220,14 @@ async function collectEffectiveUserMcpRecords(): Promise<UserMcpRecord[]> {
   if (zcodeRecords.length > 0) {
     return sortMcpRecords(zcodeRecords);
   }
-  return sortMcpRecords(await readUserMcpRecordsFromFile(AGENTS_MCP_DESCRIPTOR));
+  return sortMcpRecords(
+    await readUserMcpRecordsFromFile(AGENTS_MCP_DESCRIPTOR),
+  );
 }
 
-async function collectEffectiveUserMcpRecordByName(): Promise<Map<string, UserMcpRecord>> {
+async function collectEffectiveUserMcpRecordByName(): Promise<
+  Map<string, UserMcpRecord>
+> {
   const result = new Map<string, UserMcpRecord>();
   for (const record of await collectEffectiveUserMcpRecords()) {
     const nameKey = normalizeMcpNameKey(record.name);
@@ -224,22 +244,38 @@ async function loadMcpFromUserDirectory(
   const servers: NativeMcpServerRecord[] = [];
   if (request?.workspacePath) {
     servers.push(
-      ...(await readDirectoryServersFromPreferredSources("workspace", request.workspacePath)),
+      ...(await readDirectoryServersFromPreferredSources(
+        "workspace",
+        request.workspacePath,
+      )),
     );
   }
-  servers.push(...(await readDirectoryServersFromPreferredSources("user", request?.workspacePath)));
+  servers.push(
+    ...(await readDirectoryServersFromPreferredSources(
+      "user",
+      request?.workspacePath,
+    )),
+  );
   return { servers };
 }
 
-async function saveMcpToUserDirectory(payload: SaveCliMcpToUserDirectoryRequest): Promise<void> {
+async function saveMcpToUserDirectory(
+  payload: SaveCliMcpToUserDirectoryRequest,
+): Promise<void> {
   if (payload.action === "set-enabled") {
     if (typeof payload.enabled !== "boolean") {
       throw new Error("Missing enabled value for MCP set-enabled action");
     }
-    const scope: Exclude<McpScope, "common"> = payload.projectPath ? "workspace" : "user";
+    const scope: Exclude<McpScope, "common"> = payload.projectPath
+      ? "workspace"
+      : "user";
     const location =
       payload.location ??
-      buildDirectoryMcpLocation(ZCODE_MCP_DESCRIPTOR, scope, payload.projectPath);
+      buildDirectoryMcpLocation(
+        ZCODE_MCP_DESCRIPTOR,
+        scope,
+        payload.projectPath,
+      );
     await writeServerEnabledToFile(
       findDescriptorByLocation(location),
       location,
@@ -250,14 +286,19 @@ async function saveMcpToUserDirectory(payload: SaveCliMcpToUserDirectoryRequest)
     return;
   }
 
-  const scope: Exclude<McpScope, "common"> = payload.projectPath ? "workspace" : "user";
+  const scope: Exclude<McpScope, "common"> = payload.projectPath
+    ? "workspace"
+    : "user";
   const existingServers = await readDirectoryServersFromFile(
     ZCODE_MCP_DESCRIPTOR,
     scope,
     payload.projectPath,
   );
   const nextServers = Object.fromEntries(
-    existingServers.map((server) => [server.name, server.config as Record<string, unknown>]),
+    existingServers.map((server) => [
+      server.name,
+      server.config as Record<string, unknown>,
+    ]),
   );
 
   if (payload.action === "upsert") {
@@ -288,7 +329,11 @@ async function readDirectoryServersFromPreferredSources(
   if (zcodeServers.length > 0) {
     return zcodeServers;
   }
-  return readDirectoryServersFromFile(AGENTS_MCP_DESCRIPTOR, scope, workspacePath);
+  return readDirectoryServersFromFile(
+    AGENTS_MCP_DESCRIPTOR,
+    scope,
+    workspacePath,
+  );
 }
 
 async function readDirectoryServersFromFile(
@@ -327,9 +372,17 @@ async function writeZCodeServersToFile(
   servers: Record<string, Record<string, unknown>>,
   workspacePath?: string,
 ): Promise<void> {
-  const filePath = buildDirectoryConfigPath(ZCODE_MCP_DESCRIPTOR, scope, workspacePath);
+  const filePath = buildDirectoryConfigPath(
+    ZCODE_MCP_DESCRIPTOR,
+    scope,
+    workspacePath,
+  );
   const current = (await readJsonObject(filePath)) ?? {};
-  const next = writeServerMapToJson(current, ZCODE_MCP_DESCRIPTOR.configKeyName, servers);
+  const next = writeServerMapToJson(
+    current,
+    ZCODE_MCP_DESCRIPTOR.configKeyName,
+    servers,
+  );
   await writeTextAtomic(filePath, `${JSON.stringify(next, null, 2)}\n`);
 }
 
@@ -337,8 +390,13 @@ async function readUserCliConfig(): Promise<Record<string, unknown>> {
   return (await readJsonObject(getUserZcodeMcpConfigPath())) ?? {};
 }
 
-async function writeUserCliConfig(config: Record<string, unknown>): Promise<void> {
-  await writeTextAtomic(getUserZcodeMcpConfigPath(), `${JSON.stringify(config, null, 2)}\n`);
+async function writeUserCliConfig(
+  config: Record<string, unknown>,
+): Promise<void> {
+  await writeTextAtomic(
+    getUserZcodeMcpConfigPath(),
+    `${JSON.stringify(config, null, 2)}\n`,
+  );
 }
 
 function removeLegacyMcpEnabledOverride(
@@ -391,8 +449,10 @@ async function writeServerEnabledToFile(
   name: string,
   enabled: boolean,
 ): Promise<void> {
-  const scope: Exclude<McpScope, "common"> = location.scope === "project" ? "workspace" : "user";
-  const workspacePath = scope === "workspace" ? location.projectPath : undefined;
+  const scope: Exclude<McpScope, "common"> =
+    location.scope === "project" ? "workspace" : "user";
+  const workspacePath =
+    scope === "workspace" ? location.projectPath : undefined;
   const filePath = buildDirectoryConfigPath(descriptor, scope, workspacePath);
   const current = (await readJsonObject(filePath)) ?? {};
   const serverMap = readServerMapFromJson(current, descriptor.configKeyName);
@@ -404,9 +464,16 @@ async function writeServerEnabledToFile(
   // 避免把目录路径写到 mcp 顶层后和真实 MCP 配置混在一起。
   const nextServerMap = {
     ...serverMap,
-    [name]: setServerEnabled(currentServer as McpServerConfig, enabled) as Record<string, unknown>,
+    [name]: setServerEnabled(
+      currentServer as McpServerConfig,
+      enabled,
+    ) as Record<string, unknown>,
   };
-  let next = writeServerMapToJson(current, descriptor.configKeyName, nextServerMap);
+  let next = writeServerMapToJson(
+    current,
+    descriptor.configKeyName,
+    nextServerMap,
+  );
   const legacyCleanup = removeLegacyMcpEnabledOverride(next, location, name);
   if (legacyCleanup.changed) {
     next = legacyCleanup.config;
@@ -461,20 +528,26 @@ function readServerEnabled(config: Record<string, unknown>): boolean {
   return config[ENABLED_KEY] !== false;
 }
 
-function setServerEnabled(config: McpServerConfig, enabled: boolean): McpServerConfig {
+function setServerEnabled(
+  config: McpServerConfig,
+  enabled: boolean,
+): McpServerConfig {
   // 启用是默认态，不落盘冗余字段；同时清掉可能残留的 legacy enable，
   // 避免再产出 enable:false + enabled:true 这类自相矛盾的配置。
-  const { [LEGACY_ENABLE_KEY]: _legacyEnable, [ENABLED_KEY]: _enabled, ...rest } = config;
+  const {
+    [LEGACY_ENABLE_KEY]: _legacyEnable,
+    [ENABLED_KEY]: _enabled,
+    ...rest
+  } = config;
   if (enabled) {
     return rest;
   }
   return { ...rest, [ENABLED_KEY]: false };
 }
 
-function migrateLegacyEnableFlag(serverMap: Record<string, Record<string, unknown>>): {
-  servers: Record<string, Record<string, unknown>>;
-  changed: boolean;
-} {
+function migrateLegacyEnableFlag(
+  serverMap: Record<string, Record<string, unknown>>,
+): { servers: Record<string, Record<string, unknown>>; changed: boolean } {
   let changed = false;
   const migrated: Record<string, Record<string, unknown>> = {};
 
@@ -486,11 +559,12 @@ function migrateLegacyEnableFlag(serverMap: Record<string, Record<string, unknow
     changed = true;
     // 两个字段冲突时以「停用」为准：桌面端写 enable:false 时不会清理外部导入残留的
     // enabled:true，若按 enabled 取值会把用户关掉的 server 重新拉起。
-    const disabled = config[LEGACY_ENABLE_KEY] === false || config[ENABLED_KEY] === false;
-    migrated[name] = setServerEnabled(config as McpServerConfig, !disabled) as Record<
-      string,
-      unknown
-    >;
+    const disabled =
+      config[LEGACY_ENABLE_KEY] === false || config[ENABLED_KEY] === false;
+    migrated[name] = setServerEnabled(
+      config as McpServerConfig,
+      !disabled,
+    ) as Record<string, unknown>;
   }
 
   return { servers: migrated, changed };
@@ -505,7 +579,9 @@ async function readServerMapWithLegacyMigration(
   parsed: Record<string, unknown>,
   configKeyName: McpConfigKeyName,
 ): Promise<Record<string, Record<string, unknown>>> {
-  const migration = migrateLegacyEnableFlag(readServerMapFromJson(parsed, configKeyName));
+  const migration = migrateLegacyEnableFlag(
+    readServerMapFromJson(parsed, configKeyName),
+  );
   if (!migration.changed) {
     return migration.servers;
   }
@@ -514,7 +590,11 @@ async function readServerMapWithLegacyMigration(
     const next = writeServerMapToJson(parsed, configKeyName, migration.servers);
     await writeTextAtomic(filePath, `${JSON.stringify(next, null, 2)}\n`);
   } catch (error) {
-    console.warn("[mcp-sync] legacy enable migration failed:", filePath, formatErrorMessage(error));
+    console.warn(
+      "[mcp-sync] legacy enable migration failed:",
+      filePath,
+      formatErrorMessage(error),
+    );
   }
   return migration.servers;
 }
@@ -529,11 +609,15 @@ function readServerMapFromJson(
       return {};
     }
     const servers = mcp.servers;
-    return isRecord(servers) ? (servers as Record<string, Record<string, unknown>>) : {};
+    return isRecord(servers)
+      ? (servers as Record<string, Record<string, unknown>>)
+      : {};
   }
 
   const rawServerMap = parsed[configKeyName];
-  return isRecord(rawServerMap) ? (rawServerMap as Record<string, Record<string, unknown>>) : {};
+  return isRecord(rawServerMap)
+    ? (rawServerMap as Record<string, Record<string, unknown>>)
+    : {};
 }
 
 function writeServerMapToJson(
@@ -566,7 +650,10 @@ async function importMcpServers(params: {
 }): Promise<McpSyncImportResult> {
   const targetPath = getUserZcodeMcpConfigPath();
   const current = (await readJsonObject(targetPath)) ?? {};
-  const targetServers = readServerMapFromJson(current, ZCODE_MCP_DESCRIPTOR.configKeyName);
+  const targetServers = readServerMapFromJson(
+    current,
+    ZCODE_MCP_DESCRIPTOR.configKeyName,
+  );
   const existingByName = await collectEffectiveUserMcpRecordByName();
   const results: McpSyncImportResult["results"] = [];
   let changed = false;
@@ -653,7 +740,8 @@ function rewriteFilesystemMcpConfig(
 }
 
 function isStdioMcpConfig(config: McpServerConfig): boolean {
-  const type = typeof config.type === "string" ? config.type.trim().toLowerCase() : "";
+  const type =
+    typeof config.type === "string" ? config.type.trim().toLowerCase() : "";
   if (!type && typeof config.command === "string" && config.command.trim()) {
     return true;
   }
@@ -669,7 +757,10 @@ function isFilesystemMcpServer(name: string, config: McpServerConfig): boolean {
   ) {
     return true;
   }
-  const haystack = [config.command, ...(Array.isArray(config.args) ? config.args : [])]
+  const haystack = [
+    config.command,
+    ...(Array.isArray(config.args) ? config.args : []),
+  ]
     .filter((value): value is string => typeof value === "string")
     .join(" ")
     .toLowerCase();
@@ -688,7 +779,10 @@ function rewritePathArgForRemote(
     remoteWorkspacePath?: string;
   },
 ): string {
-  const workspaceRelative = getRelativePathIfWithin(paths.localWorkspacePath, arg);
+  const workspaceRelative = getRelativePathIfWithin(
+    paths.localWorkspacePath,
+    arg,
+  );
   if (workspaceRelative !== null && paths.remoteWorkspacePath?.trim()) {
     return joinRemotePath(paths.remoteWorkspacePath, workspaceRelative);
   }
@@ -713,8 +807,12 @@ function getRelativePathIfWithin(
   if (!base || !candidate) {
     return null;
   }
-  const baseValue = base.caseInsensitive ? base.value.toLowerCase() : base.value;
-  const candidateValue = base.caseInsensitive ? candidate.value.toLowerCase() : candidate.value;
+  const baseValue = base.caseInsensitive
+    ? base.value.toLowerCase()
+    : base.value;
+  const candidateValue = base.caseInsensitive
+    ? candidate.value.toLowerCase()
+    : candidate.value;
   if (candidateValue === baseValue) {
     return "";
   }
@@ -732,7 +830,8 @@ function normalizeComparablePath(
   if (!trimmed) {
     return null;
   }
-  const isWindowsPath = /^[a-zA-Z]:[\\/]/u.test(trimmed) || trimmed.startsWith("\\\\");
+  const isWindowsPath =
+    /^[a-zA-Z]:[\\/]/u.test(trimmed) || trimmed.startsWith("\\\\");
   const isPosixPath = trimmed.startsWith("/");
   if (!isWindowsPath && !isPosixPath) {
     return null;
@@ -760,7 +859,10 @@ function joinRemotePath(remoteBasePath: string, relativePath: string): string {
   if (normalizedBasePath.startsWith("/")) {
     return posix.join(normalizedBasePath.replaceAll("\\", "/"), ...segments);
   }
-  if (/^[a-zA-Z]:[\\/]/u.test(normalizedBasePath) || normalizedBasePath.startsWith("\\\\")) {
+  if (
+    /^[a-zA-Z]:[\\/]/u.test(normalizedBasePath) ||
+    normalizedBasePath.startsWith("\\\\")
+  ) {
     return win32.join(normalizedBasePath, ...segments);
   }
   return posix.join(normalizedBasePath.replaceAll("\\", "/"), ...segments);
@@ -774,7 +876,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function readJsonObject(filePath: string): Promise<Record<string, unknown> | null> {
+async function readJsonObject(
+  filePath: string,
+): Promise<Record<string, unknown> | null> {
   let raw: string;
   try {
     raw = await readFile(filePath, "utf-8");
@@ -782,7 +886,9 @@ async function readJsonObject(filePath: string): Promise<Record<string, unknown>
     if (isErrnoException(error) && error.code === "ENOENT") {
       return null;
     }
-    throw new Error(`无法读取 MCP 配置文件 ${filePath}: ${formatErrorMessage(error)}`);
+    throw new Error(
+      `无法读取 MCP 配置文件 ${filePath}: ${formatErrorMessage(error)}`,
+    );
   }
 
   let parsed: unknown;
@@ -791,7 +897,9 @@ async function readJsonObject(filePath: string): Promise<Record<string, unknown>
   } catch (error) {
     // 远端 MCP 导入必须先确认现有 config.json 可读可合并；
     // JSON 损坏时如果当作空对象继续写，会静默覆盖 provider、MCP 和 secret 配置。
-    throw new Error(`无法解析 MCP 配置文件 ${filePath}: ${formatErrorMessage(error)}`);
+    throw new Error(
+      `无法解析 MCP 配置文件 ${filePath}: ${formatErrorMessage(error)}`,
+    );
   }
   if (!isRecord(parsed)) {
     throw new Error(`MCP 配置文件 ${filePath} 必须是 JSON 对象`);
@@ -807,7 +915,10 @@ function formatErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function writeTextAtomic(filePath: string, content: string): Promise<void> {
+async function writeTextAtomic(
+  filePath: string,
+  content: string,
+): Promise<void> {
   await mkdir(dirname(filePath), { recursive: true });
   const tempPath = join(
     dirname(filePath),

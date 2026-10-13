@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- TaskList 同时承接 workspace 列表渲染、行内操作和外部数据源兼容，先集中收口避免 UI 结构漂移。 */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
 import { Settings2 } from "lucide-react";
 import type { ZCodeTaskMeta } from "@zcode/shared";
 import { TID_TASK_LIST, TID_TASK_EMPTY, TID_TASK_SETTINGS_BUTTON } from "@zcode/shared";
@@ -57,6 +58,7 @@ export const TaskList = memo(function TaskList({
   onArchiveTask,
   onDeleteTask,
   onSetTaskUnread,
+  mobileActiveTaskKey,
   readOnlyReason,
 }: {
   workspacePath: string;
@@ -80,6 +82,7 @@ export const TaskList = memo(function TaskList({
   /** 真删（不可恢复）：缺省不渲染删除入口。UI 负责确认弹窗，本组件只发起。 */
   onDeleteTask?: (taskId: string) => Promise<void>;
   onSetTaskUnread: (taskId: string, unread: boolean) => Promise<ZCodeTaskMeta | null>;
+  mobileActiveTaskKey?: string | null;
   readOnlyReason?: string;
 }) {
   const { intl } = useZCodeIntl();
@@ -408,7 +411,10 @@ export const TaskList = memo(function TaskList({
         task={task}
         isPinned={isPinned}
         isActive={isWorkspaceActive && task.taskId === activeTaskId}
-        isMobileActive={false}
+        isMobileActive={
+          mobileActiveTaskKey ===
+          `${buildTaskWorkspaceKey(workspacePath, workspaceIdentity)}:${task.taskId}`
+        }
         onSelectTask={handleSelectTaskItem}
         onArchiveTaskInline={handleArchiveTaskFromInline}
         onCancelArchiveConfirm={handleCancelArchiveConfirm}
