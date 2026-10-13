@@ -50,9 +50,10 @@ describe("i18n catalog", () => {
     expect(copy.tui.sidebar.sections.status).toBe("状态");
     expect(copy.tui.sidebar.sections.modifiedFiles).toBe("变更文件");
     expect(copy.tui.loginRequired.message).toContain("没有可用模型");
-    expect(copy.tui.loginSetup.title).toBe("配置 Coding Plan");
-    expect(copy.tui.loginSetup.pending.help).toContain("Esc");
-    expect(copy.tui.loginSetup.input.placeholder).toBe("粘贴 API key");
+    // Polaris 移除了官方账号登录（OAuth/Coding Plan）；该目录只剩移除提示，登录标题与输入
+    // 占位符随登录 UI 一起消失（见 src/locales/zh-CN.ts 的 loginSetup）。
+    expect(copy.tui.loginSetup.response).toContain("已移除官方账号登录");
+    expect(copy.tui.loginSetup.response).toContain("/model");
     expect(copy.tui.input.placeholder).toBe("输入提示词");
     expect(copy.cli.help("1.0.0")).toContain("用法:");
   });

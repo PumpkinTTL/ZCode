@@ -337,7 +337,7 @@ describe("node_repl MCP server", () => {
       existsSync(
         resolve(
           import.meta.dirname,
-          "../../../../packages/zcode-cua-plugin/scripts/computer-use-client.mjs",
+          "../../../../../packages/zcode-cua-plugin/scripts/computer-use-client.mjs",
         ),
       ),
     ).toBe(true);

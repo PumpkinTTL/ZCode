@@ -16,12 +16,12 @@ import { spawnSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { build } from "esbuild";
 import type { renderChildEntry as renderChildEntryType } from "../src/child-source.js";
 
-const ENTRY = new URL("../src/child-source.ts", import.meta.url);
+const ENTRY = fileURLToPath(new URL("../src/child-source.ts", import.meta.url));
 
 const roots: string[] = [];
 
@@ -41,7 +41,7 @@ async function bundledRenderChildEntry(minify: boolean): Promise<typeof renderCh
   const outfile = join(root, "child-source.mjs");
   await build({
     bundle: true,
-    entryPoints: [new URL(ENTRY).pathname],
+    entryPoints: [ENTRY],
     format: "esm",
     // 与 CLI 发布构建同参：desktop-agent 是 minify + keepNames，普通/SEA 构建不压缩。
     keepNames: minify,

@@ -1,9 +1,14 @@
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { NodeReplRequestMeta, NodeReplSession } from "@zcode/core";
 import { setupBrowserRuntime } from "../src/browser-client.js";
 import { createBrowserBridgeGlobals, type ActiveNodeReplCall } from "@zcode/node-repl-host/browser-bridge";
 import { readNodeReplBrowserRuntimeBridge } from "@zcode/node-repl-host/runtime-bridge";
+
+// 文档相对本文件解析：上游用 `process.cwd()/docs`，只在 cwd 恰为插件包目录时成立；
+// 从 workspace 根跑 vitest 时 cwd 是 apps/zcode-cli，docs 实际在插件包内。
+const BROWSER_DOCS_ROOT = fileURLToPath(new URL("../docs", import.meta.url));
 
 describe("subagent browser boundary", () => {
   it("keeps browser bridge access and initialization available in subagent scope", async () => {
@@ -17,7 +22,7 @@ describe("subagent browser boundary", () => {
       signal: new AbortController().signal,
     });
     const globals = createBrowserBridgeGlobals({
-      documentationRoot: resolve(process.cwd(), "docs"),
+      documentationRoot: resolve(BROWSER_DOCS_ROOT),
       generation: 1,
       getActiveCall: activeCall,
       // 本用例只走本地 documentation guard，不会执行需要 response meta 的 transport。

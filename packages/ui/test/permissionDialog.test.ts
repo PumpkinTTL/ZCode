@@ -754,7 +754,7 @@ describe("PermissionDialog", () => {
   });
 
   it("renders MCP permission requests without the generic policy reason", () => {
-    const toolName = "mcp__ios-simulator__ios_preflight";
+    const toolName = "mcp__image_search__search_image";
     const reason = "Tool has side effects and requires approval";
     const html = renderPermissionDialog({
       type: "permission_request",
@@ -793,8 +793,8 @@ describe("PermissionDialog", () => {
   });
 
   it("keeps a specific MCP permission reason visible", () => {
-    const toolName = "mcp__ios-simulator__ios_preflight";
-    const reason = "The simulator must be booted before installing the app";
+    const toolName = "mcp__image_search__search_image";
+    const reason = "The search quota must be configured before running the query";
     const html = renderPermissionDialog({
       type: "permission_request",
       taskId: "task-1",
@@ -868,7 +868,7 @@ describe("PermissionDialog", () => {
   });
 
   it("does not offer the Computer Use Helper Accessibility action for unrelated MCP permission requests", () => {
-    const toolName = "mcp__ios-simulator__ios_preflight";
+    const toolName = "mcp__image_search__search_image";
     const html = renderPermissionDialog(
       {
         type: "permission_request",

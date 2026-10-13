@@ -318,10 +318,10 @@ describe("PermissionService mode policy", () => {
 
     const decision = service.checkPermission(
       {
-        input: { query: "current simulator state" },
+        input: { query: "current search index state" },
         mode: "plan",
         riskLevel: "medium",
-        toolName: "mcp__ios_simulator__status",
+        toolName: "mcp__image_search__status",
       },
       mcpCapability,
     );

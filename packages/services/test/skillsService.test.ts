@@ -521,8 +521,8 @@ body`,
     const browserUsePluginRoot = officialPluginRoot(home, "browser-use");
     const documentPluginRoot = officialPluginRoot(home, "documents");
     const zcodeGuidePluginRoot = officialPluginRoot(home, "zcode-guide");
-    const iosPluginRoot = officialPluginRoot(home, "ios-simulator");
-    const androidPluginRoot = officialPluginRoot(home, "android-emulator");
+    const restorePluginRoot = officialPluginRoot(home, "restore-legacy-sessions");
+    const computerUsePluginRoot = officialPluginRoot(home, "computer-use");
     writePluginManifest(browserUsePluginRoot, {
       name: "browser-use",
       skills: "skills",
@@ -538,13 +538,13 @@ body`,
       skills: "skills",
       version: "0.1.0",
     });
-    writePluginManifest(iosPluginRoot, {
-      name: "ios-simulator",
+    writePluginManifest(restorePluginRoot, {
+      name: "restore-legacy-sessions",
       skills: "skills",
       version: "0.1.0",
     });
-    writePluginManifest(androidPluginRoot, {
-      name: "android-emulator",
+    writePluginManifest(computerUsePluginRoot, {
+      name: "computer-use",
       skills: "skills",
       version: "0.1.0",
     });
@@ -585,27 +585,27 @@ description: Diagnose plugin discovery and enablement problems
 diagnosing-body`,
     );
     writeSkill(
-      join(iosPluginRoot, "skills"),
-      "ios-simulator",
+      join(restorePluginRoot, "skills"),
+      "restore-legacy-sessions",
       `---
-name: ios-simulator
-description: ios skill
+name: restore-legacy-sessions
+description: restore skill
 ---
-ios-body`,
+restore-body`,
     );
     writeSkill(
-      join(androidPluginRoot, "skills"),
-      "android-emulator",
+      join(computerUsePluginRoot, "skills"),
+      "computer-use",
       `---
-name: android-emulator
-description: android skill
+name: computer-use
+description: computer use skill
 ---
-android-body`,
+computer-use-body`,
     );
     writeCliConfig(home, {
       plugins: {
         enabledPlugins: {
-          "ios-simulator@polaris-plugins-official": true,
+          "restore-legacy-sessions@polaris-plugins-official": true,
         },
       },
     });
@@ -617,8 +617,8 @@ android-body`,
       "control-browser",
       "diagnosing-plugins",
       "docx",
-      "ios-simulator",
       "pdf",
+      "restore-legacy-sessions",
     ]);
     expect(result.skills.map((skill) => skill.scope)).toEqual([
       "plugin",
@@ -631,10 +631,10 @@ android-body`,
       "browser-use",
       "documents",
       "documents",
-      "ios-simulator",
+      "restore-legacy-sessions",
       "zcode-guide",
     ]);
-    expect(result.skills.find((skill) => skill.name === "android-emulator")).toBeUndefined();
+    expect(result.skills.find((skill) => skill.name === "computer-use")).toBeUndefined();
   });
 
   it("suppressed 内置插件不贡献任何 skill", async () => {

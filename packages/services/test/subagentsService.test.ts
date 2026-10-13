@@ -126,8 +126,8 @@ describe("subagent markdown helpers", () => {
     await writeOfficialPluginFixture(home, "documents", "99.0.backup-1", "visual-judge");
     await mkdir(join(newRoot, "..", "0.1.4.backup-1"), { recursive: true });
     await mkdir(join(newRoot, "..", ".seed-lock"), { recursive: true });
-    // ios-simulator 不在默认启用集合里，且 config 没有显式启用，必须被忽略。
-    await writeOfficialPluginFixture(home, "ios-simulator", "0.2.0", "simulator-runner");
+    // restore-legacy-sessions 不在默认启用集合里，且 config 没有显式启用，必须被忽略。
+    await writeOfficialPluginFixture(home, "restore-legacy-sessions", "0.2.0", "legacy-restorer");
     // browser-use 默认启用，但被用户「卸载」进入 suppressedBuiltins，同样不能贡献 agent。
     await writeOfficialPluginFixture(home, "browser-use", "0.5.0", "browser-auditor");
     await writeFile(
@@ -953,8 +953,8 @@ tools:
     const newRoot = await writeOfficialPluginFixture(home, "documents", "0.1.4", "visual-judge");
     await mkdir(join(newRoot, "..", "0.1.4.backup-1"), { recursive: true });
     await mkdir(join(newRoot, "..", ".seed-lock"), { recursive: true });
-    // ios-simulator 不在默认启用集合里，且 config 没有显式启用，必须被忽略。
-    await writeOfficialPluginFixture(home, "ios-simulator", "0.2.0", "simulator-runner");
+    // restore-legacy-sessions 不在默认启用集合里，且 config 没有显式启用，必须被忽略。
+    await writeOfficialPluginFixture(home, "restore-legacy-sessions", "0.2.0", "legacy-restorer");
     // browser-use 默认启用，但被用户「卸载」进入 suppressedBuiltins，同样不能贡献 agent。
     await writeOfficialPluginFixture(home, "browser-use", "0.5.0", "browser-auditor");
     await writeFile(

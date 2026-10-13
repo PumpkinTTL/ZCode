@@ -17,7 +17,7 @@ describe("env model config", () => {
 
   it("does not validate legacy model environment variables", () => {
     const config = parseEnvConfig({
-      ZCODE_BASE_URL: "https://api.z.ai/api/anthropic",
+      ZCODE_BASE_URL: "https://nimbus.bitlesu.com/api/anthropic",
       ZCODE_MODEL: "zai/",
     });
 

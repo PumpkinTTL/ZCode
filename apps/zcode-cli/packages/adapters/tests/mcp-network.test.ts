@@ -22,7 +22,9 @@ describe("MCP stdio environment", () => {
 
   it("preserves an existing PATH when another executable node is already available", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-mcp-node-path-"));
-    const nodePath = join(root, "node");
+    // Windows 上 src 按 win32 语义查找 `node.exe`（见 prependRunningNodeDirectory），
+    // 因此夹具必须放平台对应的可执行名，才能表达“PATH 里已有 node”的同一场景。
+    const nodePath = join(root, process.platform === "win32" ? "node.exe" : "node");
     try {
       await writeFile(nodePath, "#!/bin/sh\nexit 0\n");
       await chmod(nodePath, 0o755);

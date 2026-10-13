@@ -14,7 +14,7 @@ import { getSkillReferenceCatalog } from "../src/zcode-protocol/skill-reference-
 import type { ZCodeProtocolAgentServerContext } from "../src/zcode-protocol/server-types.js";
 import { createWorkspaceZCodeApp } from "../src/zcode-protocol/workspace-model-runtime.js";
 
-const VISUALIZE_PLUGIN_ID = "visualize@zcode-plugins-official";
+const VISUALIZE_PLUGIN_ID = "visualize@polaris-plugins-official";
 const VISUALIZE_SKILL = "visualize:visualize";
 const logger = {
   debug() {},

@@ -401,9 +401,9 @@ describe("commandsService", () => {
   it("lists enabled plugin commands separately from user commands", async () => {
     const home = makeTempRoot();
     const workspacePath = join(makeTempRoot(), "workspace");
-    const pluginRoot = officialPluginRoot(home, "ios-simulator");
+    const pluginRoot = officialPluginRoot(home, "skill-creator");
     mkdirSync(join(home, ".polaris", "commands"), { recursive: true });
-    mkdirSync(join(pluginRoot, "commands", "ios"), { recursive: true });
+    mkdirSync(join(pluginRoot, "commands", "create"), { recursive: true });
     writeFileSync(
       join(home, ".polaris", "commands", "local-review.md"),
       "---\ndescription: Local review\n---\n\nReview locally",
@@ -411,18 +411,18 @@ describe("commandsService", () => {
     );
     writePluginManifest(pluginRoot, {
       commands: "commands",
-      name: "ios-simulator",
+      name: "skill-creator",
       version: "0.1.0",
     });
     writeFileSync(
-      join(pluginRoot, "commands", "ios", "dev.md"),
-      "---\ndescription: iOS plugin command\nargument-hint: <target>\n---\n\nRun iOS flow",
+      join(pluginRoot, "commands", "create", "scaffold.md"),
+      "---\ndescription: Scaffold plugin command\nargument-hint: <target>\n---\n\nRun scaffold flow",
       "utf-8",
     );
     writeCliConfig(home, {
       plugins: {
         enabledPlugins: {
-          "ios-simulator@polaris-plugins-official": true,
+          "skill-creator@polaris-plugins-official": true,
         },
       },
     });
@@ -436,18 +436,18 @@ describe("commandsService", () => {
     expect(result.pluginCommands).toEqual([
       expect.objectContaining({
         argumentHint: "<target>",
-        description: "iOS plugin command",
+        description: "Scaffold plugin command",
         enabled: true,
-        name: "/ios/dev",
+        name: "/create/scaffold",
         pluginEnabled: true,
         pluginMarketplace: "polaris-plugins-official",
-        pluginName: "ios-simulator",
+        pluginName: "skill-creator",
         source: "plugin",
       }),
     ]);
     expect(result.commands.map((command) => command.name)).toEqual([
       "/local-review",
-      "/ios/dev",
+      "/create/scaffold",
     ]);
   });
 

@@ -797,23 +797,35 @@ describe("createMcpAdapter", () => {
     });
 
     const options = capturedStdioOptions[0] as { env?: Record<string, string> };
+    // Windows 环境变量名大小写不敏感：src 的 setEnvKey/deleteEnvKey 按平台折叠重复键，
+    // 依次写入大写与小写变体后只剩小写那份（src 与上游逐字节一致，此处仅对齐平台真值）。
+    const proxyEnv = process.platform === "win32"
+      ? {
+          all_proxy: "http://127.0.0.1:8888",
+          http_proxy: "http://127.0.0.1:8888",
+          https_proxy: "http://127.0.0.1:8888",
+          no_proxy: "localhost,127.0.0.1",
+        }
+      : {
+          ALL_PROXY: "http://127.0.0.1:8888",
+          HTTPS_PROXY: "http://127.0.0.1:8888",
+          HTTP_PROXY: "http://127.0.0.1:8888",
+          NO_PROXY: "localhost,127.0.0.1",
+          all_proxy: "http://127.0.0.1:8888",
+          http_proxy: "http://127.0.0.1:8888",
+          https_proxy: "http://127.0.0.1:8888",
+          no_proxy: "localhost,127.0.0.1",
+        };
     expect(options.env).toMatchObject({
-      ALL_PROXY: "http://127.0.0.1:8888",
+      ...proxyEnv,
       CURL_CA_BUNDLE: "/tmp/root-ca.pem",
       GIT_SSL_CAINFO: "/tmp/root-ca.pem",
-      HTTPS_PROXY: "http://127.0.0.1:8888",
-      HTTP_PROXY: "http://127.0.0.1:8888",
       MCP_TOKEN: "secret",
       NODE_EXTRA_CA_CERTS: "/tmp/root-ca.pem",
-      NO_PROXY: "localhost,127.0.0.1",
       // MCP 会补齐 Node 目录；本测试使用已含 Node 的 PATH，避免依赖测试机的 /bin。
       PATH: dirname(process.execPath),
       REQUESTS_CA_BUNDLE: "/tmp/root-ca.pem",
       SSL_CERT_FILE: "/tmp/root-ca.pem",
-      all_proxy: "http://127.0.0.1:8888",
-      http_proxy: "http://127.0.0.1:8888",
-      https_proxy: "http://127.0.0.1:8888",
-      no_proxy: "localhost,127.0.0.1",
     });
   });
 

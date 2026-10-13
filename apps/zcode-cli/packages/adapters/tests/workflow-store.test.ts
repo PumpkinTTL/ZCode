@@ -12,9 +12,9 @@ import {
 
 describe("Node workflow store", () => {
   it("defaults to the CLI workflows directory", () => {
-    expect(getDefaultWorkflowRoot()).toContain(join(".zcode", "cli", "workflows"));
+    expect(getDefaultWorkflowRoot()).toContain(join(".polaris", "cli", "workflows"));
     expect(getDefaultWorkflowDefinitionsRoot()).toContain(
-      join(".zcode", "cli", "workflows", "definitions"),
+      join(".polaris", "cli", "workflows", "definitions"),
     );
   });
 
@@ -84,7 +84,8 @@ describe("Node workflow store", () => {
       });
       const artifact = await store.writeArtifact("wf_test", "artifacts/clarify.md", "# ok\n");
 
-      expect(artifact.relativePath).toBe("artifacts/clarify.md");
+      // Windows 下 store 返回平台原生分隔符（\），非 POSIX 斜杠。
+      expect(artifact.relativePath.replaceAll("\\", "/")).toBe("artifacts/clarify.md");
       expect((await store.readRun("wf_test"))?.task).toBe("work");
       expect((await store.readLatestRun({ cwd: "/repo", kind: "expert" }))?.runId).toBe("wf_test");
       expect(await store.readEvents("wf_test")).toHaveLength(1);

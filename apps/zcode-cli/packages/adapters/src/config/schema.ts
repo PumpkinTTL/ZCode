@@ -441,7 +441,9 @@ function normalizePluginConfig(
   if (!plugins) return {};
   const enabledPlugins = plugins.enabledPlugins ? { ...plugins.enabledPlugins } : undefined;
   if (enabledPlugins) {
-    for (const legacyId of LEGACY_CUA_PLUGIN_IDS) {
+    // 从最新到最旧遍历：同一份配置同时残留多个历史 id 时，更新的那个才代表用户最近一次选择。
+    // 显式写下的现行规范 id 不属于历史 id，任何情况下都优先。
+    for (const legacyId of [...LEGACY_CUA_PLUGIN_IDS].reverse()) {
       if (enabledPlugins[legacyId] !== undefined) {
         if (enabledPlugins[CANONICAL_CUA_PLUGIN_ID] === undefined) {
           enabledPlugins[CANONICAL_CUA_PLUGIN_ID] = enabledPlugins[legacyId];
@@ -462,7 +464,8 @@ function normalizePluginConfig(
     : undefined;
   const options = plugins.options ? { ...plugins.options } : undefined;
   if (options) {
-    for (const legacyId of LEGACY_CUA_PLUGIN_IDS) {
+    // 同 enabledPlugins：多个历史 id 并存时以更新的为准。
+    for (const legacyId of [...LEGACY_CUA_PLUGIN_IDS].reverse()) {
       if (options[legacyId] !== undefined) {
         if (options[CANONICAL_CUA_PLUGIN_ID] === undefined) {
           options[CANONICAL_CUA_PLUGIN_ID] = options[legacyId];

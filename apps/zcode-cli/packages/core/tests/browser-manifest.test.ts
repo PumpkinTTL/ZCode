@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { BrowserInfo } from "../src/browser-client/index.js";
 import {
@@ -12,12 +13,15 @@ import {
 import { loadBrowserDocumentation } from "../src/browser-client/documentation.js";
 import { NodeReplSession } from "../src/repl/node-repl-session.js";
 
-const docsRoot = resolve(process.cwd(), "../browser-use-plugin/docs");
-const skillPath = resolve(process.cwd(), "../browser-use-plugin/skills/control-browser/SKILL.md");
+// 路径基准固定为测试文件位置：vitest 可能从仓库根或包目录启动，cwd 相对路径在两种入口下会解析到不同目录。
+const TESTS_DIR = fileURLToPath(new URL(".", import.meta.url));
+const PLUGIN_ROOT = resolve(TESTS_DIR, "../../browser-use-plugin");
+const docsRoot = resolve(PLUGIN_ROOT, "docs");
+const skillPath = resolve(PLUGIN_ROOT, "skills/control-browser/SKILL.md");
 const overviewPath = resolve(docsRoot, "overview.md");
 const workflowPath = resolve(docsRoot, "workflow.md");
 const playwrightPath = resolve(docsRoot, "playwright.md");
-const repoRoot = resolve(process.cwd(), "../../../..");
+const repoRoot = resolve(TESTS_DIR, "../../../../..");
 const runtimeBoundarySpecPath = resolve(
   repoRoot,
   "docs/browser-use/browser-use-plugin-runtime-boundary.md",
@@ -30,10 +34,7 @@ const phaseOneSpecPath = resolve(
   repoRoot,
   "docs/browser-use/2026-07-09-browser-use-codex-alignment-phase1-spec.md",
 );
-const testerSkillPath = resolve(
-  process.cwd(),
-  "../browser-use-plugin/skills/web-gui-tester/SKILL.md",
-);
+const testerSkillPath = resolve(PLUGIN_ROOT, "skills/web-gui-tester/SKILL.md");
 const iab: BrowserInfo = {
   id: "iab-runtime-1",
   generation: 3,

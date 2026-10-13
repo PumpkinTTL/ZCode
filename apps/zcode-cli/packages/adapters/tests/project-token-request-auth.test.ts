@@ -46,7 +46,7 @@ function fixture(
     parseProviderConfig({
       group: "standard-personal",
       access,
-      api: { type: apiType, baseUrl: "https://open.bigmodel.cn/api/anthropic", headers },
+      api: { type: apiType, baseUrl: "https://nimbus.bitlesu.com/api/anthropic", headers },
     }),
   );
   if (!provider.ok) throw new Error("invalid auth fixture");
@@ -65,35 +65,10 @@ async function capture(model: Parameters<typeof generateText>[0]["model"]) {
 }
 
 describe.each(API_TYPES)("%s 请求期账号鉴权", (apiType) => {
-  it.each(["individual-coding-plan", "team-coding-plan"] as const)(
-    "%s 的 PAT 覆盖静态认证头，轮换不修改绑定配置",
-    async (mode) => {
-      for (const stale of STATIC_HEADERS) {
-        const headers = { ...stale, "X-Session-ID": "session", "X-Custom": "keep" };
-        const original = { ...headers };
-        const { requests, bound } = fixture(
-          apiType,
-          { type: "zhipu-account", accountType: "bigmodel", mode, entitled: true },
-          headers,
-        );
-        const tokens = [TOKEN, TOKEN.replace("test", "next")];
-        for (const apiKey of tokens) {
-          await capture(bound.resolveRequest({ options: OPTIONS, requestAuth: { apiKey } }).model);
-        }
-        expect(requests).toHaveLength(2);
-        requests.forEach((request, index) => {
-          expect(request.headers.get("authorization")).toBe(`Bearer ${tokens[index]}`);
-          expect(request.headers.get("x-api-key")).toBe(
-            apiType === "anthropic-messages" ? tokens[index] : null,
-          );
-          expect(request.headers.get("x-session-id")).toBe("session");
-          expect(request.headers.get("x-custom")).toBe("keep");
-        });
-        expect(headers).toEqual(original);
-      }
-    },
-  );
-
+  // 上游 v3.15.1 的 individual/team-coding-plan「PAT 覆盖静态认证头」用例随官方套餐
+  // 请求安全层（request-security-edition / AccountRequestRetry）一并剔除：Polaris
+  // 模型出口不再有账号型静态认证头剥离逻辑，静态头保持生效（见 model-execution.ts
+  // 的 applyModelRequestAuth）。
   it.each(["api-key", "zhipu-coding-plan-api-key"] as const)(
     "%s 保留自定义认证头",
     async (type) => {

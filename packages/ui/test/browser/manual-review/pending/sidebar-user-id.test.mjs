@@ -22,8 +22,10 @@ before(async () => {
         load(id) {
           if (id.endsWith("/hooks/usePlatform.tsx"))
             return "export const usePlatform=()=>({executeDesktopCommand:async()=>{}});";
-          if (id.endsWith("/rewards/RewardsProvider.tsx"))
-            return "export const useOpenRewards=()=>()=>{};";
+          if (id.endsWith("/hooks/useServices.tsx"))
+            return 'import React from "react"; const services={providerQuotaService:{getStatus:async()=>null,logout:async()=>{}},providerSettingsService:{},appUpdateService:null,modelSelectionService:{}}; export const ServiceProvider=({children})=>children; export const useServices=()=>services; export const useOptionalServices=()=>services;';
+          if (id.endsWith("/store/TabStoreProvider.tsx"))
+            return "export const useTabStore=(select)=>select({openSettingsTab:()=>{}});";
           if (id.endsWith("/shortcuts/useShortcutBindings.ts"))
             return 'export const useShortcutCommandLabel=()=>"";';
           if (id.endsWith("/store/StoreProvider.tsx"))
@@ -31,7 +33,7 @@ before(async () => {
           if (id.endsWith("/WorkspaceWebRemoteControlTrigger.tsx"))
             return "export const WorkspaceWebRemoteControlTrigger=()=>null;";
           if (id.endsWith("/WorkspaceSidebarFooterUsageSummary.tsx"))
-            return 'import React from "react"; export const useWorkspaceSidebarFooterUsageSummaryState=()=>({}); export const WorkspaceSidebarFooterPlanBadge=()=>React.createElement("span",{className:"rounded-full border border-border bg-surface px-1 py-px text-ui-xs text-foreground-subtle"},"Pro"); export const WorkspaceSidebarFooterUsageSummaryContent=()=>null;';
+            return 'export const WorkspaceSidebarFooterUsageSummaryContent=()=>null;';
         },
       },
       react(),
@@ -84,7 +86,8 @@ async function open(params = {}, clipboard = "ok", width = 960) {
   }, clipboard);
   await page.goto(`${origin}fixture?${new URLSearchParams(params)}`);
   const trigger = page.getByRole("button", {
-    name: params.guest === "1" ? "连接使用" : "Alex",
+    // Polaris 未登录态标签为 i18n 的 sidebar.profile.notLoggedIn（"登录使用"）。
+    name: params.guest === "1" ? "登录使用" : "Alex",
     exact: true,
   });
   await trigger.waitFor();
@@ -131,12 +134,8 @@ for (const theme of ["light", "dark"])
             .getBoundingClientRect();
           const id = el.querySelector('[data-testid="profile-menu-id"]').getBoundingClientRect();
           const copy = el.querySelector('[data-testid="copy-user-id"]').getBoundingClientRect();
-          const plan = el
-            .querySelector('[data-testid="profile-menu-plan"]')
-            .getBoundingClientRect();
           return {
             copyGap: copy.x - id.right,
-            planGap: plan.x - name.right,
             nameX: name.x,
             idX: id.x,
             nameBottom: name.bottom,
@@ -148,8 +147,6 @@ for (const theme of ["light", "dark"])
         assert.ok(geometry.idTop >= geometry.nameBottom);
         assert.ok(geometry.first);
         assert.ok(geometry.copyGap >= 0 && geometry.copyGap <= 8);
-        assert.ok(geometry.planGap >= 0 && geometry.planGap <= 8);
-        assert.equal(await header.getByTestId("profile-menu-plan").innerText(), "Pro");
         await page
           .getByRole("menu")
           .screenshot({ path: `${artifacts}/${theme}-${mobile}.png`, animations: "disabled" });

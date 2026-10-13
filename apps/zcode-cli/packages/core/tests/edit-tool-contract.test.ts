@@ -769,7 +769,9 @@ describe("Edit tool contract", () => {
       deny: [
         {
           toolName: "Edit",
-          ruleContent: `${tmpDir}/blocked/*`,
+          // 规则内容与 file_path 一样来自平台原生路径；硬编码 "/" 在 Windows 下与 "\" 分隔的
+          // subject 永不相等，deny 会被静默绕过。
+          ruleContent: join(tmpDir, "blocked", "*"),
         },
       ],
     };
@@ -958,12 +960,14 @@ function createMemoryFileSystem(initial: Record<string, string>): MemoryFileSyst
       return { path: request.path, removed };
     },
     async listDirectory(request) {
-      const prefix = `${request.path.replace(/\/+$/u, "")}/`;
+      // Windows 下 dirname()/join() 产出 "\" 分隔符，旧实现的硬编码 "/" 前缀会永远匹配不到条目，
+      // 使相似文件名建议在 Windows 上静默消失。两侧统一转成 "/" 后再做前缀匹配。
+      const prefix = `${request.path.replace(/\\/gu, "/").replace(/\/+$/u, "")}/`;
       const entries = Array.from(files.keys())
-        .filter((path) => path.startsWith(prefix))
+        .filter((path) => path.replace(/\\/gu, "/").startsWith(prefix))
         .map((path) => ({
           kind: "file" as const,
-          name: path.slice(prefix.length),
+          name: path.replace(/\\/gu, "/").slice(prefix.length),
           path,
         }));
       return { durationMs: 0, entries, numEntries: entries.length, path: request.path };

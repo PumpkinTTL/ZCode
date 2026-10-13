@@ -19,11 +19,11 @@ describe("MCP telemetry source provenance", () => {
     }
   });
 
-  it("marks installed MCP servers from the ZCode official marketplace as builtin", async () => {
+  it("marks installed MCP servers from the Polaris official marketplace as builtin", async () => {
     const fixture = await discoverPluginMcp("official-cdn");
     try {
       expect(fixture.outcome.plugins[0]).toMatchObject({
-        marketplace: "zcode-plugins-official",
+        marketplace: "polaris-plugins-official",
         source: "cache",
       });
       expect(fixture.outcome.mcpServers[MCP_RUNTIME_NAME]).toMatchObject({
@@ -50,7 +50,7 @@ async function discoverPluginMcp(channel: "builtin" | "official-cdn" | "inline")
   const root = await mkdtemp(join(tmpdir(), `zcode-${channel}-plugin-mcp-source-`));
   const pluginRoot = join(root, PLUGIN_NAME);
   const storageRoot = join(root, "storage");
-  const marketplace = channel === "inline" ? "inline" : "zcode-plugins-official";
+  const marketplace = channel === "inline" ? "inline" : "polaris-plugins-official";
   const pluginId = `${PLUGIN_NAME}@${marketplace}`;
   await mkdir(join(pluginRoot, ".zcode-plugin"), { recursive: true });
   await mkdir(storageRoot, { recursive: true });
@@ -90,7 +90,7 @@ async function discoverPluginMcp(channel: "builtin" | "official-cdn" | "inline")
     config: {
       dirs: channel === "inline" ? [pluginRoot] : [],
       enabled: true,
-      enabledPlugins: { [pluginId]: true },
+      enabledPlugins: { [pluginId]: true, [`${PLUGIN_NAME}@polaris-plugins-official`]: true },
       options: {},
       suppressedBuiltins: [],
     },

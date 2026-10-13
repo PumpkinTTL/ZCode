@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import {
   BrowserCommandError,
@@ -20,6 +21,13 @@ const IAB_INFO: BrowserInfo = {
   name: "ZCode In-app Browser",
   capabilities: { browser: [], tab: [] },
 };
+
+// 插件文档根固定为测试文件位置的兄弟包：vitest 可能从仓库根或包目录启动，
+// cwd 相对路径在两种入口下会解析到不同目录（Windows 下还会中断文档加载）。
+const PLUGIN_DOCS_ROOT = resolve(
+  fileURLToPath(new URL(".", import.meta.url)),
+  "../../browser-use-plugin/docs",
+);
 
 function createFacade(
   execute: (command: BrowserCommand) => Promise<BrowserCommandResult>,
@@ -1070,7 +1078,7 @@ describe("browser-client facade", () => {
   it("browser.documentation() and agent.documentation.get() load plugin docs", async () => {
     const { execute } = fakeExecute();
     const browsers = createFacade(execute, [IAB_INFO], {
-      documentationRoot: resolve(process.cwd(), "../browser-use-plugin/docs"),
+      documentationRoot: PLUGIN_DOCS_ROOT,
     });
     const doc = await (await browsers.getDefault()).documentation();
     for (const kw of [
@@ -1108,7 +1116,7 @@ describe("browser-client facade", () => {
         list: async () => [IAB_INFO],
         execute: async () => ({ ok: true, elapsedMs: 0 }),
       },
-      documentationRoot: resolve(process.cwd(), "../browser-use-plugin/docs"),
+      documentationRoot: PLUGIN_DOCS_ROOT,
     });
     const screenshots = await (
       globals.agent as { documentation: { get(name: string): Promise<string> } }
@@ -1131,7 +1139,7 @@ describe("browser-client facade", () => {
     };
     const browsers = createFacade(execute, [IAB_INFO], {
       assertAvailable,
-      documentationRoot: resolve(process.cwd(), "../browser-use-plugin/docs"),
+      documentationRoot: PLUGIN_DOCS_ROOT,
     });
     const iab = await browsers.get("iab");
 

@@ -105,7 +105,7 @@ describe("skills/referenceCatalog protocol", () => {
 
   it("rescans the current workspace catalog for a draft request", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-skill-reference-workspace-"));
-    const skillDirectory = join(root, ".zcode", "skills", "manual-added");
+    const skillDirectory = join(root, ".polaris", "skills", "manual-added");
     await mkdir(skillDirectory, { recursive: true });
     await writeFile(
       join(skillDirectory, "SKILL.md"),

@@ -161,7 +161,7 @@ describe("ZCode plugins", () => {
           await readFile(join(marketplaceRoot, "marketplace.json"), "utf8"),
         ) as { plugins: Array<{ icon?: string }> };
         expect(saved.plugins[0]?.icon).toBe(
-          "https://cdn-zcode.z.ai/zcode/official-plugin/assets/figma/icon.png",
+          "https://nimbus.bitlesu.com/zcode/official-plugin/assets/figma/icon.png",
         );
       });
     } finally {
@@ -603,13 +603,13 @@ describe("ZCode plugins", () => {
       expect(overview.marketplaces).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            id: "zcode-plugins-official",
+            id: "polaris-plugins-official",
             isOfficial: true,
-            name: "zcode-plugins-official",
-            pluginCount: 14,
+            name: "polaris-plugins-official",
+            pluginCount: 11,
             source: {
               source: "url",
-              url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
+              url: "https://nimbus.bitlesu.com/plugins/marketplace.json",
             },
           }),
           expect.objectContaining({
@@ -629,7 +629,7 @@ describe("ZCode plugins", () => {
       ).toMatchObject({
         marketplaces: [
           expect.objectContaining({
-            id: "zcode-plugins-official",
+            id: "polaris-plugins-official",
           }),
           expect.objectContaining({
             id: "claude-plugins-official",
@@ -2191,12 +2191,12 @@ describe("ZCode plugins", () => {
       });
 
       expect(
-        overview.marketplaces.find((marketplace) => marketplace.id === "zcode-plugins-official"),
+        overview.marketplaces.find((marketplace) => marketplace.id === "polaris-plugins-official"),
       ).toMatchObject({
-        pluginCount: 14,
+        pluginCount: 11,
         source: {
           source: "url",
-          url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
+          url: "https://nimbus.bitlesu.com/plugins/marketplace.json",
         },
       });
       expect(overview.diagnostics).toEqual(

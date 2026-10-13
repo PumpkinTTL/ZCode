@@ -818,8 +818,8 @@ describe("MCP tool bridge", () => {
 
     registerMcpTools(registry, mcpPort, [
       {
-        serverName: "ios_simulator",
-        toolName: "ios_screenshot",
+        serverName: "image_search",
+        toolName: "search_image",
         inputSchema: {
           type: "object",
           properties: {},
@@ -827,7 +827,7 @@ describe("MCP tool bridge", () => {
       },
     ]);
 
-    const entry = registry.get("mcp__ios_simulator__ios_screenshot");
+    const entry = registry.get("mcp__image_search__search_image");
     const modelContent = entry?.formatModelContent?.({
       content: [
         { type: "text", text: '{"path":"screenshots/latest.png"}' },
@@ -1432,8 +1432,8 @@ describe("MCP tool bridge", () => {
 
     registerMcpTools(registry, mcpPort, [
       {
-        serverName: "ios_simulator",
-        toolName: "ios_screenshot",
+        serverName: "image_search",
+        toolName: "search_image",
         inputSchema: {
           type: "object",
           properties: {},
@@ -1441,7 +1441,7 @@ describe("MCP tool bridge", () => {
       },
     ]);
 
-    const entry = registry.get("mcp__ios_simulator__ios_screenshot");
+    const entry = registry.get("mcp__image_search__search_image");
     const output = await entry?.handler({}, createToolContext({ artifactStore }));
     const modelContent = entry?.formatModelContent?.(output);
 
@@ -1488,8 +1488,8 @@ describe("MCP tool bridge", () => {
 
     registerMcpTools(registry, mcpPort, [
       {
-        serverName: "ios_simulator",
-        toolName: "ios_screenshot",
+        serverName: "image_search",
+        toolName: "search_image",
         inputSchema: {
           type: "object",
           properties: {},
@@ -1497,7 +1497,7 @@ describe("MCP tool bridge", () => {
       },
     ]);
 
-    const entry = registry.get("mcp__ios_simulator__ios_screenshot");
+    const entry = registry.get("mcp__image_search__search_image");
     const output = await entry?.handler({}, createToolContext({ artifactStore }));
     const modelContent = entry?.formatModelContent?.(output);
 
@@ -1507,8 +1507,8 @@ describe("MCP tool bridge", () => {
       dataUrl: `data:image/png;base64,${largeBase64}`,
       inlineLimitBytes: MCP_IMAGE_INLINE_BASE64_BYTES,
       mimeType: "image/png",
-      serverName: "ios_simulator",
-      toolName: "ios_screenshot",
+      serverName: "image_search",
+      toolName: "search_image",
       type: "mcp-image-artifact",
     });
     expect(modelContent).toContain("/tmp/mcp-image.json");
@@ -1526,8 +1526,8 @@ describe("MCP tool bridge", () => {
 
     registerMcpTools(registry, mcpPort, [
       {
-        serverName: "ios_simulator",
-        toolName: "ios_screenshot",
+        serverName: "image_search",
+        toolName: "search_image",
         inputSchema: {
           type: "object",
           properties: {},
@@ -1535,7 +1535,7 @@ describe("MCP tool bridge", () => {
       },
     ]);
 
-    const entry = registry.get("mcp__ios_simulator__ios_screenshot");
+    const entry = registry.get("mcp__image_search__search_image");
     const output = await entry?.handler({}, createToolContext());
     const modelContent = entry?.formatModelContent?.(output);
 

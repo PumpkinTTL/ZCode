@@ -76,17 +76,17 @@ describe("pluginManagedResourceGroups", () => {
         description: "plugin",
         enabled: true,
         id: "plugin",
-        name: "ios-dev",
-        path: "/home/.zcode/cli/plugins/cache/zcode-plugins-official/ios/0.1.0/skills/ios-dev/SKILL.md",
-        pluginName: "ios-simulator",
+        name: "control-browser",
+        path: "/home/.zcode/cli/plugins/cache/zcode-plugins-official/browser-use/0.5.1/skills/control-browser/SKILL.md",
+        pluginName: "browser-use",
         scope: "plugin",
       },
     ];
 
-    const grouped = groupSkillsByPlugin(skills, "IOS");
+    const grouped = groupSkillsByPlugin(skills, "browser");
 
     expect(grouped.local).toEqual([]);
-    expect(grouped.plugin.map((skill) => skill.name)).toEqual(["ios-dev"]);
+    expect(grouped.plugin.map((skill) => skill.name)).toEqual(["control-browser"]);
   });
 
   it("groups user and plugin commands separately", () => {
@@ -112,12 +112,12 @@ describe("pluginManagedResourceGroups", () => {
         content: "plugin",
         description: "plugin command",
         enabled: true,
-        filePath: "/home/.zcode/cli/plugins/cache/plugin/commands/ios-dev.md",
-        id: "plugin:zcode-plugins-official:ios-simulator:/ios-dev",
-        name: "/ios-dev",
+        filePath: "/home/.zcode/cli/plugins/cache/plugin/commands/create-plugin.md",
+        id: "plugin:zcode-plugins-official:plugin-creator:/create-plugin",
+        name: "/create-plugin",
         pluginEnabled: true,
         pluginMarketplace: "zcode-plugins-official",
-        pluginName: "ios-simulator",
+        pluginName: "plugin-creator",
         prompt: "plugin",
         scope: "global",
         source: "plugin",
@@ -127,7 +127,7 @@ describe("pluginManagedResourceGroups", () => {
     const grouped = groupCommandsByPlugin(commands, "");
 
     expect(grouped.local.map((command) => command.name)).toEqual(["/review"]);
-    expect(grouped.plugin.map((command) => command.pluginName)).toEqual(["ios-simulator"]);
+    expect(grouped.plugin.map((command) => command.pluginName)).toEqual(["plugin-creator"]);
   });
 
   it("builds plugin MCP items from enabled plugin metadata", () => {
@@ -152,13 +152,13 @@ describe("pluginManagedResourceGroups", () => {
     const plugins: ZCodePluginInfo[] = [
       {
         commandRootCount: 0,
-        declaredMcpServerNames: ["ios-simulator", "ios-helper"],
+        declaredMcpServerNames: ["image_search", "image_helper"],
         enabled: false,
-        id: "ios-simulator@zcode-plugins-official",
+        id: "image-search@zcode-plugins-official",
         marketplace: "zcode-plugins-official",
         mcpServerNames: [],
-        name: "ios-simulator",
-        rootPath: "/plugins/ios-simulator",
+        name: "image-search",
+        rootPath: "/plugins/image-search",
         skillRootCount: 0,
         source: "official",
       },
@@ -167,26 +167,26 @@ describe("pluginManagedResourceGroups", () => {
     expect(filterLocalMcpServers(servers, "MEMORY").map((server) => server.name)).toEqual([
       "memory",
     ]);
-    expect(buildPluginMcpServerItems(plugins, "IoS")).toEqual([
+    expect(buildPluginMcpServerItems(plugins, "image")).toEqual([
       {
         active: false,
-        id: "ios-simulator@zcode-plugins-official:ios-simulator",
-        name: "ios-simulator",
+        id: "image-search@zcode-plugins-official:image_search",
+        name: "image_search",
         pluginEnabled: false,
-        pluginId: "ios-simulator@zcode-plugins-official",
+        pluginId: "image-search@zcode-plugins-official",
         pluginMarketplace: "zcode-plugins-official",
-        pluginName: "ios-simulator",
-        runtimeServerName: "plugin:ios-simulator:ios-simulator",
+        pluginName: "image-search",
+        runtimeServerName: "plugin:image-search:image_search",
       },
       {
         active: false,
-        id: "ios-simulator@zcode-plugins-official:ios-helper",
-        name: "ios-helper",
+        id: "image-search@zcode-plugins-official:image_helper",
+        name: "image_helper",
         pluginEnabled: false,
-        pluginId: "ios-simulator@zcode-plugins-official",
+        pluginId: "image-search@zcode-plugins-official",
         pluginMarketplace: "zcode-plugins-official",
-        pluginName: "ios-simulator",
-        runtimeServerName: "plugin:ios-simulator:ios-helper",
+        pluginName: "image-search",
+        runtimeServerName: "plugin:image-search:image_helper",
       },
     ]);
   });

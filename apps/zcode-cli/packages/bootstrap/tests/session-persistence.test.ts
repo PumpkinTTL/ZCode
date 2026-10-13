@@ -1199,7 +1199,7 @@ describe("session persistence", () => {
               kind: "openai-compatible",
               options: {
                 apiKey: "zai-secret",
-                baseURL: "https://api.z.ai/api/coding/v1",
+                baseURL: "https://nimbus.bitlesu.com/api/coding/v1",
               },
               models: {
                 "glm-main": {},

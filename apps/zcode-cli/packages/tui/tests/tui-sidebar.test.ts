@@ -68,7 +68,7 @@ test("compacts UUID-like provider labels in API request rows", () => {
           startedAt: "2026-05-19T00:00:00.000Z",
           status: "complete",
           updatedAt: "2026-05-19T00:00:01.000Z",
-          url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+          url: "https://nimbus.bitlesu.com/api/paas/v4/chat/completions",
         },
       ],
     }),

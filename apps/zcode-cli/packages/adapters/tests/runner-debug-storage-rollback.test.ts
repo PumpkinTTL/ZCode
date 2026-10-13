@@ -9,6 +9,8 @@ describe("runner debug storage rollback", () => {
     );
 
     expect(source).not.toContain("zcode-storage-root");
-    expect(source).toContain('join(homedir(), ".zcode", "cli"');
+    // 品牌改名后 storage root 由常量承载（不内联字面量），断言常量与拼接形态。
+    expect(source).toContain('DATA_ROOT_DIR_NAME = ".polaris"');
+    expect(source).toContain('join(homedir(), DATA_ROOT_DIR_NAME, "cli"');
   });
 });

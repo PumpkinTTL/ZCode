@@ -18,7 +18,7 @@ async function makeGlobals(bridgeOverrides: Record<string, unknown> = {}) {
   const { join, dirname } = await import("node:path");
   const { fileURLToPath } = await import("node:url");
   // Polaris：唯一副本在仓库根 packages/zcode-cua-plugin（apps/zcode-cli 下的上游副本已删）。
-  const clientUrl = fileURLToPath(new URL("../../../../packages/zcode-cua-plugin/scripts/computer-use-client.mjs", import.meta.url));
+  const clientUrl = fileURLToPath(new URL("../../../../../packages/zcode-cua-plugin/scripts/computer-use-client.mjs", import.meta.url));
   const documentationRoot = join(dirname(clientUrl), "..", "docs");
   const bridge = {
     call: vi.fn(async () => ({ content: [{ type: "text", text: "ok" }] })),

@@ -1,26 +1,42 @@
-import { accessSync, constants } from "node:fs";
+import { accessSync, constants, existsSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { fileURLToPath } from "node:url";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import { chromium } from "playwright-core";
+import { afterEach, beforeAll, expect, it } from "vitest";
+// Polaris：本包的 package.json 只声明 @zcode/core 与 @zcode/node-repl-host（合并前已按
+// 「零使用依赖清扫」裁掉 adapters/bootstrap/shared/playwright-core 的声明），所以这几项走
+// 源码相对路径——与本文件既有的 `../../bootstrap/...` 同一约定。声明的两个包照旧走包名。
 import {
   createManagedCdpBrowserRuntime,
   resolveInstalledBrowserExecutable,
-} from "@zcode/adapters/browser";
+} from "../../adapters/src/browser/index.js";
 import {
   NODE_REPL_BROWSER_BROKER_SOCKET_ENV,
   NODE_REPL_BROWSER_BROKER_TOKEN_ENV,
-} from "@zcode/shared";
-import { chromium } from "playwright-core";
-import { afterEach, expect, it } from "vitest";
+} from "../../../../../packages/shared/src/browser-use/nodeReplBroker.js";
 import {
   createNodeReplBrowserBroker,
   type NodeReplBrowserBroker,
 } from "../../bootstrap/src/app/node-repl-browser-broker.js";
+import { buildBrowserUsePluginBundles } from "../scripts/build.mjs";
 import type { NodeReplMcpRuntime } from "@zcode/node-repl-host";
 
 const required = process.env.ZCODE_HEADLESS_BROWSER_E2E_REQUIRED === "1";
 const executablePath = discoverBrowserExecutable();
 const realBrowserTest = executablePath || required ? it : it.skip;
+
+const PLUGIN_ROOT = fileURLToPath(new URL("..", import.meta.url));
+const BROWSER_CLIENT_BUNDLE = fileURLToPath(new URL("../scripts/browser-client.mjs", import.meta.url));
+
+// 链路要 import 构建产物 scripts/browser-client.mjs（.gitignore 忽略、由 build.mjs 生成）。
+// 上游靠 `test:browser-headless` 先 build 再 vitest 才成立；直接跑 vitest 时产物缺席，链路会以
+// 「Cannot find module ... browser-client.mjs」失败。这里在用例前补建一次，让测试自带前置条件。
+beforeAll(async () => {
+  if (!existsSync(BROWSER_CLIENT_BUNDLE)) {
+    await buildBrowserUsePluginBundles({ packageRoot: PLUGIN_ROOT });
+  }
+}, 120_000);
 
 const logger = {
   child: () => logger,

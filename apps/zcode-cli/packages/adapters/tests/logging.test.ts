@@ -45,7 +45,7 @@ describe("Node logging adapter", () => {
 
       const files = await readdir(logDir);
       expect(files).toHaveLength(1);
-      expect(files[0]).toMatch(/^zcode-\d{4}-\d{2}-\d{2}\.jsonl$/);
+      expect(files[0]).toMatch(/^polaris-\d{4}-\d{2}-\d{2}\.jsonl$/);
 
       const content = await readFile(join(logDir, files[0]!), "utf8");
       const entry = JSON.parse(content.trim()) as {

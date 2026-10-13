@@ -32,19 +32,21 @@ describe("Published MCS and search final Anthropic wire", () => {
       true,
       true,
     ],
+    // off-peak 端点声明 supportsNativeWebSearch: false（见 config/provider/zcode-builtin.json 的
+    // providerSiteRules），因此这两个 case 只断言 MCS 行为，不请求 provider-native WebSearch。
     [
       "account:zai-offpeak-idle-plan",
       "https://zcode.z.ai/api/v1/off-peak/anthropic",
       "GLM-5.3-Flash",
       true,
-      true,
+      false,
     ],
     [
       "account:bigmodel-offpeak-idle-plan",
       "https://zcode.z.ai/api/v1/off-peak/anthropic",
       "GLM-5.3-Flash",
       true,
-      true,
+      false,
     ],
     ["fixture", "https://api.anthropic.com/v1", "claude-sonnet-5", false, true],
     ["fixture", "https://proxy.invalid/v1", "vendor/claude-opus-4-8", true, false],
