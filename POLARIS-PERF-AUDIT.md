@@ -13,6 +13,26 @@
 | Shiki highlighter 无界缓存 | `packages/ui/src/lib/shikiHighlighter.ts` | 每个 (theme, language) 一份独立 Shiki 实例（自带 grammar + wasm 上下文），无上限。封顶 24 + 命中续期（原先不续期 = FIFO）。 |
 | 飞书用户显示名缓存无界 | `packages/services/src/bots/providers/feishuProvider.ts` | 过期条目只覆盖不删除，bot Host 常驻累积。封顶 2000。 |
 | 应用图标缓存无界 | `packages/desktop/src/main/applicationIcons.ts` | cacheKey 来自模型输入的应用 locator，值含 base64。封顶 256。 |
+| ARMS RumSDK 空转代码 | `packages/desktop/src/main/browserPerfLoadNudge.ts`（已删） | 为已移除的 ARMS RUM SDK 服务的注入脚本：每个窗口 did-finish-load / dom-ready 后注入 JS，以 25ms 间隔最多轮询 80 次等待 `window.RumSDK`，而 SDK 早已移除（全仓仅此处引用它）。纯空转，已删除。 |
+
+## 死代码清理（同轮，见 commit dd80312d）
+
+70 个文件 / 10,529 行，全部经「零生产引用 + 不在 barrel/entry/exports +
+删除后 typecheck 与全量测试绿」三重验证：
+
+- `packages/ui/src/components/ai-elements/` 16 个零引用组件（含 `model-selector.tsx`，
+  其 provider 联合类型里还带着上游 `zai-coding-plan` / `zhipuai`）。
+- `packages/ui/src/lib/` 22 个零引用模块 + 13 个只测死代码的测试。
+- `packages/services/src/` 6 个模块（fileChangeTracker、continuousStreamCoalescer、
+  codexConfigToml、accountProjectTokenClient、toolPlanAdapter、usageStatsConfig）+
+  4 个对应测试。其中 `fileChangeTracker` 每条 turn 存整份文件 before/after 字符串、
+  无上限——正是审计里标注的「待接线大对象」。
+- `packages/desktop/src/main/mcpUserDirectory/{claude,opencode,toml}.ts`。
+- `packages/shared/src/platformUpdate.ts`（与活文件 `update.ts` 重复）。
+
+**扫描盲区提醒**：`packages/ui/package.json` 的 `exports` 里有动态入口
+（`./e2e-store-bridge` → `lib/e2eStoreBridgeBootstrap.ts`、`./conversation-share-readonly` 等），
+静态 grep 会把它们误判为死代码——复核时必须排除。
 
 ## 结构性结论：node 侧 1.9GB 的主因
 
