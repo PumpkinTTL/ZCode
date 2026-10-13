@@ -142,8 +142,8 @@
 | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `zcode://` URL scheme                                                            | `shared/src/platform.ts:678`、`services/src/oauth/oauthService.ts:40`、`web/src/share/*`、`electron-builder.config.js:654`                               | 已分发的分享链接 / deep link 会失效。彻底改需要 `polaris://` + 双注册过渡 |
 | `.zcode-plugin/plugin.json`                                                      | `commandsService.ts:49`、`pluginSyncService.ts:78`、`settingsSyncService.ts:414`、`skillsService.ts:57`、`subagentsService.ts:85`、`server/src/remote/*` | 插件作者遵循的**格式契约**                                                |
-| `.zcodeignore`                                                                   | `file/workspaceFileIgnore.ts:19` + i18n                                                                                                                  | 用户仓库里已有的文件，改名即失效                                          |
-| `.zcode-share` / `.zcode-share-import.json`                                      | `conversationShareService.ts:730,1390,1392,1717,2171,2176`                                                                                               | 分享导入格式                                                              |
+| `.zcodeignore`                                                                   | `file/workspaceFileIgnore.ts:19` + i18n                                                                                                                  | **已改**为 `.polarisignore`，读取时回退旧名（见下方说明）                 |
+| `.zcode-share` / `.zcode-share-import.json`                                      | `conversationShareService.ts:730,1390,1392,1717,2171,2176`                                                                                               | **已在 90e25b68 改为** `.polaris-share`；UI 校验侧曾漏改，见下方说明       |
 | `.zcode-install-manifest`、`Icon=zcode`、`zcode-window-bounds`                   | `electron-builder.config.js:167,188,576,699-701`                                                                                                         | 安装器元数据                                                              |
 | 远程 `~/.zcode/server`                                                           | `server/src/remote/deployShared.ts:7`、`connect.ts:365,391`、`docker-backend.ts:87`                                                                      | 已部署到 SSH 主机的 agent 路径                                            |
 | Electron `partition` 名（`zcode-embedded-browser` 等）、`ai.z.zcode` AppData key | `desktop/src/main/mcpUserDirectory/*`                                                                                                                    | 已存在的浏览器 profile / 用户数据键                                       |
@@ -156,6 +156,19 @@
 **已完成（本轮）**
 
 - §2 数据根泄漏（真 bug）：用户级路径全部 `.polaris`，含桌面、services、CLI 的读**与**写两侧。
+- §4 表内两项的品牌收口（2026-10-13）：
+  - `.zcodeignore` → `.polarisignore`。与上表「改名即失效」的顾虑不同，这里做了**向后兼容读取**：
+    新名优先、缺失时回退旧名（`readWorkspaceFileSearchIgnoreFile`），写入一律走新名、
+    不自动迁移也不删用户文件。因此老用户仓里已有的 `.zcodeignore` 规则继续生效，
+    UI/i18n/模板头全部改成新名。
+  - `.polaris-share` 的**遗漏收口**（真 bug）：`conversationShareService` 在 90e25b68 已写
+    `.polaris-share`，但 `ConversationShareReadonlyTimeline.resolveImportedArtifactPath`
+    仍校验 `.zcode-share` → 四段形状校验恒不通过 → 分享导入产物的「打开」按钮从来不渲染。
+    已改为 `.polaris-share`。（测试 fixture 用的也是旧名，所以此前没暴露。）
+- 合并回归（2026-10-13 发现）：`.env.production` / `.env.development` 被上游 v3.15.1 覆盖回
+  z.ai 端点，Vite 会把 `ZCODE_PRODUCTION_BASE_URL` 烤进 renderer 产物
+  （实测旧产物 8 处 `https://zcode.z.ai`）。已恢复仓库内的空壳版，并把
+  `polaris-endpoint-guard` 真正接回 vite/tsup 构建链 + 加回归测试锁定。
 - §1a 的官方端点里，`config/default.json` 的 `feedback_url` / `community_urls` 已改指
   `nimbus.bitlesu.com`（反馈提交端点本来就已走自有 origin）。
 - 品牌漏项：应用主界面 logo（`App.tsx` + `WindowsTopLeftLogo`）此前仍是 **Z.AI logo**，已换成
