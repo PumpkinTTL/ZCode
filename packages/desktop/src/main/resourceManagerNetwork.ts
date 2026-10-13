@@ -36,11 +36,9 @@ export function startResourceManagerNetwork(
   buffer.start(captureId);
   nodeCapture.setCaptureId(captureId);
   // 只订阅 App 拥有的 session；内置浏览器/录屏的独立 session 不进入采集。
-  const sessions = [
-    session.defaultSession,
-    session.fromPartition("persist:zcode-coding-plan"),
-    session.fromPartition("persist:zcode-rewards"),
-  ];
+  // 上游曾在此订阅 persist:zcode-coding-plan / persist:zcode-rewards 两个业务窗口分区，
+  // Polaris 无这两个窗口（分区不再被任何 fromPartition 创建），订阅是空转。
+  const sessions = [session.defaultSession];
   for (const appSession of sessions) {
     disposers.push(
       subscribeBeforeRequest(

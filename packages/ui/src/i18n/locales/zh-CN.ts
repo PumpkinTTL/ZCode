@@ -2548,8 +2548,7 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.apiFormat.title.responses": "Responses",
   "settings.modelProvider.apiFormat.title.anthropicMessages": "Anthropic Messages",
   "settings.modelProvider.anthropicEndpoint": "Anthropic 接口地址",
-  "settings.modelProvider.anthropicEndpointPlaceholder":
-    "如：https://open.bigmodel.cn/api/anthropic",
+  "settings.modelProvider.anthropicEndpointPlaceholder": "如：https://api.anthropic.com",
   "settings.modelProvider.openaiEndpoint": "OpenAI 接口地址",
   "settings.modelProvider.openaiEndpointPlaceholder": "如：https://api.openai.com/v1",
   "settings.modelProvider.geminiEndpoint": "Gemini 接口地址",
