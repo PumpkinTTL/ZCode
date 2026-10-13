@@ -10,8 +10,13 @@ import { pdfJsCMapsPlugin } from "../ui/vite/pdfJsCMapsPlugin.js";
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { resolveDesktopProductFlavor } from "./scripts/desktop-product-identity.mjs";
 // Polaris：端点不再由构建期注入（上游 v3.15.1 的 shared/zcodeEndpoint 按运行时 env +
-// 源码默认值解析，默认值已全部指向 nimbus.bitlesu.com）。构建期端点闸门脚本
-// （scripts/polaris-endpoint-guard.mjs）保留备用：若将来恢复构建期端点注入，在这里接回。
+// 源码默认值解析，默认值已全部指向 nimbus.bitlesu.com）。
+// 但 `.env*` 仍会被 loadEnv 读进来，`.env.production` 一旦被上游合并覆盖回
+// `ZCODE_PRODUCTION_BASE_URL=https://zcode.z.ai`，renderer 产物就会烤进官方域名
+// （曾实际发生）。这里在取用前过一遍闸门，把上游域名摘掉。
+const { rejectUpstreamEndpoints } = await import(
+  pathToFileURL(resolve(__dirname, "scripts/polaris-endpoint-guard.mjs")).href
+);
 
 // 动态加载仓库根的构建工具，避免配置打包后其 import.meta.dirname 被重定位到 desktop。
 // 构建期可选能力（ARMS、事件上报、自动更新），见 docs/desktop/build-time-optional-capabilities.md
@@ -168,12 +173,21 @@ export default defineConfig(({ mode }) => {
     env.ZCODE_E2E_COVERAGE === "1" || process.env.ZCODE_E2E_COVERAGE === "1";
   const e2eStoreBridgeEnabled =
     env.VITE_ZCODE_E2E_STORE_BRIDGE === "1" || process.env.VITE_ZCODE_E2E_STORE_BRIDGE === "1";
+  // 闸门：上游域名（z.ai / bigmodel / zhipuai）不得进入构建期端点解析，
+  // 命中即摘除并告警，回落到源码默认的 nimbus.bitlesu.com。
+  const scopedBaseOriginKey = zcodeEnv === "production" ? "ZCODE_PRODUCTION_BASE_URL" : "ZCODE_TEST_BASE_URL";
+  const guardedEndpointEnv = rejectUpstreamEndpoints({
+    ZCODE_BASE_URL: env.ZCODE_BASE_URL ?? "",
+    ZCODE_ENDPOINT_ORIGIN: env.ZCODE_ENDPOINT_ORIGIN ?? "",
+    [scopedBaseOriginKey]: env[scopedBaseOriginKey] ?? "",
+  });
   const zcodeEndpointOrigin = resolveZCodeEndpointOrigin({
     env: zcodeEnv,
     envBaseOrigin:
-      env.ZCODE_BASE_URL ??
-      env.ZCODE_ENDPOINT_ORIGIN ??
-      (zcodeEnv === "production" ? env.ZCODE_PRODUCTION_BASE_URL : env.ZCODE_TEST_BASE_URL),
+      guardedEndpointEnv.ZCODE_BASE_URL ||
+      guardedEndpointEnv.ZCODE_ENDPOINT_ORIGIN ||
+      guardedEndpointEnv[scopedBaseOriginKey] ||
+      undefined,
   });
   const plugins = [
     ...(e2eCoverageEnabled ? [createE2EUIRendererCoveragePlugin(repoRoot)] : []),

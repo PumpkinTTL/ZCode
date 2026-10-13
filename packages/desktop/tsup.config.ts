@@ -3,8 +3,13 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { defineConfig } from "tsup";
 // Polaris：端点不再由构建期注入（上游 v3.15.1 的 shared/zcodeEndpoint 按运行时 env +
-// 源码默认值解析，默认值已全部指向 nimbus.bitlesu.com）。构建期端点闸门脚本
-// （scripts/polaris-endpoint-guard.mjs）保留备用：若将来恢复构建期端点注入，在这里接回。
+// 源码默认值解析，默认值已全部指向 nimbus.bitlesu.com）。
+// 但 `.env*` 仍会被 loadEnvFiles 读进来，`.env.production` 一旦被上游合并覆盖回
+// `ZCODE_PRODUCTION_BASE_URL=https://zcode.z.ai`，产物就会烤进官方域名（曾实际发生）。
+// 这里在合并结果交给 resolveZCodeEnv 之前过一遍闸门，把上游域名摘掉。
+const { rejectUpstreamEndpoints } = await import(
+  pathToFileURL(resolve(import.meta.dirname, "scripts/polaris-endpoint-guard.mjs")).href
+);
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { resolveDesktopProductFlavor } from "./scripts/desktop-product-identity.mjs";
 const { copyGenUiRuntimeAssets } = await import(
@@ -69,7 +74,7 @@ function loadEnvFiles(): Record<string, string> {
   return vars;
 }
 
-const env = loadEnvFiles();
+const env = rejectUpstreamEndpoints(loadEnvFiles());
 const { environment: zcodeEnv } = await loadBuiltinProviderConfig();
 // 安装包身份与后端环境分轴：ZCODE_PREVIEW_IDENTITY=1 让生产后端的构建仍以 ZCode Preview 身份打包运行。
 const zcodeProductFlavor = resolveDesktopProductFlavor({ ...process.env, ZCODE_ENV: zcodeEnv });
