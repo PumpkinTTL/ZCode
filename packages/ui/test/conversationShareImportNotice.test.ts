@@ -97,7 +97,7 @@ describe("conversation share import notice", () => {
   });
 
   it("不给 artifactUrls：结果物不出现点不开的预览按钮", () => {
-    // 本地结果物在 .zcode-share/<share-id>/shared-artifacts/ 下，渲染器的预览按钮走
+    // 本地结果物在 .polaris-share/<share-id>/shared-artifacts/ 下，渲染器的预览按钮走
     // window.open，给本地路径会点不开；这里与实时时间线的 ArtifactRowView 保持一致。
     const html = render({
       rows: [
@@ -151,14 +151,14 @@ describe("conversation share import notice", () => {
       locale: "zh-CN",
       workspacePath: "/workspace",
       artifactWorkspaceRelativePaths: new Map([
-        ["artifact-1", ".zcode-share/share-1/shared-artifacts/报告.pdf"],
+        ["artifact-1", ".polaris-share/share-1/shared-artifacts/报告.pdf"],
       ]),
       onOpenCodeViewer: () => undefined,
     });
 
     expect(html).toContain('data-open-split-button="true"');
     expect(html).toContain(
-      'data-target-path="/workspace/.zcode-share/share-1/shared-artifacts/报告.pdf"',
+      'data-target-path="/workspace/.polaris-share/share-1/shared-artifacts/报告.pdf"',
     );
   });
 });
