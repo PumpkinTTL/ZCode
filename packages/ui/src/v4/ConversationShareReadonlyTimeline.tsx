@@ -169,12 +169,12 @@ function resolveImportedArtifactPath(
   workspacePath: string,
   workspaceRelativePath: string | undefined,
 ): string | null {
-  // 取舍：这里只校验形状（.zcode-share/<dir>/shared-artifacts/<file> 四段），刻意不把
+  // 取舍：这里只校验形状（.polaris-share/<dir>/shared-artifacts/<file> 四段），刻意不把
   // 段 2 与导入记录的 shareId 交叉比对。元数据由本端导入服务自写（conversationShareService
   // 落盘时用 sanitizeFileSegment(share_id) 作目录名），自洽；若在 UI 侧比对，就得复制
   // service 层的 sanitize 规则，两边漂移会让合法导入静默丢打开按钮，而收益仅是防住
   // 「指向另一 share 目录」这种一致性噪声——路径仍被限制在 workspace 的
-  // .zcode-share/*/shared-artifacts/ 内，无越权读放大。
+  // .polaris-share/*/shared-artifacts/ 内，无越权读放大。
   const normalizedPath = workspaceRelativePath?.trim();
   if (!normalizedPath || isAbsoluteFilePath(normalizedPath)) {
     return null;
@@ -184,7 +184,9 @@ function resolveImportedArtifactPath(
   if (
     segments.length !== 4 ||
     segments.some((segment) => !segment || segment === "." || segment === "..") ||
-    segments[0] !== ".zcode-share" ||
+    // 必须与 conversationShareService 的落盘目录一致（.polaris-share）；写 .zcode-share
+    // 会让导入产物的「打开」按钮永久消失（形状校验直接判不合法）。
+    segments[0] !== ".polaris-share" ||
     segments[2] !== "shared-artifacts"
   ) {
     return null;
