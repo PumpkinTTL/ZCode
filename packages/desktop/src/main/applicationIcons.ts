@@ -13,6 +13,9 @@ import { logger } from "./logger.js";
 import { readWindowsAumidIcon } from "./windowsAumidIcon.js";
 
 const applicationIconCache = new Map<string, Promise<ApplicationIconInfo | null>>();
+// FIFO 上限：cacheKey 由模型给出的应用 locator 组合而成，不同应用/路径组合可持续增长，
+// 每个值含一份 base64 data URL。封顶后最坏后果只是重新解析一次图标，纯性能。
+const APPLICATION_ICON_CACHE_CAP = 256;
 const SAFE_BUNDLE_ID = /^[A-Za-z0-9.-]+$/;
 const SAFE_WINDOWS_FIXED_DRIVE_PATH = /^[A-Za-z]:[\\/][^\\/]/u;
 const FALLBACK_SCAN_BUDGET_MS = 3_000;
@@ -267,5 +270,10 @@ export function getApplicationIcon(
   if (cached) return cached;
   const pending = loadApplicationIcon(normalized);
   applicationIconCache.set(cacheKey, pending);
+  while (applicationIconCache.size > APPLICATION_ICON_CACHE_CAP) {
+    const oldestKey = applicationIconCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    applicationIconCache.delete(oldestKey);
+  }
   return pending;
 }

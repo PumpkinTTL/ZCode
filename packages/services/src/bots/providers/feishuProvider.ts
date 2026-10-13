@@ -113,6 +113,9 @@ const accessTokenCache = new Map<string, { token: string; expiresAt: number }>()
 const FEISHU_TYPING_REACTION_IDS_CAP = 2000;
 const typingReactionIds = new Map<string, string>();
 const userDisplayNameCache = new Map<string, { name: string | null; expiresAt: number }>();
+// FIFO 上限：条目按 userId 累积，过期后只被覆盖、从不删除，长期运行的 bot Host
+// 会随聊天对象增多只增不减。封顶后最坏后果只是多一次 contact API 查询，纯性能。
+const FEISHU_USER_DISPLAY_NAME_CACHE_CAP = 2000;
 const FEISHU_ELICITATION_FORM_FIELD_NAME = "answer";
 const FEISHU_ELICITATION_FORM_VALUE_PREFIX = "__form__:";
 const FEISHU_ELICITATION_CUSTOM_OPTION_ID = "__custom__";
@@ -1659,6 +1662,11 @@ async function readFeishuUserDisplayName(
     name,
     expiresAt: Date.now() + 10 * 60_000,
   });
+  while (userDisplayNameCache.size > FEISHU_USER_DISPLAY_NAME_CACHE_CAP) {
+    const oldestKey = userDisplayNameCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    userDisplayNameCache.delete(oldestKey);
+  }
   return name;
 }
 
