@@ -1,3 +1,4 @@
+import type * as React from "react";
 import type { WorkflowRunPendingQuestion, WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
 import { laneDisplayName } from "@/components/workflow-graph/lane-name.js";
 import { phaseDisplayName } from "@/components/workflow-graph/phase-name.js";
@@ -32,7 +33,7 @@ type FormatMessage = (
 export interface PhasePillRenderers {
   nameOf: (pill: TimelinePill) => string;
   pillProps: (pill: TimelinePill) => Parameters<typeof WorkflowAgentPill>[0];
-  renderPill: (pill: TimelinePill) => JSX.Element;
+  renderPill: (pill: TimelinePill) => React.JSX.Element;
 }
 
 export function phasePillRenderers({
