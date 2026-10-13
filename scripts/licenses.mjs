@@ -94,11 +94,6 @@ const PROD_REVIEWED = [
     "yellow-lgpl",
     "libvips 以独立、可替换的共享库随 sharp 分发，仅真实 Computer Use 截图使用；声明附 LGPL-3.0 原文",
   ],
-  [
-    /^elkjs$/,
-    "yellow-weak",
-    "仅内部开发文档站 apps/dev-docs 使用，不随产品分发、不部署；按 EPL-2.0 使用",
-  ],
 ];
 function weakAllowReason(r) {
   if (r.isProd) {

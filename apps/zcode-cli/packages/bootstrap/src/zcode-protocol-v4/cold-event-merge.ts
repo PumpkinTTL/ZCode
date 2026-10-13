@@ -173,7 +173,6 @@ const MEMORY_ONLY_EVENT_TYPES = new Set<string>([
   SessionEventType.DynamicWorkflowRunProgress,
   SessionEventType.TargetChanged,
   SessionEventType.RewindTriggered,
-  SessionEventType.TurnExecutionModelFallback,
 ]);
 
 const TRANSCRIPT_DERIVED_EVENT_TYPES = new Set<string>([

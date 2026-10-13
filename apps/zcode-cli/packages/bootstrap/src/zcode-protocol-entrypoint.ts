@@ -47,7 +47,6 @@ import { ZCodeProtocolNdjsonConnection } from "./zcode-protocol/transport.js";
 import { cleanupProtocolRuntime } from "./zcode-protocol/runtime-cleanup.js";
 import { acquireProtocolStartupResource } from "./zcode-protocol/startup-resource.js";
 import { prepareZCodeTelemetryEnv, shutdownZCodeTelemetry } from "./telemetry-bootstrap.js";
-import type { ZCodeProcessResourceSampler } from "./process-resource-sampler.js";
 
 export function applyProtocolPresentationSurface(
   options: Omit<ZCodeAppOptions, "providerRegistry">,

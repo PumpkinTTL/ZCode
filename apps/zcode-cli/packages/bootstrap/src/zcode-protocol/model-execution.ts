@@ -16,7 +16,6 @@ export function createModelExecutionContext(
         }
       : {}),
     ...(input.subagents ? { subagents: input.subagents } : {}),
-    ...(input.selectionFallback ? { selectionFallback: input.selectionFallback } : {}),
   };
 }
 

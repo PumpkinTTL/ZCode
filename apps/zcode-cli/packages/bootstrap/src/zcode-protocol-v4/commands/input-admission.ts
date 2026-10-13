@@ -106,7 +106,6 @@ export async function applyHeldQueueDisposition(
   }
   if (disposition === "clearQueueAndSend") {
     await record.app.clearQueueItems();
-    host.clearQueuedTurnExecutions?.(record.app.sessionId);
   }
 }
 

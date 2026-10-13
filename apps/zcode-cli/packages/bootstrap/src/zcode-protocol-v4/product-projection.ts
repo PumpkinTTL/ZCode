@@ -2443,7 +2443,6 @@ export class ProductProjection {
       // 不映射成重试/等待标签。
       case "model_request_queued":
       case "model_request_admitted":
-      case "model_request_observation":
         return [];
     }
   }
