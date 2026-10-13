@@ -13,7 +13,6 @@ import type {
 } from "@zcode/shared/zcode-protocol-v4";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useWorkspaceTaskLists } from "@/hooks/useWorkspaceTaskLists.js";
-import { clearTaskListWorkspaceEventCoordinatorForTest } from "@/lib/taskListWorkspaceEventCoordinator.js";
 import { clearTaskListMembershipCache } from "@/lib/taskListMembershipSets.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
@@ -178,7 +177,6 @@ function physicalFrame(
 describe("useWorkspaceTaskLists membership events (tasks-index 行 + session detail)", () => {
   afterEach(() => {
     resetTaskStatusUnreadSyncForTest();
-    clearTaskListWorkspaceEventCoordinatorForTest();
     clearTaskListMembershipCache();
     useTaskQueryCacheStore.getState().clearAll();
     useRemoteWorkspaceSessionStore.setState({
