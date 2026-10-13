@@ -7,7 +7,7 @@ import type { ServiceLogger } from "../logger/serviceLogger.js";
 /**
  * workspace 文件搜索忽略的单一真相源。
  *
- * `.zcodeignore`（workspace root，gitignore 语法）是搜索索引的唯一规则文件：
+ * `.polarisignore`（workspace root，gitignore 语法）是搜索索引的唯一规则文件：
  * 自动创建暂时停用：文件不存在时仅在内存中使用 root `.gitignore` + 默认排除规则；
  * 之后 `.gitignore` 的变化不再影响搜索，用户通过设置页编辑或「从 .gitignore 重新同步」。
  *
@@ -16,8 +16,21 @@ import type { ServiceLogger } from "../logger/serviceLogger.js";
  * `**` 跨层、目录后缀 `/`、字符类与转义。禁止在本仓库手写 gitignore 解析。
  */
 
-export const WORKSPACE_FILE_SEARCH_IGNORE_FILE_NAME = ".zcodeignore";
+export const WORKSPACE_FILE_SEARCH_IGNORE_FILE_NAME = ".polarisignore";
+// 上游 v3.15.1 用 `.zcodeignore`。该名字会落到用户工作区根目录（面向用户可见），
+// 因此改为 Polaris 自有名。读取时回退旧名，保证站长/用户已有规则文件继续生效；
+// 写入一律走新名，不做自动迁移（不覆盖用户目录里的存量文件）。
+export const LEGACY_WORKSPACE_FILE_SEARCH_IGNORE_FILE_NAME = ".zcodeignore";
 const GITIGNORE_FILE_NAME = ".gitignore";
+
+/** 依次探测新旧规则文件；返回第一个存在的（新名优先）。都不存在时返回 null。 */
+async function readWorkspaceFileSearchIgnoreFile(rootPath: string): Promise<string | null> {
+  const current = await readOptionalFile(
+    resolve(rootPath, WORKSPACE_FILE_SEARCH_IGNORE_FILE_NAME),
+  );
+  if (current !== null) return current;
+  return readOptionalFile(resolve(rootPath, LEGACY_WORKSPACE_FILE_SEARCH_IGNORE_FILE_NAME));
+}
 
 type WorkspaceFileIgnoreLogger = Pick<ServiceLogger, "info" | "warn">;
 
@@ -36,7 +49,7 @@ export interface WorkspaceFileSearchIgnoreRules {
 
 export interface WorkspaceFileSearchIgnoreContent {
   content: string;
-  /** file：.zcodeignore 已存在；template：尚未创建，content 是保存后将落盘的初始内容预览。 */
+  /** file：.polarisignore 已存在；template：尚未创建，content 是保存后将落盘的初始内容预览。 */
   source: "file" | "template";
 }
 
@@ -77,7 +90,7 @@ const BUILTIN_IGNORE_LINES = [
 ];
 
 const TEMPLATE_HEADER = [
-  "# Polaris 工作区文件搜索忽略规则（.zcodeignore）",
+  "# Polaris 工作区文件搜索忽略规则（.polarisignore）",
   "# 语法与 .gitignore 一致，只影响 Polaris 的 @ 文件候选 / Command Center / 文件树搜索，",
   "# 不影响文件树浏览、上传或 Agent 文件访问。",
   "# 修改 .gitignore 不会自动同步到本文件；可在设置页「从 .gitignore 同步」。",
@@ -123,7 +136,7 @@ function buildBuiltinDefaultsSection(gitignoreContent: string | null): string {
 }
 
 /**
- * 构建 `.zcodeignore` 初始内容：.gitignore 规则拷贝 + 双标记分区（默认排除段 / 自定义区）。
+ * 构建 `.polarisignore` 初始内容：.gitignore 规则拷贝 + 双标记分区（默认排除段 / 自定义区）。
  * 附加默认段是行为兼容要求：.gitignore 未声明 node_modules 等目录的仓库若仅严格拷贝，
  * 依赖目录会被整棵放开扫描（再次出现全仓扫描的性能问题）；默认段随文件
  * 交给用户编辑，删除即放开，维持"单一真相源、无代码级并集"的承诺。
@@ -277,7 +290,7 @@ async function atomicWriteIgnoreFile(path: string, content: string): Promise<voi
 }
 
 /**
- * 扫描前加载 `.zcodeignore` 规则；自动创建暂时注释停用：
+ * 扫描前加载 `.polarisignore` 规则；自动创建暂时注释停用：
  * 文件不存在 → 内存使用 .gitignore + 默认排除规则，不落盘；
  * 读取失败（权限等）→ 内存使用 .gitignore 内容 → 再失败用内置默认规则。
  * 任何降级只 warn 一次，绝不让 @ 面板因规则文件不可用而扫描失败。
@@ -286,8 +299,6 @@ export async function loadWorkspaceFileSearchIgnoreRules(
   rootPath: string,
   logger?: WorkspaceFileIgnoreLogger,
 ): Promise<WorkspaceFileSearchIgnoreRules> {
-  const ignorePath = resolve(rootPath, WORKSPACE_FILE_SEARCH_IGNORE_FILE_NAME);
-
   const degradeToInMemory = async (
     reason: string,
     error: unknown,
@@ -320,7 +331,7 @@ export async function loadWorkspaceFileSearchIgnoreRules(
 
   let existing: string | null;
   try {
-    existing = await readOptionalFile(ignorePath);
+    existing = await readWorkspaceFileSearchIgnoreFile(rootPath);
   } catch (error) {
     return degradeToInMemory(`读取 ${WORKSPACE_FILE_SEARCH_IGNORE_FILE_NAME} 失败`, error);
   }
@@ -384,8 +395,7 @@ export function isWorkspaceFileSearchPathIgnored(
 export async function readWorkspaceFileSearchIgnore(
   rootPath: string,
 ): Promise<WorkspaceFileSearchIgnoreContent> {
-  const ignorePath = resolve(rootPath, WORKSPACE_FILE_SEARCH_IGNORE_FILE_NAME);
-  const existing = await readOptionalFile(ignorePath);
+  const existing = await readWorkspaceFileSearchIgnoreFile(rootPath).catch(() => null);
   if (existing !== null) {
     return { content: existing, source: "file" };
   }
@@ -409,8 +419,7 @@ export async function transformWorkspaceFileSearchIgnore(
   rootPath: string,
   transform: WorkspaceFileSearchIgnoreTransform,
 ): Promise<{ content: string }> {
-  const ignorePath = resolve(rootPath, WORKSPACE_FILE_SEARCH_IGNORE_FILE_NAME);
-  const existing = await readOptionalFile(ignorePath).catch(() => null);
+  const existing = await readWorkspaceFileSearchIgnoreFile(rootPath).catch(() => null);
   const gitignoreContent = await readOptionalFile(
     resolve(rootPath, GITIGNORE_FILE_NAME),
   ).catch(() => null);
