@@ -72,22 +72,22 @@ const processManager = new ZCodeAgentProcessManager({
 
 ## 未修（按风险排序，均待站长决策）
 
-### 高
+> **2026-10-13 复盘更新**：原「高」档第 1、3 条已修，见下方「已修（本轮补记）」。
+> 原第 2 条（`conversationProjectionStore`）、以及 `i18n` 惰性化、远端路径改名仍在待决。
 
-**1. `taskRealtimeBus.ts` — `streamBatches` 在 host 卸载时不清理（真泄漏）**
+## 已修（本轮补记，2026-10-13）
 
-`unregisterHost`（:193）释放 leases / sessionRoutes / ownerCommands，但不碰
-`streamBatches`；bundle 只在 run 收到 `event.terminal` 时才删除（:528、:553）。
-任务被 kill 或 Host 崩溃而没有 terminal 事件时，该 batch 连同最多 512KB
-replay 缓冲（`STREAM_MIRROR_MAX_REPLAY_BYTES`）永久留在 main 进程。
+| 项 | 位置 | 改动 |
+| --- | --- | --- |
+| host 卸载不回收 stream mirror 批次（原「未修 1」） | `packages/desktop/src/main/taskRealtimeBus.ts` | 新增 `dropStreamBatchesForHost`，在 `releaseLeasesForHost`（先 flush，保持既有投递语义）之后回收退出 host 自己的批次，并摘掉其在其它批次里的 `replayInitializedHostIds` 记账项。hostId 由 `randomUUID()` 生成、批次键含 runId，重连不复用旧键；owner 退出时已给可见 host 发过 `stream_mirror_owner_lost` 快照失效，消费侧走快照补齐。 |
+| 远控状态 1s 轮询 × 3 处同窗挂载（原「未修 3」） | `packages/ui/src/hooks/useWebRemoteControlStatus.ts` | 改为按 platform 实例隔离的共享 store（WeakMap）+ `useSyncExternalStore`：首个订阅者接事件推送并立刻同步一次，轮询取订阅者最小间隔，`syncInFlight` 防并发叠加；最后一个订阅者退订时停表、解事件订阅并复位 idle。IPC 由 3×(1+3) 降为 1+3，事件只订阅一份。 |
+| 资源管理器 1Hz 采样无可见性闸门 | `packages/ui/src/resource-manager/ResourceManagerApp.tsx` | 新增 `documentVisible` 状态并入 `pollingActive`；隐藏时通知 Host `setSamplingActive(false)` 取消在途采样，恢复可见立刻补一次。（Windows 上每次采样要起一次 PowerShell 枚举全机进程。） |
 
-同文件 `replayInitializedHostIds`（:84）也随 host 重连累积、无淘汰。
+验证：`typecheck` 0 错误；`architecture:check --changed` 0 违规；改动文件 oxlint 0 warning / oxfmt 通过；
+点测 28/28；全量 `test:unit` **15111 passed / 87 skipped / 0 failed**（1652 文件）。
+提交：`b3e20f6b`（批量采纳）、`da076bf5`（清理回归修复）。
 
-修复方式：`unregisterHost` 里补一遍「删掉 ownerHostId 等于该 host 的 batch」。
-风险：需要确认 host 重连后是否依赖旧 batch 的 replay——若依赖，误删会导致
-重连后历史流缺口。**动前必须读懂 replay 语义并跑 taskRealtimeBus.test.ts。**
-
-**2. `conversationProjectionStore.ts` — `mergeOlderRows` 把历史行无上限前插**
+### 高（仍未修）
 
 `TURN_NAVIGATOR_HYDRATION_MAX_PAGES = 48` × 200 行 ≈ 最多 9600 行/ store。
 配合 keep-warm 30s 延迟释放（`sessionDataLayer.ts:32`），多窗格/多 workspace
@@ -95,12 +95,12 @@ replay 缓冲（`STREAM_MIRROR_MAX_REPLAY_BYTES`）永久留在 main 进程。
 
 风险：改上限会改变「往回翻能看到多远」的用户可见行为。
 
-**3. `useWebRemoteControlStatus.ts` — 1s 轮询 × 3 处同时挂载**
+**3. `useWebRemoteControlStatus.ts` — 1s 轮询 × 3 处同时挂载 → 已修（见文首「已修（本轮补记）」）**
 
-`Root.tsx:503`、`WorkspaceSidebar.tsx:695`、`WorkspaceWebRemoteControlTrigger.tsx:136`
-同窗同时存活 = 每秒 3 次 IPC + 3 组状态对象逐字段比较。已有事件推送兜底，
-轮询未按事件降频。可改为「事件驱动 + 低频兜底（如 30s）」。
-风险：远程控制状态更新延迟感知，属产品可感知项。
+原状：`Root.tsx:503`、`WorkspaceSidebar.tsx:695`、`WorkspaceWebRemoteControlTrigger.tsx:136`
+同窗同时存活 = 每秒 3 次 IPC + 3 组状态对象逐字段比较。
+现为每窗口一份共享订阅：仍是 1s 轮询（保持感知延迟不变），但 IPC 与事件订阅都收敛为一份。
+未采用「降频到 30s」方案——那会改变远控状态更新的用户可感知延迟，属产品决策。
 
 ### 中
 
