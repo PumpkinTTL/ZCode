@@ -21,13 +21,15 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        buildConfigField("String", "REMOTE_CONTROL_DEFAULT_URL", "\"https://zcode.z.ai/remote\"")
+        // Polaris：远控页由自有域提供；路径与 shared.buildZCodeEndpointUrls 的
+        // remoteUrl（`/remote/<v3|v4>`）对齐，未知版本走保守的 v3。
+        buildConfigField("String", "REMOTE_CONTROL_DEFAULT_URL", "\"https://nimbus.bitlesu.com/remote/v3\"")
     }
 
     buildTypes {
         debug {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
-            buildConfigField("String", "REMOTE_CONTROL_DEFAULT_URL", "\"https://zcode.z.ai/remote\"")
+            buildConfigField("String", "REMOTE_CONTROL_DEFAULT_URL", "\"https://nimbus.bitlesu.com/remote/v3\"")
         }
         release {
             isMinifyEnabled = false

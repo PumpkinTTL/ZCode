@@ -704,7 +704,7 @@ private fun createRemoteControlWebView(
             allowFileAccess = false
             allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            userAgentString = "$userAgentString ZCodeAndroid/${BuildConfig.VERSION_NAME}"
+            userAgentString = "$userAgentString PolarisAndroid/${BuildConfig.VERSION_NAME}"
         }
         webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {

@@ -1,18 +1,20 @@
 # Android 远程控制壳
 
-`packages/android` 当前是 ZCode 手机远控的 Android 壳。第一版不重写 ZCode Agent、relay 或
-RPC 协议，而是用原生入口承载现有 `/remote` 手机 Web 远控页面。
+`packages/android` 当前是 Polaris 手机远控的 Android 壳。第一版不重写 Agent 运行时、relay 或
+RPC 协议，而是用原生入口承载现有手机 Web 远控页面（默认 `/remote/v3`；版本段由桌面端
+endpoint 推导，见 shared `buildZCodeEndpointUrls`）。
 
 ## 入口
 
-- 粘贴或分享 `https://zcode.z.ai/remote?...` 链接。
+- 粘贴或分享 `https://nimbus.bitlesu.com/remote/v3?...` 链接（自有远控域）。
 - 扫描桌面端生成的远控二维码。
 - 通过 `zcode://remote?...` deep link 打开。
 - 首页会保存最近 5 条成功打开过的远控链接，App 重启后可以直接点开。列表只展示设备名、host
   和时间；实际完整链接保存在 App 私有 `SharedPreferences` 中。
 
-生产包只允许打开 `https://zcode.z.ai/remote`。Debug 包额外允许 localhost 和局域网
-`/remote`，方便真机调试本地 Vite 页面。
+生产包只允许打开自有远控域的 `/remote` 前缀（`https://nimbus.bitlesu.com/remote*`，
+含桌面端拼出的 `v3`/`v4` 版本段）。Debug 包额外允许 localhost 和局域网 `/remote`，
+方便真机调试本地 Vite 页面。
 
 ## 扫码
 

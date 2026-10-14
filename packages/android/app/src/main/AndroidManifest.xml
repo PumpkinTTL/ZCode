@@ -53,8 +53,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
+                <!-- Polaris：远控域由上游 zcode.z.ai 改指自有域名，与桌面端二维码同源。
+                     `zcode://remote` 深链是协议标识（另一条入口），保持不变。 -->
                 <data
-                    android:host="zcode.z.ai"
+                    android:host="nimbus.bitlesu.com"
                     android:pathPrefix="/remote"
                     android:scheme="https" />
             </intent-filter>

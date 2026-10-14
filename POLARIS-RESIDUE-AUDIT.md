@@ -2421,3 +2421,155 @@ vitest 定点（涉及 7 个测试文件）      ✅ 全部通过（新增 5 条
 pnpm test:unit（全量）                ✅ 15116 passed / 87 skipped / 0 failed（1648 文件，601s）
 ```
 
+### 36. 上游 v3.15.1 收口后暴露的两处门禁回归
+
+基线：HEAD `15437aeb`（并行会话第三轮收尾后）。工作树干净，但**仓库级门禁不是全绿**，
+两处都在 AGENTS.md 要求的「合并后必须全绿」清单里：
+
+| 门禁 | 现象 | 根因 | 处置 |
+| --- | --- | --- | --- |
+| `pnpm lint`（oxlint `max-lines`，error） | `packages/ui/src/v4/conversationTurnRenderUnits.ts` 代码行 403 > 400 | 上游 v3.15.1 合并（`365f4c1f`/`aac47556`，443 行）叠加本地跨帧增量缓存改动（`580db27f`）后越过上限；该规则 `skipBlankLines`/`skipComments` 全开，属真实代码行超限 | 抽出 `packages/ui/src/v4/conversationTurnRowKinds.ts`：把「按 `row.kind` 归类」的纯判定（assistantText/turnHeader/userInput/timelineMarker/hookInvocation/可见工作行/可见会话行/轮尾 marker/artifact/浏览器轮尾截图/轻边界）与依赖它们的 `splitTurnTailRows` 一并迁出。**纯抽取，零语义改动**，只重指向 import；轮级语义（running 推导、展开裁决）仍留在原文件。改后原文件回到 400 以内，oxlint 该目录 0/0 |
+| `pnpm architecture:check`（`missing-module-artifact`） | 模块 `gen-ui-service` 缺少 `contract.test.ts` | 上游 v3.15.1 新引入的受管模块只带了 `CONTRACT.md`/`contract.ts`/`contract.example.ts`/`module.ts`，没带架构策略要求的契约测试（该文件在 git 全历史里从未存在过） | **补真实契约测试**而非调整策略：新增 `packages/services/src/gen-ui/contract.test.ts`（5 条），走 `node.ts` 公开入口断言 CONTRACT.md 的对外承诺——频道名 `gen-ui` 与解释器示例绑定同一接口；执行端只读固定输出根（工作区里的旧路径、无 legacy 兜底，fork 的父会话路径仍可读）；widget state 按 workspace 身份 + session 隔离且 `listState` 只回当前 scope；沙箱注册为 `contentKind: "gen-ui"`、无 pluginId/serverName、连接与子框架域为空、静态域等于 `GEN_UI_STATIC_DOMAINS`、初始状态快照先于作者脚本且 `<` 被转义（整份 HTML 里 `</script>` 只有外壳自身两处）；缺桌面 Host 沙箱时不签发注册、整篇文档被拒 |
+
+验证：`typecheck` 0 错误；`architecture:check` **OK / 0 违规**；`pnpm lint` **exit 0**
+（88 warnings / **0 errors**，warning 数与改动前一致 = 未新增噪音）；`oxfmt --check`（3 个改动文件）通过；
+定点 vitest（gen-ui 全量 17 条 + 8 个 v4 render-unit 消费测试文件）**186 passed / 0 failed**；
+全量 `pnpm test:unit` 结果见下节。
+
+**复核补记（2026-10-15，第三方复审）**：以上定点清单漏了 `packages/web/test/viteConfigLoad.test.ts`
+本身——改断言必须跑该文件（详见下一节的复核补记）。本轮复审重跑全部门禁并补齐：
+
+```
+pnpm typecheck                        ✅ 0 错误
+pnpm lint                             ✅ exit 0（88 warnings / 0 errors，与改动前一致）
+pnpm architecture:check               ✅ OK / 0 违规
+oxfmt --check（本轮改动文件）          ✅ 通过
+重构等价性                            ✅ 12 个迁移函数与 HEAD 原文逐字一致（脚本比对，剥 export 前后缀）
+定点 vitest                           ✅ gen-ui 契约 5 + web 4 文件 14 + v4 消费 8 文件 169
+pnpm test:unit（全量，含修复后 web 用例）  ✅ 15121 passed / 87 skipped / 0 failed（1649 文件，841s）
+```
+
+| 路径 | 内容 |
+| --- | --- |
+| `packages/ui/src/v4/conversationTurnRowKinds.ts` | 新增：row kind 判定 + 轮尾切分（从 renderUnits 抽出） |
+| `packages/ui/src/v4/conversationTurnRenderUnits.ts` | 改 import，删本地副本（回到 400 行内） |
+| `packages/services/src/gen-ui/contract.test.ts` | 新增：gen-ui-service 契约测试（架构必需产物） |
+
+#### 36 补充：第三处既有红项收口——web 构建断言仍指上游官方域
+
+`pnpm test:unit` 全量里唯一的失败项：`packages/web/test/viteConfigLoad.test.ts`
+断言 `VITE_ZCODE_BASE_URL = https://zcode.z.ai`，而 `shared` 的
+`DEFAULT_ZCODE_ENDPOINT_ORIGIN` 已是 `https://nimbus.bitlesu.com`。**代码是对的，断言是上游原文**
+（该测试文件来自上游，本仓的端点改指是刻意行为，见红线「端点改指自有」）。
+
+处置（改断言，不改行为）：
+
+- 生产注入断言改为 `https://nimbus.bitlesu.com`，标题同步去掉「ZAI」措辞；
+- **被 Windows 跳过的**那条 `serve` 用例（`it.skip`）同样断言 `zcode.z.ai` / `chat.z.ai`——
+  它在 Linux/macOS CI 上会真失败，本轮一并按自有域对齐（未注入覆盖时应落到 shared 兜底值）；
+- 「带路径的覆盖值归一成 origin」那条把样本从 `zcode.z.ai/custom/path` 换成中性自建域
+  `self-hosted.example/custom/path`：断言的是归一化行为，与具体域名无关，顺带去一处上游域残留。
+
+`packages/web/test/conversationSharePreviewClient.test.ts` 里的 `zcode.z.ai` 是**显式传入的 baseUrl
+参数**（用例自身传入、不与默认值比较），不构成行为残留，保留不动。
+
+**复核补记（2026-10-15，第三方复审）**：处置方向对，但原稿漏了一件事——改完断言后
+**该文件没有被实际跑过**（§36 的定点清单只含 gen-ui 与 v4 render-unit），而它在本机实测是
+**红的**。复现与归因：
+
+```
+npx vitest run packages/web/test/viteConfigLoad.test.ts
+  × 显式 ZCODE_ENV=production 时注入自有端点与 OAuth 公开配置
+    expected VITE_ZCODE_BASE_URL: "https://nimbus.bitlesu.com"
+    received:                     "https://zcode.z.ai"
+```
+
+根因**不是代码也不是断言**：`vite.config.ts` 按 `{ ...loadEnv(mode, ROOT, ""), ...process.env }`
+取值，而开发机宿主进程环境里残留着上游端点变量（本机实测 `ZCODE_BASE_URL=https://zcode.z.ai`、
+`ZAI_OAUTH_ORIGIN=https://chat.z.ai`——装了官方 ZCode 的开发机属常见残留，桌面端
+`desktopRuntimeEnv.ts:520` 打包版正是为此剥掉这批 key）。该用例断言的是「未显式覆盖时的
+shared 兜底值」，却没清这批变量，于是结果随运行机器漂移。
+
+验证：`env -u ZCODE_BASE_URL -u ZAI_OAUTH_ORIGIN -u ZAI_OAUTH_CLIENT_ID npx vitest run …`
+→ **9 passed**（断言本身正确）；不清则 1 红。修法：给该用例补 `vi.stubEnv` 空值
+（`ZCODE_BASE_URL`/`ZCODE_ENDPOINT_ORIGIN`/`ZCODE_PRODUCTION_BASE_URL`/`ZAI_OAUTH_ORIGIN`/
+`ZAI_OAUTH_CLIENT_ID`），与同文件其余用例的既有做法一致。改后**在带污染的本机环境直接跑也是
+9 passed / 1 skipped**（跳过的仍是 Windows 的 serve 用例，其 stub 本就齐全）。
+
+**教训**（写给后续轮次）：只跑「自认为相关」的子集会漏掉改动的真实消费者；凡是改了断言的
+测试文件，必须把它自己跑一遍，全量 `test:unit` 必须包含在收口清单里。
+
+#### 36 补充：`pnpm fmt:check` 全仓红的归因（既有项，未动）
+
+全仓 `pnpm fmt:check` 报 1640 个文件不合 oxfmt 格式（6997 个受检文件；audit 前次记录为 1645），
+**集中在测试目录与 `ui/src`**。归因证据（本轮实测）：
+
+- 根 `package.json` 钉 `oxfmt ^0.41.0`，而 `apps/zcode-cli/package.json` 钉 `^0.47.0`（两版并存于锁文件，均已安装）；
+- 取一个**全历史只被上游 `aac47556` 动过**的文件做判定：`vitest.setup.ts` 在 **0.41 与 0.47 下都不合规**
+  ⇒ 上游自己提交的代码就不是 oxfmt 输出（其 `fmt:check` 在本仓口径下天然红），
+  合入 v3.15.1 后不合规文件数从本仓此前的 ~292 抬到 1640，属于**继承上游**，不是本仓回归；
+- 本轮改动的 4 个文件逐个 `oxfmt --check` 全绿。
+
+**未做仓库级 `pnpm fmt`**：一次会改写约 1640 个文件（含大量上游测试），diff 量级与并行会话冲突风险都过大，
+属需要站长拍板的独立动作（要么一次性格式化并单独提交，要么把 `fmt:check` 从门禁降级为提示）。
+
+### 37. Android 远控壳改指自有域（能力保留、去官方残留）
+
+**定性**：手机远控属**可复用能力**（不是上游业务功能），因此不删工程、只去上游域与品牌残留。
+桌面端交给手机的链接真值来自 `shared.buildZCodeEndpointUrls` 的 `remoteUrl`
+（`<origin>/remote/<v3|v4>`，未知版本保守走 v3），据此改指：
+
+| 位置 | 改动 |
+| --- | --- |
+| `packages/android/app/build.gradle.kts` | `REMOTE_CONTROL_DEFAULT_URL`（defaultConfig + debug 两处）`https://zcode.z.ai/remote` → `https://nimbus.bitlesu.com/remote/v3`（与 remoteUrl 形状对齐，补上版本段） |
+| `packages/android/app/src/main/AndroidManifest.xml` | deep link `android:host` → `nimbus.bitlesu.com`（`pathPrefix="/remote"` 同时覆盖 v3/v4） |
+| `.../remote/RemoteControlUrlPolicy.kt` | 抽出 `POLARIS_REMOTE_HOST` 常量，两处 `host == "zcode.z.ai"` 改用它（生产白名单 + debug 分支） |
+| `.../res/values{,-zh-rCN}/strings.xml` | 链接占位符改自有域；用户可见品牌 ZCode → Polaris（app_name、标题、校验/提示、前台服务通知） |
+| `docs/mobile-remote-control-android.md` | 同步域、默认路径与品牌描述 |
+
+**复核补记（2026-10-15，第三方复审）**：原稿漏了两处用户可见品牌位，已补改——
+
+- `.../remote/RemoteControlRecentLinksStore.kt:68`：「最近打开」列表的兜底标题
+  `"ZCode Remote"` → `"Polaris Remote"`（仅在该链接既无 `name` 参数、host 也为空时显示）；
+- `.../ui/RemoteControlApp.kt:707`：WebView UA 后缀 `ZCodeAndroid/<ver>` → `PolarisAndroid/<ver>`。
+  改前核过消费侧：桌面端只对 `mobileDeviceInfo.userAgent` 做**等值比较**（渲染去重/展示设备名，
+  见 `webRemoteControlManager.ts`、`useWebRemoteControlStatus.ts`），不解析 token、不按它做分支，
+  且 `/Android/i` 类嗅探（`MentionPlugin.tsx:134`）匹配的是 WebView 自带串，不依赖该后缀。
+
+**保留不动**：深链 scheme `zcode://remote`、通知 channel id `zcode_remote_control`、Gradle
+`namespace/applicationId = com.example.zcode_mobile`、主题名——都是**协议/内部标识**，
+改指会与既有链接与安装态冲突，与「去官方域」无关，另案处理。
+
+验证：`git grep zcode.z.ai/chat.z.ai -- packages/android` 仅剩 2 处**注释**（记录被替换的上游值）；
+自有域落点 5 处（gradle×2 / manifest / kotlin 常量 / strings×2）。**本机无 kotlinc/gradle**
+（`ANDROID_HOME` 有但无构建工具），因此**未做编译验证**，只做静态核对——这是本节的方法论限制。
+
+### 38. 配置里的陈旧路径引用清理（垃圾清理）
+
+`.oxfmtrc.json` 的 `ignorePatterns` 与 `.gitattributes` 各有一条指向**已删除目录**
+`docs/knip/docs/**` 的条目（该目录早已不存在）。已删除这 4 行引用（纯删无用项，不改变任何生效规则）。
+逐项核对后其余 ignore 路径全部存在。
+
+**复核补记（2026-10-15，第三方复审）**：原稿「仅剩这两处引用」不准确——`docs/knip/**` 的引用
+还有更大一处未动：`third-party/inventory.json` 里 **363 条**、`third-party/copied-components.json`
+里 6 条、`third-party/README.md` 一条，都指向已不存在的 `docs/knip/**` 文件；`THIRD-PARTY-NOTICES.md`
+里对应 4 条也仍在。这与审计既有的「third-party/inventory.json 223 条 broken link + noticesSha256
+不一致」是同一堆账（登记文件与被登记文件已脱节），需要 `node scripts/licenses.mjs notices` 重新生成，
+而该命令依赖 `-r ls` 图（见 §39，本机必挂），故**本轮不动**，维持待拍板状态。上面的 4 行删除不与之冲突
+（`.oxfmtrc`/`.gitattributes` 是生效配置，改它们不影响 license 登记账）。
+
+### 39. `licenses.mjs` 门禁在本机不可跑的根因收敛
+
+前次记录为「`pnpm -r ls --prod` 触发 Windows EMFILE（句柄上限）」。本轮把根因收窄到**命令形态**：
+
+```
+pnpm ls --prod --json --depth Infinity              → 成功（310KB，exit 0）
+pnpm -r ls --prod --json --depth Infinity           → EMFILE: too many open files，
+                                                      停在 node_modules/<pkg>/package.json
+```
+
+即**失败只出现在 `-r`（递归枚举各 workspace 工程）形态**，根项目形态正常。因此
+`node scripts/licenses.mjs check`（内部 `third-party-npm.mjs:readWorkspaceProductionGraph`
+并发跑 locked/actual 两个 `-r ls`）在本机必挂，与本轮改动无关。
+可选修法（未做，需拍板）：把 `readWorkspaceProductionGraph` 改为按工程顺序枚举后合并图，
+或改用 `--lockfile-only` 图 + 安装态抽样校验——都会动到合规链的判定语义，故未擅改。
