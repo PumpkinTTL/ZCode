@@ -57,10 +57,16 @@
 下次发消息要重新拉起 agent，首次响应变慢、会话热状态丢失）。这属于核心执行链路，
 按要求「不触碰核心功能」——需要站长确认后再动。
 
-改动方式（待批准，两处各一行）：
+**2026-10-15 复核补证**：这不是漏配，是**类型层显式的设计约束**——
+`CreateZCodeAgentServiceOptions` 以 `Omit<ZCodeAgentProcessManagerOptions, "idleTimeoutMs">`
+把 idle 回收挡在 chat lane 之外，并留有注释「仅供 MCP 状态探测进程使用，**不能把空闲回收
+传给 chat**」（`zcodeAgentService.ts:946-951`）。因此改动等于显式推翻这条约束（去掉 Omit +
+两处传参 + 一个值），必须先拿到站长决策，不建议在清扫轮里夹带。
+
+改动方式（待批准，两处各一行 + 去掉类型层的 Omit 约束）：
 
 ```ts
-// zcodeAgentService.ts，主 lane 构造处
+// zcodeAgentService.ts，主 lane 构造处（当前为 new ZCodeAgentProcessManager(options)）
 const processManager = new ZCodeAgentProcessManager({
   ...,
   idleTimeoutMs: options?.mainLaneIdleTimeoutMs ?? <值待定>,

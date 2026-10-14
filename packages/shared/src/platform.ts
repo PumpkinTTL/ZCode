@@ -829,12 +829,6 @@ export interface IPlatformService {
    */
   onOAuthCallback(callback: (url: string) => void): () => void;
 
-  /**
-   * 注册支付 deep link 回调监听
-   * @returns disposer 函数，调用后只移除当前回调
-   */
-  onPaymentCallback(callback: (url: string) => void): () => void;
-
   /** 注册 `polaris://share/import?code=...` 导入意图（解析层仍兼容旧 `zcode://`）。 */
   onShareImport?(callback: (payload: { shareCode: string }) => void): () => void;
 

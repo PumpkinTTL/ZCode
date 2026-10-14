@@ -18,6 +18,10 @@ export function resolveDesktopProductionCleanPaths(cwd) {
     resolve(cwd, "out/preload"),
     resolve(cwd, "out/renderer"),
     resolve(cwd, "out/plugin-sandbox"),
+    // scheduler 与 host 同为常驻进程、同为 tsup 多 entry 输出且共用 out/**/* 打包 glob：
+    // 漏掉它会让上一代的 orphan chunk 与 sourcemap 一直留在 out 里被 electron-builder 打进 app.asar
+    // （实测 out/scheduler 里残留过 3 天前的 chunk 与旧代码的 sourcemap）。
+    resolve(cwd, "out/scheduler"),
     resolve(cwd, "out/.main-build-ready"),
     resolve(cwd, "out/.host-build-ready"),
     resolve(cwd, "out/.preload-build-ready"),

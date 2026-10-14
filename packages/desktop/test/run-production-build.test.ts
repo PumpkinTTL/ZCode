@@ -50,6 +50,7 @@ describe("createDesktopProductionBuildPlan", () => {
       "/repo/packages/desktop/out/preload",
       "/repo/packages/desktop/out/renderer",
       "/repo/packages/desktop/out/plugin-sandbox",
+      "/repo/packages/desktop/out/scheduler",
       "/repo/packages/desktop/out/.main-build-ready",
       "/repo/packages/desktop/out/.host-build-ready",
       "/repo/packages/desktop/out/.preload-build-ready",

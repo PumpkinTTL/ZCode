@@ -2573,3 +2573,111 @@ pnpm -r ls --prod --json --depth Infinity           → EMFILE: too many open fi
 并发跑 locked/actual 两个 `-r ls`）在本机必挂，与本轮改动无关。
 可选修法（未做，需拍板）：把 `readWorkspaceProductionGraph` 改为按工程顺序枚举后合并图，
 或改用 `--lockfile-only` 图 + 安装态抽样校验——都会动到合规链的判定语义，故未擅改。
+
+### 40. 上游业务残留「零残留」终扫 + 官方支付回调死链砍除（2026-10-15）
+
+> 站令：查性能重件，「尤其是他自己的业务功能这一块，全部砍掉」；验收线只有一条
+> ——**Agent 能力不受任何影响**。本轮按此做终扫与收口。
+
+#### 40a. A 组排除清单（19 项路径）逐项复核 —— 全部为「gone」
+
+`packages/ui/src/{rewards,components/marketing-touch,components/cloud-content-dialog,
+components/manual-claim-plan,highspeed,assets/cloud-content,request-security-edition}`、
+`packages/services/src/{marketing-touch,cloud-content,highspeed,request-security-edition}`、
+`packages/shared/src/{rewardsBridge,rewardsEmbedded,marketingTouch,cloudContent,highspeed}.ts`、
+`packages/desktop/src/preload/rewardsWebview.ts` —— 18 项确认已删。
+
+唯一表内「仍存在」的 `packages/desktop/src/scheduler/manualClaimRelease.ts` 经逐行复核
+**是误归类**：现内容是自动化调度器的 manual-run single-flight 锁释放（`automationId/runId/
+workspaceKey`，被 `scheduler/index.ts:269` 与 `host/cronRunLifecycle.ts` 生产调用），
+属**自动化（Agent 能力）**，与「体验套餐投放」无关；保留不动。
+
+#### 40b. 关键词/目录/产物级扫描 —— 全部零残留
+
+| 扫描面 | 结果 |
+| --- | --- |
+| B 组外科关键词（RewardsProvider/MarketingTouchProvider/marketingTouch/cloudContent/cloud-content/manualClaimPlan/manual-claim-plan/highspeedOutputFooter/邀请好友/billingDiscount） | 源码零命中 |
+| i18n 键（`rewards.*`/`marketingTouch.*`/`cloudContent.*`/`manualClaimPlan.*`/`chat.highspeed.*`/`globalNotice.highspeed.*`/`billingDiscount`/i18n 内 z.ai 域） | 零命中 |
+| `channels.ts` 业务通道常量 | 零（本轮顺带砍掉 `PaymentCallback`，见 40c） |
+| `@stripe/*` 依赖 | 零 |
+| 目录级业务命名空间 | 仅剩自有 `business/{quota,login,appUpdate}`（Nimbus 自有后端） |
+| 中文业务词分布（订阅/套餐/支付/充值/积分/折扣/限时/领取/兑换/账单，去注释去 i18n） | 命中全为：自家 Nimbus 额度/充值 UI、事件「订阅」技术词、错误码兼容文案（`usageErrorCopy`）；无上游业务面 |
+| bundled-agents `zcode.cjs`（darwin/win32） | `stripe` 命中＝通用 bash 补全表（stripe CLI completion spec，`bash-command-registry.ts`）；`highspeed` 命中＝模型名 `glm-5.1-highspeed`；非业务 |
+| 全仓 dist 目录 | 发现 `apps/zcode-cli/packages/adapters/dist/model/official-coding-plan-gateway.{js,d.ts,d.ts.map}` **陈旧构建产物**（源已删、tsup/tsc 构建不 clean dist，会跨构建残留）：已手删。打包链若复用 dist 目录需注意此模式 |
+| 官方 MCP 凭证链（`official-mcp/*`） | 属能力面：trusted origin 走 `resolveZCodeApiOrigin`（自有域），无上游端点；保留 |
+| legacy 配置读取器里的 `open.bigmodel.cn` 常量 | 仅作「旧配置识别键」，归一化兜底一律自有网关（注释明示「永远不会被直接使用」）；保留 |
+| `config/provider/zcode-builtin.json` 的 z.ai/bigmodel `baseUrlMatch` 规则 | 旧配置识别规则（无网络、不动模型列表红线）；保留 |
+
+#### 40c. 本轮砍除：官方支付回调深链死链（10 文件，−100 行）
+
+`zcode://payment/callback?provider=…&channel=…&status=…` 是上游官方支付（Stripe/PayPal 结账）
+的回调链，在本仓**两头皆死**：生产侧无产出者（自家充值＝支付宝二维码 + 订单 3s 轮询，
+`NimbusRechargeDialog`），消费侧无监听者（全仓仅 web 侧一个 no-op stub）。
+
+砍除范围（整链）：
+`desktopDeepLinkUrl.ts`（host 常量 + `isPaymentCallbackUrl` + `isCompleteDeepLinkUrl` 支付分支）
+→ `desktopOAuthDeepLink.ts`（路由分支 + `pendingPaymentDeepLinkUrl` 缓存 + renderer-ready flush）
+→ 通道 `PlatformChannels.PaymentCallback`（定义 + 校验映射）→ preload bridge
+→ `client/globals.d.ts` → `shared/platform.ts` 的 `onPaymentCallback` API
+→ desktop renderer 平台实现 → web stub。OAuth/workspace/share 深链一律未动；
+现在 `zcode://payment/*` 链接落入兜底被安全忽略（`handleDeepLink` 的 `!isOAuthCallbackUrl` 分支）。
+
+#### 40d. 性能面复核（「有没有很影响性能的东西，没办法确保它是轻量的」）
+
+业务模块运行时开销——**逐项实测，全部低频可证轻量**：
+
+| 模块 | 周期 | 判定 |
+| --- | --- | --- |
+| 更新徽标 `NimbusUpdateBadge` | 30 min | 轻量 |
+| 账号状态 `nimbusAccountState` 重取 | 5 min | 轻量 |
+| 公告 `noticeState` 重取 | 5 min | 轻量 |
+| 模型目录刷新 `nimbusModelCatalogRefresh` | 5 min 过期门（懒触发） | 轻量 |
+| 充值对话框订单轮询 | 3 s **仅对话框打开期间** | 轻量 |
+| 更新服务心跳 `appUpdateService` | 4 min | 轻量 |
+
+大件清单（**均为 Agent 运行时本体，保留**；按「能否证明轻量」如实归类）：
+
+1. **agent 进程树不回收（前测 ≈1.9GB / node 侧）**——`CreateZCodeAgentServiceOptions`
+   类型层**显式** `Omit<…, "idleTimeoutMs">` 且注释「不能把空闲回收传给 chat」：这是
+   刻意的设计决定（回收=会话冷启动变慢），不是漏配。**改法待站长拍板**：给
+   `ZCodeAgentProcessManager` 的 main/plugin lane 传入 idle 值即一行级改动，语义上
+   「空闲 N 分钟后回收、有在飞 RPC 跳过、回收归因 expected/idle-timeout」机制已具备
+   （mcp-status lane 在跑同款）。要不要把这条用于 chat 是可感知的 UX 取舍。
+2. i18n 双语言静态常驻（330KB 源码 ×2 × 11 窗口）——惰性化可行、需动装载链路，待拍板。
+3. `conversationProjectionStore` 历史行上限——用户可见「往回翻多远」，待拍板。
+4. bundled agent 本体 14–16MB/平台（agent 运行时，必须保留）。
+
+#### 40e. 构建产物卫生：生产构建 clean 清单漏了 `out/scheduler`（已修）
+
+实测证据：`out/scheduler/` 的目录（`chunk-34H4ZXCM.js` 等）停留在 3 天前，其中
+`index.js.map` 还带着**已被本轮的砍除代码**（payment-callback 串）——它会被
+electron-builder 的 `out/**/*` glob 打进 app.asar（`run-production-build.mjs` 的
+clean 注释本就写着「tsup 不会主动删除过期 chunk……会继续被 electron-builder 打进
+app.asar」，但清单漏了 scheduler）。修复：`resolveDesktopProductionCleanPaths` 补
+`out/scheduler`；重新构建后 `out/` 全目录已无 payment-callback 残留、scheduler
+只余当次构建产物。
+
+#### 40f. 本轮验证
+
+```
+pnpm typecheck                        ✅ 0 错误
+pnpm lint                             ✅ exit 0（0 errors）
+pnpm architecture:check               ✅ OK / 0 违规
+深链相关定点（4 文件）                 ✅ 42/42
+pnpm test:unit（全量）                 ✅ 15119 passed / 87 skipped / 0 failed（1649 文件）
+pnpm --filter @zcode/desktop build:no-runtime-assets   ✅ built（tsup main/preload/host/scheduler + vite renderer）
+产物级验证                            ✅ out/ 全目录 grep payment-callback/PaymentCallback 零命中（对照：oauth/share 深链仍在）
+```
+
+| 路径 | 内容 |
+| --- | --- |
+| `packages/desktop/src/main/desktopDeepLinkUrl.ts` | 删支付回调 matcher + 完整性分支 |
+| `packages/desktop/src/main/desktopOAuthDeepLink.ts` | 删支付路由分支 + pending 缓存/flush |
+| `packages/desktop/src/preload/index.ts`、`packages/client/src/globals.d.ts` | 删 onPaymentCallback 桥 |
+| `packages/shared/src/{platform,channels}.ts` | 删平台 API 与 IPC 通道（定义 + 校验映射） |
+| `packages/desktop/src/renderer/src/desktopPlatform.ts`、`packages/web/src/main.tsx` | 删平台实现与 web stub |
+| `packages/desktop/test/{desktopDeepLinkUrl,desktopDeepLinkRegistration}.test.ts` | 删除支付用例 |
+| `packages/desktop/scripts/run-production-build.mjs` + 对应测试 | clean 清单补 `out/scheduler` |
+| `apps/zcode-cli/packages/adapters/dist/...`（未跟踪产物） | 手删 official-coding-plan-gateway 陈旧编译产物 |
+
+
