@@ -2680,4 +2680,28 @@ pnpm --filter @zcode/desktop build:no-runtime-assets   ✅ built（tsup main/pre
 | `packages/desktop/scripts/run-production-build.mjs` + 对应测试 | clean 清单补 `out/scheduler` |
 | `apps/zcode-cli/packages/adapters/dist/...`（未跟踪产物） | 手删 official-coding-plan-gateway 陈旧编译产物 |
 
+#### 40g. 附带修复：pre-push 的 affected 流引用了已被瘦掉的 `lint-staged`
+
+推送本轮提交时被 pre-push 拒了，顺线查出一个**合并遗留的坏门禁**：
+
+- 上游 v3.15.1（aac47556）把 `test:unit:affected` 改成经 lint-staged 分发
+  （`scripts/run-affected-unit-tests.mjs` 里 `pnpm exec lint-staged --diff …`，
+  配置在根 `lint-staged.config.mjs`）；
+- 但本仓在更早的瘦身提交 7b9a01cf 已按「无配置、无调用方」把 `lint-staged` 依赖删除
+  （当时判断没错——配置与调用方都是这次合并才进来的），合并后两边对不上：
+  **凡 diff 里没有整文件删除的推送，pre-push 必挂在 `MODULE_NOT_FOUND`**。
+  此前几次推送能过，是因为 diff（对着滞后的 remote）里恰好有 `dd80312d` 的整文件删除，
+  走了「删除文件 → 无法 related 分析 → 回退全量单测」的旁路——纯属侥幸。
+
+修复（不装回依赖，延续瘦身方向）：`run-affected-unit-tests.mjs` 直接按
+`lint-staged.config.mjs` 原本的两条映射调用其底层 runner
+（`node scripts/run-lint-staged-vitest.mjs run|related --files-manifest <临时清单>`）：
+测试文件 → `vitest run`；源文件 → `vitest related`。文件清单走 JSON manifest +
+无 shell 的 spawn，顺带消掉 lint-staged 需要「临时 GIT_INDEX_FILE 防改动真实 index」
+的整段绕行。死配置 `lint-staged.config.mjs` 与其冒烟测试（`lintStagedConfig.test.ts`）
+一并删除——shell 敏感文件名的保护点由「manifest + 无 shell 拼接」在构造上保证。
+
+验证：`ZCODE_PRE_PUSH_STDIN` 按真实 hook 格式模拟跑通（测试文件走 run、源文件走
+related，全绿）。
+
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 
@@ -241,44 +241,31 @@ function runFullUnitTests(root, reason) {
   );
 }
 
-function runLintStaged(root, base, head) {
-  const diffRange = `${base}..${head}`;
-  print(`执行 pnpm exec lint-staged --diff ${diffRange}`);
+function runChangedVitest(root, mode, files) {
+  if (files.length === 0) {
+    return 0;
+  }
 
-  // lint-staged 面向 pre-commit 设计，会在任务结束后自动 git add 匹配文件。
-  // pre-push 只应验证，不应改动真实 index；因此让 lint-staged 在临时 index 上完成内部流程。
-  const tempIndexDir = mkdtempSync(join(tmpdir(), "zcode-lint-staged-index-"));
-  const tempIndexFile = join(tempIndexDir, "index");
+  // Polaris：上游 v3.15.1 把 affected 流改成经 lint-staged 分发（`pnpm exec lint-staged
+  // --diff ...`），但本仓在 7b9a01cf 已按「零调用方」瘦掉该依赖——合并后 pre-push 的
+  // affected 路径实际是坏的（此前靠「diff 含删除文件 → 回退全量」侥幸绕过）。
+  // 这里不再装回依赖，直接按 lint-staged.config.mjs 原本的两条映射调用其底层 runner：
+  // 测试文件 → vitest run；源文件 → vitest related。文件清单走 manifest，无 shell 拼接。
+  const manifestDir = mkdtempSync(join(tmpdir(), "zcode-affected-vitest-"));
+  const manifestPath = join(manifestDir, "manifest.json");
+  writeFileSync(manifestPath, JSON.stringify({ mode, files }));
 
   try {
+    print(`执行 node scripts/run-lint-staged-vitest.mjs ${mode}（${files.length} 个文件）`);
     return (
       run(
-        "pnpm",
-        [
-          "exec",
-          "lint-staged",
-          "--relative",
-          "--concurrent",
-          "false",
-          "--diff",
-          diffRange,
-          "--diff-filter",
-          CHANGED_DIFF_FILTER,
-          "--config",
-          "lint-staged.config.mjs",
-        ],
-        {
-          cwd: root,
-          env: {
-            ...process.env,
-            GIT_INDEX_FILE: tempIndexFile,
-          },
-          stdio: "inherit",
-        },
+        "node",
+        ["scripts/run-lint-staged-vitest.mjs", mode, "--files-manifest", manifestPath],
+        { cwd: root, stdio: "inherit" },
       ).status ?? 1
     );
   } finally {
-    rmSync(tempIndexDir, { force: true, recursive: true });
+    rmSync(manifestDir, { force: true, recursive: true });
   }
 }
 
@@ -339,7 +326,11 @@ function main() {
     return 0;
   }
 
-  return runLintStaged(root, comparisonBase, target.head);
+  const testsExit = runChangedVitest(root, "run", testFiles);
+  if (testsExit !== 0) {
+    return testsExit;
+  }
+  return runChangedVitest(root, "related", relatedSourceFiles);
 }
 
 try {
