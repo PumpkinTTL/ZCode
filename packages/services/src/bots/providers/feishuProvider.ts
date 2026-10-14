@@ -47,6 +47,12 @@ export interface FeishuWebSocketClient {
 const FEISHU_APP_ID_PATTERN = /^cli_[0-9a-fA-F]{16}$/;
 const FEISHU_WEBSOCKET_START_TIMEOUT_MS = 20_000;
 const FEISHU_WEBSOCKET_READY_POLL_MS = 100;
+/**
+ * 连接建立后的看护轮询间隔。启动阶段需要 100ms 级观察 OPEN（SDK 不支持 onReady），
+ * 但 settle 之后轮询只剩「断线 → reconnecting / 重连耗尽」的状态看护，降到 1s：
+ * 长时间在线时不再每秒唤醒 10 次，断线感知最多晚 1s，与状态标签的可见粒度一致。
+ */
+const FEISHU_WEBSOCKET_CONNECTED_POLL_MS = 1_000;
 // 修复原因：飞书 Card JSON 2.0 最多允许 200 个组件或元素。预留 20 个元素给
 // 状态行和服务端计数差异，避免长任务在更新阶段被 11310 拒绝后整轮熔断。
 export const FEISHU_STREAMING_CARD_TAGGED_ELEMENT_BUDGET = 180;
@@ -1903,7 +1909,8 @@ export async function startFeishuBotWebSocket(params: {
     });
     // 修复原因：当前飞书 SDK 不支持 onReady 回调，start() 也会在连接完成前返回。
     // 必须观察 SDK 持有的真实 WebSocket，避免连接已经 OPEN 后仍触发 20 秒超时并被主动关闭。
-    connectionPoll = setInterval(() => {
+    // settle 后重挂为 1s 看护轮询（见 FEISHU_WEBSOCKET_CONNECTED_POLL_MS）。
+    const pollConnection = () => {
       const sdkClient = wsClient as unknown as {
         isConnecting?: boolean;
         wsConfig?: {
@@ -1935,8 +1942,11 @@ export async function startFeishuBotWebSocket(params: {
       startupSettled = true;
       if (startupTimer) clearTimeout(startupTimer);
       signal?.removeEventListener("abort", handleAbort);
+      if (connectionPoll) clearInterval(connectionPoll);
+      connectionPoll = setInterval(pollConnection, FEISHU_WEBSOCKET_CONNECTED_POLL_MS);
       resolve({ close: closeClient, terminated });
-    }, FEISHU_WEBSOCKET_READY_POLL_MS);
+    };
+    connectionPoll = setInterval(pollConnection, FEISHU_WEBSOCKET_READY_POLL_MS);
     startupTimer = setTimeout(() => {
       fail(
         new Error(

@@ -2360,3 +2360,64 @@ tsconfig 的 `include` 只覆盖 `src/**`，不含 `test/**`。
 | `packages/ui/test/resourceManagerPolling.test.ts` | 新增可见性用例 |
 | `packages/ui/test/useWorkspaceTaskListsMembershipEvents.test.ts` | 摘除指向已删模块的 import（本轮回溯修复） |
 | `scripts/audit/scan-dangling-deleted-refs.mjs` | 新增：批量删除后的悬空引用自查工具 |
+
+### 35a. 第三轮：三类（无界容器 / 重复轮询 / 高频克隆）收尾
+
+对三类逐一复核后的本轮处置（「不动」判定与完整证据同见 `POLARIS-PERF-AUDIT.md`「已修（第三轮）」）：
+
+1. **展开态记忆无界 ×2**：`ToolCallBlocks/ToolLayout.tsx` 的 `toolLayoutOpenState` 与
+   `renderers/create-workflow.tsx` 的 `workflowCardOpenState`，两处模块级 `Map<string, boolean>`
+   按 toolId 只增不减（前者旧诊断注释自认「只增不减，先落日志」）。抽出
+   `packages/ui/src/lib/boundedOpenState.ts`（插入新 key 达上限时 FIFO 淘汰最老），两处接入 cap=500；
+   `app-shell/workflowWorkspaceLogbook.ts` 的同类实现一并改走该工具。语义与既有先例一致：极老卡片
+   的展开态被遗忘、回落默认值。新增 `test/boundedOpenStateStore.test.ts`（4 条）。
+2. **群消息 reaction 记忆无界**：`services/bots/providers/groupInputReaction.ts` 的 `entries`
+   按消息 id 只增不减（每条触发 reaction 的消息一个条目），长跑 bot Host 常驻累积。FIFO 封顶 2000
+   （语义：被遗忘消息的迟到事件按新消息处理，需其后又过上千条消息才可能发生，代价至多一次
+   reaction 重放）。测试补封顶用例（2001 条后 m-0 遗忘、m-1 仍拒绝重复终态）。
+3. **远控弹层重复 1s 轮询**：`WebRemoteControlDialog.tsx` 打开期间自带 1s 定时器直连
+   `getWebRemoteControlStatus`，与共享 store（§34b）重复——同一 IPC 每秒 2 次。改为
+   `useWebRemoteControlStatus({ enabled: open })` 订阅共享 store，仅保留原有「本 workspace /
+   可复用 / idle / error」过滤；测试补 `useOptionalPlatform` mock。附带把手机连接等状态的感知从
+   「最迟 1s 轮询」提为事件推送即达。
+4. **飞书长连接 100ms 永久轮询**：`feishuProvider.ts` 启动期 100ms 观察 OPEN 是必要，但 settle 后
+   该定时器永不停止，仅承担「断线→reconnecting / 重连耗尽」看护。settle 后重挂为 1s
+   （`FEISHU_WEBSOCKET_CONNECTED_POLL_MS`），在线期间每秒唤醒 10 次 → 1 次；生命周期测试同步
+   （settle 后 100ms 内断言无状态变化、1s 时点触发）。
+
+§31e 遗留三候选复查：logbook `openState` 上轮已封顶；`codeCommentContext.removedCodeCommentKeys`
+（`REMOVED_CODE_COMMENT_KEYS_CAP`）与 `feishuProvider.typingReactionIds`（`FEISHU_TYPING_REACTION_IDS_CAP`）
+本轮逐行确认均已带上限，无需再动。
+
+克隆类复核：热路径仅 `genUi.ts` widgetState（维持不动，理由见 PERF 文档「未修·中·4」）；其余全量
+克隆点（settings 表单保存、导入、配置读取等）均在冷路径。v4 流式/会话渲染无逐事件全量克隆，
+无新的高频克隆命中。
+
+新工具入仓：`scripts/audit/scan-unbounded-containers.mjs`（模块级容器「有写无删」粗筛，
+26 个候选逐个人工复核，本轮真无界即上述 3 个）。
+
+| 路径 | 内容 |
+| --- | --- |
+| `packages/ui/src/lib/boundedOpenState.ts` | 新增：FIFO 上限的展开态记忆工具 |
+| `packages/ui/src/ToolCallBlocks/ToolLayout.tsx` | `toolLayoutOpenState` 接入工具，cap=500 |
+| `packages/ui/src/ToolCallBlocks/renderers/create-workflow.tsx` | `workflowCardOpenState` 接入工具，cap=500 |
+| `packages/ui/src/app-shell/workflowWorkspaceLogbook.ts` | 原有同类实现改走统一工具 |
+| `packages/ui/test/boundedOpenStateStore.test.ts` | 新增（4 条） |
+| `packages/services/src/bots/providers/groupInputReaction.ts` | 消息状态记忆 FIFO 封顶 2000 |
+| `packages/services/test/groupInputReaction.test.ts` | 补封顶用例 |
+| `packages/ui/src/WebRemoteControlDialog.tsx` | 弹层自有 1s 轮询改走共享 store |
+| `packages/ui/test/webRemoteControlDialogLayout.test.ts` | 补 `useOptionalPlatform` mock |
+| `packages/services/src/bots/providers/feishuProvider.ts` | settle 后看护轮询 100ms → 1s |
+| `packages/services/test/botsFeishuWebSocketLifecycle.test.ts` | 断言 settle 后 100ms 无变化、1s 触发 |
+| `scripts/audit/scan-unbounded-containers.mjs` | 新增：模块级容器「有写无删」粗筛工具 |
+
+### 35b. 本轮验证
+
+```
+pnpm typecheck                        ✅ 0 错误
+pnpm architecture:check --changed     ✅ 0 违规
+oxlint（改动文件）                    ✅ 0 warning / 0 error
+vitest 定点（涉及 7 个测试文件）      ✅ 全部通过（新增 5 条用例）
+pnpm test:unit（全量）                ✅ 15116 passed / 87 skipped / 0 failed（1648 文件，601s）
+```
+

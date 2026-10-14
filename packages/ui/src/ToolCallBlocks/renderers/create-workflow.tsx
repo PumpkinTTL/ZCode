@@ -24,6 +24,7 @@ import {
   workflowRunKindMessageId,
 } from "@/components/workflow-timeline/WorkflowCardChrome.js";
 import { WorkflowTimeline } from "@/components/workflow-timeline/WorkflowTimeline.js";
+import { createBoundedOpenStateStore } from "@/lib/boundedOpenState.js";
 import { isAmendWorkflowToolCall } from "@/lib/workflowToolNames.js";
 import {
   useWorkflowCardModel,
@@ -62,8 +63,8 @@ import type { ToolCallBlockRenderContext } from "../shared.js";
 /** 没有 display 时交给草稿槽位的空诊断：模块级常量，免得每次渲染一个新数组打穿记忆。 */
 const NO_DIAGNOSTICS: readonly never[] = [];
 
-/** 折叠状态按 toolId 记忆（与 ToolLayout 的 toolLayoutOpenState 同一模式）；默认展开。 */
-const workflowCardOpenState = new Map<string, boolean>();
+/** 折叠状态按 toolId 记忆（与 ToolLayout 的 toolLayoutOpenState 同一模式）；默认展开。FIFO 上限防长会话慢性累积。 */
+const workflowCardOpenState = createBoundedOpenStateStore(500);
 
 /**
  * 聊天区的 CreateWorkflow / AmendWorkflow 工具卡。

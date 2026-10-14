@@ -70,6 +70,8 @@ const platformMock = vi.hoisted(() => ({
 
 vi.mock("@/hooks/usePlatform.js", () => ({
   usePlatform: () => platformMock,
+  // 弹层现在通过共享的 useWebRemoteControlStatus 订阅状态，该 hook 走 useOptionalPlatform。
+  useOptionalPlatform: () => platformMock,
 }));
 
 const confirmDialogMock = vi.hoisted(() => vi.fn(async () => true));

@@ -87,6 +87,30 @@ const processManager = new ZCodeAgentProcessManager({
 点测 28/28；全量 `test:unit` **15111 passed / 87 skipped / 0 failed**（1652 文件）。
 提交：`b3e20f6b`（批量采纳）、`da076bf5`（清理回归修复）。
 
+## 已修（第三轮，2026-10-13 追问后「三类」收敛）
+
+对「无界缓存/泄漏 + 重复 1Hz 轮询 + 高频克隆」三类逐项复核后，本轮修掉最后 3 个无界容器与最后 2 处重复/高频轮询；克隆类无新的热路径命中（判定见下）。
+
+| 项 | 位置 | 改动 |
+| --- | --- | --- |
+| 展开态记忆无界 ×2 | `packages/ui/src/ToolCallBlocks/ToolLayout.tsx`、`ToolCallBlocks/renderers/create-workflow.tsx` | 两处模块级 `Map<string, boolean>` 按 toolId 只增不减（ToolLayout 的旧诊断注释自认「只增不减，先落日志」）。抽出 `packages/ui/src/lib/boundedOpenState.ts`（插入新 key 达上限时 FIFO 淘汰最老），两处接入，cap=500；`workflowWorkspaceLogbook.ts` 原有同类实现一并改用该工具。语义与既有先例一致：极老卡片的展开态被遗忘、回落默认值。新增 `packages/ui/test/boundedOpenStateStore.test.ts`（4 条）。 |
+| 群消息 reaction 记忆无界 | `packages/services/src/bots/providers/groupInputReaction.ts` | `entries` 按消息 id 只增不减（每条触发 reaction 的消息一个条目），长跑 bot Host 常驻累积。FIFO 封顶 2000：被遗忘消息的迟到事件按新消息处理（需其后又过上千条消息才可能发生，代价至多一次 reaction 重放）。测试补封顶用例。 |
+| 远控弹层重复 1s 轮询 | `packages/ui/src/WebRemoteControlDialog.tsx` | 弹层打开时自带 1s 定时器直连 `getWebRemoteControlStatus`，与已改的共享 store 重复：打开期间同一 IPC 每秒 2 次。改为 `useWebRemoteControlStatus({ enabled: open })` 订阅共享 store（事件推送 + 1s 轮询兜底不变），仅保留原有「本 workspace / 可复用 / idle / error」过滤；附带把「手机连接」等状态从「最迟 1s 轮询」提为事件推送即达。 |
+| 飞书长连接 100ms 永久轮询 | `packages/services/src/bots/providers/feishuProvider.ts` | SDK 无 onReady，启动期 100ms 观察 OPEN 是必要；但 settle 后该定时器永不停止，仅承担「断线→reconnecting / 重连耗尽」看护——在线期间每秒 10 次唤醒常驻。settle 后重挂为 1s（`FEISHU_WEBSOCKET_CONNECTED_POLL_MS`），断线感知最多晚 1s。生命周期测试同步（settle 后 100ms 内不再触发状态变化、1s 时点触发）。 |
+
+三类复核的「不动」判定（附证据）：
+
+- **克隆类**：全仓 `structuredClone` / `JSON.parse(JSON.stringify)` 逐一复核，热路径仅 `genUi.ts` widgetState（维持不动，理由见下「未修·中·4」）；其余都在设置保存、导入、配置读取等冷路径。v4 流式/会话渲染无逐事件全量克隆（对话行结构共享沿用 ConversationRowPool）。
+- **无界容器小项**：`subagentsContextStore.latestRequestIds`（按 workspace 计）、`composerDraftRevision.revisionByWorkspaceKey`（按 workspace 计）、`useWorkflowRunArtifactData.sessionsWithoutFieldReads`（按会话计）——量级与打开过的数量同阶，不动；`zcodeSessionStore.workspaces` 桶无删除路径属刻意「先落日志」（删除时机=产品语义，待拍板）。
+- §31e 遗留三候选复查：logbook `openState` 上轮已封顶；`codeCommentContext.removedCodeCommentKeys` 与 `feishuProvider.typingReactionIds` 现均已带上限（本轮逐行确认）。
+- **低危 1Hz**：`ConversationStatusPanel` 3×1s ticker（合并共享 clock 只省定时器不减渲染，且共享 clock 会被空面板保持存活——反而更差）、`useDeveloperToolsVisibility` 1s localStorage 读（微秒级 + storage/focus/visibilitychange 三条兜底）——维持不动。
+- 扫描工具入仓：`scripts/audit/scan-unbounded-containers.mjs`（模块级容器「有写无删」粗筛；26 个候选逐个人工复核，本轮真无界即上表 3 个）。
+
+验证：`typecheck` 0 错误；`architecture:check --changed` 0 违规；改动文件 oxlint 0 warning
+（弹层与本测试文件在 HEAD 本就不是 oxfmt-clean 的文件，只做最小 diff、不整篇重排）；
+点测（涉及 7 个测试文件）全绿、新增 5 条用例；全量 `test:unit`
+**15116 passed / 87 skipped / 0 failed**（1648 文件，601s）。
+
 ### 高（仍未修）
 
 `TURN_NAVIGATOR_HYDRATION_MAX_PAGES = 48` × 200 行 ≈ 最多 9600 行/ store。

@@ -174,25 +174,29 @@ describe("Feishu WebSocket lifecycle", () => {
       onPayload: vi.fn(async () => undefined),
       onConnectionStateChange,
     });
+    // 启动阶段 100ms 级轮询：等到 OPEN 后 settle。
     await vi.advanceTimersByTimeAsync(100);
     const client = await clientPromise;
 
+    // settle 后看护轮询降频到 1s：100ms 内不应再触发状态变化。
     wsState.readyState = null;
     wsState.isConnecting = true;
     await vi.advanceTimersByTimeAsync(100);
+    expect(onConnectionStateChange).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(900);
     expect(onConnectionStateChange).toHaveBeenLastCalledWith("reconnecting");
 
     wsState.readyState = 1;
     wsState.isConnecting = false;
-    await vi.advanceTimersByTimeAsync(100);
+    await vi.advanceTimersByTimeAsync(1_000);
     expect(onConnectionStateChange).toHaveBeenLastCalledWith("connected");
 
     wsState.readyState = null;
     wsState.isConnecting = true;
-    await vi.advanceTimersByTimeAsync(100);
+    await vi.advanceTimersByTimeAsync(1_000);
     const terminated = expect(client.terminated).rejects.toThrow("reconnect exhausted");
     wsState.isConnecting = false;
-    await vi.advanceTimersByTimeAsync(100);
+    await vi.advanceTimersByTimeAsync(1_000);
     await terminated;
     expect(wsState.close).toHaveBeenCalledOnce();
   });

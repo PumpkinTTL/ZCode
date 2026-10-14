@@ -5,6 +5,7 @@
 // 章节按**执行顺序**切：连续同一阶段的卡是一章，再次进入同一阶段是新的一章、轮次 +1——
 // 与侧板脊线的 ⟳n 同一口径（进入次数），而不是某个站点被调用的次数。
 
+import { createBoundedOpenStateStore } from "@/lib/boundedOpenState.js";
 import type { PhaseNaming } from "@/components/workflow-graph/phase-name.js";
 import type { WorkspaceCardModel } from "@/app-shell/workflowWorkspaceTranscript.js";
 
@@ -130,17 +131,13 @@ export function peekLinesOf(result: unknown, max = 3): PeekLine[] {
 // 展开态按卡记忆（与 ToolLayout 的模块级 map 同一做法）：收起再展开、切 tab 再回来都还在。
 // FIFO 上限：极老卡片的展开态会被遗忘（回落默认收起），防模块级 Map 慢性累积。
 const OPEN_STATE_CAP = 500;
-const openState = new Map<string, boolean>();
+const openState = createBoundedOpenStateStore(OPEN_STATE_CAP);
 
 export function rememberedOpen(key: string): boolean {
   return openState.get(key) ?? false;
 }
 
 export function setRememberedOpen(key: string, open: boolean): void {
-  if (!openState.has(key) && openState.size >= OPEN_STATE_CAP) {
-    const oldest = openState.keys().next().value;
-    if (oldest !== undefined) openState.delete(oldest);
-  }
   openState.set(key, open);
 }
 

@@ -30,6 +30,7 @@ import {
 import { toast } from "@/components/ui/toast.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
+import { useWebRemoteControlStatus } from "@/hooks/useWebRemoteControlStatus.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { getBotProviderRegionTagLabelId } from "@/botsUi.js";
@@ -271,6 +272,9 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
   const platform = usePlatform();
   const confirmDialog = useConfirmDialog();
   const { intl } = useZCodeIntl();
+  // 打开时订阅窗口共享的远控状态（与 Root / Sidebar / Trigger 同一个 store）：
+  // 不再自带 1s 定时器重复拉同一份 `getWebRemoteControlStatus` IPC。
+  const liveRemoteControlStatus = useWebRemoteControlStatus({ enabled: open });
   const [status, setStatus] = useState<WebRemoteControlStatus>({
     status: "idle",
   });
@@ -390,54 +394,41 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
   ]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open || loading) {
       return;
     }
 
-    let cancelled = false;
+    // Bugfix 保留：Web 远程控制的状态变化发生在 main / relay 侧，弹层打开后需要持续刷新，
+    // 否则状态会长期停在“等待连接”。刷新由共享 store 的 1s 轮询 + 事件推送承担，
+    // 这里只做与首次同步一致的目标过滤：本 workspace 的会话、可复用的运行中会话、idle、error。
+    const nextStatus = liveRemoteControlStatus;
+    const shouldApplyStatus =
+      isSameWebRemoteControlTarget(
+        nextStatus,
+        workspacePath,
+        workspaceIdentity,
+        remoteSessionId,
+      ) ||
+      isReusableWebRemoteControlSession(nextStatus) ||
+      nextStatus.status === "idle" ||
+      nextStatus.status === "error";
+    if (!shouldApplyStatus) {
+      return;
+    }
 
-    const pollWebRemoteControlStatus = async () => {
-      try {
-        const nextStatus = await platform.getWebRemoteControlStatus();
-        if (cancelled) {
-          return;
-        }
-
-        const shouldApplyStatus =
-          isSameWebRemoteControlTarget(
-            nextStatus,
-            workspacePath,
-            workspaceIdentity,
-            remoteSessionId,
-          ) ||
-          isReusableWebRemoteControlSession(nextStatus) ||
-          nextStatus.status === "idle" ||
-          nextStatus.status === "error";
-        if (!shouldApplyStatus) {
-          return;
-        }
-
-        setStatus((currentStatus) =>
-          isSameWebRemoteControlStatus(currentStatus, nextStatus)
-            ? currentStatus
-            : nextStatus,
-        );
-      } catch {
-        // Bugfix: Web 远程控制的状态变化发生在 main / relay 侧，
-        // 如果弹层只在打开时同步一次，状态会长期停在“等待连接”。
-        // 这里用轻量轮询补齐状态刷新；单次失败时静默忽略，避免打断用户操作。
-      }
-    };
-
-    const intervalId = window.setInterval(() => {
-      void pollWebRemoteControlStatus();
-    }, 1000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [open, platform, remoteSessionId, workspaceIdentity, workspacePath]);
+    setStatus((currentStatus) =>
+      isSameWebRemoteControlStatus(currentStatus, nextStatus)
+        ? currentStatus
+        : nextStatus,
+    );
+  }, [
+    liveRemoteControlStatus,
+    loading,
+    open,
+    remoteSessionId,
+    workspaceIdentity,
+    workspacePath,
+  ]);
 
   useEffect(() => {
     if (!status.qrUrl) {

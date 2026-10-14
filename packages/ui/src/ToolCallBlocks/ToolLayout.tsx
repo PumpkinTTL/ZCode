@@ -11,11 +11,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip.js";
 import { ToolSummaryRow, type ToolSummaryAction } from "@/ToolCallBlocks/ToolSummaryRow.js";
+import { createBoundedOpenStateStore } from "@/lib/boundedOpenState.js";
 import { uiMemoryDiagnosticsRegistry } from "@/lib/memoryDiagnostics.js";
 
-const toolLayoutOpenState = new Map<string, boolean>();
-// 内存诊断计数器：该表按 toolId 只增不减，先落日志。
-uiMemoryDiagnosticsRegistry.register("toolLayout", () => ({ openState: toolLayoutOpenState.size }));
+const TOOL_LAYOUT_OPEN_STATE_CAP = 500;
+/** 展开态按 toolId 记忆（持久 key 优先）；FIFO 上限：极老卡片的展开态会被遗忘，防长会话慢性累积。 */
+const toolLayoutOpenState = createBoundedOpenStateStore(TOOL_LAYOUT_OPEN_STATE_CAP);
+// 内存诊断计数器：该表按 toolId 记忆展开态，已封顶，计数器用于观测水位。
+uiMemoryDiagnosticsRegistry.register("toolLayout", () => ({
+  openState: toolLayoutOpenState.size(),
+}));
 const TOOL_CONTENT_COLLAPSE_UNMOUNT_DELAY_MS = 300;
 const TOOL_CONTENT_SHELL_CLASSNAME = "text-popover-foreground outline-none";
 const TOOL_CONTENT_SPACING_CLASSNAME = "pt-2";
