@@ -70,7 +70,7 @@ describe("settingService", () => {
       process.env.ZCODE_DESKTOP_HOME_DIR = taskHome;
       const { createSettingService } = await import("#src/setting/settingService.js");
       const service = createSettingService();
-      const file = join(taskHome, ".zcode/v2/setting.json");
+      const file = join(taskHome, ".polaris/v2/setting.json");
       const retained = {
         recentProjects: ["/example/project"],
         memoryEnabled: true,
@@ -122,10 +122,10 @@ describe("settingService", () => {
     await second.update({ locale: "en-US" });
     await first.update({ memoryEnabled: true });
     expect(
-      JSON.parse(readFileSync(join(firstHome, ".zcode/v2/setting.json"), "utf8")),
+      JSON.parse(readFileSync(join(firstHome, ".polaris/v2/setting.json"), "utf8")),
     ).toMatchObject({ locale: "zh-CN", memoryEnabled: true });
     expect(
-      JSON.parse(readFileSync(join(secondHome, ".zcode/v2/setting.json"), "utf8")),
+      JSON.parse(readFileSync(join(secondHome, ".polaris/v2/setting.json"), "utf8")),
     ).toMatchObject({ locale: "en-US", memoryEnabled: false });
   });
 
@@ -155,7 +155,7 @@ describe("settingService", () => {
     }));
     await owner.service.get();
     expect(
-      JSON.parse(readFileSync(join(home, ".zcode/v2/setting.json"), "utf8")).recentProjects,
+      JSON.parse(readFileSync(join(home, ".polaris/v2/setting.json"), "utf8")).recentProjects,
     ).toEqual(paths);
     paths = [];
     await owner.service.update({
@@ -1041,7 +1041,7 @@ describe("settingService", () => {
 
   it("旧自动归档配置在首轮扫描前关闭，重新开启后跨服务重建保留", async () => {
     const home = makeTempHome();
-    const file = join(home, ".zcode/v2/setting.json");
+    const file = join(home, ".polaris/v2/setting.json");
     await mkdir(join(home, ".zcode/v2"), { recursive: true });
     await writeFile(
       file,
@@ -1095,7 +1095,7 @@ describe("settingService", () => {
 
   it("迟到的旧配置读取不会覆盖另一个设置服务刚提交的重新开启", async () => {
     const home = makeTempHome();
-    const file = join(home, ".zcode/v2/setting.json");
+    const file = join(home, ".polaris/v2/setting.json");
     await mkdir(join(home, ".zcode/v2"), { recursive: true });
     await writeFile(file, JSON.stringify({ taskAutoArchiveEnabled: true }));
     const captured = Promise.withResolvers<void>();
@@ -1139,7 +1139,7 @@ describe("settingService", () => {
     for (const home of [firstHome, secondHome]) {
       await mkdir(join(home, ".zcode/v2"), { recursive: true });
       await writeFile(
-        join(home, ".zcode/v2/setting.json"),
+        join(home, ".polaris/v2/setting.json"),
         JSON.stringify({ taskAutoArchiveEnabled: true }),
       );
     }
@@ -1153,7 +1153,7 @@ describe("settingService", () => {
 
   it("自动归档迁移写入失败时扫描不执行归档", async () => {
     const home = makeTempHome();
-    const file = join(home, ".zcode/v2/setting.json");
+    const file = join(home, ".polaris/v2/setting.json");
     await mkdir(join(home, ".zcode/v2"), { recursive: true });
     await writeFile(
       file,

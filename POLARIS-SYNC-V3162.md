@@ -48,3 +48,24 @@
 ## 六、回滚
 
 `git reset --hard pre-v3162-merge`（sync 分支）；enterprise 全程不动，天然可弃分支。
+
+---
+
+## 七、测试收口状态（合并检查点 74460e13 后）
+
+typecheck ✅ / build:bootstrap ✅ / 业务与品牌三道扫 ✅ / 单测 152 failed（420→152，收口中）。
+
+### 已修簇（见后续提交）
+- autoUpdater 79：child_process mock 保留原实现只覆写 spawn
+- OAuth 401 识别 65：上游前缀匹配/体线索语义改为企业窄匹配 + 体线索仅 200 生效（红线：自有网关 401 不是 OAuth 登出）
+- jsdom localStorage ~140：Node 25 残缺 webstorage 全局 + vitest `k in global` 短路 → vitest.setup.ts 探测补位内存 Storage
+- composer 两段式 21：上游合并进同一异步收口，测试改钉新序列
+- server-cli product 10：--version 与 manifest 统一 polaris-server
+- 上游-only OAuth 业务测试 5 文件：删除（测已砍机器）
+
+### 待收口（以全量日志为准）
+- settingService ~8：`.zcode→.polaris` 路径已改；剩余为上游 v3 迁移 clamp（migrateRemoteBoundaryIntroAcknowledgement，上游自有回滚兼容，勿删）与合并后源码的逐用例对账；ensureDefaultProject 已被上游删除，对应用例应删
+- zcode-server-cli 守护更新流 ~7：update-progress 控制命令未达 control server（查 merged update 门控）；daemonRegistration 2
+- web oauthStateCodec 3：合并采纳了上游测试版，断言含 zcode.z.ai 需 Polaris 化 + legacy 路由语义对账
+- modelConfigSelect 5 / v4SessionPaneErrorBanner 5 / providerBuiltinRefreshFailure 5 / providerProvisioningRealStores 4 / remoteWorkspacePreparation 6 / hostRemoteStartupIntegration 4 / settingService 外 services 零星：待逐簇分诊
+- UI 零星（workflowSubagentModelLabel/useGlobalTaskListRemoteSessionsIndex/projectMentionProviders/desktopLogoStyle/commandCenterSelection/useOnboardingTrigger 等 ~30）：多为 localStorage shim 后未重跑者，先重跑再分诊
