@@ -21,7 +21,7 @@ export function AddMarketplaceSourceDialog({
   open,
   onOpenChange,
   onAddMarketplace,
-  operationId,
+  activeOperations,
   error,
   presets = [],
   marketplaces = [],
@@ -29,7 +29,7 @@ export function AddMarketplaceSourceDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddMarketplace: (source: string) => Promise<boolean>;
-  operationId: string | null;
+  activeOperations: ReadonlyArray<{ id: string }>;
   error?: string | null;
   /** 可一键添加的公开市场源（已添加的会被过滤掉）。 */
   presets?: readonly PresetPluginMarketplace[];
@@ -43,7 +43,9 @@ export function AddMarketplaceSourceDialog({
   const [source, setSource] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const trimmedSource = source.trim();
-  const adding = operationId === `marketplace:add:${trimmedSource}`;
+  const adding = activeOperations.some(
+    (operation) => operation.id === `marketplace:add:${trimmedSource}`,
+  );
   // 本地输入法 composition 态：部分平台 isComposing 会提前翻 false，靠 ref 兜底，避免候选确认误触发添加。
   const compositionActiveRef = useRef(false);
   // 防重复提交：Enter 与点击共用，避免 store 回写前的窗口里重复发起同一来源的添加。
@@ -148,7 +150,9 @@ export function AddMarketplaceSourceDialog({
             </div>
             <div className="max-h-[min(220px,32vh)] min-w-0 space-y-1 overflow-x-hidden overflow-y-auto">
               {availablePresets.map((preset) => {
-                const adding = operationId === `marketplace:add:${preset.source}`;
+                const adding = activeOperations.some(
+                  (operation) => operation.id === `marketplace:add:${preset.source}`,
+                );
                 return (
                   <div
                     key={preset.id}

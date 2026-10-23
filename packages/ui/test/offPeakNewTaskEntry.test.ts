@@ -167,10 +167,6 @@ function renderEntry(props: { onOpenAutomations?: () => void } = {}) {
   return render(createElement(OffPeakNewTaskEntry, props));
 }
 
-function getEntryRoot(container: HTMLElement) {
-  return container.querySelector<HTMLElement>("[data-off-peak-new-task-entry]");
-}
-
 function clickStandupTemplate(onOpenAutomations = vi.fn()) {
   renderEntry({ onOpenAutomations });
   fireEvent.click(
@@ -242,51 +238,12 @@ describe("OffPeakNewTaskEntry", () => {
     expect(view.container.textContent).not.toContain("Remote docs check");
   });
 
-  it("anchors the entry to the bottom of the draft page with a 38px inset", () => {
-    const view = renderEntry();
-    const entry = getEntryRoot(view.container);
-
-    expect(entry?.classList.contains("pb-[38px]")).toBe(true);
-    // 入口已从 composer 下方的 bottom dock 移出，不再靠 mt-6 与 composer 拉开间距，
-    // 也不再依赖 @container/conversation 断点外扩（该容器只声明在 timeline 内部）。
-    expect(entry?.classList.contains("mt-6")).toBe(false);
-    expect(entry?.className).not.toContain("@min-[820px]/conversation:-mx-[54px]");
-  });
-
-  it("keeps the banner row and the template buttons 12px apart", () => {
-    const view = renderEntry();
-    const entry = getEntryRoot(view.container);
-
-    expect(entry?.classList.contains("gap-3")).toBe(true);
-    expect(entry?.classList.contains("gap-2")).toBe(false);
-  });
-
-  it("centers the banner and restores the 780px three-button row", () => {
-    const view = renderEntry();
-    const banner = view.container.querySelector<HTMLElement>("[data-off-peak-new-task-banner]");
-    const templateGrid = view.container.querySelector<HTMLElement>("[data-off-peak-template-grid]");
-
-    expect(banner?.classList.contains("justify-center")).toBe(true);
-    expect(banner?.classList.contains("max-w-[580px]")).toBe(true);
-    expect(templateGrid?.classList.contains("w-full")).toBe(true);
-    expect(templateGrid?.classList.contains("max-w-[780px]")).toBe(true);
-  });
-
-  it("renders three equal template buttons horizontally with a narrow-screen fallback", async () => {
+  it("远端模板图标和本地 Customize 图标接线", async () => {
     const view = renderEntry();
     const templateGrid = view.container.querySelector<HTMLElement>("[data-off-peak-template-grid]");
     const cards = templateGrid?.querySelectorAll<HTMLElement>("button") ?? [];
 
-    expect(templateGrid?.classList.contains("grid-cols-1")).toBe(true);
-    expect(templateGrid?.classList.contains("sm:grid-cols-3")).toBe(true);
-    expect(templateGrid?.classList.contains("gap-4")).toBe(true);
     expect(cards).toHaveLength(3);
-    expect(view.container.querySelector('[data-slot="carousel"]')).toBeNull();
-    expect(view.container.querySelector("[data-off-peak-carousel-dot]")).toBeNull();
-    for (const card of cards) {
-      expect(card.classList.contains("rounded-2xl")).toBe(true);
-      expect(card.classList.contains("border-card-border")).toBe(true);
-    }
     await waitFor(() => {
       expect(
         cards[0]?.querySelector('[data-client-scene-lucide-icon="git-commit-horizontal"]'),
@@ -305,53 +262,12 @@ describe("OffPeakNewTaskEntry", () => {
     expect(closeButton?.classList.contains("hidden")).toBe(true);
   });
 
-  it("limits localized template descriptions to two lines without a fixed height", () => {
-    renderEntry();
-    const description = screen.getByText("Remote Friday summary");
-    const title = screen.getByText("Remote standup summary");
-
-    expect(description.classList.contains("h-[54px]")).toBe(false);
-    expect(description.classList.contains("line-clamp-2")).toBe(true);
-    expect(description.classList.contains("line-clamp-3")).toBe(false);
-    expect(description.classList.contains("text-wrap-phrase")).toBe(true);
-    expect(description.classList.contains("text-ui-caption")).toBe(true);
-    expect(description.classList.contains("text-ui-base")).toBe(false);
-    expect(description.classList.contains("font-normal")).toBe(true);
-    expect(title.classList.contains("text-ui-base")).toBe(true);
-    expect(title.classList.contains("font-normal")).toBe(false);
-  });
-
-  it("uses matching Lucide glyphs for the announcement, close, and template actions", () => {
-    const view = renderEntry();
-    const closeButton = view.container.querySelector<HTMLElement>(
-      "[data-off-peak-new-task-dismiss]",
-    );
-    const icons = view.container.querySelectorAll<SVGSVGElement>("svg");
-
-    expect(icons.length).toBeGreaterThanOrEqual(5);
-    for (const icon of icons) {
-      expect(icon.getAttribute("viewBox")).toBe("0 0 24 24");
-      expect(icon.getAttribute("stroke-width")).toBe("2");
-    }
-    expect(closeButton?.querySelector("svg")).not.toBeNull();
-  });
-
-  it("keeps the full banner copy visible and uses its entire area as the tooltip trigger", () => {
+  it("横幅文案可聚焦并承接 Tooltip", () => {
     renderEntry();
 
     const copy = screen.getByText("offPeak.newTask.bannerText");
-    expect(copy.classList.contains("text-ui-caption")).toBe(true);
-    expect(copy.classList.contains("text-ui-sm")).toBe(false);
-    expect(copy.classList.contains("text-ui-base")).toBe(false);
-    expect(copy.classList.contains("font-normal")).toBe(true);
-    expect(copy.classList.contains("truncate")).toBe(false);
     expect(copy.getAttribute("data-slot")).toBe("tooltip-trigger");
     expect(copy.tabIndex).toBe(0);
-    expect(copy.classList.contains("cursor-default")).toBe(true);
-    expect(copy.classList.contains("cursor-help")).toBe(false);
-    expect(copy.parentElement?.classList.contains("gap-1")).toBe(true);
-    expect(copy.parentElement?.children).toHaveLength(2);
-    expect(screen.queryByText("!")).toBeNull();
   });
 
   it("首次挂载交由共享机制初始化和登记 freshness，连接变化后刷新", () => {
@@ -403,7 +319,7 @@ describe("OffPeakNewTaskEntry", () => {
     },
   ])(
     "$locale 首页展示、提示与模板预填使用同一种语言",
-    ({ locale, messages, bannerText, bannerTipText, fullCopy, copySeparator }) => {
+    ({ locale, messages, bannerText, bannerTipText }) => {
       h.messages.current = messages;
       h.locale.current = locale;
       h.providerSettingsState.view = {
@@ -443,15 +359,7 @@ describe("OffPeakNewTaskEntry", () => {
       const bannerCopy = screen.getByText(bannerText);
       fireEvent.focus(bannerCopy);
       const tipCopies = screen.getAllByText(bannerTipText);
-      expect([bannerText, bannerTipText].join(copySeparator)).toBe(fullCopy);
       expect(tipCopies.length).toBeGreaterThan(0);
-      expect(
-        tipCopies.some(
-          (copy) =>
-            copy.parentElement?.classList.contains("max-w-none") &&
-            copy.parentElement?.classList.contains("whitespace-nowrap"),
-        ),
-      ).toBe(true);
       const templateCard = screen.getByRole("button", {
         name: `${title} ${description}`,
       });

@@ -40,6 +40,12 @@ export function buildRegistryModelSelectGroups(
     // 小巧的 tag 徽章（labelTag），不再展示 Nimbus 品牌名，也不占大字标题位。
     const isOfficial = provider.config.group === "nimbus";
     const officialLabel = labels.officialBadgeLabel?.trim();
+
+    // 合并菜单仍需区分同名供应商的接入方式；接入标识只保留 API Key 一态，
+    // 直接来自 access 配置，不从名称推断，也不暴露凭据。
+    const labelBadge =
+      provider.config.access?.type === "api-key" ? (labels.apiKeyBadgeLabel ?? "API") : undefined;
+
     return [
       {
         key: `registry-provider:${provider.providerId}`,
@@ -51,6 +57,8 @@ export function buildRegistryModelSelectGroups(
         ...(isOfficial && labels.officialHeaderAction
           ? { headerAction: labels.officialHeaderAction }
           : {}),
+        ...(provider.config.logo ? { logo: provider.config.logo } : {}),
+        ...(labelBadge ? { labelBadge } : {}),
         items: provider.models.map(({ modelId, config }) => ({
           key: `registry-provider:${provider.providerId}:${modelId}`,
           value: encodeCustomModelValue(provider.providerId, modelId),

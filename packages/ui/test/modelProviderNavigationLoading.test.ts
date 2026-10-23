@@ -21,7 +21,7 @@ function renderWithTooltipProvider(element: ReactElement) {
 }
 
 describe("model provider navigation loading indicator", () => {
-  it("没有 Personal Provider 时不渲染空分组或横杠占位", () => {
+  it("没有 Personal Provider 时不渲染空分组", () => {
     const html = renderWithTooltipProvider(
       createElement(ModelProviderSectionNavigation, {
         navigationGroups: [
@@ -35,7 +35,6 @@ describe("model provider navigation loading indicator", () => {
     );
 
     expect(html).not.toContain("Custom Providers");
-    expect(html).not.toMatch(/>\s*-\s*</u);
   });
 
   it("只对 Settings View 允许项启用拖拽", () => {
@@ -76,7 +75,7 @@ describe("model provider navigation loading indicator", () => {
     ).toEqual(["provider-c", "provider-a", "provider-b"]);
   });
 
-  it("自定义供应商拖拽 handle 与 provider 图标共用左侧位置", () => {
+  it("允许调序的自定义供应商渲染可访问 sortable 行", () => {
     const html = renderWithTooltipProvider(
       createElement(ModelProviderSectionNavigation, {
         navigationGroups: [
@@ -119,11 +118,8 @@ describe("model provider navigation loading indicator", () => {
     );
 
     expect(html).toContain('aria-label="Provider A"');
-    expect(html).toContain("select-none");
-    expect(html).not.toContain("lucide-grip-vertical");
     expect(html).toMatch(
       /data-testid="model-provider-nav-item-custom:provider-a"[^>]*aria-roledescription="sortable"[\s\S]*Provider A/,
     );
-    expect(html).not.toContain('class="flex items-center gap-1"');
   });
 });

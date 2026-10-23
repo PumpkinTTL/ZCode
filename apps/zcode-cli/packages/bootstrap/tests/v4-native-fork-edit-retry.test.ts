@@ -3,7 +3,7 @@
 // - rowId→messageId 翻译是原生决策：翻译不到 reject（绝不静默兜底 latestCheckpoint）；
 // - editUserQuery = core branch cut + 原生 prompt turn 重发新文本；
 // - retryTurn = 原文在 rewind **之前**解析（截断后 transcript 已无该消息）+ 截断 + 重发；
-//   原文解析不到只截断不重发；
+//   原文解析不到直接拒绝，不截断；
 // - latest real user query running 时先 stop active turn，再 rewind + rerun；
 // - 历史 user query 直接拒绝，且不打断当前 active turn；
 // - retry 只允许全时间线最后一条 assistant 回复，历史回复直接拒绝；
@@ -481,30 +481,6 @@ describe("v4 原生 editUserQuery", () => {
     expect(info).not.toHaveBeenCalledWith("v4 editUserQuery completed", expect.anything());
   });
 
-  it("无 assistant anchor 时回查 user messageId 作为 rewind 锚点", async () => {
-    const app = makeApp();
-    const record = makeRecord({ app });
-    const host = makeHost(record, {
-      getTurnRewindAnchor: (_sessionId, rowId) => (rowId === 7 ? "msg-user-7" : null),
-    });
-
-    await new V4CommandExecutor(host).execute(
-      envelope("editUserQuery", {
-        target: { rowId: 7, entityId: "entity-7" },
-        newText: "改过的问题",
-      }),
-    );
-    await settle();
-
-    expect(app.runtime.rewindConversationToMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ targetMessageId: "msg-user-7" }),
-    );
-    expect(app.sendInput).toHaveBeenCalledWith(
-      { text: "改过的问题" },
-      expect.objectContaining({ inputId: "cmd-1" }),
-    );
-  });
-
   it("running latest query：abort → idle → rewind → rerun", async () => {
     const calls: string[] = [];
     const app = makeApp({
@@ -669,7 +645,7 @@ describe("v4 原生 retryTurn", () => {
     await settle();
 
     expect(app.runtime.rewindConversationToMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ targetMessageId: "msg-assistant" }),
+      expect.objectContaining({ targetMessageId: "msg-user" }),
     );
     expect(app.sendInput).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -802,7 +778,76 @@ describe("v4 原生 retryTurn", () => {
     expect(app.sendInput).not.toHaveBeenCalled();
   });
 
-  it("正路径：原文在 rewind 前解析 → 截断 → 重发原 prompt", async () => {
+  it("重试模型不可用时在 branch cut 前拒绝", async () => {
+    const app = makeApp({ listModels: () => [] });
+    const record = makeRecord({ app });
+    const host = makeHost(record, {
+      getMessageIdForRow: () => "msg-assistant",
+      resolveRowActionTarget: () => ({
+        ok: true,
+        action: "retryTurn",
+        row: {} as never,
+        messageId: "msg-assistant",
+        editTarget: {
+          entityId: "user-entity-7",
+          productTurnId: "turn-7",
+          transcriptMessageId: "msg-user",
+          coveredByStableCompact: false,
+          intent: {
+            kind: "sendText",
+            text: "原始问题",
+            modelSelection: { providerId: "missing-provider", modelId: "missing-model" },
+          },
+        },
+      }),
+    });
+
+    await expect(
+      new V4CommandExecutor(host).execute(
+        envelope("retryTurn", { target: { rowId: 7, entityId: "entity-7" } }),
+      ),
+    ).rejects.toMatchObject({ reasonCode: "modelUnavailable" });
+
+    expect(app.runtime.rewindConversationToMessage).not.toHaveBeenCalled();
+    expect(app.sendInput).not.toHaveBeenCalled();
+  });
+
+  it("重试预检通过后 Registry 变化仍提交 replacement input", async () => {
+    const selection = { providerId: "user-provider", modelId: "user-model" };
+    const listModels = vi
+      .fn()
+      .mockReturnValueOnce([{ ref: selection }])
+      .mockReturnValue([]);
+    const app = makeApp({ listModels });
+    const record = makeRecord({ app });
+    const host = makeHost(record, {
+      resolveRowActionTarget: () => ({
+        ok: true,
+        action: "retryTurn",
+        row: {} as never,
+        messageId: "msg-assistant",
+        editTarget: {
+          entityId: "user-entity-7",
+          productTurnId: "turn-7",
+          transcriptMessageId: "msg-user",
+          coveredByStableCompact: false,
+          intent: { kind: "sendText", text: "必须保留的重试内容", modelSelection: selection },
+        },
+      }),
+    });
+
+    await expect(
+      new V4CommandExecutor(host).execute(
+        envelope("retryTurn", { target: { rowId: 7, entityId: "entity-7" } }),
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(listModels).toHaveBeenCalledTimes(1);
+    expect(app.runtime.rewindConversationToMessage).toHaveBeenCalledTimes(1);
+    expect(app.sendInput).toHaveBeenCalledTimes(1);
+  });
+
+  it("canonical resolver 给出的原文在 rewind 后重发", async () => {
     const app = makeApp();
     const record = makeRecord({ app });
     const resolveOrder: string[] = [];
@@ -826,7 +871,7 @@ describe("v4 原生 retryTurn", () => {
     // canonical intent 已由 projection resolver 在截断前给出，不再回读 raw transcript 文本。
     expect(resolveOrder).toEqual(["rewind"]);
     expect(app.runtime.rewindConversationToMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ targetMessageId: "msg-b" }),
+      expect.objectContaining({ targetMessageId: "user-msg-b" }),
     );
     expect(app.sendInput).toHaveBeenCalledWith(
       { text: "原始问题" },
@@ -854,16 +899,6 @@ describe("v4 原生 retryTurn", () => {
     expect(app.sendInput).not.toHaveBeenCalled();
   });
 
-  it("翻译不到 messageId：reject", async () => {
-    const record = makeRecord();
-    const host = makeHost(record, { getMessageIdForRow: () => null });
-    await expect(
-      new V4CommandExecutor(host).execute(
-        envelope("retryTurn", { target: { rowId: 5, entityId: "entity-5" } }),
-      ),
-    ).rejects.toThrow(V4RetryTargetNotLatestError);
-  });
-
   it("handler 不按 activeAbortController 二次拒绝，而是进入 resolver 授权后的执行路径", async () => {
     const record = makeRecord({ activeAbortController: new AbortController() });
     const host = makeHost(record, { getMessageIdForRow: () => "msg-b" });
@@ -873,7 +908,7 @@ describe("v4 原生 retryTurn", () => {
       ),
     ).resolves.toBeUndefined();
     expect(record.app.runtime.rewindConversationToMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ targetMessageId: "msg-b" }),
+      expect.objectContaining({ targetMessageId: "user-msg-b" }),
     );
     expect(record.app.sendInput).toHaveBeenCalled();
   });
@@ -1053,42 +1088,6 @@ describe("v4 Task3 canonical edit disposition", () => {
     });
     expect(parent.app.sendInput).toHaveBeenCalled();
     expect(childApp.sendInput).not.toHaveBeenCalled();
-    expect(recordForkStartFailure).not.toHaveBeenCalled();
-  });
-
-  it("compact edit remains same-session when legacy child registration is unavailable", async () => {
-    const parent = makeRecord({ app: makeApp() });
-    const recordForkStartFailure = vi.fn().mockRejectedValue(new Error("failure store offline"));
-    const host = makeHost(parent, {
-      getRecord: (sessionId) => (sessionId === "s1" ? parent : undefined),
-      forkConversationBeforeInput: vi.fn().mockResolvedValue({ forkedSessionId: "s-child" }),
-      recordForkStartFailure,
-      resolveRowActionTarget: () => ({
-        ok: true,
-        action: "editUserQuery",
-        row: {} as never,
-        editTarget: {
-          entityId: "msg-user",
-          productTurnId: "turn-product",
-          transcriptMessageId: "msg-user",
-          coveredByStableCompact: true,
-          intent: { kind: "sendText", text: "old", sourceCommandId: "cmd-old" },
-        },
-      }),
-    });
-
-    await expect(
-      new V4CommandExecutor(host).execute(
-        envelope("editUserQuery", {
-          target: { rowId: 7, entityId: "msg-user" },
-          newText: "edited",
-        }),
-      ),
-    ).resolves.toEqual({
-      type: "editUserQuery",
-      disposition: "rewind",
-      sessionId: "s1",
-    });
     expect(recordForkStartFailure).not.toHaveBeenCalled();
   });
 });

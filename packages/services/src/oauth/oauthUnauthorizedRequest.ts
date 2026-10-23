@@ -7,9 +7,6 @@ import {
 } from "@zcode/shared";
 import type { ICredentialService } from "#src/credential/credential.js";
 
-const BIGMODEL_USERINFO_PATH = "/api/biz/customer/getCustomerInfo";
-const ZAI_USERINFO_PATH = "/api/oauth/userinfo";
-
 function readEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
   const value = env[key];
   if (!value) {
@@ -24,12 +21,13 @@ function readEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
 // 就地内联为常量解析，401 归因逻辑本身是通用流程，必须保留。
 function resolveBigModelUserinfoUrl(env: NodeJS.ProcessEnv): string {
   return (
-    readEnv(env, "BIGMODEL_OAUTH_USERINFO_URL") ?? buildBigModelApiUrl(env, BIGMODEL_USERINFO_PATH)
+    readEnv(env, "BIGMODEL_OAUTH_USERINFO_URL") ??
+    buildBigModelApiUrl(env, "/api/biz/customer/getCustomerInfo")
   );
 }
 
 function resolveZaiUserinfoUrl(env: NodeJS.ProcessEnv): string {
-  return readEnv(env, "ZAI_OAUTH_USERINFO_URL") ?? buildRuntimeZaiOAuthUrl(env, ZAI_USERINFO_PATH);
+  return readEnv(env, "ZAI_OAUTH_USERINFO_URL") ?? buildRuntimeZaiOAuthUrl(env, "/api/oauth/userinfo");
 }
 
 function tryResolveHttpUrl(resolve: () => string | URL): URL | null {
@@ -41,6 +39,9 @@ function tryResolveHttpUrl(resolve: () => string | URL): URL | null {
   }
 }
 
+// Polaris：保持 enterprise 的精确路径白名单（三条身份接口 + userinfo）。
+// 上游 v3.16.2 改为 /api/biz/、/api/pay/ 前缀匹配，但本仓官方端点已收敛到自有网关
+// （nimbus），前缀匹配会把自有网关上 API key 流量的 401 误判成 OAuth 登录凭据失效。
 const OAUTH_BUSINESS_PATHS = [
   "/api/biz/customer/getCustomerInfo",
   "/api/biz/subscription/enterprise/v2/pricing",
@@ -98,6 +99,37 @@ export async function isOAuthBusinessRequest(options: {
       requestUrl.pathname === expected.pathname
     );
   });
+}
+
+/** Host 私有的只读身份核验材料，不进入 RPC、配置或日志。 */
+export async function resolveOAuthBusinessCredentialValidationRequest(options: {
+  input: string | URL;
+  headers: Headers;
+  credentialService: Pick<ICredentialService, "load">;
+  env?: NodeJS.ProcessEnv;
+}): Promise<{ url: string; authorization: string; emptyBodyMeansInvalid: boolean } | null> {
+  const provider = await options.credentialService.load("oauth:active_provider");
+  if (provider !== BIGMODEL_PROVIDER_ID && provider !== ZAI_PROVIDER_ID) return null;
+  if (!(await isCurrentBusinessOAuthCredentialRequest(options))) return null;
+  if ((await options.credentialService.load("oauth:active_provider")) !== provider) return null;
+  const env = options.env ?? process.env;
+  const url = tryResolveHttpUrl(() =>
+    provider === BIGMODEL_PROVIDER_ID
+      ? buildBigModelApiUrl(env, "/api/biz/customer/getCustomerInfo")
+      : buildRuntimeZaiBusinessUrl(env, "/api/biz/customer/getCustomerInfo"),
+  );
+  if (!url) return null;
+  const token = options.headers
+    .get("authorization")!
+    .trim()
+    .replace(/^Bearer\s+/i, "");
+  return {
+    url: url.toString(),
+    // 两平台 customerInfo 都要求裸业务 token；加 Bearer 会把格式拒绝误判成登录失效。
+    authorization: token,
+    // BigModel 注销后 customerInfo 返回零字节200；不扩散到 ZAI 或任意空业务响应。
+    emptyBodyMeansInvalid: provider === BIGMODEL_PROVIDER_ID,
+  };
 }
 
 export async function isCurrentOAuthBusinessCredentialRequest(options: {

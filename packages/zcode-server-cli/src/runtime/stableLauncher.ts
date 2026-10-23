@@ -16,9 +16,13 @@ function quoteShell(value: string): string {
 function stablePosixLauncher(bootstrap?: StableLauncherBootstrap): string {
   const fallback = bootstrap
     ? `exec ${quoteShell(bootstrap.command)} ${quoteShell(bootstrap.entry)} "$@"`
-    : 'echo "No current Polaris Server release" >&2; exit 1';
+    : "echo \"No current Polaris Server release\" >&2; exit 1";
+  // Bug 原因：远端以 "$HOME/.zcode/server/bin/zcode" 调用本脚本，NAS 等环境的 $HOME 经过符号链接
+  // （/var/services/homes -> /volume1/homes）。update 写 current.json 时 releaseDir 基于 realpath 后的
+  // canonical root，这里原来用逻辑 cd/pwd 计算 ROOT，前缀不同使合法 release 被判越界。改用 cd -P/pwd -P，
+  // 与写入方比较同一种物理路径；越界 releaseDir 仍然 fail-closed。
   return `#!/bin/sh
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT=$(CDPATH= cd -P -- "$(dirname -- "$0")/.." && pwd -P)
 RELEASE_DIR=$(sed -n 's/.*"releaseDir"[[:space:]]*:[[:space:]]*"\\([^"\\]*\\)".*/\\1/p' "$ROOT/current.json")
 if [ -n "$RELEASE_DIR" ]; then
   case "$RELEASE_DIR" in
@@ -62,11 +66,6 @@ export async function writeStableLauncher(
 ): Promise<string> {
   await mkdir(layout.stableBinDir, { recursive: true, mode: 0o700 });
   const launcherPath = join(layout.stableBinDir, platform === "win32" ? "polaris.cmd" : "polaris");
-  // 旧身份的 launcher 留在 bin/ 里没有消费者，但会被“按 server-root 扫描”的旧注册
-  // 重新指向；写入新 launcher 后清掉它，避免升级后残留一个可执行的旧入口。
-  await rm(join(layout.stableBinDir, platform === "win32" ? "zcode.cmd" : "zcode"), {
-    force: true,
-  }).catch(() => undefined);
   const temporaryPath = `${launcherPath}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(
     temporaryPath,
@@ -74,5 +73,11 @@ export async function writeStableLauncher(
     platform === "win32" ? "utf8" : { encoding: "utf8", mode: 0o755 },
   );
   await rename(temporaryPath, launcherPath);
+  // 旧身份的 launcher 留在 bin/ 里没有消费者，但会被“按 server-root 扫描”的旧注册
+  // 重新指向；写入新 launcher 后清掉它，避免升级后残留一个可执行的旧入口。
+  const legacyLauncher = join(layout.stableBinDir, platform === "win32" ? "zcode.cmd" : "zcode");
+  if (legacyLauncher !== launcherPath) {
+    await rm(legacyLauncher, { force: true });
+  }
   return launcherPath;
 }

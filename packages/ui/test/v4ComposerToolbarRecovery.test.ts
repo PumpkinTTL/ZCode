@@ -10,6 +10,28 @@ import type { ModelConfigSelect } from "@/ModelConfigSelect.js";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+// 合并后 V4ComposerToolbar 挂上了 Nimbus 额度/账号 hooks（自有功能），它们内部经由
+// useServices → usePlatform；本用例直接渲染控件，这里以桩满足 hook 契约。
+vi.mock("@/hooks/useServices.js", () => ({
+  useServices: () => ({
+    providerQuotaService: {
+      getStatus: async () => ({ loggedIn: false }),
+    },
+    providerSettingsService: {},
+    modelSelectionService: {},
+  }),
+}));
+vi.mock("@/business/quota/nimbusAccountState.js", () => ({
+  useNimbusAccountState: () => ({ loggedIn: false, username: "" }),
+}));
+vi.mock("@/business/quota/nimbusModelCatalogRefresh.js", () => ({
+  useNimbusModelCatalogRefresh: () => undefined,
+}));
+vi.mock("@/hooks/usePlatform.js", () => ({
+  usePlatform: () => ({}),
+  useOptionalPlatform: () => null,
+}));
+
 type ModelConfigSelectProps = ComponentProps<typeof ModelConfigSelect>;
 type V4ComposerModelControlsProps = ComponentProps<typeof V4ComposerModelControls>;
 
@@ -28,17 +50,8 @@ const captured = vi.hoisted(() => ({
 }));
 
 const mocks = vi.hoisted(() => ({
-  codingPlanEntitlements: {} as Record<string, unknown>,
-  codingPlanEntitlementsRefresh: vi.fn(async () => undefined),
-  // 修复原因：context hover 的 start plan onAccess 按 enabledStartPlanProviderIds 挂载；
-  // 默认空数组模拟 Start Plan 尚无独立 Account Access，需要入口的用例显式提供 provider id。
-  codingPlanEntitlementsEnabledStartPlanIds: [] as string[],
   configOptions: [] as Array<Record<string, unknown>>,
   configOptionsError: true,
-  enterpriseProducts: { snapshot: { productList: [] }, loading: false, error: null } as Record<
-    string,
-    unknown
-  >,
   modelSelectionView: {
     revision: 1,
     providers: [
@@ -83,12 +96,6 @@ const mocks = vi.hoisted(() => ({
   } as ProviderSettingsView,
   recoverCustomModelSelection: vi.fn(async () => {}),
   selectModel: vi.fn(),
-  settings: {
-    providerFamilyConnectionSelections: {},
-    providerFamilyDomain: {},
-  } as Record<string, unknown>,
-  usageEntitlement: { snapshot: null, loading: false, error: null } as Record<string, unknown>,
-  usageEntitlementRefresh: vi.fn(async () => undefined),
 }));
 
 function completeDisabledModelConfig() {
@@ -126,6 +133,9 @@ vi.mock("@/chat-input-toolbar/display.js", async () => {
       captured.usageProps.push(props);
       return React.createElement("span", { "data-testid": "mock-usage" });
     },
+    // 合并后合并入口的档位标签走该 helper；本用例只断言模型名文案，给中性实现即可。
+    getConfigOptionEntryLabel: (_intl: unknown, _provider: unknown, option: unknown) =>
+      `option:${(option as { currentValue?: unknown })?.currentValue ?? "unknown"}`,
   };
 });
 
@@ -164,19 +174,6 @@ vi.mock("@/hooks/useProviderSettingsView.js", () => ({
   }),
 }));
 
-vi.mock("@/hooks/useSettingService.js", () => ({
-  useSettings: () => ({
-    settings: mocks.settings,
-  }),
-}));
-
-vi.mock("@/hooks/useUsageEntitlement.js", () => ({
-  useUsageEntitlement: () => ({
-    ...mocks.usageEntitlement,
-    refresh: mocks.usageEntitlementRefresh,
-  }),
-}));
-
 vi.mock("@/hooks/useZCodeConfig.js", () => ({
   useToolbarConfigOptions: () => ({
     configOptions: mocks.configOptions,
@@ -193,35 +190,6 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
     locale: "zh-CN",
   }),
 }));
-
-vi.mock("@/settings/CodingPlanUpgradeDialogProvider.js", () => ({
-  useCodingPlanUpgradeDialog: () => ({ openCodingPlanUpgrade: vi.fn() }),
-}));
-
-vi.mock("@/settings/model-provider-section/useCodingPlanEntitlements.js", () => ({
-  useCodingPlanEntitlements: () => ({
-    entitlements: mocks.codingPlanEntitlements,
-    enabledStartPlanProviderIds: mocks.codingPlanEntitlementsEnabledStartPlanIds,
-    refresh: mocks.codingPlanEntitlementsRefresh,
-  }),
-}));
-
-vi.mock("@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js", () => ({
-  useEnterpriseCodingPlanProducts: () => mocks.enterpriseProducts,
-}));
-
-vi.mock("@/lib/sidebarUsageCodingPlanProviderPreference.js", async () => {
-  const actual = await vi.importActual("@/lib/sidebarUsageCodingPlanProviderPreference.js");
-  return {
-    ...(actual as Record<string, unknown>),
-    writeSidebarUsageCodingPlanProviderPreference: vi.fn(),
-  };
-});
-
-vi.mock("@/lib/codingPlanUsageSources.js", async () => {
-  const actual = await vi.importActual("@/lib/codingPlanUsageSources.js");
-  return actual;
-});
 
 vi.mock("@/lib/settingsNavigation.js", () => ({
   setPendingSettingsSectionIntent: vi.fn(),
@@ -334,77 +302,6 @@ async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
 }
 
-function addAccountProviderAccess(
-  providerId: string,
-  access:
-    | {
-        accountType: "zai" | "bigmodel";
-        mode: "individual-coding-plan";
-      }
-    | {
-        accountType: "zai" | "bigmodel";
-        mode: "team-coding-plan";
-      },
-  label = providerId,
-) {
-  mocks.providerSettingsView = {
-    revision: mocks.providerSettingsView.revision + 1,
-    addableProviders: mocks.providerSettingsView.addableProviders,
-    providerOrder: mocks.providerSettingsView.providerOrder,
-    providers: [
-      ...mocks.providerSettingsView.providers.filter(
-        (provider) => provider.providerId !== providerId,
-      ),
-      {
-        providerId,
-        enabled: true,
-        executable: true,
-        effectiveConfig: {
-          access: {
-            type: "zhipu-account",
-            entitled: true,
-            ...access,
-          },
-          api: {
-            type: "anthropic-messages",
-            baseUrl: "https://example.com",
-          },
-          label,
-          builtinModelIds: [],
-        },
-        issues: [],
-        models: [],
-      },
-    ],
-  };
-}
-
-function createActiveEntitlement(providerId: string, extra: Record<string, unknown> = {}) {
-  return {
-    generatedAt: 1,
-    authenticated: true,
-    provider: {
-      id: providerId,
-      name: providerId,
-    },
-    remaining: null,
-    subscription: null,
-    quota: {
-      level: "pro",
-      limits: [
-        {
-          type: "TOKENS_LIMIT",
-          unit: 3,
-          number: 5,
-          percentage: 35,
-          usageDetails: [],
-        },
-      ],
-    },
-    ...extra,
-  };
-}
-
 function renderToolbarMarkup(overrides: Partial<V4ComposerModelControlsProps> = {}): string {
   // 纯工具条测试显式提供已初始化的 Composer；生产初始化由 scope owner 负责。
   const seed = overrides.config ?? {
@@ -414,8 +311,7 @@ function renderToolbarMarkup(overrides: Partial<V4ComposerModelControlsProps> = 
     mode: "build",
   };
   return renderToStaticMarkup(
-    // HighspeedModelIndicator 走 ControlHintTooltip，缺少 TooltipProvider 会直接抛错，
-    // 所以工具条快照统一包一层 Provider。
+    // 部分子组件（Tooltip 系）缺少 Provider 会直接抛错，工具条快照统一包一层。
     createElement(
       TooltipProvider,
       null,
@@ -463,21 +359,12 @@ function renderToolbarMarkup(overrides: Partial<V4ComposerModelControlsProps> = 
   );
 }
 
-function latestUsageProps(): Record<string, unknown> {
-  return captured.usageProps[captured.usageProps.length - 1] ?? {};
-}
-
 afterEach(() => {
   captured.modelSelectProps = null;
   captured.thoughtControlProps = null;
   captured.usageProps = [];
-  mocks.codingPlanEntitlementsRefresh.mockClear();
-  mocks.usageEntitlementRefresh.mockClear();
-  mocks.codingPlanEntitlements = {};
-  mocks.codingPlanEntitlementsEnabledStartPlanIds = [];
   mocks.configOptions = [];
   mocks.configOptionsError = true;
-  mocks.enterpriseProducts = { snapshot: { productList: [] }, loading: false, error: null };
   mocks.modelSelectionView = {
     revision: 1,
     providers: [
@@ -502,15 +389,19 @@ afterEach(() => {
     providerOrder: [],
     providers: [],
   };
-  mocks.settings = {
-    providerFamilyConnectionSelections: {},
-    providerFamilyDomain: {},
-  };
-  mocks.usageEntitlement = { snapshot: null, loading: false, error: null };
   vi.clearAllMocks();
 });
 
 describe("V4ComposerModelControls recovery", () => {
+  it("同 Host 重读保留目录时入口不切成禁用态，首次加载仍禁用", () => {
+    renderToolbarMarkup({
+      modelSelectionState: { status: "loading", catalog: mocks.modelSelectionView },
+    });
+    expect(captured.modelSelectProps?.disabled).toBe(false);
+    renderToolbarMarkup({ modelSelectionState: { status: "loading" } });
+    expect(captured.modelSelectProps?.disabled).toBe(true);
+  });
+
   it("已有会话的 Composer 模型留空时仍能打开模型菜单重选", () => {
     renderToolbarMarkup({
       sessionId: "existing-session",
@@ -533,92 +424,12 @@ describe("V4ComposerModelControls recovery", () => {
     expect(html).not.toContain('data-testid="mock-model-select"');
   });
 
-  it("Start 权益目录更新不自动改输入框模型或显示旧领取引导", async () => {
-    const providerId = BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan;
-    mocks.settings = {
-      providerFamilyConnectionSelections: { bigmodel: { kind: "start-plan" } },
-      providerFamilyDomain: {},
-    };
-    mocks.modelSelectionView = {
-      revision: 2,
-      providers: [
-        {
-          providerId,
-          providerName: "BigModel Start Plan",
-          config: {
-            access: { type: "zhipu-account", accountType: "bigmodel", mode: "start-plan" },
-            api: {
-              type: "anthropic-messages",
-              baseUrl: "https://open.bigmodel.cn/api/anthropic",
-            },
-            models: ["GLM-5.3-Flash"],
-          },
-          models: [{ modelId: "GLM-5.3-Flash", config: completeDisabledModelConfig() }],
-        },
-      ],
-    };
-
-    const root: Root = createRoot(installMinimalDom());
-    const props = {
-      workspacePath: "/workspace",
-      modelSelectionView: mocks.modelSelectionView,
-      sessionId: null,
-      phase: null,
-      draftConfig: {
-        mode: "build",
-        modelSelection: {
-          providerId: "custom-openai",
-          modelId: "gpt-4o",
-          options: { reasoningLevel: "medium" },
-        },
-      },
-      config: {
-        provider: "custom-openai",
-        model: "gpt-4o",
-        thought: "medium",
-        thoughtLevels: ["medium"],
-        followupMode: "queue" as const,
-        mode: "build" as const,
-      },
-      usage: null,
-      disabled: false,
-      onSelectModel: mocks.selectModel,
-      onSelectThought: vi.fn(),
-      onSwitchMode: vi.fn(),
-    };
-
-    await act(async () => {
-      root.render(createElement(V4ComposerModelControls, props));
-      await flushMicrotasks();
-    });
-
-    expect(mocks.selectModel).not.toHaveBeenCalled();
-    expect(captured.modelSelectProps?.guideTooltipOpen).toBeUndefined();
-
-    await act(async () => {
-      root.render(createElement(V4ComposerModelControls, props));
-      await flushMicrotasks();
-    });
-    expect(mocks.selectModel).not.toHaveBeenCalled();
-
-    await act(async () => root.unmount());
-  });
-
-  it("模型触发器只显示模型名（完整身份留给 tooltip/aria），并保留响应式裁剪类", () => {
+  it("合并入口只显示模型名，供应商保留在提示与菜单", () => {
     renderToolbarMarkup();
 
-    // Polaris（7198f5b2）：触发器可见文案只有模型名，Provider 层已从菜单移除，
-    // 品牌身份改由模型前的图标承担；完整身份走 tooltip（modelTriggerDisplay.fullLabel）。
     expect(captured.modelSelectProps?.triggerLabel).toBe("gpt-4o");
-    // Polaris 保留了 composer 容器断点（`hidden @sm/composer:block`）与模型图标态隐藏；
-    // 上游 v3.15.1 曾把前缀拆成响应式节点，本轮合并按 fork 形态维持。
-    expect(captured.modelSelectProps?.indicatorClassName).toContain("hidden @sm/composer:block");
-    expect(captured.modelSelectProps?.indicatorClassName).toContain(
-      "group-data-[composer-model-icon=true]/toolbar:hidden",
-    );
-    expect(captured.modelSelectProps?.triggerClassName).toContain(
-      "group-data-[composer-model-icon=true]/toolbar:size-7",
-    );
+    expect(captured.modelSelectProps?.tooltipTitle).toBe("Custom OpenAI/gpt-4o");
+    expect(captured.modelSelectProps?.triggerLabelPrefix).toBeUndefined();
   });
 
   it("Registry 已发布时模型名来自 Registry 目录（可见文案仍只有模型名）", () => {
@@ -644,6 +455,7 @@ describe("V4ComposerModelControls recovery", () => {
     renderToolbarMarkup();
 
     expect(captured.modelSelectProps?.triggerLabel).toBe("gpt-4o");
+    expect(captured.modelSelectProps?.tooltipTitle).toBe("Registry OpenAI/gpt-4o");
   });
 
   it("prewarm 未就绪时不把旧 configOptions 模型当作 Selection 来源", async () => {
@@ -709,58 +521,6 @@ describe("V4ComposerModelControls recovery", () => {
     });
   });
 
-  it("V4 任务边界不再刷新 entitlement", async () => {
-    const root: Root = createRoot(installMinimalDom());
-    const renderPhase = (phase: V4ComposerModelControlsProps["phase"]) =>
-      createElement(V4ComposerModelControls, {
-        workspacePath: "/workspace",
-        modelSelectionView: mocks.modelSelectionView,
-        sessionId: "session-usage-refresh",
-        phase,
-        config: {
-          provider: BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
-          model: "glm-5",
-          thought: "medium",
-          thoughtLevels: ["medium"],
-          followupMode: "queue",
-          mode: "build",
-        },
-        usage: null,
-        disabled: false,
-        onSelectModel: mocks.selectModel,
-        onSelectThought: vi.fn(),
-        onSwitchMode: vi.fn(),
-      });
-
-    await act(async () => {
-      root.render(renderPhase("running"));
-      await flushMicrotasks();
-    });
-    expect(mocks.codingPlanEntitlementsRefresh).not.toHaveBeenCalled();
-
-    await act(async () => {
-      root.render(renderPhase("completedInterrupted"));
-      await flushMicrotasks();
-    });
-    expect(mocks.codingPlanEntitlementsRefresh).not.toHaveBeenCalled();
-
-    await act(async () => {
-      root.render(renderPhase("running"));
-      await flushMicrotasks();
-    });
-    expect(mocks.codingPlanEntitlementsRefresh).not.toHaveBeenCalled();
-
-    await act(async () => {
-      root.render(renderPhase("completedSuccess"));
-      await flushMicrotasks();
-    });
-    expect(mocks.codingPlanEntitlementsRefresh).not.toHaveBeenCalled();
-
-    await act(async () => {
-      root.unmount();
-    });
-  });
-
   it("忽略模型切换期间受控 Select 产生的空 thought 事件", () => {
     mocks.configOptions = [
       {
@@ -779,12 +539,12 @@ describe("V4ComposerModelControls recovery", () => {
     const onSelectThought = vi.fn();
 
     renderToolbarMarkup({ onSelectThought });
-    expect(captured.thoughtControlProps?.indicatorClassName).toBe("block");
-    expect(captured.thoughtControlProps?.composerCollapsePriority).toBe(3);
-    captured.thoughtControlProps?.onValueChange("");
+    expect(captured.thoughtControlProps).toBeNull();
+    expect(captured.modelSelectProps?.composerOptions).toBeDefined();
+    captured.modelSelectProps?.composerOptions?.onValueChange("");
     expect(onSelectThought).not.toHaveBeenCalled();
 
-    captured.thoughtControlProps?.onValueChange("high");
+    captured.modelSelectProps?.composerOptions?.onValueChange("high");
     expect(onSelectThought).toHaveBeenCalledWith("high", {
       provider: "custom-openai",
       model: "gpt-4o",
@@ -822,7 +582,7 @@ describe("V4ComposerModelControls recovery", () => {
       },
     });
 
-    expect(captured.thoughtControlProps?.option.options?.map(({ value }) => value)).toEqual([
+    expect(captured.modelSelectProps?.composerOptions?.levels.map(({ value }) => value)).toEqual([
       "low",
       "high",
       "max",
@@ -842,7 +602,7 @@ describe("V4ComposerModelControls recovery", () => {
           mode: "build",
         },
       });
-      expect(captured.thoughtControlProps?.option.currentValue).toBe("");
+      expect(captured.modelSelectProps?.composerOptions?.value).toBe("");
     },
   );
 
@@ -867,9 +627,9 @@ describe("V4ComposerModelControls recovery", () => {
       },
     });
 
-    expect(captured.thoughtControlProps?.option).toMatchObject({
-      currentValue: "disabled",
-      options: [{ value: "disabled" }],
+    expect(captured.modelSelectProps?.composerOptions).toMatchObject({
+      value: "disabled",
+      levels: [{ value: "disabled" }],
     });
   });
 

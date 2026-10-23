@@ -350,7 +350,7 @@ export function buildZCodeEndpointUrls(
     origin: normalizedOrigin,
     apiBaseUrl: `${normalizedOrigin}/api/v1`,
     remoteUrl: `${normalizedOrigin}/remote/${remoteVersion}`,
-    webRemoteCallbackUrl: `${normalizedOrigin}/web-remote/callback`,
+    webRemoteCallbackUrl: `${normalizedOrigin}/remote/v4`,
     webShareCallbackUrl: `${normalizedOrigin}/cn/share/callback`,
     relayWsUrl: `${wsOrigin}/ws`,
   };

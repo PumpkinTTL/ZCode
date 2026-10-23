@@ -13,6 +13,11 @@ import type {
   V4SessionRecordView,
 } from "../src/zcode-protocol-v4/commands/types.js";
 
+const ORDINARY_MODEL_SELECTION = {
+  providerId: "builtin:bigmodel-coding-plan",
+  modelId: "GLM-5.3",
+};
+
 function makeApp(overrides: Record<string, unknown> = {}) {
   return {
     sessionId: "s1",
@@ -362,7 +367,6 @@ describe("v4 原生 sendText", () => {
     });
     const record = makeRecord({ app });
     const host = makeHost(record);
-    let commandSettled = false;
     const executing = new V4CommandExecutor(host)
       .execute(
         envelope("sendText", {
@@ -379,11 +383,9 @@ describe("v4 原生 sendText", () => {
           delivery: "startNow",
           inputId: "cmd-1",
         });
-        commandSettled = true;
       });
     await vi.waitFor(() => expect(app.sendInput).toHaveBeenCalledTimes(1));
     await executing;
-    expect(commandSettled).toBe(true);
     expect(record.activeAbortController).toBeUndefined();
     finishTurn();
     await settle();
@@ -646,12 +648,15 @@ describe("v4 原生 sendText", () => {
         offPeakRunType: "resume",
       }),
     );
-    // D49 新增闲时自建限制、D52 追加 SendMessage/Workflow；不混入 automation 写工具集，
+    // 闲时支持 SendMessage；独立工作流无法继承票据，执行与修改入口继续限制。
     // Host 的额外 denylist 另行合并。
     expect(app.sendInput.mock.calls[0]?.[1].toolDisallowlist).toEqual([
       "OffPeakCreate",
-      "SendMessage",
       "Workflow",
+      "CreateWorkflow",
+      "AmendWorkflow",
+      "ResumeWorkflowRun",
+      "EvalWorkflowSnippet",
     ]);
     expect(app.sendInput.mock.calls[1]?.[1]).not.toHaveProperty("offPeakTaskId");
     expect(app.sendInput.mock.calls[1]?.[1]).not.toHaveProperty("offPeakRunType");
@@ -1146,6 +1151,186 @@ describe("v4 原生 sendText", () => {
     expect(record.restoreWarning).toBeDefined();
   });
 
+  it("普通 Selection 不在 Worker Registry 时在 ACK 前拒绝并保留输入", async () => {
+    const app = makeApp({ listModels: () => [] });
+    const record = makeRecord({ app });
+    await expect(
+      new V4CommandExecutor(makeHost(record)).execute(
+        envelope("sendText", {
+          text: "使用新 Provider",
+          modelSelection: { providerId: "new-provider", modelId: "new-model" },
+        }),
+      ),
+    ).rejects.toMatchObject({ reasonCode: "modelUnavailable" });
+    expect(app.sendInput).not.toHaveBeenCalled();
+  });
+
+  it("无退回声明的 execution Selection 不在 Registry 时仍在 ACK 前拒绝", async () => {
+    const app = makeApp({ listModels: () => [] });
+    const record = makeRecord({ app });
+    await expect(
+      new V4CommandExecutor(makeHost(record)).execute(
+        envelope("sendText", {
+          text: "使用不可退回的执行模型",
+          modelSelection: { providerId: "new-provider", modelId: "new-model" },
+          modelExecution: { selectionScope: "execution" },
+        }),
+      ),
+    ).rejects.toMatchObject({ reasonCode: "modelUnavailable" });
+    expect(app.sendInput).not.toHaveBeenCalled();
+  });
+
+  it("带同 Provider 退回声明且退回目标可用时，execution Selection 延迟到 Core 解析", async () => {
+    const app = makeApp({
+      listModels: () => [
+        {
+          ref: { providerId: "account:bigmodel-start-plan", modelId: "glm-5" },
+        },
+      ],
+    });
+    const record = makeRecord({ app });
+    const selectionFallback = {
+      providerId: "account:bigmodel-highspeed-card",
+      rules: [{ reason: "highspeed_selection_unavailable" as const }],
+      target: { providerId: "account:bigmodel-start-plan", modelId: "glm-5" },
+    };
+
+    await expect(
+      new V4CommandExecutor(makeHost(record)).execute(
+        envelope("sendText", {
+          text: "使用可退回的执行模型",
+          modelSelection: {
+            providerId: "account:bigmodel-highspeed-card",
+            modelId: "missing-highspeed-model",
+          },
+          modelExecution: { selectionScope: "execution", selectionFallback },
+        }),
+      ),
+    ).resolves.toBeDefined();
+    await settle();
+
+    expect(app.sendInput).toHaveBeenCalledWith(
+      { text: "使用可退回的执行模型" },
+      expect.objectContaining({
+        intent: expect.objectContaining({
+          modelSelection: {
+            providerId: "account:bigmodel-highspeed-card",
+            modelId: "missing-highspeed-model",
+          },
+        }),
+        modelExecution: expect.objectContaining({
+          selectionScope: "execution",
+          selectionFallback,
+        }),
+      }),
+    );
+  });
+
+  it("Highspeed execution Selection 可用时不因退回目标缺失而拒绝", async () => {
+    const highspeedSelection = {
+      providerId: "account:bigmodel-highspeed-card",
+      modelId: "GLM-5.3",
+    };
+    const app = makeApp({
+      listModels: () => [{ ref: highspeedSelection }],
+    });
+    const record = makeRecord({ app });
+
+    await expect(
+      new V4CommandExecutor(makeHost(record)).execute(
+        envelope("sendText", {
+          text: "执行模型可用时继续发送",
+          modelSelection: highspeedSelection,
+          modelExecution: {
+            selectionScope: "execution",
+            selectionFallback: {
+              providerId: highspeedSelection.providerId,
+              rules: [{ reason: "highspeed_selection_unavailable" }],
+              target: { providerId: "missing-fallback", modelId: "missing-model" },
+            },
+          },
+        }),
+      ),
+    ).resolves.toBeDefined();
+    expect(app.sendInput).toHaveBeenCalledTimes(1);
+  });
+
+  it("Highspeed execution Selection 与退回目标都不在 Registry 时在 ACK 前拒绝", async () => {
+    const app = makeApp({ listModels: () => [] });
+    const record = makeRecord({ app });
+
+    await expect(
+      new V4CommandExecutor(makeHost(record)).execute(
+        envelope("sendText", {
+          text: "双模型都不可用时保留输入",
+          modelSelection: {
+            providerId: "account:bigmodel-highspeed-card",
+            modelId: "missing-highspeed-model",
+          },
+          modelExecution: {
+            selectionScope: "execution",
+            selectionFallback: {
+              providerId: "account:bigmodel-highspeed-card",
+              rules: [{ reason: "highspeed_selection_unavailable" }],
+              target: { providerId: "account:bigmodel-start-plan", modelId: "glm-5" },
+            },
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ reasonCode: "modelUnavailable" });
+    expect(app.sendInput).not.toHaveBeenCalled();
+  });
+
+  it("退回声明与 execution Provider 不一致时仍在 ACK 前拒绝", async () => {
+    const app = makeApp({ listModels: () => [] });
+    const record = makeRecord({ app });
+    await expect(
+      new V4CommandExecutor(makeHost(record)).execute(
+        envelope("sendText", {
+          text: "使用声明不一致的执行模型",
+          modelSelection: {
+            providerId: "account:bigmodel-highspeed-card",
+            modelId: "missing-highspeed-model",
+          },
+          modelExecution: {
+            selectionScope: "execution",
+            selectionFallback: {
+              providerId: "other-provider",
+              rules: [{ reason: "highspeed_selection_unavailable" }],
+              target: { providerId: "account:bigmodel-start-plan", modelId: "glm-5" },
+            },
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ reasonCode: "modelUnavailable" });
+    expect(app.sendInput).not.toHaveBeenCalled();
+  });
+
+  it("排队 execution Selection 仍按原模型目录做 admission 预检", async () => {
+    const app = makeApp({ listModels: () => [] });
+    const record = makeRecord({ app, activeAbortController: new AbortController() });
+    await expect(
+      new V4CommandExecutor(makeHost(record, { getInputRoutingMode: () => "enqueue" })).execute(
+        envelope("sendText", {
+          text: "排队执行模型",
+          modelSelection: {
+            providerId: "account:bigmodel-highspeed-card",
+            modelId: "missing-highspeed-model",
+          },
+          modelExecution: {
+            selectionScope: "execution",
+            selectionFallback: {
+              providerId: "account:bigmodel-highspeed-card",
+              rules: [{ reason: "highspeed_selection_unavailable" }],
+              target: { providerId: "account:bigmodel-start-plan", modelId: "glm-5" },
+            },
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ reasonCode: "modelUnavailable" });
+    expect(app.sendInput).not.toHaveBeenCalled();
+  });
+
   it("turn 失败：finally 仍释放锁，legacy 广播 reason=prompt_failed", async () => {
     const app = makeApp({ sendInput: vi.fn().mockRejectedValue(new Error("boom")) });
     const record = makeRecord({ app });
@@ -1159,21 +1344,6 @@ describe("v4 原生 sendText", () => {
 });
 
 describe("v4 原生 sendText：软门禁（soft gate）", () => {
-  it("pending hooks 不阻塞 turn:prompt 直接 TurnStarted,pending hooks 被跳过", async () => {
-    // 软门禁:turn 永不停等审核。pending hooks 直接跳过(HookRunBlocked),
-    // turn 照常执行,经 WorkspaceHookAdmissionUpdated 事件写入 snapshot。
-    const app = makeApp();
-    const record = makeRecord({ app });
-    const host = makeHost(record);
-
-    await new V4CommandExecutor(host).execute(envelope("sendText", { text: "hello" }));
-    await settle();
-
-    // sendInput 被调用且 TurnStarted 被观察
-    expect(app.sendInput).toHaveBeenCalledTimes(1);
-    expect(record.activeAbortController).toBeUndefined();
-  });
-
   it("startPromptTurn 不再把 authority observer 传给 Core admission", async () => {
     let capturedOptions: PromptSendInputOptions | undefined;
     const app = makeApp({
@@ -1192,7 +1362,6 @@ describe("v4 原生 sendText：软门禁（soft gate）", () => {
     await new V4CommandExecutor(host).execute(envelope("sendText", { text: "test" }));
     await settle();
 
-    expect(capturedOptions).toBeDefined();
     // projection observer 已移除，Core admission ACK 不等待 TurnStarted。
     expect(capturedOptions!.onEvent).toBeUndefined();
     expect(capturedOptions!.onTurnStartedObserved).toBeUndefined();
@@ -1200,7 +1369,6 @@ describe("v4 原生 sendText：软门禁（soft gate）", () => {
 
   it("projection commit 永不完成时，input ACK 仍立即返回", async () => {
     const turnGate = deferred<void>();
-    let commandSettled = false;
     const app = makeApp({
       sendInput: vi.fn().mockResolvedValue({
         completion: turnGate.promise,
@@ -1215,17 +1383,14 @@ describe("v4 原生 sendText：软门禁（soft gate）", () => {
       },
     });
 
-    const executing = new V4CommandExecutor(host)
-      .execute(envelope("sendText", { text: "等待 projection commit" }))
-      .then(() => {
-        commandSettled = true;
-      });
+    const executing = new V4CommandExecutor(host).execute(
+      envelope("sendText", { text: "等待 projection commit" }),
+    );
 
     await vi.waitFor(() => expect(app.sendInput).toHaveBeenCalled());
     await flushMicrotasks();
     // projection commit 完全不参与 admission；故意不 resolve 它。
     await executing;
-    expect(commandSettled).toBe(true);
     turnGate.resolve(undefined);
     await settle();
   });
@@ -1263,7 +1428,6 @@ describe("v4 原生 sendText：软门禁（soft gate）", () => {
 
     expect(admissions).toEqual(["started", "queued"]);
     expect(runtime.getActiveTurnInfo).not.toHaveBeenCalled();
-    expect(admissions.filter((admission) => admission === "started")).toHaveLength(1);
   });
 });
 

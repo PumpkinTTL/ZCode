@@ -1,4 +1,3 @@
-import type { IFileService } from "@zcode/services";
 import type { IServiceAccessor } from "@/hooks/useServices.js";
 import { readFileSync } from "node:fs";
 import { createElement } from "react";

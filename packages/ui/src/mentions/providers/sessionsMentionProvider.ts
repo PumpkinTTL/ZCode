@@ -250,7 +250,11 @@ export function useSessionsMentionProvider(
   workspaceScope: SessionMentionWorkspaceScope,
   emptyText: string,
   title: string,
+  // 上游 v3.16.2 新增的「未分组」桶标题；本实现对会话分组沿用 workspace 标签，
+  // 参数保留以兼容上游调用点（MentionPlugin 传 `project.tasks` 词条）。
+  unclassifiedTitle = title,
 ): MentionCategoryResult {
+  void unclassifiedTitle;
   const baseServices = useBaseWorkspaceServices();
   const tabs = useTabStore((state) => state.tabs);
   const workspaceTabs = useMemo(() => tabs.filter(isWorkspaceTab), [tabs]);

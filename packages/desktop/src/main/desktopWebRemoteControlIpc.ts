@@ -1,6 +1,8 @@
-import { BrowserWindow, ipcMain } from "electron";
+import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import {
   PlatformChannels,
+  webRemoteControlAuthStateChangeSchema,
+  type WebRemoteControlAuthStateChange,
   type WebRemoteControlContext,
   type WebRemoteControlStartResult,
   type WebRemoteControlStatus,
@@ -17,11 +19,7 @@ export interface WebRemoteControlIpcManager {
     context: WebRemoteControlContext,
     authorization: WebRemoteControlStartAuthorization,
   ) => Promise<WebRemoteControlStartResult>;
-  resetPairingAuthorized: (
-    windowId: number,
-    context: WebRemoteControlContext,
-    authorization: WebRemoteControlStartAuthorization,
-  ) => Promise<WebRemoteControlStartResult>;
+  notifyAuthStateChanged(windowId: number, change: WebRemoteControlAuthStateChange): Promise<void>;
   stop(windowId: number): Promise<void>;
   getStatus(windowId: number): WebRemoteControlStatus;
 }
@@ -47,6 +45,15 @@ async function runStartOperation(input: {
 export function registerWebRemoteControlIpcHandlers(
   dependencies: WebRemoteControlIpcDependencies,
 ): void {
+  ipcMain.on(PlatformChannels.WebRemoteControlAuthStateChanged, (event, payload: unknown) => {
+    const parsed = webRemoteControlAuthStateChangeSchema.safeParse(payload);
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!parsed.success || !win) return;
+    // 单向通知不把异步异常泄漏到 Electron；下次通知或 workspace sync 可重试恢复。
+    void dependencies.webRemoteControlManager
+      .notifyAuthStateChanged(win.id, parsed.data)
+      .catch(() => {});
+  });
   ipcMain.handle(
     PlatformChannels.StartWebRemoteControl,
     async (event, context: WebRemoteControlContext) =>
@@ -57,20 +64,6 @@ export function registerWebRemoteControlIpcHandlers(
           const manager = dependencies.webRemoteControlManager;
           const authorization = manager.authorizeStart(windowId, context);
           return manager.startAuthorized(windowId, context, authorization);
-        },
-      }),
-  );
-
-  ipcMain.handle(
-    PlatformChannels.ResetWebRemoteControlPairing,
-    async (event, context: WebRemoteControlContext) =>
-      runStartOperation({
-        sender: event.sender,
-        missingWindowMessage: "未找到当前窗口，无法刷新 Web 远程控制二维码",
-        operation: (windowId) => {
-          const manager = dependencies.webRemoteControlManager;
-          const authorization = manager.authorizeStart(windowId, context);
-          return manager.resetPairingAuthorized(windowId, context, authorization);
         },
       }),
   );

@@ -33,31 +33,69 @@ export default defineConfig(({ mode }) => {
     publicDir: resolve(REPO_ROOT, "packages/web/public"),
     plugins: [react(), tailwindcss()],
     resolve: {
-      alias: {
-        "@": resolve(REPO_ROOT, "packages/ui/src"),
-        // 子路径 import 必须显式映射：对象 alias 会做前缀替换，@zcode/shared/mcp-apps
-        // 会被改写成 index.ts/mcp-apps 导致断链（web-share 以源码方式消费 ui/shared）。
-        "@zcode/shared/gen-ui": resolve(REPO_ROOT, "packages/shared/src/gen-ui/index.ts"),
-        "@zcode/shared/mcp-apps": resolve(REPO_ROOT, "packages/shared/src/mcp-apps/index.ts"),
-        "@zcode/shared/zcode-protocol-v4": resolve(REPO_ROOT, "packages/shared/src/zcode-protocol-v4/index.ts"),
-        "@zcode/shared/zcode-protocol": resolve(REPO_ROOT, "packages/shared/src/zcode-protocol/index.ts"),
-        "@zcode/shared/model-config": resolve(REPO_ROOT, "packages/shared/src/model-config.ts"),
-        "@zcode/shared/model-selection": resolve(REPO_ROOT, "packages/shared/src/model-selection.ts"),
-        "@zcode/shared/workspace-hook-review-monotonicity": resolve(REPO_ROOT, "packages/shared/src/workspace-hook-review-monotonicity.ts"),
-        "@zcode/shared": resolve(REPO_ROOT, "packages/shared/src/index.ts"),
+      alias: [
+        { find: "@", replacement: resolve(REPO_ROOT, "packages/ui/src") },
+        // Docker 只给 web-share 安装依赖，复用的 Web/UI 源文件找不到同级依赖链接。
+        // 根入口必须精确匹配，避免把 shared/mcp-apps 等子路径改写成 index.ts/mcp-apps。
+        {
+          find: /^@zcode\/shared$/,
+          replacement: resolve(REPO_ROOT, "packages/shared/src/index.ts"),
+        },
         // Share 镜像不安装 @zcode/ui（它会带入 services/rpc 闭包），子路径导入必须显式指向源码。
-        "@zcode/ui/useTheme": resolve(REPO_ROOT, "packages/ui/src/useTheme.ts"),
-        "@zcode/ui/conversation-share-readonly": resolve(
-          REPO_ROOT,
-          "packages/share-ui/src/index.ts",
-        ),
-        // 登录卡片要用 provider 图标（svg 走 @ -> packages/ui/src 别名解析）。
-        // 该模块只依赖 shared/lucide/cn，不会把 services/rpc 闭包带进 share 镜像。
-        "@zcode/ui/oauth-provider-icon": resolve(
-          REPO_ROOT,
-          "packages/ui/src/lib/oauthProviderIcon.tsx",
-        ),
-      },
+        {
+          find: "@zcode/ui/useTheme",
+          replacement: resolve(REPO_ROOT, "packages/ui/src/useTheme.ts"),
+        },
+        // 只读时间线的协议子路径同时是 shareBuildBoundary 守卫的准入声明。
+        {
+          find: "@zcode/shared/zcode-protocol-v4",
+          replacement: resolve(REPO_ROOT, "packages/shared/src/zcode-protocol-v4/index.ts"),
+        },
+        // Bugfix：test-ids 改为只从子路径导入后，reasoning.tsx、ToolSummaryRow.tsx 等 share 闭包
+        // 文件引用了它；镜像没有 packages/ui 的依赖链接，未登记别名时 Docker 构建解析失败。
+        {
+          find: "@zcode/shared/test-ids",
+          replacement: resolve(REPO_ROOT, "packages/shared/src/test-ids.ts"),
+        },
+        // Polaris：share 闭包仍以源码方式消费 ui/shared 的其余子路径，
+        // 对象 alias 会做前缀替换断链，这里逐条显式登记（Polaris 合并时保留）。
+        {
+          find: "@zcode/shared/gen-ui",
+          replacement: resolve(REPO_ROOT, "packages/shared/src/gen-ui/index.ts"),
+        },
+        {
+          find: "@zcode/shared/mcp-apps",
+          replacement: resolve(REPO_ROOT, "packages/shared/src/mcp-apps/index.ts"),
+        },
+        {
+          find: "@zcode/shared/zcode-protocol",
+          replacement: resolve(REPO_ROOT, "packages/shared/src/zcode-protocol/index.ts"),
+        },
+        {
+          find: "@zcode/shared/model-config",
+          replacement: resolve(REPO_ROOT, "packages/shared/src/model-config.ts"),
+        },
+        {
+          find: "@zcode/shared/model-selection",
+          replacement: resolve(REPO_ROOT, "packages/shared/src/model-selection.ts"),
+        },
+        {
+          find: "@zcode/shared/workspace-hook-review-monotonicity",
+          replacement: resolve(
+            REPO_ROOT,
+            "packages/shared/src/workspace-hook-review-monotonicity.ts",
+          ),
+        },
+        {
+          find: "@zcode/ui/conversation-share-readonly",
+          replacement: resolve(REPO_ROOT, "packages/share-ui/src/index.ts"),
+        },
+        // 登录卡片要用 provider 图标；只依赖 shared/lucide/cn，不引入 services/rpc。
+        {
+          find: "@zcode/ui/oauth-provider-icon",
+          replacement: resolve(REPO_ROOT, "packages/ui/src/lib/oauthProviderIcon.tsx"),
+        },
+      ],
     },
     define: {
       __ZCODE_VERSION__: JSON.stringify(version),

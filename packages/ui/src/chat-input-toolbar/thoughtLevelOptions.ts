@@ -1,3 +1,5 @@
+import { thoughtLevelLabelId } from "@/chat-input-toolbar/thoughtLevelLabels.js";
+export { thoughtLevelLabelId };
 import type { ZCodeConfigOption, ZCodeProvider } from "@zcode/shared";
 import type { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getConfigOptionEntryLabel } from "@/chat-input-toolbar/display.js";
@@ -15,35 +17,11 @@ const NO_THOUGHT_LEVEL_VALUES = new Set([
   "off",
 ]);
 
-const THOUGHT_LEVEL_LABEL_IDS: Record<string, string> = {
-  disabled: "chat.toolbar.thoughtLevel.value.off",
-  false: "chat.toolbar.thoughtLevel.value.off",
-  no: "chat.toolbar.thoughtLevel.value.off",
-  none: "chat.toolbar.thoughtLevel.value.off",
-  nothink: "chat.toolbar.thoughtLevel.value.off",
-  "no-think": "chat.toolbar.thoughtLevel.value.off",
-  no_think: "chat.toolbar.thoughtLevel.value.off",
-  off: "chat.toolbar.thoughtLevel.value.off",
-  enable: "chat.toolbar.thoughtLevel.value.on",
-  enabled: "chat.toolbar.thoughtLevel.value.on",
-  on: "chat.toolbar.thoughtLevel.value.on",
-  true: "chat.toolbar.thoughtLevel.value.on",
-  low: "chat.toolbar.thoughtLevel.value.low",
-  minimal: "chat.toolbar.thoughtLevel.value.minimal",
-  medium: "chat.toolbar.thoughtLevel.value.medium",
-  high: "chat.toolbar.thoughtLevel.value.high",
-  "extra-high": "chat.toolbar.thoughtLevel.value.xhigh",
-  extra_high: "chat.toolbar.thoughtLevel.value.xhigh",
-  xhigh: "chat.toolbar.thoughtLevel.value.xhigh",
-  max: "chat.toolbar.thoughtLevel.value.max",
-  ultra: "chat.toolbar.thoughtLevel.value.ultra",
-};
-
 function normalizeThoughtLevelText(value: string): string {
   return value.trim().toLowerCase();
 }
 
-export function isNoThoughtLevel(entry: ThoughtLevelEntry): boolean {
+export function isNoThoughtLevel(entry: Pick<ThoughtLevelEntry, "value">): boolean {
   return NO_THOUGHT_LEVEL_VALUES.has(normalizeThoughtLevelText(entry.value));
 }
 
@@ -94,7 +72,7 @@ export function resolveThoughtLevelValueLabel(value: string, formatMessage: Form
   if (!THOUGHT_LEVEL_FLAG_VALUES.has(normalized)) {
     return value;
   }
-  const labelId = THOUGHT_LEVEL_LABEL_IDS[normalized];
+  const labelId = thoughtLevelLabelId(normalized);
   return labelId ? formatMessage({ id: labelId }) : value;
 }
 

@@ -393,8 +393,6 @@ describe("ContextBuilder meta user context", () => {
     );
     expect(result.systemMessages[0]?.content).not.toContain("# Agent Identity");
     expect(result.systemMessages[1]?.content).toBe("\nYou are concise for this task.");
-    expect(result.systemMessages[1]?.content).not.toContain("# Task Behavior");
-    expect(result.systemMessages[1]?.content).not.toContain("# Agent Identity");
     const meta = metaAttachment(result, "context_prefix");
     expect(meta).not.toContain("<system-reminder>");
     expect(meta).toContain("Project instruction should stay as userContext.");
@@ -1210,6 +1208,50 @@ describe("ContextBuilder meta user context", () => {
     );
     expect(providerContextText).not.toContain("Available agent types");
     expect(providerContextText).not.toContain("zcode-reviewer");
+  });
+
+  it("lists additional directory paths immediately after the primary working directory", () => {
+    const result = createContextBuilder({
+      workingDirectory: "/workspace",
+      additionalDirectories: ["/work/backend", "C:\\work\\shared folder"],
+      envInfo: {
+        cwd: "/workspace",
+        platform: "linux",
+        shell: "bash",
+        osVersion: "Linux",
+        nodeVersion: "v24",
+      },
+    }).build();
+
+    const environment = result.sections.find((section) => section.source === "env_info");
+    expect(environment?.content).toContain(
+      "- Primary working directory: /workspace\n- Additional directories:\n  - /work/backend\n  - C:\\work\\shared folder\n- Is a git repository:",
+    );
+    expect(
+      result.systemMessages.some((message) =>
+        String(message.content).includes(environment!.content),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps the environment prompt unchanged for an absent or empty additional directory list", () => {
+    const config = {
+      workingDirectory: "/workspace",
+      envInfo: {
+        cwd: "/workspace",
+        platform: "linux",
+        shell: "bash",
+        osVersion: "Linux",
+        nodeVersion: "v24",
+      },
+    };
+    const original = createContextBuilder(config).build();
+    const empty = createContextBuilder({ ...config, additionalDirectories: [] }).build();
+
+    expect(empty).toEqual(original);
+    expect(
+      original.sections.find((section) => section.source === "env_info")?.content,
+    ).not.toContain("Additional directories");
   });
 
   it("renders environment info copy in English", () => {

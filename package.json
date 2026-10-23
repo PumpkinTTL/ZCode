@@ -1,10 +1,11 @@
 {
   "name": "zcode",
-  "version": "1.0.0",
+  "version": "3.16.2",
   "private": true,
   "type": "module",
   "scripts": {
     "dev:web": "concurrently -k -n server,web -c blue,green \"pnpm --filter @zcode/server dev\" \"pnpm --filter @zcode/web dev\"",
+    "dev:docs": "pnpm --filter @zcode/dev-docs dev",
     "dev:desktop": "pnpm run dev:desktop:prod",
     "dev:desktop:test": "node scripts/dev-desktop-env.mjs test",
     "dev:desktop:prod": "node scripts/dev-desktop-env.mjs production",
@@ -16,7 +17,7 @@
     "dev:web-share:mock": "node scripts/dev-web-share-env.mjs mock",
     "dev:server": "pnpm --filter @zcode/server dev",
     "dev:official-mcp": "node scripts/dev-official-mcp-server.mjs",
-    "prepare": "husky",
+    "prepare": "husky && pnpm build:cua",
     "prepare:desktop-runtime": "pnpm --filter @zcode/desktop prepare:runtime-assets",
     "dep:graph": "node scripts/dependency-graph.mjs",
     "dep:refs": "node scripts/dep-refs.mjs",
@@ -34,12 +35,10 @@
     "test:unit": "vitest run --exclude \"packages/desktop/test/e2e/**/*.test.ts\"",
     "test:unit:affected": "node scripts/run-affected-unit-tests.mjs",
     "test:docker:web-app-gateway": "node scripts/test-web-app-gateway-reset.mjs",
-    "verify:pre-push": "pnpm run lint && pnpm run architecture:check -- --changed && pnpm run test:unit:affected",
+    "verify:pre-push": "pnpm run lint && pnpm run db:schema:check && pnpm run test:architecture && pnpm run architecture:check -- --changed && pnpm run test:unit:affected --scope push",
     "build": "pnpm -r build",
     "build:desktop-agent:bytecode": "node scripts/build-desktop-agent-bytecode.mjs",
-    "build:web-remote-control": "pnpm --filter @zcode/web exec vite build --base=/remote/",
-    "build:web-remote-control:v3": "pnpm --filter @zcode/web exec vite build --base=/remote/v3/",
-    "build:web-remote-control:v4": "pnpm --filter @zcode/web exec vite build --base=/remote/v4/",
+    "build:docs": "pnpm --filter @zcode/dev-docs build",
     "build:web-remote-control:test": "pnpm --filter @zcode/web exec vite build --base=/remote/__test__/",
     "build:web-share": "pnpm --filter @zcode/web-share build",
     "build:zcode": "node scripts/build-zcode.mjs",
@@ -52,14 +51,16 @@
     "test:native-search:e2e": "node scripts/test-native-search-tools-e2e.mjs",
     "test:sea-runtime-tools:e2e": "node scripts/test-sea-runtime-tools-e2e.mjs",
     "clean": "node scripts/clean.mjs",
-    "typecheck": "tsc -b packages/rpc packages/provider packages/provider-node packages/shared packages/services packages/client packages/server packages/zcode-server-cli packages/ui packages/web packages/e2e-report packages/desktop/tsconfig.host.json",
+    "typecheck": "tsc -b packages/shared/tsconfig.testing.json packages/rpc packages/provider packages/provider-node packages/shared packages/services packages/client packages/server packages/zcode-server-cli packages/ui packages/web packages/e2e-report packages/desktop/tsconfig.main.json packages/desktop/tsconfig.host.json packages/desktop/tsconfig.e2e.json && tsc -p packages/desktop/tsconfig.remote-main.json --noEmit && tsc -p packages/zcode-cua --noEmit",
     "bundle:desktop": "pnpm --filter @zcode/desktop run bundle --",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "knip": "knip",
     "count-lines": "bash scripts/count-lines.sh",
-    "prepare:remote-assets": "pnpm --filter @zcode/desktop prepare:remote-assets",
+    "prepare:remote-assets": "pnpm --filter @zcode/server-cli stage:remote-assets",
+    "prepare:remote-assets:linux": "pnpm --filter @zcode/server-cli stage:remote-assets --linux",
     "ci:assert-node": "node scripts/assert-node-version.mjs",
+    "build:cua": "pnpm --filter @zcode/zcode-cua build",
     "doctor:macos-release": "bash scripts/doctor-macos-release-app.sh",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix --fix-suggestions",
@@ -72,7 +73,10 @@
     "architecture:report": "node scripts/architecture/architecture-check.mjs report",
     "architecture:baseline:update": "node scripts/architecture/architecture-check.mjs baseline:update",
     "architecture:context": "node scripts/architecture/architecture-check.mjs context",
-    "test:architecture": "node --test scripts/test/architecture-governance.test.mjs"
+    "test:architecture": "node --test scripts/test/architecture-governance.test.mjs scripts/test/architecture-governance-review.test.mjs scripts/test/architecture-upstream-admission.test.mjs scripts/test/source-size-policy.test.mjs",
+    "architecture:adopt": "node scripts/architecture/architecture-check.mjs adopt",
+    "db:schema:check": "node --test scripts/test/sqlite-schema-contract.test.mjs && pnpm --dir apps/zcode-cli exec tsx ../../scripts/check-sqlite-schema.ts",
+    "db:schema:update": "pnpm --dir apps/zcode-cli exec tsx ../../scripts/check-sqlite-schema.ts --update"
   },
   "dependencies": {
     "border-beam": "^1.0.1",
@@ -84,9 +88,11 @@
     "@release-it/conventional-changelog": "^10.0.6",
     "@tanstack/react-virtual": "^3.13.23",
     "@types/node": "^25.5.0",
-    "@vitest/coverage-v8": "^4.1.1",
+    "@vitest/coverage-v8": "^4.1.7",
+    "@zcode/zcode-cua": "workspace:*",
     "concurrently": "^9.1.2",
     "conventional-changelog-conventionalcommits": "^9.3.1",
+    "conventional-changelog-writer": "^8.4.0",
     "dotenv": "^17.4.2",
     "husky": "^9.1.7",
     "istanbul-lib-instrument": "6.0.3",
@@ -99,7 +105,7 @@
     "tsx": "^4.19.4",
     "turbo": "^2.4.0",
     "typescript": "^6.0.2",
-    "vitest": "4.1.4"
+    "vitest": "^4.1.7"
   },
   "peerDependencies": {
     "@tanstack/react-virtual": "^3.13.23"
@@ -115,6 +121,7 @@
       "shiki": "4.0.2"
     },
     "patchedDependencies": {
+      "@radix-ui/react-collapsible@1.1.12": "patches/@radix-ui__react-collapsible@1.1.12.patch",
       "vitest@4.1.7": "patches/vitest@4.1.7.patch",
       "wdio-electron-service@9.2.1": "patches/wdio-electron-service@9.2.1.patch",
       "@ai-sdk/openai-compatible@2.0.60": "patches/@ai-sdk__openai-compatible@2.0.60.patch",

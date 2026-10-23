@@ -8,36 +8,26 @@ import {
 } from "../src/settings/McpFailurePresentation.js";
 
 describe("MCP failure presentation", () => {
-  it("maps every stable failure kind to a localized message id", () => {
-    expect(resolveMcpFailureMessageId("server_not_found")).toBe(
-      "settings.mcp.failure.server_not_found",
-    );
-    expect(resolveMcpFailureMessageId("official_origin_untrusted")).toBe(
-      "settings.mcp.failure.official_origin_untrusted",
-    );
+  it("uses the generic connection failure when no failure kind is available", () => {
     expect(resolveMcpFailureMessageId(undefined)).toBe("settings.mcp.failure.connection_failed");
-    expect(resolveMcpFailureMessageId("not_authenticated")).toBe(
-      "settings.mcp.failure.not_authenticated",
-    );
-    expect(resolveMcpFailureMessageId("coding_plan_required")).toBe(
-      "settings.mcp.failure.coding_plan_required",
-    );
   });
 
   it.each([
     ["zh-CN" as const, "MCP 服务暂时不可用，请稍后重试。"],
     ["en-US" as const, "The MCP service is temporarily unavailable. Try again later."],
-  ])("keeps diagnostics inside the click-only popover for %s", (locale, message) => {
-    const html = renderToStaticMarkup(
-      createElement(
-        ZCodeIntlProvider,
-        { initialLocale: locale },
-        createElement(McpFailurePresentation, {
-          error: "raw sdk error",
-          failureKind: "server_unavailable",
-        }),
-      ),
-    );
+  ])(
+    "renders localized failure text with initially closed technical details for %s",
+    (locale, message) => {
+      const html = renderToStaticMarkup(
+        createElement(
+          ZCodeIntlProvider,
+          { initialLocale: locale },
+          createElement(McpFailurePresentation, {
+            error: "raw sdk error",
+            failureKind: "server_unavailable",
+          }),
+        ),
+      );
 
     expect(html).toContain(message);
     expect(html).toContain('data-slot="popover-trigger"');

@@ -4,8 +4,9 @@
 // （fork 只做 conversation-only copy，不 rewind、不重发）。
 import type { CommandEnvelope, CommandPayloadMap } from "@zcode/shared/zcode-protocol-v4";
 import type { mapAttachmentRefsToTurnAttachments } from "../attachment-refs.js";
+import { resolveOrdinaryQueueModelSelection } from "../input-admission.js";
 import { inputIntentMetadataFromCanonical } from "../input-intent.js";
-import { startPromptTurn } from "../prompt-turn.js";
+import { preflightPromptTurn, startPreflightedPromptTurn } from "../prompt-turn.js";
 import type { V4CommandCoreHost, V4SessionRecordView } from "../types.js";
 import { applyGoalCommand } from "./goal-compact.js";
 import type { ConversationEditTarget } from "../../product-projection.js";
@@ -18,8 +19,7 @@ export function stableAttachmentRefs(editTarget: ConversationEditTarget) {
   );
 }
 
-export async function startCanonicalIntent(
-  host: V4CommandCoreHost,
+function buildCanonicalIntent(
   record: V4SessionRecordView,
   envelope: CommandEnvelope,
   editTarget: ConversationEditTarget,
@@ -27,7 +27,7 @@ export async function startCanonicalIntent(
   attachmentRefs: ReturnType<typeof stableAttachmentRefs>,
   attachments: Awaited<ReturnType<typeof mapAttachmentRefsToTurnAttachments>>,
   options?: { requireQueue?: boolean },
-): Promise<void> {
+) {
   const intent = inputIntentMetadataFromCanonical(
     envelope,
     {
@@ -54,10 +54,48 @@ export async function startCanonicalIntent(
   );
   const requireQueue = options?.requireQueue === true;
   if (requireQueue) {
+    intent.modelSelection = resolveOrdinaryQueueModelSelection(record, intent.modelSelection);
     intent.requestedDelivery = "queue";
     intent.admittedDelivery = "queue";
     intent.fallbackReasonCode = EDIT_QUEUE_FALLBACK_REASON;
   }
+  return intent;
+}
+
+/** destructive edit/retry 在提交 branch cut 前调用；只检查模型，不接纳输入。 */
+export async function preflightCanonicalIntent(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  envelope: CommandEnvelope,
+  editTarget: ConversationEditTarget,
+  text: string,
+  attachmentRefs: ReturnType<typeof stableAttachmentRefs>,
+  attachments: Awaited<ReturnType<typeof mapAttachmentRefsToTurnAttachments>>,
+): Promise<void> {
+  if (editTarget.intent.kind === "sendGoalCommand") return;
+  const intent = buildCanonicalIntent(record, envelope, editTarget, text, attachmentRefs, attachments);
+  await preflightPromptTurn(host, record, {
+    content: text,
+    inputId: envelope.commandId,
+    intent,
+    ...(attachments ? { attachments } : {}),
+  });
+}
+
+export async function startCanonicalIntent(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  envelope: CommandEnvelope,
+  editTarget: ConversationEditTarget,
+  text: string,
+  attachmentRefs: ReturnType<typeof stableAttachmentRefs>,
+  attachments: Awaited<ReturnType<typeof mapAttachmentRefsToTurnAttachments>>,
+  options?: { requireQueue?: boolean },
+): Promise<void> {
+  const requireQueue = options?.requireQueue === true;
+  const intent = buildCanonicalIntent(record, envelope, editTarget, text, attachmentRefs, attachments, {
+    requireQueue,
+  });
   if (editTarget.intent.kind === "sendGoalCommand") {
     await applyGoalCommand(host, record, {
       inputId: envelope.commandId,
@@ -66,7 +104,9 @@ export async function startCanonicalIntent(
     });
     return;
   }
-  const started = await startPromptTurn(host, record, {
+  // destructive edit/retry 已在 branch cut 前完成同一份准入检查；提交时直接消费该结果，
+  // 不再重读可变 Registry（历史已截断后重检会误拒 replacement input）。
+  const started = await startPreflightedPromptTurn(host, record, {
     content: text,
     inputId: envelope.commandId,
     intent,

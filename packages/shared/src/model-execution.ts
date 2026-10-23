@@ -5,6 +5,14 @@ export const modelExecutionSchema = z
   .object({
     memoryExtraction: z.literal("skip").optional(),
     selectionScope: z.literal("execution"),
+    offPeak: z
+      .object({
+        executionId: z.string().min(1),
+        ticketId: z.string().min(1),
+        providerErrorCode: z.string().min(1),
+      })
+      .strict()
+      .optional(),
     requestAuth: z
       .object({
         apiKey: z.string().min(1).optional(),
@@ -20,7 +28,7 @@ export const modelExecutionSchema = z
     subagents: z
       .object({
         foregroundModel: z.literal("submission"),
-        background: z.literal("deny"),
+        background: z.enum(["deny", "allow"]),
       })
       .strict()
       .optional(),

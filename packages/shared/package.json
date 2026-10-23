@@ -2,6 +2,9 @@
   "name": "@zcode/shared",
   "private": true,
   "type": "module",
+  "imports": {
+    "#src/*": "./src/*"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./account-provider-state": "./src/account-provider-state.ts",
@@ -20,6 +23,10 @@
     "./process-names": "./src/process-names.ts",
     "./runtime-env": "./src/runtimeEnv.ts",
     "./runtime-tool-runtime": "./src/runtime-tool-runtime.ts",
+    "./sqlite-migrations": "./src/sqlite-migrations/index.ts",
+    "./test-ids": "./src/test-ids.ts",
+    "./testing/fake-relay-v2": "./test/fixtures/fake-relay-v2.ts",
+    "./web-remote-relay": "./src/web-remote-relay/index.ts",
     "./workspace-hook-discovery": "./src/workspace-hook-discovery.ts",
     "./workspace-hook-mutation": "./src/workspace-hook-mutation.ts",
     "./workspace-hook-review-monotonicity": "./src/workspace-hook-review-monotonicity.ts",
@@ -39,6 +46,8 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "2.0.0",
-    "typescript": "^6.0.2"
+    "@types/ws": "8.18.1",
+    "typescript": "^6.0.2",
+    "ws": "8.20.0"
   }
 }

@@ -1,6 +1,6 @@
 import { BarChart3Icon } from "lucide-react";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu.js";
-import { TID_SIDEBAR_CODING_PLAN_USAGE_BUTTON } from "@zcode/shared";
+import { TID_SIDEBAR_CODING_PLAN_USAGE_BUTTON } from "@zcode/shared/test-ids";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { setPendingSettingsUsageIntent } from "@/lib/settingsNavigation.js";
 

@@ -10,6 +10,7 @@ import {
 import { createTestAgentRuntime } from "./test-agent-runtime.js";
 import { createTestSessionEventStore } from "./test-event-store.js";
 import { createTestModelFactory } from "./test-runtime-model.js";
+import { createRecordingSubagentSessionStore } from "./subagent-test-store.js";
 
 describe("AgentRuntime model selection event", () => {
   it("首轮只按 admitted Active Model 构造一次 Context", async () => {

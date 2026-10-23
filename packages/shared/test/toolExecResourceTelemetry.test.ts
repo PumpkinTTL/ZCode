@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { zcodeToolExecResourceSchema } from "@zcode/shared";
+import { hostResponseMessageSchema, zcodeToolExecResourceSchema } from "@zcode/shared";
 
 const sample = {
   platform: "linux",
@@ -32,8 +32,14 @@ describe("Bash 慢命令通知契约", () => {
     },
   );
 
-  it("接受有界完成事实，拒绝隐私字段、短命令和非法计数", () => {
-    expect(zcodeToolExecResourceSchema.parse(sample)).toEqual(sample);
+  it("CLI 与 Host 接受有界完成事实，拒绝隐私字段、短命令和非法计数", () => {
+    expect(
+      hostResponseMessageSchema.safeParse({
+        type: "tool-exec-resource",
+        runtimeSurface: "local",
+        sample,
+      }).success,
+    ).toBe(true);
     for (const extra of [
       { command: "secret" },
       { cwd: "/private" },

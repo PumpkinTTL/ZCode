@@ -1,3 +1,4 @@
+import { OFF_PEAK_EXECUTION_TOOL_DENYLIST } from "@zcode/shared";
 import type {
   CompactPhase,
   CompactReason,
@@ -11,7 +12,7 @@ import type {
   TurnId,
 } from "../deps.js";
 import type { ActiveTurnSteeringState } from "../types.js";
-import type { SubagentRunOptions } from "@zcode/contracts";
+import type { ModelToolContract, SubagentRunOptions } from "@zcode/contracts";
 import type { DrainedPendingInputDiagnostics } from "../types.js";
 import type { TurnMachineImpl } from "../deps.js";
 import type { RuntimeMessageEntry } from "../../agent/message-history.js";
@@ -25,13 +26,12 @@ const AUTOMATION_QUERY_ID_PREFIX = "automation-";
 /**
  * 闲时派发轮隐藏的工具；OffPeakList 只读保留。
  * - OffPeakCreate：防止闲时任务递归自我派生、无限调度。
- * - SendMessage / Workflow：会在闲时 turn 的 modelExecution 之外重新启动子 Agent（SendMessage 续跑
- *   已完成子 Agent、Workflow 派生脚本子会话），按父会话常驻选择建模型。
+ * - Workflow 与动态执行入口：独立工作流运行器尚未加入闲时票据生命周期。
  *
  * 独立常量，绝不并入 AUTOMATION_MUTATION_TOOL_NAMES——cron automation turn 明确放行
  * OffPeakCreate（定时派生闲时任务），混入会让 automation turn 误 deny。
  */
-export const OFF_PEAK_MUTATION_TOOL_NAMES = ["OffPeakCreate", "SendMessage", "Workflow"] as const;
+export const OFF_PEAK_MUTATION_TOOL_NAMES = OFF_PEAK_EXECUTION_TOOL_DENYLIST;
 // 闲时派发 init 段 traceId 无固定前缀，只有 resume 段是 `${offPeakTaskId}:resume:*`
 // （offpeak- 开头）；前缀只是 resume 兜底信号，主信号必须是显式 offPeakTaskId。
 const OFF_PEAK_QUERY_ID_PREFIX = "offpeak-";
@@ -59,6 +59,7 @@ export interface AutoCompactLoopContext {
   rapidRefill: RapidRefillDecision;
   model: Model;
   turnRequestState: TurnRequestState;
+  getContinuationTools?: () => readonly ModelToolContract[];
 }
 
 export interface ReactiveCompactLoopContext {
@@ -68,6 +69,7 @@ export interface ReactiveCompactLoopContext {
   model: Model;
   rapidRefillCount: number;
   turnRequestState: TurnRequestState;
+  getContinuationTools?: () => readonly ModelToolContract[];
 }
 
 export interface TurnRequestState {
@@ -76,6 +78,7 @@ export interface TurnRequestState {
 }
 
 export interface RegularTurnLoopState {
+  offPeakExecutionId?: string;
   activeTurn?: ActiveTurnSteeringState;
   /** Host admission 显式传入的本轮 automation 身份；不能从持久 task metadata 推断。 */
   automationId?: string;

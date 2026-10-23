@@ -13,7 +13,8 @@ import { useWebRemoteControlFeatureEnabled } from "@/WebRemoteControlFeatureProv
 // WebRemoteControlDialog → BotsDialog 链（含 qrcode）只有点击触发时才需要；
 // 本 trigger 挂在首屏侧栏 footer 上，静态 import 会把整条链拖进首屏 preload。
 const WebRemoteControlDialog = lazy(async () => ({
-  default: (await import("@/WebRemoteControlDialog.js")).WebRemoteControlDialog,
+  default: (await import("@/web-remote-control/WebRemoteControlDialog.js"))
+    .WebRemoteControlDialog,
 }));
 
 type FormatMessage = ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"];

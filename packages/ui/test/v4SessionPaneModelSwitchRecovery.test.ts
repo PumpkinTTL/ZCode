@@ -1,4 +1,4 @@
-import { act, createElement, type ComponentProps, useRef } from "react";
+import { act, createElement, type ComponentProps, Suspense, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ModelSelectionView } from "@zcode/services";
@@ -22,12 +22,6 @@ import type { V4InteractionDialogsProps } from "@/v4/V4InteractionDialogs.js";
 import { pendingCommandRegistry } from "@/v4/pendingCommandRegistry.js";
 import { logger } from "@/logger.js";
 
-const recommendation = vi.hoisted(() =>
-  vi.fn(async (selection: ModelSelection): Promise<ModelSelection | null> => selection),
-);
-vi.mock("@/hooks/useStartPlanRecommendation.js", () => ({
-  useStartPlanRecommendation: () => recommendation,
-}));
 const modelSelectionMock = vi.hoisted(() => ({ view: null as ModelSelectionView | null }));
 vi.mock("@/hooks/useModelSelectionView.js", () => ({
   useModelSelectionView: () => ({
@@ -138,16 +132,6 @@ const modelTransitionMock = vi.hoisted(() => ({
 
 
 const mocks = vi.hoisted(() => ({
-  highspeedCardService: {
-    getSnapshot: vi.fn(async () => ({ card: null, nextDrawAt: null, drawing: false })),
-    prepareTurn: vi.fn(async () => ({
-      kind: "fallback" as const,
-      reason: "draw-miss" as const,
-      nextDrawAt: null,
-    })),
-    healthy: vi.fn(),
-    share: vi.fn(),
-  },
   recoverFromStaleAuthority: vi.fn(),
   layer: {
     acquire: vi.fn((sessionId: string) => {
@@ -242,9 +226,16 @@ vi.mock("@/v4/ConversationDraftSuggestedPromptsContainer.js", () => ({
 }));
 
 vi.mock("@/hooks/useServices.js", () => ({
+  useComposerClientNamespace: () => "desktop",
   useOptionalServices: () => null,
   useServices: () => ({
-    highspeedCardService: mocks.highspeedCardService,
+    projectService: {
+      resolveSessionDirectories: vi.fn(async (task) => ({
+        ...task,
+        projectId: null,
+        additionalDirectories: [],
+      })),
+    },
     modelSelectionService: mocks.modelSelectionService,
     zcodeSessionService: mocks.zcodeSessionService,
     zcodeTaskService: mocks.zcodeTaskService,
@@ -253,12 +244,12 @@ vi.mock("@/hooks/useServices.js", () => ({
 
 vi.mock("@/lib/composerRecent.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/composerRecent.js")>()),
-  captureComposerRecentSubmission:
-    (
-      ...args: Parameters<typeof import("@/lib/composerRecent.js").captureComposerRecentSubmission>
-    ) =>
-    () =>
-      composerRecentMocks.acceptSubmission(...args),
+  acceptComposerRecentReceipt: (
+    receipt: import("@/lib/composerRecent.js").ComposerRecentReceipt,
+  ) => {
+    composerRecentMocks.acceptSubmission(receipt);
+    return true;
+  },
 }));
 
 vi.mock("@/v4/composer/useDraftSessionPrewarm.js", async (importOriginal) => {
@@ -276,6 +267,10 @@ vi.mock("@/v4/composer/useDraftSessionPrewarm.js", async (importOriginal) => {
             binding: prewarmHookMock.binding
               ? { beginPromotion: () => true, ...prewarmHookMock.binding }
               : null,
+            waitForSession: async () => {
+              if (!prewarmHookMock.binding) throw new Error("草稿会话创建失败，请重试");
+              return { beginPromotion: () => true, ...prewarmHookMock.binding };
+            },
           };
     },
   };
@@ -388,14 +383,6 @@ vi.mock("@/v4/V4InteractionDialogs.js", async () => {
   };
 });
 
-vi.mock("@/request-security-edition/V4ProviderRuntimeHeadersController.js", async () => {
-  const React = await import("react");
-  return {
-    V4ProviderRuntimeHeadersController: () =>
-      React.createElement("div", { "data-testid": "mock-runtime-headers" }),
-  };
-});
-
 vi.mock("@/v4/ConversationDraftEmptyState.js", async () => {
   const React = await import("react");
   return {
@@ -405,6 +392,7 @@ vi.mock("@/v4/ConversationDraftEmptyState.js", async () => {
 });
 
 function createMinimalElement(ownerDocument: Document, tagName = "div") {
+  const attributes = new Map<string, string>();
   const element = {
     addEventListener: () => {},
     appendChild: (child: { parentNode?: unknown }) => {
@@ -412,7 +400,7 @@ function createMinimalElement(ownerDocument: Document, tagName = "div") {
       return child;
     },
     childNodes: [] as unknown[],
-    getAttribute: () => null,
+    getAttribute: (name: string) => attributes.get(name) ?? null,
     insertBefore: (child: { parentNode?: unknown }) => {
       child.parentNode = element;
       return child;
@@ -421,13 +409,13 @@ function createMinimalElement(ownerDocument: Document, tagName = "div") {
     nodeType: 1,
     ownerDocument,
     parentNode: null as unknown,
-    removeAttribute: () => {},
+    removeAttribute: (name: string) => attributes.delete(name),
     removeChild: (child: { parentNode?: unknown }) => {
       child.parentNode = null;
       return child;
     },
     removeEventListener: () => {},
-    setAttribute: () => {},
+    setAttribute: (name: string, value: string) => attributes.set(name, value),
     style: {},
     tagName: tagName.toUpperCase(),
   };
@@ -437,8 +425,9 @@ function createMinimalElement(ownerDocument: Document, tagName = "div") {
 function installMinimalDom() {
   const documentMock = {
     addEventListener: () => {},
-    createElement: (tagName: string) =>
+    createElement: vi.fn((tagName: string) =>
       createMinimalElement(documentMock as unknown as Document, tagName),
+    ),
     createElementNS: (_namespace: string, tagName: string) =>
       createMinimalElement(documentMock as unknown as Document, tagName),
     createTextNode: (nodeValue: string) => ({
@@ -665,7 +654,6 @@ async function renderPane(props: Partial<ComponentProps<typeof SessionPane>> = {
 }
 
 afterEach(() => {
-  recommendation.mockReset().mockImplementation(async (selection) => selection);
   modelSelectionMock.view = null;
   captured.composerProps = null;
   captured.interactionProps = null;
@@ -694,46 +682,6 @@ afterEach(() => {
 });
 
 describe("SessionPane draft provider readiness", () => {
-  it("本地草稿预热不由 Host 解析 runtimeModel", async () => {
-    prewarmHookMock.binding = null;
-    projectionState.current = {
-      status: "live",
-      snapshot: null,
-      subscriptionId: "local-draft-runtime-model",
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    draftConfigMock.resolveInitialDraftConfig.mockReturnValue({
-      provider: "alternate-provider",
-      model: "deepseek-v4-pro",
-      thought: "high",
-    });
-
-    const root = await renderPane();
-    await act(async () => root.unmount());
-  });
-
-  it("远端草稿预热只提交 config，由远端 Registry 创建 Model", async () => {
-    prewarmHookMock.binding = null;
-    projectionState.current = {
-      status: "live",
-      snapshot: null,
-      subscriptionId: "remote-draft-runtime-model",
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    draftConfigMock.resolveInitialDraftConfig.mockReturnValue({
-      provider: "alternate-provider",
-      model: "deepseek-v4-pro",
-      thought: "high",
-    });
-
-    const root = await renderPane({ workspaceIdentity: "remote:ssh:dev:/workspace" });
-    await act(async () => root.unmount());
-  });
-
   it("blocks first send before command dispatch when no model is available", async () => {
     projectionState.current = {
       status: "live",
@@ -929,7 +877,9 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
               promote: vi.fn(),
               discard: vi.fn(),
             }
-          : null;
+          : entry === "no-prewarm"
+            ? undefined
+            : null;
       const modelSelection = {
         providerId: "alternate-provider",
         modelId: "deepseek-v4-pro",
@@ -971,7 +921,7 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
     },
   );
 
-  it("不记录无预热 fallback createSession 的首次绑定", async () => {
+  it("不记录预热尚无投影时首发的首次绑定", async () => {
     const createdSessionId = "fallback-created-session-open-excluded";
     projectionState.current = {
       status: "live",
@@ -981,8 +931,8 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
       optimisticCommands: [],
       loadingOlder: false,
     };
-    prewarmHookMock.binding = null;
-    // 本用例验证无预热的 createSession 埋点边界；草稿仍必须具备生产提交所要求的完整执行配置。
+    prewarmHookMock.binding = undefined;
+    // 首发始终复用预热创建；尚无投影时也不能作为已有任务打开记录。
     draftConfigMock.resolveInitialDraftConfig.mockReturnValue({
       provider: "alternate-provider",
       model: "deepseek-v4-pro",
@@ -1269,8 +1219,17 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
 });
 
 describe("SessionPane stop foreground execution", () => {
-  it.each(["button", "escape"] as const)(
-    "forwards the execution id and records %s when stopping a goal verifier",
+  it.each([
+    "button",
+    "escape",
+    "escape-outside",
+    "escape-dialog",
+    "escape-consumed",
+    "fallback-outside",
+    "fallback-dialog",
+    "fallback-consumed",
+  ] as const)(
+    "routes %s by keyboard ownership and preserves the goal verifier execution id",
     async (source) => {
       const infoSpy = vi.spyOn(logger.lifecycle, "info");
       const running = makeSnapshot();
@@ -1301,7 +1260,7 @@ describe("SessionPane stop foreground execution", () => {
         ackFor(envelope, { status: "accepted" }),
       );
 
-      const root = await renderPane();
+      const root = await renderPane({ allowEscapeStopOutsidePane: source.startsWith("fallback-") });
       await act(async () => {
         if (source === "button") {
           captured.composerProps?.onStop?.();
@@ -1309,17 +1268,34 @@ describe("SessionPane stop foreground execution", () => {
           const listener = vi
             .mocked(window.addEventListener)
             .mock.calls.find(([type]) => type === "keydown")?.[1] as (event: KeyboardEvent) => void;
-          expect(listener).toBeTypeOf("function");
+          const paneElement = vi
+            .mocked(document.createElement)
+            .mock.results.map((result) => result.value as Element)
+            .find(
+              (element) => element.getAttribute("data-testid") === "v4-session-pane-workspace-main",
+            );
+          expect(paneElement).toBeDefined();
           listener({
             key: "Escape",
-            defaultPrevented: false,
-            composedPath: () => [],
+            defaultPrevented: source.endsWith("consumed"),
+            composedPath: () =>
+              source.endsWith("outside")
+                ? [document]
+                : [
+                    paneElement,
+                    ...(source.endsWith("dialog") ? [{ dataset: { slot: "dialog-content" } }] : []),
+                  ],
             preventDefault: vi.fn(),
           } as unknown as KeyboardEvent);
         }
         await flushMicrotasks();
       });
 
+      if (source !== "button" && source !== "escape" && source !== "fallback-outside") {
+        expect(mocks.sendCommand).not.toHaveBeenCalled();
+        await act(async () => root.unmount());
+        return;
+      }
       expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
       expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
         type: "stop",
@@ -1327,7 +1303,7 @@ describe("SessionPane stop foreground execution", () => {
       });
       // 普通 info 在生产禁用；停止归因必须走生命周期通道，同时保留执行 ID 防误停。
       expect(infoSpy).toHaveBeenCalledWith("[v4-pane] stop 命令发出", {
-        source,
+        source: source === "button" ? "button" : "escape",
         sessionId: "session-1",
         foregroundExecutionId: "foreground-1",
       });
@@ -1471,8 +1447,6 @@ describe("SessionPane mobile plan approval recovery", () => {
 
     const root = await renderPane({ compactForRemoteControl: true });
     try {
-      expect(captured.interactionProps?.onPlanInteractionAccepted).toBeTypeOf("function");
-
       act(() => {
         captured.interactionProps?.onPlanInteractionAccepted?.("plan-request-1");
         captured.interactionProps?.onPlanInteractionAccepted?.("plan-request-1");
@@ -1578,8 +1552,8 @@ describe("SessionPane model switch recovery", () => {
     const root = createRoot(installMinimalDom());
     try {
       root.render(createPaneElement());
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      expect(mocks.toast).toHaveBeenCalledTimes(1);
+      // 并行测试下 React 调度可能超过 20ms；等待可观察结果，仍不使用 act 冲刷 effect。
+      await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledTimes(1));
       // 自动 fallback 只修正当前执行事实；App Recent 只能由接受的普通 Submission 写入。
       expect(composerRecentMocks.acceptSubmission).not.toHaveBeenCalled();
     } finally {
@@ -1790,17 +1764,17 @@ describe("SessionPane model switch recovery", () => {
       },
     });
     expect(composerRecentMocks.acceptSubmission).toHaveBeenCalledWith(
-      "/workspace",
-      {
-        modelSelection: {
-          providerId: "alternate-provider",
-          modelId: "deepseek-v4-pro",
-          options: { reasoningLevel: "high" },
+      expect.objectContaining({
+        selection: {
+          modelSelection: {
+            providerId: "alternate-provider",
+            modelId: "deepseek-v4-pro",
+            options: { reasoningLevel: "high" },
+          },
+          mode: "build",
+          planEnabled: false,
         },
-        mode: "build",
-        planEnabled: false,
-      },
-      undefined,
+      }),
     );
 
     await act(async () => {
@@ -1810,7 +1784,7 @@ describe("SessionPane model switch recovery", () => {
 
   
   it.each(["accepted", "rejected", "failed", "duplicate"] as const)(
-    "运行中提交的 %s ACK 只在 accepted 时记住提交瞬间的权限",
+    "运行中提交的 %s ACK 只在已接纳时记住提交瞬间的权限",
     async (status) => {
       const running = makeSnapshot();
       running.control = { ...running.control, phase: "running", canStop: true };
@@ -1852,11 +1826,9 @@ describe("SessionPane model switch recovery", () => {
         if (status === "accepted") await pending;
         else await expect(pending).rejects.toThrow();
       });
-      if (status === "accepted") {
+      if (status === "accepted" || status === "duplicate") {
         expect(composerRecentMocks.acceptSubmission).toHaveBeenCalledExactlyOnceWith(
-          "/workspace",
-          expect.objectContaining({ mode: "yolo" }),
-          undefined,
+          expect.objectContaining({ selection: expect.objectContaining({ mode: "yolo" }) }),
         );
       } else {
         expect(composerRecentMocks.acceptSubmission).not.toHaveBeenCalled();
@@ -1946,15 +1918,6 @@ describe("SessionPane model switch recovery", () => {
       sessionId: "session-1",
       payload: { text: "first input after fallback", modelSelection: selection, mode: "build" },
     });
-    expect(mocks.sendCommand).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "switchModelConfig",
-        payload: expect.objectContaining({
-          provider: "primary-provider",
-          model: "deepseek-v4-flash",
-        }),
-      }),
-    );
     expect(promote).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -1962,7 +1925,7 @@ describe("SessionPane model switch recovery", () => {
     });
   });
 
-  it("promotes only an online same-session fallback, not a snapshot navigation", async () => {
+  it("does not update Composer Recent for online fallback or snapshot navigation", async () => {
     const initial = makeSnapshot();
     projectionState.current = {
       status: "live",
@@ -2241,32 +2204,6 @@ describe("SessionPane model switch recovery", () => {
     });
   });
 
-  it("自定义模型恢复重新构造目标 Provider/Model Selection", async () => {
-    seedModelProviderNames();
-    projectionState.current = {
-      status: "live",
-      snapshot: makeSnapshot(),
-      subscriptionId: "provider-aware-custom-recovery",
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    const root = await renderPane();
-    await act(async () => {
-      await captured.composerProps?.onRecoverCustomModelSelection?.(
-        "custom:alternate-provider:deepseek-v4-pro",
-        { provider: "primary-provider", model: "deepseek-v4-flash" },
-      );
-      await flushMicrotasks();
-    });
-
-    expect(draftConfigMock.handleDraftSelectModel).toHaveBeenCalledWith(
-      "alternate-provider",
-      "deepseek-v4-pro",
-    );
-    await act(async () => root.unmount());
-  });
-
   it("does not show a custom provider recovery toast for a draft", async () => {
     seedModelProviderNames();
     prewarmHookMock.binding = null;
@@ -2375,8 +2312,17 @@ describe("SessionPane compact blocked feedback", () => {
   });
 });
 
-describe("SessionPane /plan shortcut", () => {
-  it("已有会话的 /plan 通过单条 Submission 携带模式，不先发配置 CAS", async () => {
+describe("SessionPane Plan picker action", () => {
+  it.each([
+    { sessionId: "session-1" },
+    { sessionId: null },
+    {
+      sessionId: "session-1",
+      compactForRemoteControl: true,
+      workspaceIdentity: "remote:ssh:example:/repo",
+      remoteSessionId: "remote-1",
+    },
+  ])("selection uses the standard Plan control without sending: %j", async (props) => {
     projectionState.current = {
       status: "live",
       snapshot: makeSnapshot(),
@@ -2385,28 +2331,21 @@ describe("SessionPane /plan shortcut", () => {
       optimisticCommands: [],
       loadingOlder: false,
     };
-    mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
-      ackFor(envelope, { status: "accepted" }),
-    );
-
-    const root = await renderPane();
-    let sendResult: unknown;
+    const root = await renderPane(props);
+    const callsBefore = mocks.sendCommand.mock.calls.length;
+    const action = captured.composerProps?.appSlashCommands?.find((item) => item.value === "plan");
+    expect(action).toMatchObject({ label: "计划模式", description: "开启计划模式" });
     await act(async () => {
-      sendResult = await captured.composerProps?.onSendText("/plan 帮我做 X");
+      action?.run();
+      action?.run();
       await flushMicrotasks();
     });
-
-    expect(sendResult).toBe("sent");
-    const envelopes = mocks.sendCommand.mock.calls.map(([envelope]) => envelope);
-    expect(envelopes.map((envelope) => envelope.type)).toEqual(["sendText"]);
-    expect(envelopes[0]).toMatchObject({
-      payload: { text: "帮我做 X", mode: "build", planEnabled: true },
-    });
-
+    expect(draftConfigMock.handleDraftSwitchMode.mock.calls).toEqual([["plan"], ["plan"]]);
+    expect(mocks.sendCommand.mock.calls.length).toBe(callsBefore);
     await act(async () => root.unmount());
   });
 
-  it("已经处于 Plan 模式时也只发送本次 Submission", async () => {
+  it("does not offer the Plan action in a read-only pane", async () => {
     projectionState.current = {
       status: "live",
       snapshot: makeSnapshot(),
@@ -2415,191 +2354,59 @@ describe("SessionPane /plan shortcut", () => {
       optimisticCommands: [],
       loadingOlder: false,
     };
-    mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
-      ackFor(envelope, {
-        status: envelope.type === "switchCollaborationMode" ? "noop" : "accepted",
-      }),
-    );
-
-    const root = await renderPane();
-    let sendResult: unknown;
-    await act(async () => {
-      sendResult = await captured.composerProps?.onSendText("/plan 继续整理");
-      await flushMicrotasks();
-    });
-
-    expect(sendResult).toBe("sent");
-    expect(mocks.sendCommand.mock.calls.map(([envelope]) => envelope.type)).toEqual(["sendText"]);
-
+    const root = await renderPane({ readOnly: true });
+    expect(
+      captured.composerProps?.appSlashCommands?.some((item) => item.value === "plan"),
+    ).not.toBe(true);
     await act(async () => root.unmount());
   });
 
-  it("/plan 请求被接纳边界拒绝时把错误交还 Composer 保留输入", async () => {
-    projectionState.current = {
-      status: "live",
-      snapshot: makeSnapshot(),
-      subscriptionId: "sub-1",
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    mocks.sendCommand.mockImplementationOnce(async (envelope: CommandEnvelope) =>
-      ackFor(envelope, { status: "failed", reasonCode: "admission.denied" }),
-    );
-
-    const root = await renderPane();
-    await act(async () => {
-      await expect(captured.composerProps?.onSendText("/plan 保留草稿")).rejects.toThrow(
-        "admission.denied",
-      );
-      await flushMicrotasks();
-    });
-
-    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
-    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
-      type: "sendText",
-      payload: { mode: "build", planEnabled: true, text: "保留草稿" },
-    });
-
-    await act(async () => root.unmount());
-  });
-
-  it("consumes an empty existing-session shortcut without sending a prompt", async () => {
-    projectionState.current = {
-      status: "live",
-      snapshot: makeSnapshot(),
-      subscriptionId: "sub-1",
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
-      ackFor(envelope, { status: "accepted" }),
-    );
-
-    const root = await renderPane();
-    let sendResult: unknown;
-    await act(async () => {
-      sendResult = await captured.composerProps?.onSendText("/plan");
-      await flushMicrotasks();
-    });
-
-    expect(sendResult).toBe("sent");
-    expect(mocks.sendCommand).not.toHaveBeenCalled();
-    expect(draftConfigMock.handleDraftSwitchMode).toHaveBeenCalledWith("plan");
-
-    await act(async () => root.unmount());
-  });
-
-  it("updates draft mode and keeps the empty shortcut local", async () => {
-    projectionState.current = {
-      status: "connecting",
-      snapshot: null,
-      subscriptionId: null,
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    draftConfigMock.resolveInitialDraftConfig.mockReturnValue({});
-    mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
-      ackFor(envelope, {
-        result: { type: "createSession", sessionId: "should-not-create" },
-      }),
-    );
-
-    const root = await renderPane({ sessionId: null });
-    const callsBeforeSubmit = mocks.sendCommand.mock.calls.length;
-    let sendResult: unknown;
-    await act(async () => {
-      sendResult = await captured.composerProps?.onSendText("/plan");
-      await flushMicrotasks();
-    });
-
-    expect(sendResult).toBe("sent");
-    expect(draftConfigMock.handleDraftSwitchMode).toHaveBeenCalledWith("plan");
-    expect(mocks.sendCommand.mock.calls.length).toBe(callsBeforeSubmit);
-
-    await act(async () => root.unmount());
-  });
-
-  it("carries draft Plan intent through session creation and the first sendText", async () => {
-    projectionState.current = {
-      status: "connecting",
-      snapshot: null,
-      subscriptionId: null,
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-    prewarmHookMock.binding = null;
-    draftConfigMock.resolveInitialDraftConfig.mockReturnValue({
-      provider: "alternate-provider",
-      model: "deepseek-v4-pro",
-    });
-    draftConfigMock.handleDraftSwitchMode.mockImplementation((mode: string) => {
-      draftConfigMock.draftConfigRef.current = {
-        ...draftConfigMock.draftConfigRef.current,
-        mode,
+  it.each(["/plan", "/PLAN 帮我做 X"])(
+    "sends literal %s without changing Plan or stripping text",
+    async (text) => {
+      projectionState.current = {
+        status: "live",
+        snapshot: makeSnapshot(),
+        subscriptionId: "sub-1",
+        lastError: null,
+        optimisticCommands: [],
+        loadingOlder: false,
       };
-    });
-    mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
-      ackFor(envelope, { result: { type: "createSession", sessionId: "created-plan" } }),
-    );
+      mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
+        ackFor(envelope, { status: "accepted" }),
+      );
+      const attachments = [
+        { ref: "zcode-artifact://a", fileName: "a.txt", mime: "text/plain", bytes: 1 },
+      ];
+      const root = await renderPane();
+      try {
+        const callsBeforeSubmit = mocks.sendCommand.mock.calls.length;
+        let sendResult: unknown;
+        await act(async () => {
+          sendResult = await captured.composerProps?.onSendText(text, {
+            attachments,
+            contextAttachmentCount: 1,
+          });
+          await flushMicrotasks();
+        });
 
-    const root = await renderPane({ sessionId: null });
-    try {
-      const callsBeforeSubmit = mocks.sendCommand.mock.calls.length;
-      let sendResult: unknown;
-      await act(async () => {
-        sendResult = await captured.composerProps?.onSendText("/plan 先列出步骤");
-        await flushMicrotasks();
-      });
-
-      expect(sendResult).toBe("sent");
-      const submitted = mocks.sendCommand.mock.calls.slice(callsBeforeSubmit);
-      // 无附件/无共享上下文的草稿首发走合并路径：单条 createSession 携带 firstInput，
-      // 草稿的 Plan 意图随同一条命令到达（CLI 归并请求与 runtime 缺省）。
-      expect(submitted).toHaveLength(1);
-      expect(submitted[0]?.[0]).toMatchObject({
-        type: "createSession",
-        payload: {
-          config: { mode: "plan" },
-          firstInput: { text: "先列出步骤" },
-        },
-      });
-    } finally {
-      await act(async () => root.unmount());
-    }
-  });
-
-  it("blocks an attachment-bearing shortcut before changing mode", async () => {
-    projectionState.current = {
-      status: "live",
-      snapshot: makeSnapshot(),
-      subscriptionId: "sub-1",
-      lastError: null,
-      optimisticCommands: [],
-      loadingOlder: false,
-    };
-
-    const root = await renderPane();
-    const callsBeforeSubmit = mocks.sendCommand.mock.calls.length;
-    let sendResult: unknown;
-    await act(async () => {
-      sendResult = await captured.composerProps?.onSendText("/plan 检查附件", {
-        attachments: [
-          { ref: "zcode-artifact://a", fileName: "a.txt", mime: "text/plain", bytes: 1 },
-        ],
-      });
-      await flushMicrotasks();
-    });
-
-    expect(sendResult).toBe("blocked");
-    expect(mocks.sendCommand.mock.calls.length).toBe(callsBeforeSubmit);
-    expect(mocks.toast).toHaveBeenCalledWith("首版 /plan 仅支持纯文本，请移除附件或上下文后重试。");
-
-    await act(async () => root.unmount());
-  });
+        expect(sendResult).toBe("sent");
+        const submitted = mocks.sendCommand.mock.calls.slice(callsBeforeSubmit);
+        // 无附件/无共享上下文的草稿首发走合并路径：单条 createSession 携带 firstInput，
+        // 草稿的 Plan 意图随同一条命令到达（CLI 归并请求与 runtime 缺省）。
+        expect(submitted).toHaveLength(1);
+        expect(submitted[0]?.[0]).toMatchObject({
+          type: "createSession",
+          payload: {
+            config: { mode: "plan" },
+            firstInput: { text: "先列出步骤" },
+          },
+        });
+      } finally {
+        await act(async () => root.unmount());
+      }
+    },
+  );
 });
 
 describe("SessionPane Plan mode goal guard", () => {

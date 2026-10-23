@@ -37,11 +37,15 @@ export function NodeReplImageGrid({
       images.map((image, index) => ({
         alt: `${resultImageLabel} ${index + 1}`,
         filename: `result-image-${index + 1}`,
-        src: resolveScreenshotObjectUrl(
-          `${image.mimeType}:${image.base64.length}:${image.base64.slice(0, 24)}`,
-          image.mimeType,
-          image.base64,
-        ),
+        // 上游允许模型直接带 src（URL/路径）；base64 图仍走 objectURL 缓存，避免整条
+        // 会话的 base64 字符串常驻 DOM。
+        src:
+          image.src ??
+          resolveScreenshotObjectUrl(
+            `${image.mimeType}:${image.base64.length}:${image.base64.slice(0, 24)}`,
+            image.mimeType,
+            image.base64,
+          ),
       })),
     [images, resultImageLabel],
   );

@@ -1,15 +1,15 @@
+import { SidebarNativeTooltip, ControlHintTooltip } from "@/ControlHintTooltip.js";
 /* oxlint-disable eslint(max-lines) -- footer 聚合账户、主题、模式和快捷键菜单。 */
 import type { Locale, UserInfo } from "@zcode/shared";
+import { DesktopCommandIds } from "@zcode/shared";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
-  DesktopCommandIds,
   TID_LOGIN_MENU_ITEM,
   TID_LOGIN_TRIGGER,
   TID_LOGOUT_BUTTON,
   TID_SIDEBAR_QUOTA_USAGE_BUTTON,
   TID_TASK_SETTINGS_BUTTON,
-} from "@zcode/shared";
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+} from "@zcode/shared/test-ids";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,6 +117,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   onSettingsButtonClick,
   onUsageClick,
   onLogin,
+  onLogout,
   settingsButtonMode = "settings",
   user,
   workspacePath,
@@ -133,6 +134,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   onSettingsButtonClick?: () => void;
   onUsageClick?: () => void;
   onLogin?: () => void;
+  onLogout?: () => void;
   settingsButtonMode?: "settings" | "back";
   user?: UserInfo | null;
   workspacePath?: string;
@@ -388,17 +390,19 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                             void copyUserId();
                           }}
                         >
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-xs"
-                            data-testid="copy-user-id"
-                            className="min-h-0 p-0 text-foreground-subtle"
-                            aria-label={intl.formatMessage({ id: "sidebar.profile.copyUserId" })}
-                            title={intl.formatMessage({ id: "sidebar.profile.copyUserId" })}
-                          >
-                            <Copy className="size-3" />
-                          </Button>
+                          <SidebarNativeTooltip>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              data-testid="copy-user-id"
+                              className="min-h-0 p-0 text-foreground-subtle"
+                              aria-label={intl.formatMessage({ id: "sidebar.profile.copyUserId" })}
+                              title={intl.formatMessage({ id: "sidebar.profile.copyUserId" })}
+                            >
+                              <Copy className="size-3" />
+                            </Button>
+                          </SidebarNativeTooltip>
                         </DropdownMenuItem>
                       </div>
                     ) : null}
@@ -547,7 +551,13 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
             {nimbusLoggedIn ? (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={handleNimbusLogout} data-testid={TID_LOGOUT_BUTTON}>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    handleNimbusLogout();
+                    onLogout?.();
+                  }}
+                  data-testid={TID_LOGOUT_BUTTON}
+                >
                   <LogOut className="size-4" />
                   {intl.formatMessage({ id: "app.logout" })}
                 </DropdownMenuItem>

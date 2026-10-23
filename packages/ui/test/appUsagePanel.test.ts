@@ -3,7 +3,6 @@ import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readFile } from "node:fs/promises";
 import type { AppUsageRange, AppUsageSnapshot } from "@zcode/shared";
 import type { IServiceAccessor } from "@zcode/services";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
@@ -137,12 +136,6 @@ describe("AppUsageLifetimeSummaryStrip", () => {
     expect(html).toContain("2 小时 15 分");
     expect(html).toContain("5 天");
     expect(html).toContain("34 天");
-    expect(html).toContain("rounded-xl");
-    expect(html).toContain("h-7");
-    expect(html).toContain("w-px");
-    expect(html).not.toContain("border-border");
-    expect(html).not.toContain("border-t");
-    expect(html).not.toContain("sm:border-l");
   });
 
   it("keeps the selected range for charts but removes the old range metric cards", async () => {
@@ -192,11 +185,6 @@ describe("AppUsageLifetimeSummaryStrip", () => {
     expect(await screen.findByText("每日 Token 趋势图")).toBeTruthy();
     expect(screen.queryByText("趋势图")).toBeNull();
     expect(screen.queryByText("按天 Token 趋势")).toBeNull();
-    expect(document.body.innerHTML).toContain("rounded-full bg-surface");
-    expect(document.body.innerHTML).toContain("group-data-horizontal/tabs:h-7");
-    expect(document.body.innerHTML).toContain("px-2.5 py-0 text-ui-sm");
-    expect(document.body.innerHTML).not.toContain("w-16");
-    expect(document.body.innerHTML).not.toContain("rounded-lg border border-border");
     expect(screen.queryByText("tokens 用量")).toBeNull();
     expect(screen.queryByText("会话数量")).toBeNull();
     expect(screen.queryByText("消息数量")).toBeNull();

@@ -387,7 +387,7 @@ describe("v4 原生 sendQueuedNow", () => {
     },
   );
 
-  it("软门禁:TurnStarted projection commit 后直接 promoted/remove(不再等 review ACK)", async () => {
+  it("Core admission 后直接 promoted/remove，不等待 turn completion", async () => {
     const turnGate = deferred<void>();
     const app = makeApp({
       sendInput: vi.fn().mockResolvedValue({
@@ -401,7 +401,7 @@ describe("v4 原生 sendQueuedNow", () => {
 
     await new V4CommandExecutor(host).execute(envelope("sendQueuedNow", { queueItemId: "q-1" }));
 
-    // 软门禁:TurnStarted commit 后 queue item 直接 promoted/remove
+    // Core admission 完成后就移除队列项，不等待后台 turn 结束。
     expect(app.removeQueueItem).toHaveBeenCalledWith(
       "q-1",
       expect.objectContaining({ reason: "promoted", reservationId: "cmd-q1" }),
@@ -908,21 +908,5 @@ describe("v4 原生 sendQueuedNow", () => {
       expect.any(Object),
     );
     expect(app.removeQueueItem).not.toHaveBeenCalled();
-  });
-});
-
-describe("supports 分流", () => {
-  it("queue 组 6 命令均已原生", () => {
-    const executor = new V4CommandExecutor(makeHost(makeRecord()));
-    for (const type of [
-      "deleteQueueItem",
-      "editQueueItem",
-      "reorderQueueItem",
-      "setAutoDrain",
-      "setFollowupMode",
-      "sendQueuedNow",
-    ] as const) {
-      expect(executor.supports(type)).toBe(true);
-    }
   });
 });

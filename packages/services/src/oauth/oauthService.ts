@@ -3,9 +3,11 @@ import type {
   OAuthCallbackResult,
   OAuthProviderId,
   OAuthProviderMeta,
+  OAuthSessionState,
   OAuthStartResponse,
   UserInfo,
 } from "@zcode/shared";
+import type { Event } from "@zcode/rpc";
 import type { ICredentialService } from "../credential/credential.js";
 import { createServiceLogger } from "../logger/serviceLogger.js";
 import type { IOAuthService } from "./oauth.js";
@@ -38,6 +40,12 @@ const serviceLog = createServiceLogger("oauthService");
  * 界面因此稳定收敛到未登录态；接自有账号体系时在这里实现接口即可。
  */
 export class OAuthService implements IOAuthService {
+  /**
+   * 空实现：无账号体系即无会话变更，事件永不触发；
+   * 仅提供合法订阅句柄以满足上游接口契约。
+   */
+  readonly onDidChangeSession: Event<OAuthSessionState> = (_listener) => ({ dispose: () => {} });
+
   constructor(_credentialService: ICredentialService, dependencies: OAuthServiceDependencies = {}) {
     // 空实现不消费依赖；参数保留以维持既有装配点（node.ts / desktop remote Host）兼容。
     void _credentialService;

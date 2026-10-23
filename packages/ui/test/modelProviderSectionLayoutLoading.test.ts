@@ -1,6 +1,7 @@
 import { createElement, type ReactNode } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+
 import { describe, expect, it, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import { ModelProviderSectionLayout } from "@/settings/model-provider-section/SectionLayout.js";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
 

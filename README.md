@@ -17,6 +17,8 @@ Polaris 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 A
 
 ## 更新
 
+- 2026-10-19：跟随上游 ZCode v3.16.2。
+- 2026-10-16：跟随上游 ZCode v3.16.1。
 - 2026-10-10：跟随上游 ZCode v3.15.1。
 - 2026-9-23：跟随上游 ZCode v3.14.3。
 
@@ -108,6 +110,8 @@ Web 模式默认工作目录为当前目录，监听 `127.0.0.1`，默认不启�
 构建方式见下方打包章节。`pnpm build:zcode` 只生成发行包，不会替换 `PATH` 中已有的 `zcode`。如果命令仍指向旧安装或其他源码目录，macOS / Linux 可用 `command -v zcode` 检查，Windows 可用 `where.exe zcode` 检查。
 
 ### CLI 源码开发
+
+CLI 的模型配置、非交互调用、工具与扩展、批量评测和轨迹记录见 [CLI 使用指南](apps/zcode-cli/docs/usage/README.md)。
 
 直接开发 TUI 或 Agent 时，运行源码入口：
 

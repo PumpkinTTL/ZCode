@@ -101,6 +101,11 @@ export type {
 } from "./windowsCuaDevHelperHost.js";
 
 export {
+  resolveStandaloneStatusLaunchAppPath,
+  resolveStandaloneStatusLaunchCandidates,
+} from "./cuaStandaloneStatusLaunch.js";
+
+export {
   createCuaPipSessionService,
 } from "./cuaPipSessionService.js";
 export { ICuaPipSessionService } from "./cuaPipSession.js";

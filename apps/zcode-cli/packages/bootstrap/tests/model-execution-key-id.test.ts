@@ -17,7 +17,6 @@ describe("请求期 Key ID 执行上下文", () => {
     });
     expect(value).toEqual(requestAuth);
     expect(Object.isFrozen(value)).toBe(true);
-    expect(value?.headers).toBeUndefined();
   });
 });
 

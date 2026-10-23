@@ -9,7 +9,6 @@ import {
   buildStoreItems,
   canUpdatePluginItem,
   formatCanonicalPluginName,
-  formatCanonicalMarketplaceName,
   groupItemsByCategory,
   resolveItemDisplayName,
   resolvePluginDisplayName,

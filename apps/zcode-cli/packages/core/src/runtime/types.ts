@@ -1,3 +1,4 @@
+import type { ToolSearchExecutionContext, ToolSearchMode } from "@zcode/contracts";
 import type { GetAgentDefinitions, LoadAgentDefinitions } from "../subagent/definitions.js";
 import type { RuntimeInputPresentation } from "@zcode/contracts";
 /* eslint-disable max-lines -- Runtime 类型集中承载 core/runtime 对外结构，拆分需要单独迁移。 */
@@ -118,6 +119,7 @@ import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-
 // -----------------------------------------------
 
 export interface AgentRuntimeConfig {
+  toolSearch?: { mode?: ToolSearchMode };
   /** shared-host CUA request routing metadata; desktop is the safe default. */
   clientMode?: "desktop-continuous" | "web-remote-replayable";
   deliveryKind?: "desktop-continuous" | "web-remote-replayable";
@@ -246,6 +248,8 @@ export interface AgentRuntimeConfig {
   outputStyle?: OutputStylePromptConfig;
   agentName?: string; // Default: "zcode-agent"
   workingDirectory?: string; // Required for context builder
+  /** 本次运行的附加目录，仅用于环境 prompt 展示，不参与配置发现或持久化。 */
+  additionalDirectories?: readonly string[];
   /**
    * 调用方传入的实际工作区路径表示，用于 session 持久化与本地身份恢复。
    * 文件和命令执行仍只使用规范化后的 workingDirectory。
@@ -373,6 +377,9 @@ export interface AgentRuntimeDeps {
    * 包装（受闸门约束），主 runtime 拿治理器的 observer（只喂信号）；缺席即不设闸门。
    */
   modelRequestAdmission?: ModelRequestAdmission;
+  onOffPeakLifecycleEvent?: (
+    event: import("./off-peak/lifecycle.js").OffPeakLifecycleEvent,
+  ) => void;
   workflowPort?: WorkflowPort;
   /** workflow run 的提交/观察/取消端口；存在即 CreateWorkflow 真启动，缺席则回占位诊断。 */
   dynamicWorkflowRunPort?: DynamicWorkflowRunPort;
@@ -440,17 +447,32 @@ export interface TurnResult {
  * 也不会成为 Session Selection 的第二份来源。
  */
 export interface ModelExecutionContext {
+  offPeak?: { executionId: string; ticketId: string; providerErrorCode: string };
   /** 仅当前 Turn 跳过自动 Project Memory Extraction；不修改 Session Memory 配置。 */
   memoryExtraction?: "skip";
   selectionScope: "execution";
+  /**
+   * Polaris：执行 Selection 的降级声明保留为协议兼容字段（admission/preflight 只读），
+   * core 内不再消费——原退回执行链（turn-execution-fallback）不接入。
+   */
+  selectionFallback?: {
+    providerId: string;
+    rules: ReadonlyArray<{ reason: string; providerErrorCode?: string }>;
+    target?: ModelSelection;
+  };
+  /** 接纳边界固定的 Session 候选快照；仅随内存命令传递，core 不再作退回使用。 */
+  highspeedFallbackSelection?: ModelSelection;
   requestDependencies?: ModelRequestDependencies;
   subagents?: {
     foregroundModel: "submission";
-    background: "deny";
+    background: "deny" | "allow";
   };
 }
 
 export interface ExecuteTurnOptionsBase {
+  /** 内存后台命令归属；不进入 canonical intent 或持久化模型默认。 */
+  offPeakExecutionId?: string;
+  executionSelection?: ModelSelection;
   abortSignal?: AbortSignal;
   browserAmbientContext?: {
     tabCount: number;
@@ -745,6 +767,7 @@ export interface PermissionDecisionResult {
 }
 
 export interface ExecuteToolsOptions {
+  toolSearch?: ToolSearchExecutionContext;
   automationTurn?: boolean;
   offPeakTurn?: boolean;
   signal?: AbortSignal;
@@ -832,6 +855,7 @@ export interface ProviderContextUsageSnapshot {
 }
 
 export interface RunModelTextRequestOptions {
+  toolSearchEnabled?: boolean;
   abortSignal?: AbortSignal;
   assistantMessageId: MessageId;
   events: SessionEvent[];

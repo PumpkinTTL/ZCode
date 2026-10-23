@@ -87,16 +87,6 @@ const projectionState = vi.hoisted(() => ({
 }));
 
 const servicesMock = vi.hoisted(() => ({
-  highspeedCardService: {
-    getSnapshot: vi.fn(async () => ({ card: null, nextDrawAt: null, drawing: false })),
-    prepareTurn: vi.fn(async () => ({
-      kind: "fallback" as const,
-      reason: "draw-miss" as const,
-      nextDrawAt: null,
-    })),
-    healthy: vi.fn(),
-    share: vi.fn(),
-  },
   // 修复原因：readiness hook 将 service 作为 effect 依赖；每次 render 重建会导致无限重渲染直至 OOM。
   zcodeSessionService: {
     updateProviderRegistry: vi.fn(),
@@ -123,6 +113,7 @@ vi.mock("@/hooks/useSettingService.js", () => ({
 }));
 
 vi.mock("@/hooks/useServices.js", () => ({
+  useComposerClientNamespace: () => "desktop",
   useOptionalServices: () => null,
   useServices: () => servicesMock,
 }));
@@ -221,14 +212,6 @@ vi.mock("@/v4/V4InteractionDialogs.js", async () => {
   const React = await import("react");
   return {
     V4InteractionDialogs: () => React.createElement("div", { "data-testid": "mock-interactions" }),
-  };
-});
-
-vi.mock("@/request-security-edition/V4ProviderRuntimeHeadersController.js", async () => {
-  const React = await import("react");
-  return {
-    V4ProviderRuntimeHeadersController: () =>
-      React.createElement("div", { "data-testid": "mock-runtime-headers" }),
   };
 });
 
@@ -397,12 +380,6 @@ afterEach(() => {
   headerProps.length = 0;
   queueProps.length = 0;
   timelineProps.length = 0;
-  servicesMock.highspeedCardService.prepareTurn.mockReset();
-  servicesMock.highspeedCardService.prepareTurn.mockResolvedValue({
-    kind: "fallback",
-    reason: "draw-miss",
-    nextDrawAt: null,
-  });
   projectionState.current = null;
   delete (globalThis as { document?: unknown }).document;
   delete (globalThis as { window?: unknown }).window;
@@ -901,7 +878,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => root.unmount());
   });
 
-  it("running 时 edit 可用，fork 回调交给 row.actions 裁决，retry 仍保持 completed gate", async () => {
+  it("running 时向 Timeline 提供 edit、fork 与 retry 回调，由 row.actions 裁决展示", async () => {
     const snapshot = makeSnapshot();
     snapshot.control = {
       ...snapshot.control,

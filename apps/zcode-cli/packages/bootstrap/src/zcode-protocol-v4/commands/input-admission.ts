@@ -156,3 +156,24 @@ export function resolveSubmittedExecutionState(
     planEnabled: state.planEnabled,
   };
 }
+
+/**
+ * retry、edit 重发与 queue promotion 在没有本轮有效执行材料时，统一经这个 resolver
+ * 退回会话常驻 Selection。只读会话当前值，不改写 session 常驻模型。
+ * （Polaris：Highspeed 执行材料链不接入，Selection 一律来自会话常驻状态。）
+ */
+export function resolveSessionFallbackModelSelection(record: V4SessionRecordView): ModelSelection {
+  return resolveSubmittedExecutionState(record, {}).modelSelection;
+}
+
+/**
+ * 队列只能持久化普通提交模型。两个队列写入路径统一在此解析；
+ * 无候选时退回会话常驻 Selection，禁止把无主 Selection 写进 QueueItem。
+ */
+export function resolveOrdinaryQueueModelSelection(
+  record: V4SessionRecordView,
+  candidate?: ModelSelection,
+): ModelSelection {
+  return candidate ?? resolveSessionFallbackModelSelection(record);
+}
+

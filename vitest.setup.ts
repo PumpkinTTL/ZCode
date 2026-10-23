@@ -2,6 +2,29 @@ import { afterEach, vi } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
+// Bugfix: Node 25 自带 webstorage 全局，但其 localStorage 缺方法（clear/setItem 等皆 undefined），
+// 而 vitest 的 jsdom 环境遇到「global 已存在的 key」会跳过 jsdom 的完整实现（getWindowKeys
+// 的 `k in global` 短路）——上游 CI 跑在 Node 24.14 上无此问题，本机 Node 25 的 jsdom 单测
+// 因此整批挂掉。这里探测到残缺实现时补一个全功能内存 Storage，恢复浏览器语义。
+const testLocalStorage = globalThis.localStorage as unknown as
+  | Record<string, unknown>
+  | undefined;
+if (!testLocalStorage || typeof testLocalStorage.clear !== "function") {
+  const backing = new Map<string, string>();
+  const storage: Record<string, unknown> = {
+    getItem: (key: string) => (backing.has(String(key)) ? backing.get(String(key))! : null),
+    setItem: (key: string, value: string) => void backing.set(String(key), String(value)),
+    removeItem: (key: string) => void backing.delete(String(key)),
+    clear: () => void backing.clear(),
+    key: (index: number) => [...backing.keys()][index] ?? null,
+  };
+  Object.defineProperty(storage, "length", {
+    get: () => backing.size,
+    enumerable: true,
+  });
+  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+}
+
 process.env.GIT_CONFIG_COUNT = "2";
 
 // Bugfix: Git Bash 会把 /usr/bin（GNU tar 1.35）注入 PATH 最前，子进程 spawn "tar"

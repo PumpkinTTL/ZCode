@@ -170,6 +170,7 @@ describe("WorkspaceHeaderActionSection", () => {
     expect(renderSection({})).toContain("conversationShare.trigger");
     expect(renderSection({ remoteTarget: { kind: "ssh" } })).toContain("conversationShare.trigger");
     expect(renderSection({ isWebRemoteControl: true })).not.toContain("conversationShare.trigger");
+    expect(renderSection({ isDesktop: false })).not.toContain("conversationShare.trigger");
     expect(renderSection({ remoteTarget: { kind: "server" } })).not.toContain(
       "conversationShare.trigger",
     );

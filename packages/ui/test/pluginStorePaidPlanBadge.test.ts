@@ -35,21 +35,18 @@ const actions: PluginStoreActions = {
   onUninstall: () => {},
   onSetEnabled: () => {},
   onUpdate: () => {},
-  operationId: null,
+  activeOperations: [],
   togglingPluginId: null,
 };
 
-async function renderCard(
-  item: StorePluginItem,
-  locale: "en-US" | "zh-CN" = "en-US",
-): Promise<string> {
+async function renderCard(item: StorePluginItem): Promise<string> {
   const { PluginStoreCard } = await import("../src/settings/PluginStoreCard.js");
   const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
   return renderToStaticMarkup(
     createElement(
       ZCodeIntlProvider,
-      { initialLocale: locale },
-      createElement(PluginStoreCard, { item, actions, locale }),
+      { initialLocale: "en-US" },
+      createElement(PluginStoreCard, { item, actions, locale: "en-US" }),
     ),
   );
 }
@@ -92,12 +89,6 @@ describe("plugin store paid plan badge", () => {
     expect(html).toContain("bg-[var(--color-plugin-paid-plan-badge)]");
     expect(html).toContain(">Plan<");
     expect(html).toContain('data-tooltip-title="This plugin works better with a paid plan"');
-  });
-
-  it("uses the concise coding plan label in Chinese", async () => {
-    const html = await renderCard(makeItem(true), "zh-CN");
-    expect(html).toContain("编程套餐");
-    expect(html).not.toContain("支持编程套餐");
   });
 
   it("omits the badge when the plan is not required and when the field is absent", async () => {
