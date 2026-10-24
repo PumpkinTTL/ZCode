@@ -69,3 +69,11 @@ typecheck ✅ / build:bootstrap ✅ / 业务与品牌三道扫 ✅ / 单测 152 
 - web oauthStateCodec 3：合并采纳了上游测试版，断言含 zcode.z.ai 需 Polaris 化 + legacy 路由语义对账
 - modelConfigSelect 5 / v4SessionPaneErrorBanner 5 / providerBuiltinRefreshFailure 5 / providerProvisioningRealStores 4 / remoteWorkspacePreparation 6 / hostRemoteStartupIntegration 4 / settingService 外 services 零星：待逐簇分诊
 - UI 零星（workflowSubagentModelLabel/useGlobalTaskListRemoteSessionsIndex/projectMentionProviders/desktopLogoStyle/commandCenterSelection/useOnboardingTrigger 等 ~30）：多为 localStorage shim 后未重跑者，先重跑再分诊
+
+### 待收口补记（检查点 66084974 后，74 failed 基线）
+- remoteWorkspacePreparation 6 ✅ 已修（.each context 形参依赖移除，早退跳过）
+- projectMentionProviders 4 + useGlobalTaskListRemoteSessionsIndex 4 + v4SessionPaneErrorBanner 5：根因=上游把 @提及/任务清单数据源迁到 v4 sessions-index 管线（sessionsMentionProvider.ts:327 useWorkspaceSessionsIndexItems），旧 readTree/tree 夹具喂不进新管线 → 需按新管线重接测试夹具（mock useWorkspaceSessionsIndexItems 或其 backing service）
+- 同根因疑似：useRemoteWorkspaceHistoryDirectoryProjection 3、commandCenterSelection 4、mobileProjectDraftBootstrap 4、v4QueueEditExtraction 2
+- zcode-server-cli 守护更新流 7：update-progress 控制命令为空，查 merged update feed 门控（autoUpdater 同款开关语义）
+- web oauthStateCodec 3：断言含 zcode.z.ai 需 Polaris 化 + legacy 路由语义对账（上游把 web 远控构建迁 server-cli）
+- 其余零星（viteConfigLoad 2、webLoginPage 2、workspaceWebRemoteControlTrigger 2、listModelsToolCard 2、appUsagePanel 2、e2eProviderEndpoint 2、dynamicWorkflowConfigMockServer 2、desktopRemoteSessions 2、tsupConfig 1、serviceManager 1、zcodeAgentService.mcpTelemetry 2、v4SessionPaneModelSwitchRecovery 2、hostRemoteStartupIntegration 4）：逐文件小对账
