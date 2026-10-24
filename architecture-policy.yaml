@@ -699,22 +699,7 @@ modules:
     layers:
       adapters: .
     owner: desktop
-  # marketing-touch-controller：由 architecture:adopt 登记
-  - id: marketing-touch-controller
-    roots:
-      - packages/ui/src/marketing-touch-contract
-      - packages/ui/src/components/marketing-touch/marketingTouchController.ts
-    managed: true
-    requires:
-      - services
-      - shared
-      - ui
-    publicEntrypoints:
-      - packages/ui/src/components/marketing-touch/marketingTouchController.ts
-      - packages/ui/src/marketing-touch-contract/contract.ts
-    layers:
-      app: .
-    owner: desktop
+  # marketing-touch-controller 已随上游营销业务整体砍除（目录与消费方零残留），策略条目一并移除。
   # side-pane-full-view：由 architecture:adopt 登记
   - id: side-pane-full-view
     roots:
@@ -744,6 +729,10 @@ global:
   acceptedUpstreamSnapshot: scripts/architecture/upstream-snapshot.json
 
 exceptions:
+  - id: upstream-v3162-shared-telemetry-schema
+    rule: unmanaged-new-file
+    paths: [packages/shared/src/telemetry.ts]
+    reason: 上游 v3.16.2 会话/远控链路引用的纯 schema/类型模块（无端点、无上报逻辑），随 v3.16.2 合并准入；web/desktop 实现类不含遥测上报，ARMS 上报链路仍为砍除态。
   - id: side-pane-full-view-shortcut-command-edit
     rule: unmanaged-new-file
     paths: [packages/shared/src/shortcutCommands.ts]

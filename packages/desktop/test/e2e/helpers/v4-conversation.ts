@@ -152,15 +152,10 @@ export async function prepareV4ConversationE2E(options: PrepareV4ConversationE2E
 }
 
 async function ensureV4ShellReady() {
-  try {
-    // 新隔离 profile 的职业引导会遮住工作区，先复用真实 UI 跳过流程。
-    await skipOccupationOnboardingIfPresent();
-    await waitForProjectRow(DEFAULT_WORKSPACE, { timeout: 30000 });
-    return;
-  } catch (error) {
-    // Polaris：API Key 登录 UI 已剪除，e2e 不再有登录兜底；直接抛原始错误。
-    throw error;
-  }
+  // 新隔离 profile 的职业引导会遮住工作区，先复用真实 UI 跳过流程。
+  // Polaris：API Key 登录 UI 已剪除，e2e 不再有登录兜底；失败直接上抛原始错误。
+  await skipOccupationOnboardingIfPresent();
+  await waitForProjectRow(DEFAULT_WORKSPACE, { timeout: 30000 });
 }
 
 async function ensureV4PreparationDraft(options: PrepareV4ConversationE2EOptions) {
