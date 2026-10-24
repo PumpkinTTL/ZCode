@@ -5,8 +5,11 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { Locale } from "@zcode/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
+import { MODEL_INPUT_CAPABILITY_BADGE_CLASS_NAME } from "@/components/ModelInputCapabilityBadge.js";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
 import {
+  MODEL_CONFIG_SELECT_BADGE_CLASS_NAME,
+  getModelTriggerLabelClassName,
   isModelSelectGroupSelected,
   ModelConfigSelect,
   shouldRenderModelGroupSeparator,

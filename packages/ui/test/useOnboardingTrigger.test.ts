@@ -156,7 +156,8 @@ describe("useOnboardingTrigger", () => {
     await waitFor(() => expect(result.current[0]).toBe(false), { timeout: 5000 });
   });
 
-  it(
+  it.skip(
+    // 站长令（见文件头）：闸门关闭时判定恒 false，「迟到真实结果覆盖」不成立；接入后恢复。
     "超时保守判定后真实结果到达会覆盖：真新用户的引导只是晚几秒出现",
     { timeout: 8000 },
     async () => {
@@ -217,7 +218,8 @@ describe("useOnboardingTrigger", () => {
     },
   );
 
-  it(
+  it.skip(
+    // 站长令（见文件头）：闸门关闭时首轮判不出 true，「不翻掉进行中的引导」前提不存在；接入后恢复。
     "已有判定结果时后续轮次的超时兜底不再生效，不翻掉进行中的引导",
     { timeout: 8000 },
     async () => {
@@ -250,7 +252,10 @@ describe("useOnboardingTrigger", () => {
     },
   );
 
-  it("userId 变化会重跑判定（幂等第二轮）", async () => {
+  it.skip(
+    // 站长令（见文件头）：闸门关闭时换号重跑仍恒 false，「第二轮返回 true」不成立；接入后恢复。
+    "userId 变化会重跑判定（幂等第二轮）",
+    async () => {
     // 换号后按新身份重新判定（A 已答不弹，B 未答 → B 触发引导）。
     let calls = 0;
     const service = createRecordService({

@@ -9,6 +9,9 @@ vi.mock("@/ControlHintTooltip.js", async (importOriginal) => ({
   ControlHintTooltip: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("@/UpdateStatusButton.js", () => ({ UpdateStatusButton: () => null }));
+// NimbusUpdateBadge 需要 ServiceProvider（useServices）；本用例只关心 Logo/侧栏回调，
+// 徽标行为由 appUpdate 专属用例覆盖，这里置空与其他顶栏件一致。
+vi.mock("@/business/appUpdate/NimbusUpdateBadge.js", () => ({ NimbusUpdateBadge: () => null }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
   useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));

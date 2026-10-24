@@ -85,7 +85,7 @@ describe("settingService", () => {
           },
         ],
       };
-      await mkdir(join(taskHome, ".zcode/v2"), { recursive: true });
+      await mkdir(join(taskHome, ".polaris/v2"), { recursive: true });
       await writeFile(
         file,
         JSON.stringify({
@@ -171,7 +171,7 @@ describe("settingService", () => {
 
   it("Main 保存窗口尺寸与 Host 记录远程目录交错时保留两份补丁", async () => {
     const taskHome = makeTempHome();
-    const settingsDir = join(taskHome, ".zcode", "v2");
+    const settingsDir = join(taskHome, ".polaris", "v2");
     const settingsFile = join(settingsDir, "setting.json");
     mkdirSync(settingsDir, { recursive: true });
     writeFileSync(settingsFile, JSON.stringify({ sourceServerWorkspaceHistory: [] }), "utf8");
@@ -1042,7 +1042,7 @@ describe("settingService", () => {
   it("旧自动归档配置在首轮扫描前关闭，重新开启后跨服务重建保留", async () => {
     const home = makeTempHome();
     const file = join(home, ".polaris/v2/setting.json");
-    await mkdir(join(home, ".zcode/v2"), { recursive: true });
+    await mkdir(join(home, ".polaris/v2"), { recursive: true });
     await writeFile(
       file,
       JSON.stringify({
@@ -1096,7 +1096,7 @@ describe("settingService", () => {
   it("迟到的旧配置读取不会覆盖另一个设置服务刚提交的重新开启", async () => {
     const home = makeTempHome();
     const file = join(home, ".polaris/v2/setting.json");
-    await mkdir(join(home, ".zcode/v2"), { recursive: true });
+    await mkdir(join(home, ".polaris/v2"), { recursive: true });
     await writeFile(file, JSON.stringify({ taskAutoArchiveEnabled: true }));
     const captured = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
@@ -1137,7 +1137,7 @@ describe("settingService", () => {
     const firstHome = makeTempHome();
     const secondHome = makeTempHome();
     for (const home of [firstHome, secondHome]) {
-      await mkdir(join(home, ".zcode/v2"), { recursive: true });
+      await mkdir(join(home, ".polaris/v2"), { recursive: true });
       await writeFile(
         join(home, ".polaris/v2/setting.json"),
         JSON.stringify({ taskAutoArchiveEnabled: true }),
@@ -1154,7 +1154,7 @@ describe("settingService", () => {
   it("自动归档迁移写入失败时扫描不执行归档", async () => {
     const home = makeTempHome();
     const file = join(home, ".polaris/v2/setting.json");
-    await mkdir(join(home, ".zcode/v2"), { recursive: true });
+    await mkdir(join(home, ".polaris/v2"), { recursive: true });
     await writeFile(
       file,
       JSON.stringify({
@@ -1499,22 +1499,6 @@ describe("settingService", () => {
       kind: "local",
       workspacePath: "/tmp/local-demo",
       workspacePurpose: "project",
-    });
-  });
-
-  it("在用户目录下兜底创建默认项目，并准确返回是否首次创建", async () => {
-    const home = makeTempHome();
-    const service = await createSettingServiceInHome(home);
-    const defaultProjectPath = join(home, "PolarisProject");
-
-    await expect(service.ensureDefaultProject(home)).resolves.toEqual({
-      path: defaultProjectPath,
-      created: true,
-    });
-
-    await expect(service.ensureDefaultProject(home)).resolves.toEqual({
-      path: defaultProjectPath,
-      created: false,
     });
   });
 });

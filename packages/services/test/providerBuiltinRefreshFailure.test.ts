@@ -2,13 +2,16 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AccountProviderService, ProviderConfigMap } from "@zcode/provider";
-import { downloadZCodeBuiltinRelease } from "@zcode/provider-node";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createProviderConfigRuntime } from "#src/model-provider/providerConfigRuntime.js";
 import { createProviderRuntimeFromConfigRuntime } from "#src/model-provider/providerRuntime.js";
-import { createAccountProviderConfig } from "./providerConfigFixtures.js";
 
-const plans = ["account:bigmodel-team-coding-plan", "account:bigmodel-start-plan"] as const;
+/**
+ * 红线（v3.16.2 合并收口）：官方套餐账号型 Provider（account:zai-、account:bigmodel- 系列，
+ * Team/Start 权益）已按砍除语义从 Built-in 目录移除；Resolver 只投影 Built-in 声明过的
+ * Account Overlay，账号权益不再进入 Registry 投影。原「远端失败不阻断 Team/Start 权益
+ * 刷新」的用例族随之失去被测语义，已删；本文件只保留与账号无关的本地 Release 健壮性约束。
+ */
 const cleanups: Array<() => Promise<void>> = [];
 
 afterEach(async () => {
@@ -16,7 +19,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-async function setup(active = false) {
+async function setup() {
   const root = await mkdtemp(join(tmpdir(), "builtin-refresh-failure-"));
   const bundled = join(root, "bundled.json");
   const activePath = join(root, "active.json");
@@ -25,7 +28,6 @@ async function setup(active = false) {
   );
   release.revision = 1;
   await writeFile(bundled, JSON.stringify(release));
-  if (active) await writeFile(activePath, JSON.stringify({ ...release, revision: 2 }));
   const download = vi.fn(async () => null);
   const configRuntime = createProviderConfigRuntime({
     zcodeBuiltinFilePath: bundled,
@@ -39,23 +41,12 @@ async function setup(active = false) {
       fetchRelease: download,
     },
   });
-  let entitled = false;
-  const resolve = vi.fn(async () => ({
-    providers: new ProviderConfigMap(
-      plans.map((id) => [
-        id,
-        createAccountProviderConfig({
-          accountType: "bigmodel",
-          mode: id === plans[0] ? "team-coding-plan" : "start-plan",
-          entitled,
-        }),
-      ]),
-    ),
-    states: {},
-  }));
   const account = new AccountProviderService({
     configSource: configRuntime.configService,
-    resolve,
+    resolve: async () => ({
+      providers: ProviderConfigMap.empty(),
+      states: {},
+    }),
   });
   const runtime = createProviderRuntimeFromConfigRuntime({
     configRuntime,
@@ -67,79 +58,18 @@ async function setup(active = false) {
     await rm(root, { recursive: true, force: true });
   });
   await runtime.start();
-  await configRuntime.refreshZCodeBuiltin();
-  return {
-    runtime,
-    configRuntime,
-    bundled,
-    activePath,
-    download,
-    resolve,
-    grant: () => {
-      entitled = true;
-    },
-  };
+  return { runtime, configRuntime, bundled, activePath, download };
 }
 
-describe("Builtin 远端失败不阻断有效本地配置的业务刷新", () => {
-  it.each([
-    ["HTTP 地址校验失败", false, "invalid-url"],
-    ["下载服务 503", true, "http-error"],
-    ["下载正文不是 JSON", false, "invalid-json"],
-    ["请求取消", true, "cancelled"],
-  ] as const)("%s：继续更新 Team/Start 权益并保留本地 Release", async (_, active, failure) => {
-    const fixture = await setup(active);
-    const before = await readFile(fixture.activePath, "utf8");
-    const request = vi.fn(async () => {
-      if (failure === "http-error") return new Response("unavailable", { status: 503 });
-      if (failure === "invalid-json") return new Response("not json");
-      return Response.json({
-        code: 0,
-        data: { configs: { builtin_provider_config_json: "http://cdn.example.com/release.json" } },
-      });
-    });
-    fixture.download.mockImplementation(async () => {
-      await downloadZCodeBuiltinRelease({
-        endpointOrigin: "https://control.example.com",
-        platform: "linux-x86_64",
-        appVersion: "test",
-        request,
-        ...(failure === "cancelled" ? { signal: AbortSignal.abort() } : {}),
-      });
-      return null;
-    });
-    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
-    fixture.grant();
-    await fixture.runtime.providerSettings.refresh("composer-connection");
-    const view = await fixture.runtime.modelSelection.getView();
-    for (const id of plans) {
-      const provider = view.providers.find((entry) => entry.providerId === id);
-      expect(provider?.config.access).toMatchObject({ entitled: true });
-      expect(provider?.models.length).toBeGreaterThan(0);
-    }
-    expect(fixture.resolve).toHaveBeenCalled();
-    expect(warning).toHaveBeenCalled();
-    expect(await readFile(fixture.activePath, "utf8")).toBe(before);
-    if (failure === "invalid-url") expect(request).toHaveBeenCalledTimes(1);
-  });
-
-  it("远端和账号同时失败时，返回真实账号错误，不用旧权益伪装成功", async () => {
-    const fixture = await setup();
-    fixture.download.mockRejectedValue(new Error("remote unavailable"));
-    const accountError = new Error("account entitlement unavailable");
-    fixture.resolve.mockRejectedValue(accountError);
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    await expect(fixture.runtime.providerSettings.refresh("composer-connection")).rejects.toBe(
-      accountError,
-    );
-  });
-
+describe("Builtin 远端失败时的本地 Release 健壮性", () => {
   it("本地 Bundled 与 Active 都不可用时，仍拒绝刷新", async () => {
     const fixture = await setup();
     await writeFile(fixture.bundled, "invalid json");
     await writeFile(fixture.activePath, "invalid json");
     fixture.download.mockRejectedValue(new Error("remote unavailable"));
     vi.spyOn(console, "warn").mockImplementation(() => {});
-    await expect(fixture.runtime.providerSettings.refresh("settings-manual")).rejects.toThrow();
+    await expect(
+      fixture.runtime.providerSettings.refresh("settings-manual"),
+    ).rejects.toThrow();
   });
 });

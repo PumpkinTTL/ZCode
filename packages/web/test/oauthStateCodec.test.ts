@@ -13,7 +13,7 @@ describe("oauthStateCodec", () => {
     const state = buildOAuthState({
       nonce: "nonce-1",
       app_return_to:
-        "https://zcode.z.ai/remote/v4?app_version=3.13.0&sid=device-1&mid=mid-1&name=Desktop&ignored=1",
+        "https://nimbus.bitlesu.com/remote/v4?app_version=3.13.0&sid=device-1&mid=mid-1&name=Desktop&ignored=1",
       return_to: "http://192.168.1.8:5173/remote/v4",
     });
 
@@ -23,7 +23,7 @@ describe("oauthStateCodec", () => {
     expect(parseOAuthState(state)).toEqual({
       nonce: "nonce-1",
       app_return_to:
-        "https://zcode.z.ai/remote/v4?app_version=3.13.0&sid=device-1&mid=mid-1&name=Desktop&ignored=1",
+        "https://nimbus.bitlesu.com/remote/v4?app_version=3.13.0&sid=device-1&mid=mid-1&name=Desktop&ignored=1",
       return_to: "http://192.168.1.8:5173/remote/v4",
     });
   });
@@ -46,14 +46,14 @@ describe("oauthStateCodec", () => {
   it("sanitizes app_return_to to same-origin web-remote paths and allowed query keys", () => {
     expect(
       resolveSafeAppReturnTo(
-        "https://zcode.z.ai/remote/v4?app_version=3.13.0&sid=device-1&mid=mid-1&name=Desktop&ignored=1",
-        { currentOrigin: "https://zcode.z.ai" },
+        "https://nimbus.bitlesu.com/remote/v4?app_version=3.13.0&sid=device-1&mid=mid-1&name=Desktop&ignored=1",
+        { currentOrigin: "https://nimbus.bitlesu.com" },
       ),
     ).toBe("/remote/v4?app_version=3.13.0&sid=device-1&mid=mid-1&name=Desktop");
 
     expect(
       resolveSafeAppReturnTo("https://evil.example/remote/v4?sid=device-1", {
-        currentOrigin: "https://zcode.z.ai",
+        currentOrigin: "https://nimbus.bitlesu.com",
       }),
     ).toBeNull();
 
@@ -65,10 +65,10 @@ describe("oauthStateCodec", () => {
   });
 
   it("rejects legacy routes and strips credentials from V2 return targets", () => {
-    expect(resolveSafeAppReturnTo("https://zcode.z.ai/web-remote?sid=device-1")).toBeNull();
+    expect(resolveSafeAppReturnTo("https://nimbus.bitlesu.com/web-remote?sid=device-1")).toBeNull();
     expect(
       resolveSafeAppReturnTo(
-        "https://zcode.z.ai/remote/v4/?sid=device-1&hash=secret&t=1&token=secret&code=code#secret",
+        "https://nimbus.bitlesu.com/remote/v4/?sid=device-1&hash=secret&t=1&token=secret&code=code#secret",
       ),
     ).toBe("/remote/v4/?sid=device-1");
   });
@@ -76,7 +76,7 @@ describe("oauthStateCodec", () => {
   it.each(["/remote/__test__", "/remote/__test__/"])(
     "测试入口 %s 保留安全返回参数，但不成为 OAuth callback",
     (path) => {
-      const origin = "https://zcode.z.ai";
+      const origin = "https://nimbus.bitlesu.com";
       const query = "app_version=3.14.0&sid=device-1&mid=mid-1&name=Desk";
       const href = `${origin}${path}?${query}&token=secret&hash=old&t=1&code=old&state=old#fragment`;
       expect(resolveSafeAppReturnTo(href, { currentOrigin: origin })).toBe(`${path}?${query}`);
@@ -94,28 +94,28 @@ describe("oauthStateCodec", () => {
 
   it.each([
     "https://evil.example/remote/__test__?sid=device-1",
-    "https://zcode.z.ai/unknown?sid=device-1",
-    "https://zcode.z.ai/remote/__test__/unknown?sid=device-1",
+    "https://nimbus.bitlesu.com/unknown?sid=device-1",
+    "https://nimbus.bitlesu.com/remote/__test__/unknown?sid=device-1",
   ])("拒绝不受信任的测试来源 %s", (href) => {
-    const origin = "https://zcode.z.ai";
+    const origin = "https://nimbus.bitlesu.com";
     expect(resolveSafeAppReturnTo(href, { currentOrigin: origin })).toBeNull();
     expect(buildWebRemoteOAuthRedirectUri(`${origin}/remote/v4`, href)).toBe(`${origin}/remote/v4`);
   });
 
   it("accepts a same-origin share route as a safe OAuth return target", () => {
     expect(
-      resolveSafeAppReturnTo("https://zcode.z.ai/cn/share/share-1", {
-        currentOrigin: "https://zcode.z.ai",
+      resolveSafeAppReturnTo("https://nimbus.bitlesu.com/cn/share/share-1", {
+        currentOrigin: "https://nimbus.bitlesu.com",
       }),
     ).toBe("/cn/share/share-1");
     expect(
-      resolveSafeAppReturnTo("https://zcode.z.ai/share/share-1", {
-        currentOrigin: "https://zcode.z.ai",
+      resolveSafeAppReturnTo("https://nimbus.bitlesu.com/share/share-1", {
+        currentOrigin: "https://nimbus.bitlesu.com",
       }),
     ).toBe("/share/share-1");
     expect(
       resolveSafeAppReturnTo("https://evil.example/cn/share/share-1", {
-        currentOrigin: "https://zcode.z.ai",
+        currentOrigin: "https://nimbus.bitlesu.com",
       }),
     ).toBeNull();
   });

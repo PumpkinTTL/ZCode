@@ -194,7 +194,10 @@ describe("Server CLI routing", () => {
   it.each([false, true])("reports online update progress only when requested (%s) and waits for convergence", async (progress) => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zuh-"));
     const serverRoot = join(root, "server");
-    const layout = resolveServerLayout(serverRoot);
+    // 生命周期命令在 IO 前会把 root 收敛为 realpath（Windows 8.3 短路径/macOS /tmp 符号链接
+    // 都会改写字符串）；命名管道名按字符串哈希派生，控制服务器必须监听同一 canonical root，
+    // 否则 CLI 连接的是另一个 pipe，静默走离线安装。
+    const layout = await resolveCanonicalServerLayout(serverRoot);
     const releases = new ReleaseManager(layout);
     await releases.ensure();
     const oldReleaseDir = join(layout.releasesDir, "release-a");
@@ -254,7 +257,8 @@ describe("Server CLI routing", () => {
   it("allows only one update command to own the daemon handoff", async () => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zul-"));
     const serverRoot = join(root, "server");
-    const layout = resolveServerLayout(serverRoot);
+    // 同上：控制管道名跟随 CLI 的 canonical root，短路径字面量会派生另一个 pipe。
+    const layout = await resolveCanonicalServerLayout(serverRoot);
     const releases = new ReleaseManager(layout);
     await releases.ensure();
     const oldReleaseDir = join(layout.releasesDir, "release-a");

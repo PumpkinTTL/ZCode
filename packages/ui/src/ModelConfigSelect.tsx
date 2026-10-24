@@ -669,9 +669,12 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
   ) : (
     <>
       {triggerIcon ?? (
-        <PackageIcon
-          className={cn("pointer-events-none size-4 shrink-0 text-current", triggerIconClassName)}
-          aria-hidden="true"
+        // Polaris：触发器图标由 ModelBrandIcon 承担（认不出品牌退回 generic 方盒标），
+        // 不再使用上游的 lucide-package。
+        <ModelBrandIcon
+          modelId={triggerIconIdentity.modelId}
+          providerId={triggerIconIdentity.providerId}
+          className={cn("pointer-events-none size-4 shrink-0", triggerIconClassName)}
         />
       )}
       <span className={triggerLabelClassName} title={currentTriggerTitle}>

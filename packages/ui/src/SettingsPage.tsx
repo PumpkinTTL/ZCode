@@ -557,7 +557,7 @@ export function SettingsPage({
   );
   const handleIntegratedTerminalShellChange = useCallback(
     async (selection: IntegratedTerminalShellSelection) => {
-      await services.settingService.update({ integratedTerminalShell: selection });
+      await localHostServices.settingService.update({ integratedTerminalShell: selection });
       setIntegratedTerminalShell(selection);
     },
     [localHostServices.settingService],
@@ -601,7 +601,7 @@ export function SettingsPage({
   const handleHttpProxyChange = useCallback(
     async (proxy: string) => {
       const normalizedProxy = proxy.trim();
-      await services.settingService.update({
+      await localHostServices.settingService.update({
         // Bugfix: RPC 会丢弃 undefined；清空代理必须传空串，由服务层删除旧字段。
         httpProxy: normalizedProxy,
       });
@@ -617,7 +617,7 @@ export function SettingsPage({
         .map((token) => token.trim())
         .filter(Boolean)
         .join(",");
-      await services.settingService.update({
+      await localHostServices.settingService.update({
         // Bugfix: 清空 No Proxy 必须传空串，否则旧绕过规则会继续影响下次启动。
         httpProxyNoProxy: normalizedNoProxy,
       });
@@ -629,7 +629,7 @@ export function SettingsPage({
   const handleHttpProxyCaCertPathChange = useCallback(
     async (caCertPath: string) => {
       const normalizedCaCertPath = caCertPath.trim();
-      await services.settingService.update({
+      await localHostServices.settingService.update({
         // Bugfix: 清空自定义 CA 必须传空串，否则旧 NODE_EXTRA_CA_CERTS 路径会残留。
         httpProxyCaCertPath: normalizedCaCertPath,
       });
@@ -640,7 +640,7 @@ export function SettingsPage({
   );
   const handleDataBaseDirChange = useCallback(
     async (dir: string) => {
-      await services.settingService.updateDataBaseDir(dir || undefined);
+      await localHostServices.settingService.updateDataBaseDir(dir || undefined);
       // Bugfix: 迁移失败时不能先把本地状态改成失败路径，否则设置页会误显示为已切换。
       setDataBaseDir(dir);
     },
@@ -662,7 +662,7 @@ export function SettingsPage({
   );
   const handleCloseToTrayOnWindowsChange = useCallback(
     async (enabled: boolean) => {
-      await services.settingService.update({ closeToTrayOnWindows: enabled });
+      await localHostServices.settingService.update({ closeToTrayOnWindows: enabled });
       platform.syncAppSettings?.({ closeToTrayOnWindows: enabled });
       setCloseToTrayOnWindows(enabled);
     },
@@ -677,7 +677,9 @@ export function SettingsPage({
   );
   const handleDesktopChromiumHardwareAccelerationChange = useCallback(
     async (enabled: boolean) => {
-      await services.settingService.update({ desktopChromiumHardwareAccelerationEnabled: enabled });
+      await localHostServices.settingService.update({
+        desktopChromiumHardwareAccelerationEnabled: enabled,
+      });
       setDesktopChromiumHardwareAccelerationEnabled(enabled);
       toast(
         intl.formatMessage({
@@ -689,7 +691,7 @@ export function SettingsPage({
   );
   const handleEmbeddedBrowserAllowInsecureCertificatesChange = useCallback(
     async (enabled: boolean) => {
-      await services.settingService.update({ embeddedBrowserAllowInsecureCertificates: enabled });
+      await localHostServices.settingService.update({ embeddedBrowserAllowInsecureCertificates: enabled });
       setEmbeddedBrowserAllowInsecureCertificates(enabled);
       // 证书策略在 main 启动时装到 Session 上，改完必须重启才会换掉 verifyProc。
       toast(
