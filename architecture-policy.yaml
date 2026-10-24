@@ -731,7 +731,11 @@ global:
 exceptions:
   - id: upstream-v3162-shared-telemetry-schema
     rule: unmanaged-new-file
-    paths: [packages/shared/src/telemetry.ts]
+    paths:
+      - packages/shared/src/telemetry.ts
+      - packages/shared/src/remoteUsageTelemetry.ts
+      - packages/shared/src/sessionCreateTelemetry.ts
+      - packages/shared/src/telemetryRedaction.ts
     reason: 上游 v3.16.2 会话/远控链路引用的纯 schema/类型模块（无端点、无上报逻辑），随 v3.16.2 合并准入；web/desktop 实现类不含遥测上报，ARMS 上报链路仍为砍除态。
   - id: side-pane-full-view-shortcut-command-edit
     rule: unmanaged-new-file
