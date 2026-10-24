@@ -17,9 +17,10 @@ describe.each([null, 0o000, 0o400, 0o100])(
   (permissions) => {
     it.each(["manual", "automatic"] as const)(
       "%s：单个目录失效只拒绝该项目，修复后可以重连",
-      async (mode, context) => {
+      async (mode) => {
         if (permissions !== null && (process.platform === "win32" || process.getuid?.() === 0)) {
-          context.skip();
+          // Polaris：不依赖 vitest 各版本对 .each 形参注入 TestContext 的差异，直接早退跳过。
+          return;
         }
         const root = await realpath(await mkdtemp(join(tmpdir(), "zcode-workspace-admission-")));
         const paths = [1, 2, 3].map((n) => join(root, `workspace-${n}`));
