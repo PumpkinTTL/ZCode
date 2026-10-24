@@ -77,3 +77,18 @@ typecheck ✅ / build:bootstrap ✅ / 业务与品牌三道扫 ✅ / 单测 152 
 - zcode-server-cli 守护更新流 7：update-progress 控制命令为空，查 merged update feed 门控（autoUpdater 同款开关语义）
 - web oauthStateCodec 3：断言含 zcode.z.ai 需 Polaris 化 + legacy 路由语义对账（上游把 web 远控构建迁 server-cli）
 - 其余零星（viteConfigLoad 2、webLoginPage 2、workspaceWebRemoteControlTrigger 2、listModelsToolCard 2、appUsagePanel 2、e2eProviderEndpoint 2、dynamicWorkflowConfigMockServer 2、desktopRemoteSessions 2、tsupConfig 1、serviceManager 1、zcodeAgentService.mcpTelemetry 2、v4SessionPaneModelSwitchRecovery 2、hostRemoteStartupIntegration 4）：逐文件小对账
+
+### 八、性能与体积核验（合并后实测，v3.16.2 基线）
+
+体积（生产 renderer 构建实测）：
+- 主入口 chunk **3016 KB**（启动关键路径，健康）；渲染层总资产 44 MB 为全懒加载分片合计
+- 已知遗留「katex 5.7MB styles vendor」**已不存在**：katex 现为 252KB 独立懒 chunk，全 CSS 合计 420KB
+- 主进程 1985 KB，正常
+- 唯二留意项（非启动问题）：IntlProvider 688KB（= 已知待拍板项 i18n 惰性化）；sourceServerUpdatePreferences 懒 chunk 1.9MB（含 pdf 链，打开对应设置页才加载）→ 记未来瘦身候选
+- 上游死依赖已剔除：lottie-web / @xyflow/react（全仓零引用，未进任何 chunk）；react-radio-group / @radix-ui/react-popper / marked 有真实消费方保留
+
+性能：
+- 无界容器扫描 30 候选（合并前 24），新增 6 个逐一核验全部良性：WeakMap×4（GC 安全）、serviceAuthorityKey 按 service 计、trayBadgeImageCache 按 label 计天然有界
+- 上游新增轮询均有闸门（插件商店 10min 节流、更新检查开关语义、sourceServerUpdateNotifications 事件驱动）
+- 业务/品牌/官方域名三道扫终核：0 命中
+- 待拍板大项不变（agent 进程树空闲回收 ~1.9GB、i18n 惰性化）——非本次合并引入
