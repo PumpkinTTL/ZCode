@@ -747,27 +747,9 @@ it("WSL 成功收尾后重复入口仍应用同一发行版", async () => {
   expect(result.current.currentStep).toBe("settings");
   expect(result.current.settingsStep.wslDistro).toBe("Ubuntu");
 });
-it("主动取消立即结算 trace，迟到拒绝不重复结算", async () => {
-  let reject!: (error: Error) => void;
-  const props = defaults({
-    onConnect: vi.fn(
-      () =>
-        new Promise<string>((_, r) => {
-          reject = r;
-        }),
-    ),
-  });
-  const { result } = renderHook(() => useRemoteConnectionFlow(props));
-  act(() => result.current.selectionStep.onSelectTarget(targetA));
-  act(() => result.current.connectingStep.onCancelConnection());
-  expect(ports.trace.cancel).toHaveBeenCalledTimes(1);
-  await act(async () => {
-    reject(Object.assign(new Error("cancelled"), { code: "remote-connection-canceled" }));
-  });
-  expect(ports.trace.cancel).toHaveBeenCalledTimes(1);
-  expect(ports.trace.complete).not.toHaveBeenCalled();
-  expect(ports.trace.fail).not.toHaveBeenCalled();
-});
+// Polaris：userActionTelemetry 上报链已随业务剪除（startUserAction 为本地空实现），
+// trace 结算时序不再存在可断言契约，原「主动取消立即结算 trace」用例删除。
+
 it("失败页脚提供关闭与返回列表，不改写失败为取消", async () => {
   const onOpenChange = vi.fn();
   const props = defaults({

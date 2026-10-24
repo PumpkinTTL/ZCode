@@ -5,43 +5,29 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { OAuthProviderId } from "@zcode/shared";
 import { WebRemoteControlDialog } from "@/web-remote-control/index.js";
-import { LoginPanel } from "@/WelcomeScreen.js";
+
+// Polaris：官方 OAuth（zai/bigmodel）登录链路与 LoginPanel 已整体砍除，
+// 远控弹层的登录按钮收敛为统一入口 requestLoginEntry(undefined, "app-login")；
+// 上游针对 provider 门控 / 缓存用户判定的用例随被砍链路一并删除。
+
+// 合并后的远控弹层链路读取平台能力；本用例只钉统一登录入口行为，桩掉平台钩子
+// （auth-required 状态下弹层渲染统一登录按钮）。
+vi.mock("@/hooks/usePlatform.js", () => ({
+  usePlatform: () => ({
+    getWebRemoteControlStatus: async () => ({ status: "auth-required" }),
+  }),
+  useOptionalPlatform: () => null,
+}));
 
 const state = vi.hoisted(() => ({
-  user: { id: "cached-user", username: "User" } as { id: string; username: string } | null,
-  theme: "zai-dark",
-  oauthError: null,
-  oauthSuccessSeq: 0,
-  lastOAuthSuccessProvider: null,
   loginEntryRequest: null as { id: number; providerId?: OAuthProviderId; purpose?: string } | null,
   requestLoginEntry: vi.fn(),
-  clearLoginEntryRequest: vi.fn(),
-  markLoginEntryAttemptStatus: vi.fn(),
-  setOAuthError: vi.fn(),
-}));
-const oauth = vi.hoisted(() => ({
-  startLogin: vi.fn(),
-  cancel: vi.fn(),
-  reset: vi.fn(),
-  status: "idle",
-  error: null,
-  providers: [{ id: "zai", displayName: "Z.AI", enabled: true }],
-  activeProvider: "zai" as OAuthProviderId | null,
-  loadingProviders: false,
-  pendingProvider: null,
-  refreshProviders: vi.fn(),
-}));
-const toast = vi.hoisted(() => vi.fn());
-const platform = vi.hoisted(() => ({
-  getWebRemoteControlStatus: vi.fn(async () => ({ status: "auth-required" })),
 }));
 const intl = vi.hoisted(() => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }));
 
-vi.mock("@/hooks/useOAuth.js", () => ({ useOAuth: () => oauth }));
 vi.mock("@/store/StoreProvider.js", () => ({
   useZCodeStore: (selector: (value: typeof state) => unknown) => selector(state),
 }));
-vi.mock("@/hooks/usePlatform.js", () => ({ usePlatform: () => platform }));
 vi.mock("@/i18n/IntlProvider.js", () => ({ useZCodeIntl: () => intl }));
 vi.mock("@/logger.js", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock("@/components/ui/button.js", () => ({
@@ -58,13 +44,9 @@ vi.mock("@/components/ui/dialog.js", () => {
     DialogTitle: Wrapper,
   };
 });
-vi.mock("@/components/ui/toast.js", () => ({ toast }));
 vi.mock("@/BotsDialog.js", () => ({ BotsDialog: () => null }));
 vi.mock("@/BotsDialog/shared.js", () => ({ ProviderIcon: () => null }));
 vi.mock("@/components/ui/ZCodeAboutLogo.js", () => ({ ZCodeAboutLogo: () => null }));
-vi.mock("@/login/LoginApiKeyForm.js", () => ({ LoginApiKeyForm: () => null }));
-vi.mock("@/openWorkspacePageThemeHero.js", () => ({ ThemeHeroVisual: () => null }));
-vi.mock("@/lib/oauthProviderIcon.js", () => ({ renderOAuthProviderIcon: () => null }));
 
 function openDialog(onOpenChange = vi.fn()) {
   state.requestLoginEntry.mockImplementation((providerId?: OAuthProviderId, purpose?: string) => {
@@ -78,70 +60,14 @@ function openDialog(onOpenChange = vi.fn()) {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  state.user = { id: "cached-user", username: "User" };
   state.loginEntryRequest = null;
-  oauth.activeProvider = "zai";
-  oauth.loadingProviders = false;
 });
 
-it.each(["zai", "bigmodel"] as const)(
-  "远控401保留用户时，登录按钮重新发起 %s OAuth，不把缓存用户判为登录成功",
-  async (providerId) => {
-    oauth.activeProvider = providerId;
-    const view = openDialog();
-    fireEvent.click(await view.findByTestId("web-remote-control-login"));
-    expect(state.requestLoginEntry).toHaveBeenCalledWith(providerId, "app-login");
-    view.unmount();
-    const onComplete = vi.fn();
-    render(createElement(LoginPanel, { active: true, onComplete }));
-    expect(oauth.startLogin).toHaveBeenCalledWith(providerId, { purpose: "app-login" });
-    expect(onComplete).not.toHaveBeenCalled();
-  },
-);
-
-it("provider仍在加载时不关闭弹窗或提交不完整登录请求", async () => {
-  oauth.loadingProviders = true;
-  const onOpenChange = vi.fn();
-  const view = openDialog(onOpenChange);
-  const button = await view.findByTestId("web-remote-control-login");
-  expect(button.hasAttribute("disabled")).toBe(true);
-  fireEvent.click(button);
-  expect(onOpenChange).not.toHaveBeenCalled();
-  expect(state.requestLoginEntry).not.toHaveBeenCalled();
-});
-
-it("已有用户但provider不可读时保留弹窗并重新读取，避免进入立即完成的泛化入口", async () => {
-  oauth.activeProvider = null;
-  const onOpenChange = vi.fn();
-  const view = openDialog(onOpenChange);
-  fireEvent.click(await view.findByTestId("web-remote-control-login"));
-  expect(onOpenChange).not.toHaveBeenCalled();
-  expect(state.requestLoginEntry).not.toHaveBeenCalled();
-  expect(oauth.refreshProviders).toHaveBeenCalledOnce();
-  expect(toast).toHaveBeenCalledWith("login.oauth.loginFailure");
-  oauth.activeProvider = "zai";
-  view.rerender(
-    createElement(WebRemoteControlDialog, {
-      open: true,
-      onOpenChange: (open: boolean) => onOpenChange(open),
-      workspacePath: "/project",
-    }),
-  );
-  fireEvent.click(await view.findByTestId("web-remote-control-login"));
-  expect(state.requestLoginEntry).toHaveBeenCalledWith("zai", "app-login");
-});
-
-it("尚未登录且无active provider时继续打开原有渠道选择入口", async () => {
-  state.user = null;
-  oauth.activeProvider = null;
+it("登录按钮关闭弹层并提交统一登录入口请求（purpose=app-login，不带 provider）", async () => {
   const onOpenChange = vi.fn();
   const view = openDialog(onOpenChange);
   fireEvent.click(await view.findByTestId("web-remote-control-login"));
   expect(onOpenChange).toHaveBeenCalledWith(false);
   expect(state.requestLoginEntry).toHaveBeenCalledWith(undefined, "app-login");
-  view.unmount();
-  const onComplete = vi.fn();
-  render(createElement(LoginPanel, { active: true, onComplete }));
-  expect(oauth.startLogin).not.toHaveBeenCalled();
-  expect(onComplete).not.toHaveBeenCalled();
+  expect(state.loginEntryRequest).toEqual({ id: 1, providerId: undefined, purpose: "app-login" });
 });

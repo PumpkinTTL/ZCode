@@ -1045,10 +1045,8 @@ describe("desktopRemoteSessions R1 window Host forwarding", () => {
         remoteSessionId: "remote-session-1",
       }),
     );
-    expect(manager.getRemoteConnectionStats()).toEqual({
-      activeSessionCount: 0,
-      activeTargetCount: 0,
-    });
+    // Polaris：getRemoteConnectionStats 仅服务 ARMS 远程用量采样，已随遥测栈整体移除；
+    // 路由归属语义改用 hasRemoteWorkspaceSessionForTarget 锁定。
     expect(manager.hasRemoteWorkspaceSessionForTarget(win as never, sshTarget)).toBe(true);
   });
 
@@ -1684,8 +1682,8 @@ describe("mobile scope admission joins", () => {
   function setup() {
     const child = new MockUtilityProcess(1001);
     const win = createWindow(1, 101);
-    const reportRemoteConnectionStateChanged = vi.fn();
-    const manager = createManager(new Map([[101, child]]), { reportRemoteConnectionStateChanged });
+    // Polaris：远端连接态 ARMS gauge 上报随遥测栈移除，manager 不再接收上报回调。
+    const manager = createManager(new Map([[101, child]]));
     const value = {
       projectId: "p",
       hostId: "remote:server:s",
@@ -1714,7 +1712,7 @@ describe("mobile scope admission joins", () => {
       });
       return result;
     };
-    return { child, win, manager, prepare, reportRemoteConnectionStateChanged };
+    return { child, win, manager, prepare };
   }
   it("a second navigation waits for the shared scope's initial provisioning", async () => {
     const { child, manager, prepare } = setup();
@@ -1743,28 +1741,6 @@ describe("mobile scope admission joins", () => {
     manager.disposeRemoteWorkspaceSessionsForWindow(101);
     expect(completedBeforeProvisioning).toBe(0);
   });
-  it("desktop adoption of a mobile scope reports connection only after renderer readiness", async () => {
-    const { child, win, manager, prepare, reportRemoteConnectionStateChanged } = setup();
-    await prepare("mobile");
-    const desktop = manager.createRemoteWorkspaceSession(
-      win as never,
-      sshTarget,
-      "desktop",
-      undefined,
-      { remoteUsageTelemetryEligible: true },
-    );
-    await emitConnected({ child, requestId: "desktop", remoteSessionId: "mobile-scope" });
-    expect(reportRemoteConnectionStateChanged).not.toHaveBeenCalled();
-    confirmLatestScopedAttachment(manager, win);
-    await desktop;
-    expect(reportRemoteConnectionStateChanged).toHaveBeenCalledWith({
-      rendererId: 101,
-      remoteKind: "ssh",
-      transition: "connected",
-    });
-    manager.disposeRemoteWorkspaceSessionsForWindow(101);
-  });
-
   it("新建连接未带 context 时，手机桥接必须等 UI 绑定选中目录后才能通过 identity 校验", async () => {
     // 回归锁定（3.12.0 手机远控连不上 WSL 项目）：新建连接不带 context，Host descriptor 停留在 "/"，
     // identity 由解析后的 target 生成；UI tab 用未解析 target 生成的 identity 与之不同。

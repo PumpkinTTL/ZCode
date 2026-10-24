@@ -8,6 +8,7 @@ import type {
 import {
   buildStoreItems,
   canUpdatePluginItem,
+  formatCanonicalMarketplaceName,
   formatCanonicalPluginName,
   groupItemsByCategory,
   resolveItemDisplayName,

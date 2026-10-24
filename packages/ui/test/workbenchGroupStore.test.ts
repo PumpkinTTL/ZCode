@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { vi, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   INITIAL_WORKBENCH_GROUP_STATE,
   WORKBENCH_GROUP_STORAGE_KEY,
@@ -114,7 +114,7 @@ describe("workbench group store and persistence", () => {
     storage.clear();
     storageReadCount = 0;
     storageWriteCount = 0;
-    (globalThis as { localStorage?: unknown }).localStorage = {
+    vi.stubGlobal("localStorage", {
       getItem: (key: string) => {
         storageReadCount += 1;
         return storage.get(key) ?? null;
@@ -126,7 +126,7 @@ describe("workbench group store and persistence", () => {
       removeItem: (key: string) => {
         storage.delete(key);
       },
-    };
+    });
     useWorkbenchGroupStore.getState().configureClientMode("desktop-continuous");
     useWorkbenchGroupStore.getState().resetWorkbenchGroups();
   });
@@ -134,7 +134,7 @@ describe("workbench group store and persistence", () => {
   afterEach(() => {
     useWorkbenchGroupStore.getState().configureClientMode("desktop-continuous");
     useWorkbenchGroupStore.getState().resetWorkbenchGroups();
-    delete (globalThis as { localStorage?: unknown }).localStorage;
+    vi.unstubAllGlobals();
   });
 
   it("opens grouped sessions from sidebar and clears group for ungrouped sessions", () => {

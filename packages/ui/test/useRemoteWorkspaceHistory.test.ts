@@ -406,6 +406,7 @@ describe("reconnectRemoteWorkspaceHistoryEntry", () => {
       {
         workspacePath: "/workspace/demo",
         workspaceIdentity: expectedWorkspaceIdentity,
+        connectTrigger: "reconnect",
       },
     );
     expect(resolveRemoteWorkspaceCanonicalPath).toHaveBeenCalledWith(
@@ -602,6 +603,7 @@ describe("reconnectRemoteWorkspaceHistoryEntry", () => {
       {
         workspacePath: "/workspace/demo",
         workspaceIdentity: sessionEntry.workspaceIdentity,
+        connectTrigger: "reconnect",
       },
     );
   });
@@ -681,6 +683,7 @@ describe("reconnectRemoteWorkspaceHistoryEntry", () => {
       {
         workspacePath: "/workspace/demo",
         workspaceIdentity: "remote:ssh:demo.internal:22:root:/workspace/demo",
+        connectTrigger: "reconnect",
       },
     );
     expect(upsertWorkspaceTab).toHaveBeenCalledWith("/workspace/demo", {
@@ -760,6 +763,7 @@ describe("reconnectRemoteWorkspaceHistoryEntry", () => {
       {
         workspacePath: "/workspace/demo",
         workspaceIdentity: "remote:server:studio:/workspace/demo",
+        connectTrigger: "reconnect",
       },
     );
   });

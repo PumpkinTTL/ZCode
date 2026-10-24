@@ -232,20 +232,8 @@ describe("hostResponseMessageSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("accepts network telemetry batch payload", () => {
-    const parsed = hostResponseMessageSchema.safeParse({
-      type: HostResponseTypes.NetworkTelemetryBatch,
-      observations: [
-        {
-          transport: "rpc",
-          interface: "file.read",
-          durationMs: 12,
-          ok: true,
-        },
-      ],
-    });
-    expect(parsed.success).toBe(true);
-  });
+  // Polaris：hostNetworkTelemetryBatch（进程级网络遥测批量上报）已随遥测栈整体移除，
+  // 对应 schema 与 HostResponseTypes.NetworkTelemetryBatch 不再存在，用例删除。
 
   it("accepts a strict Agent resource sample and rejects identity fields", () => {
     const payload = {

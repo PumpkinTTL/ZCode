@@ -127,7 +127,9 @@ describe("daemon service registration", () => {
 
   it("stops and unregisters a same-root legacy service before registering the root-scoped identity", async () => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zdr-"));
-    const layout = resolveServerLayout(join(root, "server"));
+    // CLI 对 serve 统一做 canonical（realpath）收敛；Windows %TEMP% 短路径（ADMINI~1）会让
+    // 未收敛的 fixture 指向另一条 control pipe / service 目录。fixture 直接用 canonical layout。
+    const layout = await resolveCanonicalServerLayout(join(root, "server"));
     const platform =
       process.platform === "darwin" || process.platform === "linux" ? process.platform : "win32";
     const kind =
@@ -215,7 +217,8 @@ describe("daemon service registration", () => {
     // Bug 原因：stop-failed 的 Supervisor 在迟到 exit 后仍持有锁与 control socket，旧实现直接拉起
     // 新 Supervisor，只能锁冲突失败；设备在有人手工 stop 前一直无法重新连接。
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zsf-"));
-    const layout = resolveServerLayout(join(root, "server"));
+    // 同上：CLI serve 走 canonical（realpath）root，fixture 必须同一线管，Windows 才能命中。
+    const layout = await resolveCanonicalServerLayout(join(root, "server"));
     const core = Object.assign(new EventEmitter(), {
       pid: 42,
       send: () => true,

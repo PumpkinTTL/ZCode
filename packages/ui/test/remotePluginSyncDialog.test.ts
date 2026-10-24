@@ -868,41 +868,5 @@ describe("RemotePluginSyncDialog helpers", () => {
   });
 });
 
-describe("remote plugin sync telemetry", () => {
-  it("reports each final target outcome once without paths or source content", async () => {
-    const reportTelemetryEvent = vi.fn();
-    const candidate = makeCandidate({});
-    const result = await syncSelectedRemotePlugins({
-      rows: [
-        { candidate: { ...candidate, kind: "inline", inlineCandidate: candidate }, exists: false },
-      ],
-      localPluginSyncService: {
-        exportPluginsArchive: async () => ({ archive: new Uint8Array() }),
-      } as never,
-      remotePluginSyncService: {
-        importPluginsArchive: async () => ({
-          results: [
-            {
-              pluginId: candidate.pluginId,
-              name: candidate.name,
-              directoryName: candidate.directoryName,
-              status: "synced",
-              path: "/secret/remote",
-            },
-          ],
-        }),
-      } as never,
-      remoteWorkspacePath: "/secret/remote",
-      reportTelemetryEvent,
-    });
-    expect(result.results[0].status).toBe("synced");
-    expect(reportTelemetryEvent).toHaveBeenCalledTimes(1);
-    expect(reportTelemetryEvent.mock.calls[0][0].eventExtraDetail).toMatchObject({
-      action: "sync",
-      result: "success",
-      plugin_id: candidate.pluginId,
-      trigger: "sync",
-    });
-    expect(JSON.stringify(reportTelemetryEvent.mock.calls)).not.toContain("/secret");
-  });
-});
+// Polaris：远端插件同步遥测上报链已随业务剪除（reportTelemetryEvent 契约不再存在），
+// 原「remote plugin sync telemetry」套件整体删除；同步结果语义由其余用例锁定。

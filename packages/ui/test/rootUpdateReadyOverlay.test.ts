@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,6 +23,9 @@ const mockActivateTabByPath = vi.fn(() => false);
 const mockStartDraft = vi.fn();
 const mockShouldBlockRootRender = vi.fn(() => false);
 const tabStoreState = {
+  // 客户端渲染（SettingsPage lazy 用例）会触达的 Root 级 action；静态渲染路径不消费。
+  setIsRestoringOAuthSession: vi.fn(),
+  disposeOpenWorkspacePath: vi.fn(),
   tabs: [] as Array<{
     id: string;
     type: "workspace" | "settings";
@@ -46,20 +51,42 @@ vi.mock("@/ConfirmDialog.js", () => ({
   ConfirmDialogHost: () => createElement("div", { "data-testid": "confirm-dialog-host" }),
 }));
 
-vi.mock("@/hooks/usePlatform.js", () => ({
-  PlatformProvider: ({ children }: { children: unknown }) => children,
-  useOptionalPlatform: () => ({
-    getWebRemoteControlStatus: vi.fn(async () => ({ status: "idle" })),
-  }),
-  usePlatform: () => ({
-    cancelPendingRemoteConnection: vi.fn(async () => {}),
-  }),
-}));
+vi.mock("@/hooks/usePlatform.js", () => {
+  // 客户端渲染会把 Root 下的平台消费面整树挂载；这里用 Proxy 对未声明的平台方法
+  // 兜底：on* 通道返回卸载函数，其余方法返回已完成的 Promise。
+  const makePlatformStub = (): Record<string, unknown> =>
+    new Proxy({} as Record<string, unknown>, {
+      get(target, prop: string) {
+        if (prop in target) return target[prop];
+        if (prop === "getWebRemoteControlStatus") {
+          const status = vi.fn(async () => ({ status: "idle" }));
+          target[prop] = status;
+          return status;
+        }
+        if (prop.startsWith("on")) {
+          // 订阅方法被调用后返回卸载函数。
+          const register = vi.fn(() => () => {});
+          target[prop] = register;
+          return register;
+        }
+        const noop = vi.fn(async () => undefined);
+        target[prop] = noop;
+        return noop;
+      },
+    });
+  const shared = makePlatformStub();
+  return {
+    PlatformProvider: ({ children }: { children: unknown }) => children,
+    useOptionalPlatform: () => shared,
+    usePlatform: () => shared,
+  };
+});
 
 vi.mock("@/hooks/useServices.js", () => ({
   useComposerClientNamespace: () => "desktop",
   ServiceProvider: ({ children }: { children: unknown }) => children,
   useServices: () => ({
+    broadcastService: { onMessage: () => ({ dispose() {} }) },
     systemService: {
       probeIntranet: vi.fn(async () => ({
         isIntranet: false,
@@ -121,6 +148,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
 
 vi.mock("@/logger.js", () => ({
   logger: {
+    debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
@@ -175,6 +203,12 @@ vi.mock("@/store/StoreProvider.js", () => ({
       user: null,
       setUser: mockSetUser,
       setOAuthError: mockSetOAuthError,
+      // 客户端渲染（SettingsPage lazy 用例）会触达的 Root 级 action。
+      setIsRestoringOAuthSession: vi.fn(),
+      clearLoginEntryRequest: vi.fn(),
+      markLoginEntryAttemptStatus: vi.fn(),
+      requestLoginEntry: vi.fn(() => 0),
+      loginEntryRequest: null,
     }),
 }));
 
@@ -198,6 +232,8 @@ vi.mock("@/store/TabStoreProvider.js", () => ({
   useTabStore: (selector: (state: unknown) => unknown) => selector(tabStoreState),
   useTabStoreApi: () => ({
     getState: () => tabStoreApiState,
+    // 客户端渲染会挂载 Root 全量 effect，需要订阅句柄。
+    subscribe: vi.fn(() => () => {}),
   }),
   useOptionalTabStore: (selector: (state: typeof tabStoreState) => unknown) =>
     selector(tabStoreState),
@@ -213,6 +249,9 @@ vi.mock("@/store/remoteWorkspaceSessionStore.js", () => ({
   getRemoteWorkspaceSession: vi.fn(() => null),
   unbindRemoteWorkspacePath: vi.fn(),
   unregisterRemoteWorkspaceSession: vi.fn(),
+  // 客户端渲染挂载 base workspace services 装配面（静态渲染路径不触达）。
+  registerBaseWorkspaceServices: vi.fn(),
+  unregisterBaseWorkspaceServices: vi.fn(),
   useRemoteWorkspaceSessionStore: (selector: (state: unknown) => unknown) =>
     selector({
       sessionsById: {},
@@ -225,6 +264,105 @@ vi.mock("@/UpdateStatusButton.js", () => ({
   UpdateStatusButton: () => createElement("div", { "data-testid": "update-ready-button" }),
 }));
 
+function buildPlatformProxy(
+  platform: Record<string, unknown>,
+): Record<string, unknown> {
+  // Root 直传 platform prop 的消费面很大（useRemoteWorkspaceHistory 等 hook 直接挂通道），
+  // 用 Proxy 对未声明方法兜底：on* 返回卸载函数，其余返回已完成 Promise。
+  return new Proxy(platform, {
+    get(target, prop: string) {
+      if (prop in target) return target[prop];
+      if (prop.startsWith("on")) {
+        // 订阅方法被调用后返回卸载函数。
+        const register = vi.fn(() => () => {});
+        target[prop] = register;
+        return register;
+      }
+      const noop = vi.fn(async () => undefined);
+      target[prop] = noop;
+      return noop;
+    },
+  });
+}
+
+function buildRootElement(options?: {
+  webRemoteControlFeatureEnabled?: boolean;
+  isDesktop?: boolean;
+  initialWorkspaceAbsPath?: string;
+  initialWorkspaceLoadingFallback?: ReturnType<typeof createElement>;
+  platformOverrides?: Record<string, unknown>;
+}) {
+  const platform = buildPlatformProxy({
+    // 客户端渲染会真正挂载 effect 订阅面；静态渲染只走首轮，两者都要给合法句柄。
+    selectDirectory: vi.fn(async () => null),
+    activateOrSetWorkspace: vi.fn(async () => ({ activated: false })),
+    connectRemote: vi.fn(async () => ({ success: true })),
+    disposeRemoteSession: vi.fn(async () => {}),
+    isDockerAvailable: vi.fn(async () => false),
+    listWSLDistros: vi.fn(async () => []),
+    listDockerContainers: vi.fn(async () => []),
+    listSSHConfigAliases: vi.fn(async () => []),
+    openExternal: vi.fn(),
+    openFeedback: vi.fn(async () => {}),
+    openCommunity: vi.fn(async () => {}),
+    canOpenCommunity: vi.fn(async () => false),
+    openInFileManager: vi.fn(async () => ({ success: true })),
+    registerOAuthState: vi.fn(),
+    onOAuthCallback: vi.fn(() => () => {}),
+    onOpenWorkspacePath: vi.fn(() => () => {}),
+    notifyRendererReady: vi.fn(),
+    onRemoteConnectionLog: vi.fn(() => () => {}),
+    showTaskNotification: vi.fn(),
+    syncWindowTabs: vi.fn(),
+    syncWindowUnreadCount: vi.fn(),
+    onFocusTab: vi.fn(() => () => {}),
+    onNewTab: vi.fn(() => () => {}),
+    onNewTask: vi.fn(() => () => {}),
+    onOpenWorkspace: vi.fn(() => () => {}),
+    onWindowFullscreenChanged: vi.fn(() => () => {}),
+    onTaskNotificationClick: vi.fn(() => () => {}),
+    exportLogs: vi.fn(async () => ({ success: false, error: "unsupported" })),
+    onUpdateReady: vi.fn(() => () => {}),
+    onUpdateStateChanged: vi.fn(() => () => {}),
+    getUpdateState: vi.fn(async () => ({ kind: "idle", enabled: true })),
+    onUpdateCheckResult: vi.fn(() => () => {}),
+    onPostUpdateReleaseNotes: vi.fn(() => () => {}),
+    quitAndInstallUpdate: vi.fn(async () => {}),
+    getInstalledEditors: vi.fn(async () => []),
+    openInEditor: vi.fn(),
+    executeDesktopCommand: vi.fn(async () => {}),
+    setApplicationLocale: vi.fn(async () => {}),
+    setTitleBarTheme: vi.fn(async () => {}),
+    ...options?.platformOverrides,
+  });
+  return createElement(Root, {
+    services: {
+      broadcastService: { onMessage: () => ({ dispose() {} }) },
+      settingService: {
+        get: vi.fn(),
+        update: vi.fn(),
+      },
+      credentialService: {
+        delete: vi.fn(async () => {}),
+        load: vi.fn(async () => null),
+        save: vi.fn(async () => {}),
+      },
+      oauthService: {
+        restoreCachedSession: vi.fn(async () => null),
+        restoreSession: vi.fn(async () => null),
+        handleCallback: vi.fn(),
+        logout: vi.fn(async () => {}),
+        onDidChangeSession: vi.fn(() => ({ dispose: () => {} })),
+      },
+    },
+    platform,
+    webRemoteControlFeatureEnabled: options?.webRemoteControlFeatureEnabled,
+    isDesktop: options?.isDesktop,
+    initialWorkspaceAbsPath: options?.initialWorkspaceAbsPath,
+    initialWorkspaceLoadingFallback: options?.initialWorkspaceLoadingFallback,
+  });
+}
+
 function renderRoot(options?: {
   webRemoteControlFeatureEnabled?: boolean;
   isDesktop?: boolean;
@@ -232,77 +370,7 @@ function renderRoot(options?: {
   initialWorkspaceLoadingFallback?: ReturnType<typeof createElement>;
   platformOverrides?: Record<string, unknown>;
 }) {
-  const html = renderToStaticMarkup(
-    createElement(Root, {
-      services: {
-        broadcastService: {},
-        settingService: {
-          get: vi.fn(),
-          update: vi.fn(),
-        },
-        credentialService: {
-          delete: vi.fn(async () => {}),
-          load: vi.fn(async () => null),
-          save: vi.fn(async () => {}),
-        },
-        oauthService: {
-          restoreCachedSession: vi.fn(),
-          restoreSession: vi.fn(),
-          handleCallback: vi.fn(),
-          logout: vi.fn(),
-        },
-      },
-      platform: {
-        selectDirectory: vi.fn(async () => null),
-        activateOrSetWorkspace: vi.fn(async () => ({ activated: false })),
-        connectRemote: vi.fn(async () => ({ success: true })),
-        disposeRemoteSession: vi.fn(async () => {}),
-        isDockerAvailable: vi.fn(async () => false),
-        listWSLDistros: vi.fn(async () => []),
-        listDockerContainers: vi.fn(async () => []),
-        listSSHConfigAliases: vi.fn(async () => []),
-        openExternal: vi.fn(),
-        openFeedback: vi.fn(async () => {}),
-        openCommunity: vi.fn(async () => {}),
-        canOpenCommunity: vi.fn(async () => false),
-        openInFileManager: vi.fn(async () => ({ success: true })),
-        registerOAuthState: vi.fn(),
-        onOAuthCallback: vi.fn(() => () => {}),
-        notifyRendererReady: vi.fn(),
-        showTaskNotification: vi.fn(),
-        syncWindowTabs: vi.fn(),
-        syncWindowUnreadCount: vi.fn(),
-        onFocusTab: vi.fn(() => () => {}),
-        onNewTab: vi.fn(() => () => {}),
-        onNewTask: vi.fn(() => () => {}),
-        onOpenWorkspace: vi.fn(() => () => {}),
-        onWindowFullscreenChanged: vi.fn(() => () => {}),
-        onTaskNotificationClick: vi.fn(() => () => {}),
-        exportLogs: vi.fn(async () => ({
-          success: false,
-          error: "unsupported",
-        })),
-        onUpdateReady: vi.fn(() => () => {}),
-        onUpdateStateChanged: vi.fn(() => () => {}),
-        getUpdateState: vi.fn(async () => ({ kind: "idle", enabled: true })),
-        onUpdateCheckResult: vi.fn(() => () => {}),
-        onPostUpdateReleaseNotes: vi.fn(() => () => {}),
-        quitAndInstallUpdate: vi.fn(async () => {}),
-        getInstalledEditors: vi.fn(async () => []),
-        openInEditor: vi.fn(),
-        executeDesktopCommand: vi.fn(async () => {}),
-        setApplicationLocale: vi.fn(async () => {}),
-        setTitleBarTheme: vi.fn(async () => {}),
-        ...options?.platformOverrides,
-      },
-      webRemoteControlFeatureEnabled: options?.webRemoteControlFeatureEnabled,
-      isDesktop: options?.isDesktop,
-      initialWorkspaceAbsPath: options?.initialWorkspaceAbsPath,
-      initialWorkspaceLoadingFallback: options?.initialWorkspaceLoadingFallback,
-    }),
-  );
-
-  return html;
+  return renderToStaticMarkup(buildRootElement(options));
 }
 
 describe("Root update ready overlay", () => {
@@ -336,17 +404,21 @@ describe("Root update ready overlay", () => {
     expect(html).not.toContain('data-testid="update-ready-button"');
   });
 
-  it("独立设置页不会挂载更新按钮", () => {
+  it("独立设置页不会挂载更新按钮", async () => {
     tabStoreState.tabs = [{ id: "settings", type: "settings" }];
     tabStoreState.activeTabId = "settings";
 
-    // Polaris 把 SettingsPage 改成 lazy（首屏懒加载），SSR 首轮会落到 Suspense fallback，
-    // 等 lazy chunk 就绪后第二轮才渲染真实内容；这里先预热再取断言用的那一轮。
-    await renderRoot();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    const html = await renderRoot();
-
-    expect(html).toContain('data-testid="settings-page"');
-    expect(html).not.toContain('data-testid="update-ready-button"');
+    // Polaris 把 SettingsPage 改成 lazy（首屏懒加载）：同步静态渲染只会 suspend，
+    // 这里用客户端渲染等 lazy chunk 就绪、真实设置页挂载后再断言。
+    const testingLibrary = await import("@testing-library/react");
+    const view = testingLibrary.render(buildRootElement());
+    try {
+      await vi.waitFor(() =>
+        expect(document.querySelector('[data-testid="settings-page"]')).toBeTruthy(),
+      );
+      expect(document.querySelector('[data-testid="update-ready-button"]')).toBeNull();
+    } finally {
+      testingLibrary.cleanup();
+    }
   });
 });

@@ -21,8 +21,13 @@ import {
   type ReactNode,
 } from "react";
 import { Hand } from "lucide-react";
-import { buildCustomSupplierKey, ZCODE_AGENT_PROVIDER } from "@zcode/shared";
+import {
+  buildCustomSupplierKey,
+  isRemoteWorkspaceIdentity,
+  ZCODE_AGENT_PROVIDER,
+} from "@zcode/shared";
 import { TID_CHAT_EMPTY, TID_V4_SESSION_PANE, testId } from "@zcode/shared/test-ids";
+import type { ChatErrorBannerModelConfigTarget } from "@/ChatErrorBanner.js";
 import type {
   ConversationShareAccessMode,
   GitChangeSourceId,
@@ -440,15 +445,24 @@ export interface QueuedComposerRestoreTarget {
   config?: ComposerRestoreRequest["config"];
 }
 
+/** 旧版 Highspeed 队列污染 Provider id（业务已砍除，仅用于旧快照兼容判定）。 */
+const LEGACY_HIGHSPEED_PROVIDER_IDS: readonly string[] = [
+  "account:zai-highspeed-card",
+  "account:bigmodel-highspeed-card",
+];
+
 export function resolveQueuedComposerRestore(
   snapshot: ConversationSnapshot,
   queueItemId: string,
 ): QueuedComposerRestoreTarget | null {
   const item = snapshot.queue.items.find((candidate) => candidate.queueItemId === queueItemId);
   if (!item || item.kind === "compact") return null;
-  // Polaris：Highspeed 加速卡链路已剪除；队列项不再有单轮加速 Provider 污染，
-  // 模型选择一律照常恢复。
-  const restoresModelSelection = item.modelSelection !== undefined;
+  // Bug 根因：旧版本曾把单轮 Highspeed Provider 持久化进队列；撤回编辑若恢复它，
+  // Composer 与下一轮 fallback 都会被污染。Highspeed 加速卡业务已整体砍除，这里只按
+  // 历史持久化 Provider id 兼容旧快照（与 CLI 提升迁移同口径），不再接任何加速卡链路。
+  const restoresModelSelection =
+    item.modelSelection !== undefined &&
+    !LEGACY_HIGHSPEED_PROVIDER_IDS.includes(item.modelSelection.providerId);
   const config = {
     ...(item.mode ? { mode: item.mode } : {}),
     ...(typeof item.planEnabled === "boolean" ? { planEnabled: item.planEnabled } : {}),
@@ -4045,6 +4059,13 @@ export function SessionPane({
     setPendingSettingsSectionIntent("modelProvider");
     openSettingsTab();
   }, [openSettingsTab]);
+  // 远端 workspace 的模型目录来自远端 Registry；本机配置保存后由 Provisioning 自动下发，
+  // 因此缺模型横幅只切换措辞，配置动作统一指向本机（官方套餐升级入口已随业务砍除）。
+  const modelConfigTarget: ChatErrorBannerModelConfigTarget = isRemoteWorkspaceIdentity(
+    workspaceIdentity ?? "",
+  )
+    ? "remote"
+    : "local";
 
   const handleConfirmShareDisclosure = useCallback(async () => {
     if (!sessionId || !shareDraft || sharePublishing) return;
@@ -4466,6 +4487,7 @@ export function SessionPane({
       onDismissError={handleDismissComposerError}
       onRetryInitialization={handleRetrySubscribe}
       onOpenModelSettings={handleOpenModelSettings}
+      modelConfigTarget={modelConfigTarget}
       onOpenCodeViewer={onOpenCodeViewer}
       suppressGoalCommands={selectionSideChat}
       appSlashCommands={appSlashCommands}

@@ -74,7 +74,8 @@ describe("zcodeEndpoint", () => {
       remoteUrl: "http://localhost:3030/remote/v3",
       webRemoteCallbackUrl: "http://localhost:3030/remote/v4",
       webShareCallbackUrl: "http://localhost:3030/cn/share/callback",
-      relayWsUrl: "ws://localhost:3030/ws",
+      // V2 relay 协议契约钉死 ws 路径（web-remote-relay/contract.ts），origin 跟随端点。
+      relayWsUrl: "ws://localhost:3030/api/v1/remote/ws2",
     });
   });
 
@@ -133,7 +134,8 @@ describe("zcodeEndpoint", () => {
     ).toBe("https://endpoint.example.com/remote/v3");
   });
 
-  it("keeps relay on the Polaris default origin regardless of endpoint origin", () => {
+  it("derives V2 relay from each endpoint origin", () => {
+    // Polaris：默认端点为自有 nimbus，ws 路径保持 V2 relay 协议契约（/api/v1/remote/ws2）。
     expect(
       resolveWebRemoteControlRelayWsUrl({
         endpointOrigin: TEST_ZCODE_ENDPOINT_ORIGIN,
@@ -148,7 +150,7 @@ describe("zcodeEndpoint", () => {
       resolveWebRemoteControlRelayWsUrl({
         endpointOrigin: "http://localhost:3030",
       }),
-    ).toBe(DEFAULT_WEB_REMOTE_CONTROL_RELAY_WS_URL);
+    ).toBe("ws://localhost:3030/api/v1/remote/ws2");
   });
 
   it("allows an explicit web remote control relay url override", () => {

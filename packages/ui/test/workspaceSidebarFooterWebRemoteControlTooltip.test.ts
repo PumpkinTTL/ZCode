@@ -15,6 +15,9 @@ const mockFooterSettings = vi.hoisted(() => ({
 vi.mock("@/ControlHintTooltip.js", () => ({
   ControlHintTooltip: ({ children, title }: { children: unknown; title: string }) =>
     createElement("span", { "data-tooltip-title": title }, children),
+  // 上游 v3.16.2 侧栏改用原生 tooltip 包装器（透传 children 与 title 语义）。
+  SidebarNativeTooltip: ({ children }: { children: unknown }) =>
+    createElement("span", { "data-sidebar-native-tooltip": "" }, children),
 }));
 
 vi.mock("@/WorkspaceWebRemoteControlTrigger.js", () => ({

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFile } from "node:fs/promises";
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { render, screen, waitFor } from "@testing-library/react";

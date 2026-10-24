@@ -287,7 +287,7 @@ describe("SessionPane error banner wiring", () => {
     "remote:ssh:example.com:22:dev:/workspace",
     "remote:wsl:ubuntu:/workspace",
     "remote:docker:dev-box:/workspace",
-  ])("远程 workspace %s 缺模型时使用远端措辞并保留本机升级动作", (workspaceIdentity) => {
+  ])("远程 workspace %s 缺模型时使用远端措辞（升级入口已砍除）", (workspaceIdentity) => {
     projectionState.current = {
       status: "live",
       snapshot: makeSnapshot(),
@@ -299,7 +299,8 @@ describe("SessionPane error banner wiring", () => {
 
     renderPane(workspaceIdentity);
 
-    expect(typeof captured.onOpenModelUpgrade).toBe("function");
+    // Polaris：官方套餐升级入口已砍除，不再向 Composer 下发升级回调；措辞目标保留。
+    expect(captured.onOpenModelUpgrade).toBeUndefined();
     expect(captured.modelConfigTarget).toBe("remote");
   });
 
@@ -315,7 +316,7 @@ describe("SessionPane error banner wiring", () => {
 
     renderPane();
 
-    expect(typeof captured.onOpenModelUpgrade).toBe("function");
+    expect(captured.onOpenModelUpgrade).toBeUndefined();
     expect(captured.modelConfigTarget).toBe("local");
   });
 });

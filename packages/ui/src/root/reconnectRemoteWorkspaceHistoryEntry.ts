@@ -230,6 +230,9 @@ export async function reconnectRemoteWorkspaceHistoryEntry({
       sessionId = await connectRemoteWorkspaceTarget(reconnectTarget, options?.requestId, {
       workspacePath: sessionEntry.workspacePath,
       workspaceIdentity: fallbackWorkspaceIdentity,
+      // 合并补记：上游以 connectTrigger 区分重连链路的 UX（错误提示/反馈归因），丢失会让
+      // SSH 原项目重连走首连语义。
+      connectTrigger: "reconnect",
     });
     } catch (error) {
       // 该结构化错误只由 Host 在 Source 已上线后的目录 admission 发出。发起项目被删

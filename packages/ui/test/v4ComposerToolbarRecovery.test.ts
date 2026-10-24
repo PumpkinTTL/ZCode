@@ -17,7 +17,11 @@ vi.mock("@/hooks/useServices.js", () => ({
     providerQuotaService: {
       getStatus: async () => ({ loggedIn: false }),
     },
-    providerSettingsService: {},
+    providerSettingsService: {
+      // prewarm 流程会读目标 Environment 的目录快照；返回测试自带的 modelSelectionView。
+      getView: async () => mocks.modelSelectionView,
+      onDidChange: () => ({ dispose: () => {} }),
+    },
     modelSelectionService: {},
   }),
 }));

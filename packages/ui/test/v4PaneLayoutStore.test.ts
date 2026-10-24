@@ -1,5 +1,5 @@
 // 分屏二期：Layout/Focus 两层状态机单测（分割树纯转移函数 + zustand store + 持久化/迁移）。
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { vi, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_SPLIT_RATIO,
   INITIAL_PANE_LAYOUT,
@@ -300,7 +300,7 @@ describe("持久化（localStorage v2 + v1 迁移）", () => {
 
   beforeEach(() => {
     store.clear();
-    (globalThis as { localStorage?: unknown }).localStorage = {
+    vi.stubGlobal("localStorage", {
       getItem: (key: string) => store.get(key) ?? null,
       setItem: (key: string, value: string) => {
         store.set(key, value);
@@ -308,11 +308,11 @@ describe("持久化（localStorage v2 + v1 迁移）", () => {
       removeItem: (key: string) => {
         store.delete(key);
       },
-    };
+    });
   });
 
   afterEach(() => {
-    delete (globalThis as { localStorage?: unknown }).localStorage;
+    vi.unstubAllGlobals();
   });
 
   it("persist → read 闭环：树 + 绑定（含远程 scope）+ 焦点恢复，session 绑定带待验证标记", () => {
@@ -398,9 +398,12 @@ describe("持久化（localStorage v2 + v1 迁移）", () => {
     expect(readPersistedPaneLayout()).toBeNull();
     store.set(PANE_LAYOUT_STORAGE_KEY, JSON.stringify("a string"));
     expect(readPersistedPaneLayout()).toBeNull();
-    delete (globalThis as { localStorage?: unknown }).localStorage;
+    // 「无 storage 环境」语义：vitest.setup 已垫了内存 Storage，unstub 只会回到垫片而非
+    // 真正缺失；这里显式 stub 成 undefined，锁「读写均静默降级」的守卫行为。
+    vi.stubGlobal("localStorage", undefined);
     expect(() => persistPaneLayout(INITIAL_PANE_LAYOUT)).not.toThrow();
     expect(readPersistedPaneLayout()).toBeNull();
+    vi.unstubAllGlobals();
   });
 });
 

@@ -233,9 +233,9 @@ describe("hooksService", () => {
   it("Source user scope does not read or write the anchor workspace config", async () => {
     const home = makeTempRoot();
     const anchorPath = join(makeTempRoot(), "source-user-anchor");
-    mkdirSync(join(anchorPath, ".zcode"), { recursive: true });
+    mkdirSync(join(anchorPath, ".polaris"), { recursive: true });
     writeFileSync(
-      join(anchorPath, ".zcode", "config.json"),
+      join(anchorPath, ".polaris", "config.json"),
       JSON.stringify({
         hooks: {
           events: { Stop: [{ hooks: [{ type: "command", command: "echo project" }] }] },
@@ -245,7 +245,7 @@ describe("hooksService", () => {
     );
 
     const service = await createHooksServiceInEnv(home);
-    const before = readFileSync(join(anchorPath, ".zcode", "config.json"), "utf-8");
+    const before = readFileSync(join(anchorPath, ".polaris", "config.json"), "utf-8");
     await service.saveHooks({
       workspacePath: anchorPath,
       scope: "user",
@@ -262,8 +262,8 @@ describe("hooksService", () => {
     });
     const loaded = await service.loadHooks({ workspacePath: anchorPath, scope: "user" });
 
-    expect(readFileSync(join(anchorPath, ".zcode", "config.json"), "utf-8")).toBe(before);
-    expect(existsSync(join(home, ".zcode", "cli", "config.json"))).toBe(true);
+    expect(readFileSync(join(anchorPath, ".polaris", "config.json"), "utf-8")).toBe(before);
+    expect(existsSync(join(home, ".polaris", "cli", "config.json"))).toBe(true);
     expect(loaded.hooks.map((hook) => hook.command)).toEqual(["echo user"]);
   });
 

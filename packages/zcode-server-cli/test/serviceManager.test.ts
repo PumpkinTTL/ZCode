@@ -50,12 +50,22 @@ describe("service manager adapters", () => {
     try {
       await exited;
       expect(descendantPid).toBeGreaterThan(0);
-      expect(process.kill(descendantPid, 0)).toBe(true);
+      // Windows 的 Node 会按进程树整体收割被超时杀死的直接子进程，后代并不存活；
+      // “后代仍持有管道”是 POSIX 语义。两种平台上共同的核心断言是：探测必有界收口。
+      if (process.platform !== "win32") {
+        expect(process.kill(descendantPid, 0)).toBe(true);
+      }
       // 只等待执行器完成收口；后代退出由 finally 控制，不以延长 timeout 掩盖阻塞。
       await vi.waitFor(() => expect(settled).toBe(true), { timeout: 500 });
       expect(await probe).toBe(false);
     } finally {
-      if (descendantPid > 0) process.kill(descendantPid, "SIGKILL");
+      if (descendantPid > 0) {
+        try {
+          process.kill(descendantPid, "SIGKILL");
+        } catch {
+          // Windows 树收割下后代可能已退出。
+        }
+      }
       await probe;
     }
   });

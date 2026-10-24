@@ -78,9 +78,11 @@ import type {
   CreateTempTextAttachmentRequest,
   MaterializeWorkflowArtifactFileRequest,
   OpenCuaPermissionOnboardingOptions,
-  scopedServicePortPayloadSchema,
 } from "@zcode/shared";
 import { unwrapRemoteWorkspaceBindResult } from "./remoteWorkspaceBindBridge.js";
+// scopedServicePortPayloadSchema 是运行时 zod schema：误并入 import type 块会在转译后被擦除，
+// ScopedServicePort 事件到达时直接 ReferenceError（preload 整体失效）。
+import { scopedServicePortPayloadSchema } from "@zcode/shared";
 import { InternalChannels, PlatformChannels } from "@zcode/shared/channels";
 import { formatZCodeRendererProcessName } from "@zcode/shared/process-names";
 import { createOAuthCallbackHandler } from "./oauthCallbackBridge.js";

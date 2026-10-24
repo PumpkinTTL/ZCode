@@ -95,9 +95,9 @@ describe("web Vite config", () => {
   });
 
   it.each([
-    ["test", "https://bigmodel.cn"],
-    ["production", "https://bigmodel.cn"],
-  ])("%s 构建向远控登录页注入对应 BigModel 授权域名", async (environment, origin) => {
+    ["test", "https://nimbus.bitlesu.com"],
+    ["production", "https://nimbus.bitlesu.com"],
+  ])("%s 构建向远控登录页注入自有 BigModel 授权域名", async (environment, origin) => {
     vi.stubEnv("ZCODE_ENV", environment);
     const webRoot = resolve(import.meta.dirname, "..");
     const result = await loadConfigFromFile(

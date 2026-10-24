@@ -3,6 +3,8 @@ import {
   resolveChatPlaceholderKey,
   shouldDeferChatPlaceholder,
 } from "../src/lib/chatPlaceholder.js";
+import enUS from "../src/i18n/locales/en-US.js";
+import zhCN from "../src/i18n/locales/zh-CN.js";
 
 describe("resolveChatPlaceholderKey", () => {
   it("returns newTask for empty conversation", () => {

@@ -74,7 +74,7 @@ describe("credentialService encryption", () => {
 
     await service.save(credentialKey, "");
 
-    const credentialsFile = join(home, ".zcode", "v2", "credentials.json");
+    const credentialsFile = join(home, ".polaris", "v2", "credentials.json");
     const rawStore = JSON.parse(readFileSync(credentialsFile, "utf-8")) as Record<string, string>;
     expect(rawStore[credentialKey]).toMatch(/^enc:v1:/);
     await expect(service.load(credentialKey)).resolves.toBe("");

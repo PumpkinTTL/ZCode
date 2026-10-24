@@ -223,7 +223,10 @@ describe("native subagent Host watchers", () => {
     await f.both({ profiles: [{ name: "researcher", systemPrompt: "new" }] });
   });
 
-  it("removes the old cache entry after a filename-only case rename", async () => {
+  // 纯大小写重命名只在大小写敏感文件系统上产生事件；Windows（NTFS）跳过。
+  it.skipIf(process.platform === "win32")(
+    "removes the old cache entry after a filename-only case rename",
+    async () => {
     const f = await pair(async (home) => {
       await mkdir(join(home, ".polaris", "agents"), { recursive: true });
       await writeFile(join(home, ".polaris", "agents", "Researcher.MD"), markdown("researcher"));

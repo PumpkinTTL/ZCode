@@ -62,7 +62,11 @@ import {
   XIcon,
 } from "lucide-react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { ChatErrorBanner, shouldSuppressChatErrorBanner } from "@/ChatErrorBanner.js";
+import {
+  ChatErrorBanner,
+  shouldSuppressChatErrorBanner,
+  type ChatErrorBannerModelConfigTarget,
+} from "@/ChatErrorBanner.js";
 import {
   Attachment,
   Attachments,
@@ -478,6 +482,8 @@ export interface ConversationComposerProps {
   onDismissError?: () => void;
   /** 无可用模型横幅的恢复动作；由 SessionPane 注入壳层导航，组件不直接操作 tab。 */
   onOpenModelSettings?: () => void;
+  /** 缺模型横幅措辞目标（remote=远端 Registry 目录）；升级动作已随业务砍除，不接。 */
+  modelConfigTarget?: ChatErrorBannerModelConfigTarget;
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
   /**
    * 是否监听全局「加入对话」事件（workspace file tree / 画板按钮）。
@@ -557,6 +563,7 @@ function ConversationComposerImpl({
   error,
   onDismissError,
   onOpenModelSettings,
+  modelConfigTarget = "local",
   onOpenCodeViewer,
   listenAddToChatEvents = true,
   externalTextInsertRequest = null,
@@ -2359,6 +2366,7 @@ function ConversationComposerImpl({
             }
             onDismiss={onDismissError}
             onOpenModelSettings={onOpenModelSettings}
+            modelConfigTarget={modelConfigTarget}
           />
         </div>
       ) : null}

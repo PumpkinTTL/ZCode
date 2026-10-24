@@ -22,8 +22,10 @@ describe("Computer Use placeholder", () => {
   });
 
   it("broker 方法拒绝执行真实系统能力", async () => {
+    // Polaris：callBrokerMethod 已实现为真实 socket 客户端；无 helper 时抛出结构化
+    // CuaHelperError（code=helper_unavailable），同样保证「不触发真实系统能力」。
     await expect(
       callBrokerMethod({ method: "example", socketPath: "unused" }),
-    ).rejects.toMatchObject({ code: "unavailable" });
+    ).rejects.toMatchObject({ code: "helper_unavailable" });
   });
 });

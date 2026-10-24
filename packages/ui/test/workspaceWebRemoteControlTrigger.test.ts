@@ -65,7 +65,9 @@ vi.mock("@/hooks/useWebRemoteControlStatus.js", () => ({
   useWebRemoteControlStatus: () => ({ status: "idle" }),
 }));
 
-vi.mock("@/web-remote-control/index.js", () => ({
+// 合并后 trigger 的 lazy import 直指 WebRemoteControlDialog.js（不再走 index 桶文件），
+// stub 必须挂在同一模块说明符上才能替身真实弹层 chunk。
+vi.mock("@/web-remote-control/WebRemoteControlDialog.js", () => ({
   WebRemoteControlDialog: ({
     initialTaskId,
     remoteSessionId,

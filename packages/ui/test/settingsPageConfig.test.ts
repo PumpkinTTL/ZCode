@@ -93,6 +93,8 @@ describe("settingsPageConfig", () => {
       "commands",
       "hooks",
       "browser",
+      // 上游 v3.16.2 新增远控设备管理分区（web 远控为核心功能）。
+      "remoteDevices",
       "shortcuts",
       "usage",
       "providerQuota",

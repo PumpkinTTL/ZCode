@@ -79,9 +79,10 @@ describe("ConfirmDialogHost required acknowledgement", () => {
     expect(screen.getByTestId("source-server-boundary-dialog")).toBeTruthy();
 
     expect(screen.getByText("本地离线，任务照常运行")).toBeTruthy();
-    expect(screen.getByText("关闭 ZCode 或休眠本机， 远程任务继续运行。").textContent).toBe(
-      "关闭 ZCode 或休眠本机，\n远程任务继续运行。",
-    );
+    // Polaris：用户可见文案 ZCode → Polaris（红线）；描述文案按词条同源校验，
+    // 由 dialog 分行渲染（textContent 含换行），不再假设单文本节点。
+    const dialogText = screen.getByTestId("source-server-boundary-dialog").textContent ?? "";
+    expect(dialogText).toContain(zhCN["remote.sourceServerBoundaryDescription"].trim());
     expect(screen.getByTestId("source-server-boundary-local").textContent).toContain(
       "remote.sourceServerBoundaryLocalDevice",
     );

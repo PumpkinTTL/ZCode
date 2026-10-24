@@ -2379,32 +2379,22 @@ describe("SessionPane Plan picker action", () => {
         { ref: "zcode-artifact://a", fileName: "a.txt", mime: "text/plain", bytes: 1 },
       ];
       const root = await renderPane();
-      try {
-        const callsBeforeSubmit = mocks.sendCommand.mock.calls.length;
-        let sendResult: unknown;
-        await act(async () => {
-          sendResult = await captured.composerProps?.onSendText(text, {
+      await act(async () => {
+        expect(
+          await captured.composerProps?.onSendText(text, {
             attachments,
             contextAttachmentCount: 1,
-          });
-          await flushMicrotasks();
-        });
-
-        expect(sendResult).toBe("sent");
-        const submitted = mocks.sendCommand.mock.calls.slice(callsBeforeSubmit);
-        // 无附件/无共享上下文的草稿首发走合并路径：单条 createSession 携带 firstInput，
-        // 草稿的 Plan 意图随同一条命令到达（CLI 归并请求与 runtime 缺省）。
-        expect(submitted).toHaveLength(1);
-        expect(submitted[0]?.[0]).toMatchObject({
-          type: "createSession",
-          payload: {
-            config: { mode: "plan" },
-            firstInput: { text: "先列出步骤" },
-          },
-        });
-      } finally {
-        await act(async () => root.unmount());
-      }
+          }),
+        ).toBe("sent");
+        await flushMicrotasks();
+      });
+      expect(mocks.sendCommand.mock.calls.map(([envelope]) => envelope.type)).toEqual(["sendText"]);
+      expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
+        payload: { text, mode: "build", planEnabled: false, attachments },
+      });
+      expect(draftConfigMock.handleDraftSwitchMode).not.toHaveBeenCalled();
+      expect(mocks.toast).not.toHaveBeenCalled();
+      await act(async () => root.unmount());
     },
   );
 });

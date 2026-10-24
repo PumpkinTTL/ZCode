@@ -57,11 +57,18 @@ describe("file applications", () => {
   });
   it("支持用户 Applications 下安装的应用", async () => {
     const def = getFileApplicationDefs("darwin").find((def) => def.id === "pages")!;
+    // 用户级候选用 homedir() join 出来：Windows 下是反斜杠，归一后再比对。
     accessMock.mockImplementation(async (path: string) => {
-      if (!path.endsWith("/Applications/Pages.app") || path === "/Applications/Pages.app")
+      const normalized = path.replaceAll("\\", "/");
+      if (
+        !normalized.endsWith("/Applications/Pages.app") ||
+        normalized === "/Applications/Pages.app"
+      )
         throw new Error("ENOENT");
     });
-    expect(await resolveFileApplicationPath(def, "darwin")).toMatch(/\/Applications\/Pages.app$/);
+    expect(await resolveFileApplicationPath(def, "darwin")).toMatch(
+      /[/\\]Applications[/\\]Pages\.app$/,
+    );
   });
   it("Linux 从 PATH 查找可执行文件", async () => {
     accessMock.mockImplementation(async (path: string) => {
