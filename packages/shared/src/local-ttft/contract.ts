@@ -40,6 +40,7 @@ export type LocalTtftDetail = z.infer<typeof localTtftDetailSchema>;
 export const LOCAL_TTFT_MAX_PENDING = 128;
 export const LOCAL_TTFT_TTL_MS = 300_000;
 export const LOCAL_TTFT_CLOCK_MAX_ERROR_MS = 10;
+export const LOCAL_TTFT_CLOCK_TTL_MS = 60_000;
 const time = z.number().finite().nonnegative();
 const identifier = z.string().min(1).max(128);
 export const localTtftContextSchema = z
