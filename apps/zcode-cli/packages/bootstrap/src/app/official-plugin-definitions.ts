@@ -193,10 +193,8 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     version: "0.7.0",
   },
   {
-<<<<<<< HEAD
-=======
     listing: {
-      author: ZAI_AUTHOR,
+      author: OFFICIAL_PLUGIN_AUTHOR,
       category: "developer-tools",
       displayName: "Android Emulator",
       displayName_i18n: { "zh-CN": "Android 模拟器" },
@@ -215,7 +213,6 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     version: "0.1.1",
   },
   {
->>>>>>> upstream/main
     // manifest 只声明 browser-use skill；宿主 node_repl MCP 独立注入，package 另外携带其 server/client
     // runtime 资产。默认启用仅控制「何时/如何用内置浏览器」的 skill 与 browser bridge。
     defaultEnabled: true,
@@ -225,6 +222,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       category: "productivity",
       displayName: "Browser Use",
       displayName_i18n: { "zh-CN": "浏览器操作" },
+
       description_i18n: {
         "zh-CN": "操作 Polaris 内置浏览器，检查网页并验证交互。",
       },
@@ -260,6 +258,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
         displayName,
         displayName_i18n: { "zh-CN": chineseName },
         // 复用已发布的文档图标，拆分插件无需依赖新 CDN 资源。
+
         description_i18n: { "zh-CN": `创建、编辑与审阅${chineseName}（${skill.toUpperCase()}）。` },
       },
       name,
@@ -306,6 +305,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       category: "utilities",
       displayName: "Restore Legacy Sessions",
       displayName_i18n: { "zh-CN": "恢复旧版会话" },
+
       description_i18n: {
         "zh-CN": "将旧版会话恢复为 Polaris 任务与会话记录。",
       },
@@ -440,7 +440,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     // 以兼容原生 Helper identity；EN 描述基线走 manifest
     // description，这里只放 zh-CN 覆盖；resolveLocalizedText 在 en-US 时回退到 manifest。
     listing: {
-      author: OFFICIAL_PLUGIN_AUTHOR,
+      author: ZAI_AUTHOR,
       category: "productivity",
       displayName: "Computer Use",
       displayName_i18n: { "zh-CN": "电脑控制" },
@@ -448,19 +448,13 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
         "zh-CN": "自动化桌面应用：智能体驱动鼠标、键盘与界面元素，代你完成实际任务。",
       },
       // 插件更名为 computer-use 后，CDN 图标仍发布在 zcode-cua 目录；沿用资源路径避免 404。
+
     },
     rootCandidates: [
       "packages/zcode-cua-plugin",
       "../zcode-cua-plugin",
       "../../zcode-cua-plugin",
       "../../../zcode-cua-plugin",
-      // monorepo 布局：其他官方插件的源码在 apps/zcode-cli/packages/ 下（上面几条 1-2 层
-      // 相对路径即可命中），而 CUA 插件源码在**仓库根** packages/ 下。dev 的 app-server 入口是
-      // apps/zcode-cli/packages/cli/dist/zcode.cjs（不是 glm 副本），从那里到仓库根差 5 层；
-      // 缺这两条时 dev 的 filesystem seed 源永远找不到 CUA 根：catalog 被重写成不含 computer-use
-      // 的三条，discovery 里插件整体缺席（连 off 都不是），CUA 注入门因此全程关闭。
-      "../../../../packages/zcode-cua-plugin",
-      "../../../../../packages/zcode-cua-plugin",
     ],
     requiredSeedPaths: OFFICIAL_CUA_REQUIRED_SEED_PATHS,
     // Bug 根因：迁移 node_repl 时把旧 MCP launcher 与 SDK 仍需的 Sharp runtime 一并裁掉了。

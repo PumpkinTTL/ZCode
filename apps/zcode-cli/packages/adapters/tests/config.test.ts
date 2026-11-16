@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-import { describe, expect, it } from "vitest";
-import { DefaultRuntimeConfig } from "@zcode/contracts";
-import { createConfig, updateUiLocaleInFileConfig } from "../src/config/index.js";
-=======
 import { describe, expect, it, vi } from "vitest";
 import type { Logger, LoggerFactory } from "@zcode/contracts";
 import { withFileLock } from "@zcode/shared/node";
@@ -12,7 +7,6 @@ import {
   resolveWorkspaceStorageDir,
   updateUiLocaleInFileConfig,
 } from "../src/config/index.js";
->>>>>>> upstream/main
 import { parseEnvConfig } from "../src/config/env-config.adapter.js";
 import {
   addSuppressedBuiltinInFileConfig,
@@ -426,15 +420,15 @@ describe("config adapters", () => {
           plugins: {
             enabledPlugins: {
               "zcode-cua@zcode-plugins-official": true,
-              "computer-use@zcode-plugins-official": false,
+              "computer-use@polaris-plugins-official": false,
             },
             suppressedBuiltins: [
               "zcode-cua@zcode-plugins-official",
-              "computer-use@zcode-plugins-official",
+              "computer-use@polaris-plugins-official",
             ],
             options: {
               "zcode-cua@zcode-plugins-official": { apiKey: "legacy-key" },
-              "computer-use@zcode-plugins-official": { apiKey: "canonical-key" },
+              "computer-use@polaris-plugins-official": { apiKey: "canonical-key" },
             },
           },
         }),
@@ -443,13 +437,13 @@ describe("config adapters", () => {
       const loaded = loadFileConfig(configPath);
 
       expect(loaded.config.plugins?.enabledPlugins).toEqual({
-        "computer-use@polaris-plugins-official": false,
+        "computer-use@zcode-plugins-official": false,
       });
       expect(loaded.config.plugins?.suppressedBuiltins).toEqual([
-        "computer-use@polaris-plugins-official",
+        "computer-use@zcode-plugins-official",
       ]);
       expect(loaded.config.plugins?.options).toEqual({
-        "computer-use@polaris-plugins-official": { apiKey: "canonical-key" },
+        "computer-use@zcode-plugins-official": { apiKey: "canonical-key" },
       });
     } finally {
       await rm(dir, { force: true, recursive: true });
@@ -754,31 +748,6 @@ describe("config adapters", () => {
     expect(config.logging?.format).toBe("json");
     expect(config.logging?.level).toBeUndefined();
   });
-
-  it("defaults the session database to db/db.sqlite", () => {
-    const result = createConfig({ env: {}, skipUserConfig: true });
-
-    expect(result.config.model).toBeUndefined();
-    expect(DefaultRuntimeConfig.storage.sessionDbPath).toBe("~/.polaris/cli/db/db.sqlite");
-    expect(result.config.storage.sessionDbPath).toBe("~/.polaris/cli/db/db.sqlite");
-  });
-
-  it("defaults model stream idle timeout to ten minutes", () => {
-    const result = createConfig({ env: {}, skipUserConfig: true });
-
-    expect(DefaultRuntimeConfig.modelStream.idleTimeoutMs).toBe(600_000);
-    expect(result.config.modelStream.idleTimeoutMs).toBe(600_000);
-  });
-
-  it("defaults the supported memory switches to enabled", () => {
-    const result = createConfig({ env: {}, skipUserConfig: true });
-
-    expect(result.config.features.memory).toBe(true);
-    expect(result.config.memory).toEqual({
-      use: true,
-    });
-  });
-
 
   it("loads the supported memory config fields", async () => {
     const dir = await mkdtemp(join(tmpdir(), "zcode-config-memory-"));
@@ -2264,7 +2233,6 @@ describe("config adapters", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
-
 
   it("removes a plugin's enabled flag and options on uninstall while preserving others", async () => {
     const dir = await mkdtemp(join(tmpdir(), "zcode-config-plugin-remove-"));

@@ -1,3 +1,4 @@
+import { automationSessionCreateTelemetrySchema } from "./sessionCreateTelemetry.js";
 import { mobilePluginDiscoveryTelemetrySchema, telemetryUiModeSchema } from "./telemetry.js";
 import { remoteConversationTelemetryEventSchema } from "./conversation-telemetry/remoteTelemetryEvent.js";
 import { databaseStartupControlSchema, databaseStartupStateSchema } from "./database-startup.js";

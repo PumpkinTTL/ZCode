@@ -103,25 +103,12 @@ describe("ContextBuilder meta user context", () => {
       false,
       false,
     ]);
-<<<<<<< HEAD
-    expect(result.systemMessages[0]?.content).toMatch(
-      /^You are Polaris, an interactive coding agent\./,
-    );
-    expect(result.systemMessages[0]?.content).not.toContain("# Agent Identity");
-    expect(result.systemMessages[0]?.content).not.toContain("# Task Behavior");
-
-    const stableBody = String(result.systemMessages[1]?.content ?? "");
-    expect(stableBody).toMatch(/^\n?You are an interactive Polaris agent/);
-    expect(stableBody).not.toContain("# Agent Identity");
-    expect(stableBody).not.toContain("You are Polaris, an interactive coding agent");
-=======
     expect(result.systemMessages[0]?.content).toBe("You are ZCode, an interactive agent");
 
     const stableBody = String(result.systemMessages[1]?.content ?? "");
     expect(stableBody).toMatch(/^\n?You are an agent working with the user toward their goals/);
     expect(stableBody).not.toContain("# Agent Identity");
     expect(stableBody).not.toContain("You are ZCode, an interactive agent");
->>>>>>> upstream/main
     expect(stableBody).toContain("# Harness");
     const harnessBullets = stableBody.split("# Harness\n")[1]?.split("\n") ?? [];
     expect(harnessBullets).toHaveLength(5);
@@ -204,11 +191,7 @@ describe("ContextBuilder meta user context", () => {
     }
   });
 
-<<<<<<< HEAD
-  it("injects the stable Polaris Desktop Context before dynamic behavior", () => {
-=======
   it("keeps the ZCode Desktop Context as a runtime-announced section outside the system prompt", () => {
->>>>>>> upstream/main
     const result = createContextBuilder({
       workingDirectory: "/workspace",
       presentationSurface: "zcode_desktop",
@@ -253,23 +236,8 @@ describe("ContextBuilder meta user context", () => {
       ].join("\n"),
     );
 
-<<<<<<< HEAD
-    const desktopIndex = result.sections.findIndex(
-      (section) => section.source === "desktop_context",
-    );
-    const dynamicBehaviorIndex = result.sections.findIndex(
-      (section) => section.source === "dynamic_behavior",
-    );
-    expect(desktopIndex).toBeGreaterThan(-1);
-    expect(desktopIndex).toBeLessThan(dynamicBehaviorIndex);
-
-    expect(result.systemMessages).toHaveLength(3);
-    expect(result.systemMessages[1]?.content).toContain("# Polaris Desktop Context");
-    expect(result.systemMessages[2]?.content).not.toContain("# Polaris Desktop Context");
-=======
     expect(JSON.stringify(result.systemMessages)).not.toContain("ZCode Desktop Context");
     expect(JSON.stringify(result.metaUserAttachments)).not.toContain("ZCode Desktop Context");
->>>>>>> upstream/main
   });
 
   it("does not inject the Desktop context for the default terminal surface", () => {
@@ -303,13 +271,7 @@ describe("ContextBuilder meta user context", () => {
       cliPrefixPrompt: "legacy override",
     } as any).build();
 
-<<<<<<< HEAD
-    expect(result.systemMessages[0]?.content).toMatch(
-      /^You are Polaris, an interactive coding agent\./,
-    );
-=======
     expect(result.systemMessages[0]?.content).toBe("You are ZCode, an interactive agent");
->>>>>>> upstream/main
   });
 
   it("covers default body safety, runtime, and tool-guidance semantic anchors", () => {
@@ -432,14 +394,7 @@ describe("ContextBuilder meta user context", () => {
     expect(result.metaUserAttachments.map((attachment) => attachment.source)).toEqual([
       "context_prefix",
     ]);
-<<<<<<< HEAD
-    expect(result.systemMessages[0]?.content).toMatch(
-      /^You are Polaris, an interactive coding agent\./,
-    );
-    expect(result.systemMessages[0]?.content).not.toContain("# Agent Identity");
-=======
     expect(result.systemMessages[0]?.content).toBe("You are ZCode, an interactive agent");
->>>>>>> upstream/main
     expect(result.systemMessages[1]?.content).toBe("\nYou are concise for this task.");
     expect(result.sections.some((section) => section.source === "env_info")).toBe(true);
     const meta = metaAttachment(result, "context_prefix");
@@ -869,19 +824,10 @@ describe("ContextBuilder meta user context", () => {
     const stableBody = result.systemMessages[1]?.content ?? "";
     const dynamicSystem = result.systemMessages[2]?.content ?? "";
     const meta = metaAttachment(result, "context_prefix");
-<<<<<<< HEAD
-    expect(cliPrefix).toMatch(/^You are Polaris, an interactive coding agent\./);
-    expect(cliPrefix).not.toContain("# Agent Identity");
-    expect(cliPrefix).not.toContain("# Task Behavior");
-    expect(stableBody).not.toContain("# Agent Identity");
-    expect(stableBody).toMatch(/^\n?You are an interactive Polaris agent/);
-    expect(stableBody).not.toContain("You are Polaris, an interactive coding agent");
-=======
     expect(cliPrefix).toBe("You are ZCode, an interactive agent");
     expect(stableBody).not.toContain("# Agent Identity");
     expect(stableBody).toMatch(/^\n?You are an agent working with the user toward their goals/);
     expect(stableBody).not.toContain("You are ZCode, an interactive agent");
->>>>>>> upstream/main
     expect(stableBody).toContain("# Harness");
     expect(stableBody).not.toContain("# Session-specific guidance");
     expect(stableBody).not.toContain("# Environment");
@@ -1103,20 +1049,11 @@ describe("ContextBuilder meta user context", () => {
       "system",
     ]);
     expect(result.metaUserAttachments).toEqual([]);
-<<<<<<< HEAD
-    expect(result.systemMessages[0]?.content).toMatch(
-      /^You are Polaris, an interactive coding agent\./,
-    );
-    expect(result.systemMessages[0]?.content).not.toContain("# Agent Identity");
-    expect(result.systemMessages[1]?.content).not.toContain("# Agent Identity");
-    expect(result.systemMessages[1]?.content).toMatch(/^\n?You are an interactive Polaris agent/);
-=======
     expect(result.systemMessages[0]?.content).toBe("You are ZCode, an interactive agent");
     expect(result.systemMessages[1]?.content).not.toContain("# Agent Identity");
     expect(result.systemMessages[1]?.content).toMatch(
       /^\n?You are an agent working with the user toward their goals/,
     );
->>>>>>> upstream/main
     expect(result.systemMessages[1]?.content).toContain("# Harness");
     expect(result.systemMessages[1]?.content).not.toContain("# Session-specific guidance");
     expect(result.systemMessages[1]?.content).not.toContain("# Environment");
@@ -1438,19 +1375,12 @@ describe("ContextBuilder meta user context", () => {
     const prefixSection = buildCliPrefixSection();
     const identitySection = buildIdentitySection();
 
-<<<<<<< HEAD
-    expect(prefixSection.content).toMatch(/^You are Polaris, an interactive coding agent\./);
-    expect(identitySection.content).toMatch(/^\n?You are an interactive Polaris agent/);
-    expect(identitySection.content).not.toContain("# Agent Identity");
-    expect(identitySection.content).not.toContain("You are Polaris, an interactive coding agent");
-=======
     expect(prefixSection.content).toBe("You are ZCode, an interactive agent");
     expect(identitySection.content).toMatch(
       /^\n?You are an agent working with the user toward their goals/,
     );
     expect(identitySection.content).not.toContain("# Agent Identity");
     expect(identitySection.content).not.toContain("You are ZCode, an interactive agent");
->>>>>>> upstream/main
     expect(`${prefixSection.content}\n${identitySection.content}`).not.toContain("${");
     expect(`${prefixSection.content}\n${identitySection.content}`).not.toContain("an AI assistant");
   });
@@ -1478,13 +1408,9 @@ describe("ContextBuilder meta user context", () => {
   it("includes compact stable body boundaries", () => {
     const section = buildIdentitySection();
 
-<<<<<<< HEAD
-    expect(section.content).toMatch(/^\n?You are an interactive Polaris agent/);
-=======
     expect(section.content).toMatch(
       /^\n?You are an agent working with the user toward their goals/,
     );
->>>>>>> upstream/main
     expect(section.content).not.toContain("# Agent Identity");
     expect(section.content).toContain("# Harness");
     expect(section.content).toContain("IMPORTANT:");
@@ -1614,11 +1540,7 @@ describe("context builder — workflow actor identity", () => {
     expect(text).toContain("`submit_result`");
 
     // 交互式身份与面向用户对话的三段不在。
-<<<<<<< HEAD
-    expect(text).not.toContain("interactive Polaris agent that helps users");
-=======
     expect(text).not.toContain("agent working with the user toward their goals");
->>>>>>> upstream/main
     expect(text).not.toContain("# Communicating with the user");
     expect(text).not.toContain(EXPECTED_PRONOUNS_PROMPT);
     expect(text).not.toContain("For actions that are hard to reverse");
@@ -1639,11 +1561,7 @@ describe("context builder — workflow actor identity", () => {
     );
     expect(text).not.toContain('named "');
     expect(text).toContain("# Working inside a workflow");
-<<<<<<< HEAD
-    expect(text).not.toContain("interactive Polaris agent");
-=======
     expect(text).not.toContain("agent working with the user toward their goals");
->>>>>>> upstream/main
   });
 
   // 产物（docs/dynamic-workflow/authoring.md「The system prompt」）：子代理仍然没有任何产物工具
@@ -1677,11 +1595,7 @@ describe("context builder — workflow actor identity", () => {
     ).toBe(true);
     expect(result.sections.map((section) => section.source)).not.toContain("cli_prefix");
     expect(result.systemMessages.map((m) => String(m.content)).join("\n")).not.toContain(
-<<<<<<< HEAD
-      "You are Polaris, an interactive coding agent",
-=======
       "You are ZCode, an interactive agent",
->>>>>>> upstream/main
     );
   });
 
@@ -1769,11 +1683,7 @@ describe("context builder — workflow actor identity", () => {
   it("keeps the general-purpose main identity before the security and harness sections", () => {
     const text = systemText({ workingDirectory: "/workspace", envInfo });
     expect(text).toContain(
-<<<<<<< HEAD
-      "\nYou are an interactive Polaris agent that helps users with software engineering tasks.\n\nIMPORTANT: Assist with authorized security testing",
-=======
       "\nYou are an agent working with the user toward their goals, using your own judgment along the way.\n\nIMPORTANT: Assist with authorized security testing",
->>>>>>> upstream/main
     );
     expect(text).toContain("\n\n# Harness\n - Text you output outside of tool use");
   });

@@ -57,6 +57,7 @@ import {
 import { toModelStreamEvent } from "./runner-normalization.js";
 import type { EnvRecord } from "./model-execution.js";
 import { detectProviderBusinessFinishError } from "./provider-finish-business-error.js";
+
 import {
   calculateRetryDelay,
   logRetryDelayDecision,
@@ -80,6 +81,7 @@ import type {
   AiSdkModelTextRequest,
   ResolvedAiSdkModel,
 } from "./runner-runtime.js";
+
 import { resolveModelForAttempt, RuntimeHeadersRefreshError } from "./runner-runtime-headers.js";
 import {
   nextUnrecognizedCodeStreak,
@@ -127,15 +129,12 @@ export async function* runStreamText(input: {
   const isDev = isDevelopmentModelIOEnv(input.env);
   let requestMessages = input.request.messages;
   let signatureRepairAttempted = false;
-<<<<<<< HEAD
-=======
   // 修复后的重试成功时，在 finish 上告诉 core 记 signedReasoningReset，之后的请求不再发被拒的块。
   const withRepairMarker = (event: ModelStreamEvent): ModelStreamEvent =>
     signatureRepairAttempted && event.type === "finish"
       ? { ...event, signedReasoningReset: true }
       : event;
-  const authRetry = new AccountRequestRetry(input.request, input.resolved, input.logger);
->>>>>>> upstream/main
+
   let emptyCompletionRetryCount = 0;
   // 不认识的业务码在本次请求里连续出现的次数：workflow 策略表据此停下，见 workflow-model-failure-policy.ts。
   // 每次失败（外层 catch 与流内错误块两条路径）都经它更新一次。
@@ -422,11 +421,8 @@ export async function* runStreamText(input: {
             requestHeaderCount,
             requestHeaders,
             repairThinkingSignatureRejection,
-<<<<<<< HEAD
-=======
-            canRecoverProjectToken: (error) => authRetry.canRecoverProjectToken(error),
+
             countUnrecognizedCode,
->>>>>>> upstream/main
             retryBudgetAttempt,
             startedAt,
             statusContext,
@@ -561,6 +557,7 @@ export async function* runStreamText(input: {
             } satisfies Record<string, unknown>),
         });
         if (hiddenProviderBusinessError) {
+
           const failure = classifyModelFailure(
             hiddenProviderBusinessError,
             input.request.abortSignal,
@@ -586,6 +583,7 @@ export async function* runStreamText(input: {
             source: diagnostics.lastErrorChunk ?? diagnostics.lastFinishChunk,
           });
           if (streamEndedWithoutOutputError) {
+
             const failure = classifyModelFailure(
               streamEndedWithoutOutputError,
               input.request.abortSignal,
@@ -802,6 +800,7 @@ export async function* runStreamText(input: {
         ),
         unrecognizedCodeStreak,
       });
+
       // off-peak 排队 429 豁免预算：不消耗 maxAttempts，SSE 可见输出边界仍适用。
       if (offPeak?.kind === "queued" && !emittedRetryBoundaryEvent) {
         failureDecision.canRetry = true;
@@ -848,6 +847,7 @@ export async function* runStreamText(input: {
         },
       );
       terminalStatusPublished = true;
+
 
       if (retryWithRepairedHistory) {
         await publishRetryScheduledStatus(
@@ -1088,12 +1088,9 @@ async function handleStreamChunk(input: {
   };
   pendingRetrySafeEvents: ModelStreamEvent[];
   repairThinkingSignatureRejection: (error: unknown) => boolean;
-<<<<<<< HEAD
-=======
-  canRecoverProjectToken: (error: unknown) => boolean;
+
   /** 记一次失败，返回不认识的业务码连续出现的次数（含这一次）。 */
   countUnrecognizedCode: (failure: ClassifiedModelFailure, error: unknown) => number;
->>>>>>> upstream/main
   retryBudgetAttempt: number;
   requestHeaderCount: number;
   requestHeaders: Record<string, string>;
@@ -1287,6 +1284,7 @@ async function handleStreamErrorEvent(
   input: Parameters<typeof handleStreamChunk>[0],
   error: unknown,
 ): Promise<Awaited<ReturnType<typeof handleStreamChunk>>> {
+
   const retryWithRepairedHistory =
     !input.emittedRetryBoundaryEvent && input.repairThinkingSignatureRejection(error);
   const statusContext = retryWithRepairedHistory
@@ -1666,11 +1664,13 @@ function statusPublishOptions(
   input: {
     logger?: Logger;
     request: AiSdkModelTextRequest;
+
     statusSink?: ModelStatusSink;
   },
   admission?: AttemptAdmission,
 ) {
   return {
+
     logger: input.logger,
     requestStatusSink: input.request.statusSink,
     statusSink: input.statusSink,

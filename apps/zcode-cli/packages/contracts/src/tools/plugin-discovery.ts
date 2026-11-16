@@ -42,7 +42,7 @@ export const SearchPluginsOutputSchema = z
 export const SuggestPluginInstallInputSchema = z
   .object({
     pluginId: text.describe(
-      "Exact stable ID returned by SearchPlugins, ending in @zcode-plugins-official.",
+      "Exact stable ID returned by SearchPlugins, ending in @polaris-plugins-official.",
     ),
     reason: text.describe(
       "One short sentence explaining how this plugin helps the current user task.",

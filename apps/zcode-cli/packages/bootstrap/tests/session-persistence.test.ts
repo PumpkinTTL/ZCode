@@ -31,11 +31,7 @@ import { ModelConfigRules, ProviderConfigMap, ProviderTemplateMap } from "@zcode
 import { zcodeStorageStartupStateSchema } from "@zcode/shared";
 import {
   LogLevel,
-<<<<<<< HEAD
-  SESSION_ENTRY_BASH_SHELL_SELECTION,
-=======
-  SESSION_ENTRY_MODEL_SELECTION,
->>>>>>> upstream/main
+
   type LogContext,
   type Logger,
   type LoggerFactory,
@@ -62,9 +58,6 @@ import { readLogEntries } from "./session-persistence-fixture.js";
 import { createRecordingLoggerFactory } from "./session-persistence-fixture.js";
 
 describe("session persistence", () => {
-<<<<<<< HEAD
-  
-=======
   // ZCT-2109847556412547072：deferred 会话首条消息前切模，真实 SQLite 外键拒绝 entry 写入；
   // 首次持久化必须以最新选择补写，且该已知时序不能以 warn 进入生产日志。
   it.each([undefined, "cli-default"] as const)(
@@ -212,7 +205,6 @@ describe("session persistence", () => {
     }
   });
 
->>>>>>> upstream/main
   it("primes image and cold-rebuilds image and video paths from durable artifacts", async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), "zcode-prompt-image-cache-"));
     const artifactRootDir = join(tempRoot, "artifacts");

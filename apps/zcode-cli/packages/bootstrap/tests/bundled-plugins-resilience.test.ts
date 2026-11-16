@@ -205,21 +205,7 @@ import { resolveZCodePlugins } from "../src/plugins.js";
 
 const OFFICIAL_CACHE_ROOT = join("cache", "zcode-plugins-official");
 const BROWSER_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "browser-use", "0.5.1");
-<<<<<<< HEAD
-const RESILIENCE_PLUGIN_DEFINITION = OFFICIAL_PLUGIN_DEFINITIONS.find(
-  ({ name }) => name === "skill-creator",
-);
-if (!RESILIENCE_PLUGIN_DEFINITION) {
-  throw new Error("skill-creator official plugin definition is missing");
-}
-const RESILIENCE_CACHE_SUFFIX = join(
-  OFFICIAL_CACHE_ROOT,
-  RESILIENCE_PLUGIN_DEFINITION.name,
-  RESILIENCE_PLUGIN_DEFINITION.version,
-);
-=======
 const ANDROID_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "android-emulator", "0.1.1");
->>>>>>> upstream/main
 const SKILL_CREATOR_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "skill-creator", "0.1.0");
 const RESILIENCE_MANIFEST_SUFFIX = join(
   RESILIENCE_CACHE_SUFFIX,

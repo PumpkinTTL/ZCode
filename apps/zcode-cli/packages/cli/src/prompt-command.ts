@@ -235,6 +235,7 @@ export const runPrompt = async (
             },
           },
     );
+
     browserRuntime = createCliHeadlessBrowserRuntime(options, deps);
     app = await createApp({
       modelSelectionMode: "cli-default",
@@ -246,6 +247,7 @@ export const runPrompt = async (
       // 这个最小 broker 只按工具名放行 CreateWorkflow，其余工具委托回同一个 deny
       // broker，语义逐字不变。详见 headless-workflow.ts 的注释。
       permissionBroker: createHeadlessPermissionBroker(),
+
       providerRegistry: providerRegistryRuntime.runtime.registryService,
       configuredDefaultModelSelection: providerRegistryRuntime.configuredDefaultModelSelection,
       ...(providerRegistryRuntime.providerRuntimeHeadersPort
@@ -666,11 +668,7 @@ function writeHeadlessWorkspaceHookTrustDiagnostic(
       ...status.items
         .filter((item) => item.configuredEnabled && item.trustState !== "trusted_persistent")
         .map((item) => `pending digest: ${item.hookDeclarationDigest}`),
-<<<<<<< HEAD
-      `Review with: polaris hooks trust review --workspace ${JSON.stringify(status.workspaceIdentity)}`,
-=======
       `Review with: zcode hooks trust review --workspace ${JSON.stringify(workspaceTrustCommandArgument(status))}`,
->>>>>>> upstream/main
     ].join("\n") + "\n",
   );
 }

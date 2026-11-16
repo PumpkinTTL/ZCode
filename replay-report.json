@@ -1,0 +1,997 @@
+[
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/auth/shared-credentials.ts",
+  "pairs": 11,
+  "applied": 6,
+  "missed": [
+   [
+    "import { existsSync, readFileSync } from \"node:fs\";",
+    ""
+   ],
+   [
+    "  saveZaiLoginCredentials(payload: ZaiLoginCredentialPayload): Promise<void>;",
+    ""
+   ],
+   [
+    "    async clearZaiLoginCredentials(): Promise<void> {\n      await mutateRawCrede",
+    ""
+   ],
+   [
+    "\n    async saveZaiLoginCredentials(payload: ZaiLoginCredentialPayload): Promise<",
+    ""
+   ],
+   [
+    "export function loadSharedZCodeCredentialSync(\n  key: string,\n  options: SharedZ",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/context/index.ts",
+  "pairs": 2,
+  "applied": 1,
+  "missed": [
+   [
+    "",
+    "// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，\n/"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/logging/index.ts",
+  "pairs": 3,
+  "applied": 2,
+  "missed": [
+   [
+    "",
+    "// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，\n/"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/model/model-execution.ts",
+  "pairs": 23,
+  "applied": 20,
+  "missed": [
+   [
+    "import {\n  mergeModelRequestHeaders,\n  withoutModelAuthHeaders,\n  withoutModelQu",
+    "import { mergeModelRequestHeaders } from \"./model-request-headers.js\";"
+   ],
+   [
+    "    // SDK 会合并 factory 默认 header；必须在这里去掉静态来源，才能保证缺失时真正省略。\n    const headers = wi",
+    "    const headers = providerConfig.headers;\n    const providerTransport = this.r"
+   ],
+   [
+    "    this.providerTransports.set(providerId, networkTransport);\n    return networ",
+    "    this.providerTransports.set(providerId, transport);\n    return transport;"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/model/runner-generate.ts",
+  "pairs": 11,
+  "applied": 11,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/model/runner-runtime-headers.ts",
+  "pairs": 2,
+  "applied": 1,
+  "missed": [
+   [
+    "import type { RequestVerificationReason } from \"@zcode/shared\";",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/model/runner-stream.ts",
+  "pairs": 19,
+  "applied": 19,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/model/runner.ts",
+  "pairs": 11,
+  "applied": 10,
+  "missed": [
+   [
+    "",
+    "      // 按请求预算档位收敛 maxAttempts（single-attempt 供执行作用域请求使用）。"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts",
+  "pairs": 35,
+  "applied": 19,
+  "missed": [
+   [
+    "",
+    "const GITHUB_RAW_BASE_URL = \"https://raw.githubusercontent.com\";"
+   ],
+   [
+    "    const persistedManifest =\n      loaded.manifest.name === ZCODE_OFFICIAL_PLUG",
+    "    const persistedManifest = claimsOfficialName\n      ? parseRequiredMarketplac"
+   ],
+   [
+    "",
+    "    const canonicalMarketplaceName = claimsOfficialName\n      ? ZCODE_OFFICIAL_P"
+   ],
+   [
+    "",
+    "    const diagnostic = toValidationDiagnostic(lastError, record.id);\n    await p"
+   ],
+   [
+    "",
+    "  // 相对路径条目按住的市场源树：每个市场最多取一次，整个安装结束后统一清理。\n  const sourceTrees = new Map<string, "
+   ],
+   [
+    "",
+    "      const sourceTree = await resolveTreeFor(marketplace);"
+   ],
+   [
+    "",
+    "        ...(sourceTree ? { sourceRoot: sourceTree.path } : {}),"
+   ],
+   [
+    "",
+    "  } finally {\n    for (const cleanup of sourceTreeCleanups) {\n      await cleanu"
+   ],
+   [
+    "",
+    "  let sourceTree: ResolvedPluginSourceRoot | undefined;"
+   ],
+   [
+    "",
+    "    // 只有相对路径条目才需要市场源树；自带 url/git/npm/zip 的条目直接解析，不必取仓。\n    if (readRelativeSour"
+   ],
+   [
+    "",
+    "      ...(sourceTree ? { sourceRoot: sourceTree.path } : {}),"
+   ],
+   [
+    "",
+    "    await cleanupPluginSourceBestEffort(sourceTree?.cleanup);"
+   ],
+   [
+    "",
+    "  // 仅相对路径来源需要：按需取到的市场源树。\n  sourceRoot?: string;"
+   ],
+   [
+    "",
+    "    ...(input.sourceRoot ? { sourceRoot: input.sourceRoot } : {}),"
+   ],
+   [
+    "",
+    "/**\n * 条目来源里的“相对路径”（相对市场仓库/目录）。只有这类条目才需要“本地源树”\n * （已落盘的市场目录或按需取到的仓库副本）才能解析。\n *\n "
+   ],
+   [
+    "",
+    "      // 快路径：只取清单，不 clone、不复制源树。取不到再走原有 clone 路径。\n      const manifestOnly = awa"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/src/plugins/official-marketplace.ts",
+  "pairs": 8,
+  "applied": 1,
+  "missed": [
+   [
+    "  assertOfficialManifest(input.manifest);\n  writeJsonFileSync(partitionPath(inpu",
+    "  const persistedManifest = normalizeOfficialManifest(input.manifest);\n  writeJs"
+   ],
+   [
+    "export function loadBundledOfficialPluginRootsSync(\n  storageRoot: string,\n): st",
+    "export function loadBundledOfficialPluginRootsSync(storageRoot: string): string["
+   ],
+   [
+    "  const officialCacheRoot = resolve(\n    storageRoot,\n    \"cache\",\n    ZCODE_OFF",
+    "  const officialCacheRoot = resolve(storageRoot, \"cache\", ZCODE_OFFICIAL_PLUGIN_"
+   ],
+   [
+    "",
+    "  //\n  // 身份（name / description / owner）归 Polaris：远端镜像只贡献\"内容\"字段。\n  // 否则镜像 manif"
+   ],
+   [
+    "",
+    "    ...readCdnContributedFields(cdnManifest),"
+   ],
+   [
+    "",
+    "/**\n * 允许从远端镜像目录带入的\"内容\"字段白名单。\n *\n * `featured` 是策展名单，`allowCrossMarketplaceDepen"
+   ],
+   [
+    "",
+    "/**\n * 官方目录镜像 manifest 的归一化：远端可以携带历史声明名（Z.ai 原站至今如此），\n * 但落盘的身份字段必须是本地官方 id —— 与"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/tests/auth.test.ts",
+  "pairs": 9,
+  "applied": 7,
+  "missed": [
+   [
+    "  loadSharedZCodeCredentialSync,",
+    ""
+   ],
+   [
+    "  it(\"stores ZAI login credentials with z-code compatible encrypted keys\", async",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/tests/config.test.ts",
+  "pairs": 28,
+  "applied": 25,
+  "missed": [
+   [
+    "",
+    "import { DefaultRuntimeConfig } from \"@zcode/contracts\";"
+   ],
+   [
+    "",
+    "  it(\"defaults the session database to db/db.sqlite\", () => {\n    const result ="
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/adapters/tests/official-marketplace.test.ts",
+  "pairs": 21,
+  "applied": 20,
+  "missed": [
+   [
+    "    expect(() =>\n      writeCdnOfficialMarketplacePartitionSync({\n        manife",
+    "    const persisted = writeCdnOfficialMarketplacePartitionSync({\n      manifest:"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts",
+  "pairs": 2,
+  "applied": 0,
+  "missed": [
+   [
+    "import { isZCodeCuaInternalFeatureEnabled, ZCODE_CUA_OFFICIAL_PLUGIN_ID } from \"",
+    "import {\n  isZCodeCuaInternalFeatureEnabled,\n  POLARIS_OFFICIAL_PLUGIN_MARKETPLA"
+   ],
+   [
+    "",
+    "      // 内置分片带着官方目录自己的描述：合并时它优先于远端镜像，避免镜像的厂商文案\n      // 变成官方目录的展示描述。\n      descr"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts",
+  "pairs": 26,
+  "applied": 24,
+  "missed": [
+   [
+    "  {\n    listing: {\n      author: ZAI_AUTHOR,\n      category: \"developer-tools\",\n",
+    ""
+   ],
+   [
+    "",
+    "      // monorepo 布局：其他官方插件的源码在 apps/zcode-cli/packages/ 下（上面几条 1-2 层\n      // 相"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/auth-login.ts",
+  "pairs": 13,
+  "applied": 8,
+  "missed": [
+   [
+    "export { hasConfiguredStandaloneCodingPlan, logoutZCodeCli } from \"./auth-login-",
+    ""
+   ],
+   [
+    "  persistStandaloneCodingPlanConnection,\n  type StandaloneCodingPlanPersistenceR",
+    ""
+   ],
+   [
+    "import { buildZCodeEndpointUrls, resolveRuntimeZCodeEndpointOrigin } from \"@zcod",
+    ""
+   ],
+   [
+    "export async function loginZCodeCli(\n  options: LoginZCodeCliOptions = {},\n): Pr",
+    "\nexport interface LogoutZCodeCliOptions {\n  credentialStore?: SharedZCodeCredent"
+   ],
+   [
+    "  const configPatch = await persistStandaloneCodingPlanConnection({\n    accountI",
+    "  const keys = Object.values(SHARED_ZCODE_CREDENTIAL_KEYS);\n  const current = aw"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-entrypoint.ts",
+  "pairs": 8,
+  "applied": 7,
+  "missed": [
+   [
+    "    const providerEndpointRoutingPort =\n      options.providerEndpointRoutingPor",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/cold-event-merge.ts",
+  "pairs": 1,
+  "applied": 0,
+  "missed": [
+   [
+    "  SessionEventType.TurnExecutionModelFallback,",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/queue.ts",
+  "pairs": 7,
+  "applied": 7,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/session-flow.ts",
+  "pairs": 12,
+  "applied": 9,
+  "missed": [
+   [
+    "  const rawPayload = envelope.payload as CommandPayloadMap[\"sendText\"];",
+    "  const payload = envelope.payload as CommandPayloadMap[\"sendText\"];"
+   ],
+   [
+    "  const activeAutomationId = resolveTurnAutomationId({\n    automationId: rawPayl",
+    ""
+   ],
+   [
+    "    inputIntentMetadata(intentEnvelope, { ...options, ...submittedExecutionState",
+    "    inputIntentMetadata(envelope, { ...options, ...submittedExecutionState });"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/input-admission.ts",
+  "pairs": 6,
+  "applied": 4,
+  "missed": [
+   [
+    "import {\n  isHighspeedProviderId,\n  resolveExecutionState,\n  type ModelSelection",
+    "import { resolveExecutionState, type ModelSelection } from \"@zcode/shared\";"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/prompt-turn.ts",
+  "pairs": 3,
+  "applied": 0,
+  "missed": [
+   [
+    "  const selectionFallback = params.modelExecution?.selectionFallback;\n  const de",
+    ""
+   ],
+   [
+    "  if (defersSelectionValidationToCore && availableModels) {\n    const fallbackTa",
+    "  if (requestedSelection && availableModels && !isSelectionAvailable(requestedSe"
+   ],
+   [
+    "    // Bug 原因：这里曾把带声明式退回的 execution Selection 也按普通 Selection 拒绝，\n    // 导致 Highs",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/types.ts",
+  "pairs": 3,
+  "applied": 3,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts",
+  "pairs": 25,
+  "applied": 25,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts",
+  "pairs": 9,
+  "applied": 9,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/runtime-cleanup.ts",
+  "pairs": 3,
+  "applied": 3,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/subagent-session-query.ts",
+  "pairs": 5,
+  "applied": 1,
+  "missed": [
+   [
+    "",
+    "/**\n * 无人佐证的 running 兜底陈旧界。\n *\n * runningStatus 的三个兜底分支（async launch ACK 窗口、父 ac"
+   ],
+   [
+    "",
+    "  // 下面两个分支的唯一依据是持久化 part 的状态：part 卡在 running/pending 的\n  // 死代理（journal 无 Stopp"
+   ],
+   [
+    "",
+    "    !isStaleUnattendedRunning(input.candidate, input.background) &&"
+   ],
+   [
+    "",
+    "    !isStaleUnattendedRunning(input.candidate, input.background) &&"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts",
+  "pairs": 16,
+  "applied": 16,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/tests/bundled-plugins-resilience.test.ts",
+  "pairs": 8,
+  "applied": 7,
+  "missed": [
+   [
+    "const ANDROID_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, \"android-emulator\", \"0.1.",
+    "const RESILIENCE_PLUGIN_DEFINITION = OFFICIAL_PLUGIN_DEFINITIONS.find(\n  ({ name"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/tests/plugins-protocol.test.ts",
+  "pairs": 14,
+  "applied": 13,
+  "missed": [
+   [
+    "        result.plugins.find((plugin) => plugin.id === \"browser-use@zcode-plugins",
+    "        result.plugins.find((plugin) => plugin.id === \"browser-use@polaris-plugi"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts",
+  "pairs": 17,
+  "applied": 13,
+  "missed": [
+   [
+    "  \"android-emulator\",\n  \"0.1.0\",",
+    "  \"documents\",\n  \"0.1.6\","
+   ],
+   [
+    "            name: \"zcode-plugins-official\",\n            pluginCount: 14,",
+    "            name: \"polaris-plugins-official\",\n            pluginCount: 11,"
+   ],
+   [
+    "  it(\"projects bundled iOS simulator skills, commands, and MCP when enabled\", as",
+    "  \n  "
+   ],
+   [
+    "        pluginCount: 14,",
+    "        pluginCount: 11,"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/tests/session-persistence.test.ts",
+  "pairs": 3,
+  "applied": 2,
+  "missed": [
+   [
+    "  it(\"persists Highspeed metadata in the user message data\", async () => {\n    c",
+    "  "
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/tests/transcript-hydration.test.ts",
+  "pairs": 2,
+  "applied": 1,
+  "missed": [
+   [
+    "  it(\"cold hydration projects persisted highspeed metadata onto the user input r",
+    "  "
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/bootstrap/tests/v4-native-commands.test.ts",
+  "pairs": 5,
+  "applied": 3,
+  "missed": [
+   [
+    "  it(\"Highspeed turn 运行中再次发送仍进入 queue，加速执行材料只暂存在 CLI 内存\", async () => {\n    cons",
+    "  \n  \n  "
+   ],
+   [
+    "  it(\"协议命令全部原生（回落面清零）；未知命令不 supports\", () => {\n    const executor = new V4Comman",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/cli/package.json",
+  "pairs": 4,
+  "applied": 2,
+  "missed": [
+   [
+    "",
+    "    \"polaris\": \"./dist/zcode.cjs\","
+   ],
+   [
+    "    \"test\": \"node --disable-warning=DEP0205 --import tsx --test tests/cli.unit.t",
+    "    \"test\": \"node --disable-warning=DEP0205 --import tsx --test tests/cli.unit.t"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs",
+  "pairs": 12,
+  "applied": 11,
+  "missed": [
+   [
+    "    marketplace: \"zcode-plugins-official\",\n    name: \"android-emulator\",\n    pac",
+    "    marketplace: \"polaris-plugins-official\","
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/cli/src/hooks-trust-command.ts",
+  "pairs": 3,
+  "applied": 1,
+  "missed": [
+   [
+    "      `  zcode hooks trust grant --workspace ${quote(status.workspaceIdentity)} ",
+    "      `  polaris hooks trust grant --workspace ${quote(status.workspaceIdentity)"
+   ],
+   [
+    "      `  zcode hooks trust grant --workspace ${quote(status.workspaceIdentity)} ",
+    "      `  polaris hooks trust grant --workspace ${quote(status.workspaceIdentity)"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/cli/src/prompt-command.ts",
+  "pairs": 6,
+  "applied": 5,
+  "missed": [
+   [
+    "      `Review with: zcode hooks trust review --workspace ${JSON.stringify(status",
+    "      `Review with: polaris hooks trust review --workspace ${JSON.stringify(stat"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/cli/tests/build.test.mjs",
+  "pairs": 1,
+  "applied": 1,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/cli/tests/sea-official-plugin-assets.test.mjs",
+  "pairs": 1,
+  "applied": 0,
+  "missed": [
+   [
+    "    await writeTestFile(root, \"packages/android-emulator-plugin/.zcode-plugin/pl",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/contracts/src/interfaces/session.port.ts",
+  "pairs": 2,
+  "applied": 1,
+  "missed": [
+   [
+    "/** message.data metadata.highspeed 的持久化契约；不包含运行时凭据。 */\nexport interface Highspe",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/context/builder.ts",
+  "pairs": 1,
+  "applied": 0,
+  "missed": [
+   [
+    "    // 「You are ZCode, an interactive coding agent」对一个",
+    "    // 「You are Polaris, an interactive coding agent」对一个"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/context/sections/cli-prefix.ts",
+  "pairs": 1,
+  "applied": 0,
+  "missed": [
+   [
+    "const CLI_PREFIX_PROMPT = \"You are ZCode, an interactive coding agent\";",
+    "// Polaris：产品身份前缀。这是模型自称的唯二来源之一（另一个是 sections/identity.ts 的 Agent Identity），\n// "
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/context/sections/desktop.ts",
+  "pairs": 2,
+  "applied": 1,
+  "missed": [
+   [
+    "      \"# ZCode Desktop Context\",",
+    "      \"# Polaris Desktop Context\","
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/context/sections/identity.ts",
+  "pairs": 2,
+  "applied": 0,
+  "missed": [
+   [
+    "",
+    "  // Polaris：Agent Identity 是模型自称的另一个来源（与 sections/cli-prefix.ts 的 CLI Prefix 成对"
+   ],
+   [
+    "    ? \"You respond to the user according to the active Output Style below while ",
+    "    ? \"You respond to the user according to the active Output Style below while "
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/context/sections/workflow-actor.ts",
+  "pairs": 2,
+  "applied": 0,
+  "missed": [
+   [
+    "// 它替换的是交互式的 Agent Identity（「You are an interactive ZCode agent that helps",
+    "// 它替换的是交互式的 Agent Identity（「You are an interactive Polaris agent that helps"
+   ],
+   [
+    "  // 不再有 CLI prefix 走在前面（「You are ZCode, an interactive coding agent」",
+    "  // 不再有 CLI prefix 走在前面（「You are Polaris, an interactive coding agent」"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/runtime/methods/session-fork.ts",
+  "pairs": 3,
+  "applied": 0,
+  "missed": [
+   [
+    "import { isHighspeedProviderId, resolveExecutionState, type ExecutionState } fro",
+    "import { resolveExecutionState, type ExecutionState } from \"@zcode/shared\";"
+   ],
+   [
+    "function modelSelectionFromMessage(message: MessageWithParts): ModelSelection | ",
+    ""
+   ],
+   [
+    "  // 加速 Provider 不能成为 child 的常驻 Selection（理由见 modelSelectionFromMessage），\n  // 调",
+    "  if (explicit) return cloneModelSelection(explicit);\n  const historical = [...m"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/runtime/types.ts",
+  "pairs": 8,
+  "applied": 6,
+  "missed": [
+   [
+    "import type { RequestVerificationReason } from \"@zcode/shared\";",
+    ""
+   ],
+   [
+    "",
+    "  /** 接纳边界固定的 Session 候选快照；仅随内存命令传递，core 不再作退回使用。 */\n  highspeedFallbackSelectio"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/subagent/runner.ts",
+  "pairs": 2,
+  "applied": 0,
+  "missed": [
+   [
+    "    options.outputRootDir ?? join(tmpdir(), \"zcode-agents\"),",
+    "    options.outputRootDir ?? join(tmpdir(), \"polaris-agents\"),"
+   ],
+   [
+    "    : join(options.outputRootDir ?? join(tmpdir(), \"zcode-agents\"), request.sess",
+    "    : join(options.outputRootDir ?? join(tmpdir(), \"polaris-agents\"), request.se"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/system-reminder/incoming-message.ts",
+  "pairs": 4,
+  "applied": 1,
+  "missed": [
+   [
+    "  \"This came from another ZCode session — not typed by your user, but very likel",
+    "  \"This came from another Polaris session — not typed by your user, but very lik"
+   ],
+   [
+    "      return `Another ZCode session sent a message while you were working:\\n${bo",
+    "      return `Another Polaris session sent a message while you were working:\\n${"
+   ],
+   [
+    "      return `Another ZCode session sent a message:\\n${body}\\n\\n${PEER_PERMISSIO",
+    "      return `Another Polaris session sent a message:\\n${body}\\n\\n${PEER_PERMISS"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts",
+  "pairs": 11,
+  "applied": 6,
+  "missed": [
+   [
+    "",
+    "import type { SkillTelemetryMetadata } from \"@zcode/contracts\";"
+   ],
+   [
+    "",
+    "  type ToolExecutionSpanWriter,"
+   ],
+   [
+    "",
+    "import { resolveEmbeddedSearchBranchCapability } from \"../../embedded-search/cap"
+   ],
+   [
+    "",
+    "import { createToolModelStatusSink, withDefaultToolModelStatusSink } from \"./mod"
+   ],
+   [
+    "",
+    "import { runToolCallWithTelemetry } from \"./telemetry.js\";"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/tests/context-builder.test.ts",
+  "pairs": 22,
+  "applied": 4,
+  "missed": [
+   [
+    "    expect(result.systemMessages[0]?.content).toBe(\"You are ZCode, an interactiv",
+    "    expect(result.systemMessages[0]?.content).toMatch(\n      /^You are Polaris, "
+   ],
+   [
+    "    expect(stableBody).toMatch(/^\\n?You are an interactive ZCode agent/);",
+    "    expect(stableBody).toMatch(/^\\n?You are an interactive Polaris agent/);"
+   ],
+   [
+    "    expect(stableBody).not.toContain(\"You are ZCode, an interactive coding agent",
+    "    expect(stableBody).not.toContain(\"You are Polaris, an interactive coding age"
+   ],
+   [
+    "  it(\"injects the stable ZCode Desktop Context before dynamic behavior\", () => {",
+    "  it(\"injects the stable Polaris Desktop Context before dynamic behavior\", () =>"
+   ],
+   [
+    "    expect(result.systemMessages[1]?.content).toContain(\"# ZCode Desktop Context",
+    "    expect(result.systemMessages[1]?.content).toContain(\"# Polaris Desktop Conte"
+   ],
+   [
+    "    expect(result.systemMessages[0]?.content).toBe(\"You are ZCode, an interactiv",
+    "    expect(result.systemMessages[0]?.content).toMatch(\n      /^You are Polaris, "
+   ],
+   [
+    "    expect(result.systemMessages[0]?.content).toBe(\"You are ZCode, an interactiv",
+    "    expect(result.systemMessages[0]?.content).toMatch(\n      /^You are Polaris, "
+   ],
+   [
+    "    expect(cliPrefix).toBe(\"You are ZCode, an interactive coding agent\");",
+    "    expect(cliPrefix).toMatch(/^You are Polaris, an interactive coding agent\\./)"
+   ],
+   [
+    "    expect(stableBody).toMatch(/^\\n?You are an interactive ZCode agent/);\n    ex",
+    "    expect(stableBody).toMatch(/^\\n?You are an interactive Polaris agent/);\n    "
+   ],
+   [
+    "    expect(result.systemMessages[0]?.content).toBe(\"You are ZCode, an interactiv",
+    "    expect(result.systemMessages[0]?.content).toMatch(\n      /^You are Polaris, "
+   ],
+   [
+    "    expect(result.systemMessages[1]?.content).toMatch(/^\\n?You are an interactiv",
+    "    expect(result.systemMessages[1]?.content).toMatch(/^\\n?You are an interactiv"
+   ],
+   [
+    "    expect(prefixSection.content).toBe(\"You are ZCode, an interactive coding age",
+    "    expect(prefixSection.content).toMatch(/^You are Polaris, an interactive codi"
+   ],
+   [
+    "    expect(identitySection.content).not.toContain(\"You are ZCode, an interactive",
+    "    expect(identitySection.content).not.toContain(\"You are Polaris, an interacti"
+   ],
+   [
+    "    expect(section.content).toMatch(/^\\n?You are an interactive ZCode agent/);",
+    "    expect(section.content).toMatch(/^\\n?You are an interactive Polaris agent/);"
+   ],
+   [
+    "    expect(text).not.toContain(\"interactive ZCode agent that helps users\");",
+    "    expect(text).not.toContain(\"interactive Polaris agent that helps users\");"
+   ],
+   [
+    "    expect(text).not.toContain(\"interactive ZCode agent\");",
+    "    expect(text).not.toContain(\"interactive Polaris agent\");"
+   ],
+   [
+    "      \"You are ZCode, an interactive coding agent\",",
+    "      \"You are Polaris, an interactive coding agent\","
+   ],
+   [
+    "      \"\\nYou are an interactive ZCode agent that helps users with software engin",
+    "      \"\\nYou are an interactive Polaris agent that helps users with software eng"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/tests/fixtures/runtime-input-presentation.json",
+  "pairs": 2,
+  "applied": 1,
+  "missed": [
+   [
+    "    \"subagent_reply_steer\": \"Another ZCode session sent a message while you were",
+    "    \"subagent_reply_steer\": \"Another Polaris session sent a message while you we"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/tests/io-boundary.test.ts",
+  "pairs": 2,
+  "applied": 0,
+  "missed": [
+   [
+    "  \"packages/adapters/src/model/provider-endpoint-routing-fetch.ts\",",
+    "  // 只包装已放行的 network/proxy-fetch.ts（createNetworkProxyFetch），自身不发起请求。\n  \"package"
+   ],
+   [
+    "      const relativePath = relative(repoRoot, file);",
+    "      // allowlist 以 \"/\" 书写；Windows 下 relative() 返回 \"\\\"，直接比较会让全部白名单文件\n      // 变"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/tests/runtime-model-selection.test.ts",
+  "pairs": 6,
+  "applied": 5,
+  "missed": [
+   [
+    "  it.each([ModelErrorCode.ProviderNotFound, ModelErrorCode.ModelNotFound])(\n    ",
+    "  \n  \n  \n  \n  \n  \n  \n  \n  \n  "
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts",
+  "pairs": 3,
+  "applied": 2,
+  "missed": [
+   [
+    "  it.each([\n    { expectedPartStatus: \"completed\", executionState: \"completed\" a",
+    "  \n  \n  "
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/core/tests/session-fork.test.ts",
+  "pairs": 3,
+  "applied": 3,
+  "missed": []
+ },
+ {
+  "path": "apps/zcode-cli/packages/node-repl-host/.zcode-plugin/plugin.json",
+  "pairs": 1,
+  "applied": 0,
+  "missed": [
+   [
+    "  \"description\": \"Shared node_repl runtime host for ZCode official capabilities.",
+    "  \"description\": \"Shared node_repl runtime host for Polaris official capabilitie"
+   ]
+  ]
+ },
+ {
+  "path": "apps/zcode-cli/packages/node-repl-host/src/cua-broker.ts",
+  "pairs": 11,
+  "applied": 9,
+  "missed": [
+   [
+    "async function handleSocket(socket: Socket, runtime: ComputerUseRuntime, token: ",
+    "async function handleSocket(\n  socket: Socket,\n  runtime: ComputerUseRuntime,\n  "
+   ],
+   [
+    "  if (typeof actualValue !== \"string\") throw new Error(\"Computer Use broker requ",
+    "  if (typeof actualValue !== \"string\")\n    throw new Error(\"Computer Use broker "
+   ]
+  ]
+ },
+ {
+  "path": "packages/desktop/src/host/index.ts",
+  "pairs": 28,
+  "applied": 25,
+  "missed": [
+   [
+    "    // 只有 init 实际新建；绑定首跑和跨票续跑只是原 Session 的后续输入。\n    if (dispatchKind === \"init\")",
+    ""
+   ],
+   [
+    "    // prompt 创建的定时任务带 targetTaskId，追加原会话不能计成 session_create。\n    if (!request.t",
+    ""
+   ],
+   [
+    "  let resourceTelemetry: IDisposable | undefined;\n  const refreshResourceTelemet",
+    "  // Polaris：远端资源遥测订阅随遥测栈整体移除；server 目标自身持有 media service，\n  // 不再为本机 remote 预览代"
+   ]
+  ]
+ },
+ {
+  "path": "packages/desktop/src/main/index.ts",
+  "pairs": 52,
+  "applied": 40,
+  "missed": [
+   [
+    "",
+    "  DATA_ROOT_DIR_NAME,"
+   ],
+   [
+    "  getDataBaseDir,\n  getZCodeDataRootDir,",
+    ""
+   ],
+   [
+    "",
+    "// 内置浏览器站点权限（上游新能力）：权限策略 + 站点权限存储 + 原生权限 UI 桥。"
+   ],
+   [
+    "",
+    "// 多个同族 Electron 开发实例并跑（Polaris Dev / Lyra / ZCode Dev）都会默认抢 9229：\n// 后启动者绑定失败、D"
+   ],
+   [
+    "",
+    "// 打包版封死开发者工具键盘入口：菜单 role 与命令处理器已按 isPackaged 门控，\n// 这里对所有 webContents（主窗口/关于窗/弹"
+   ],
+   [
+    "",
+    "    // PiP 只在 macOS 上可能启用（services/node.ts 的 cuaPipSessionEnabled：darwin +\n    /"
+   ],
+   [
+    "",
+    "// Web 远程控制（上游新能力）用独立凭据服务解析中继鉴权；遥测栈整体移除后不再有 telemetry 凭据服务。"
+   ],
+   [
+    "const appLaunchGate = createAppLaunchGate();\nconst appLaunchCoordinator = create",
+    "async function resolveCurrentZCodeEndpointOrigin(\n  options: { ignoreEnvBaseOrig"
+   ],
+   [
+    "const appTelemetryCore = createTelemetryCore({\n  loadUserId: createTelemetryUser",
+    ""
+   ],
+   [
+    "",
+    "  // Polaris：本地遥测栈已整体移除，上游在此处接入的 renderer 事件上报 / 远程用量埋点已一并剥除。"
+   ],
+   [
+    "    // 修复原因：Main 过去不会等待仍在发送的 /event/report，正常退出也会直接丢事件。\n    // 与其它 owner 并行进入既有屏",
+    ""
+   ],
+   [
+    "          onAgentProcessExited: (event) => reportAgentProcessExitToArms(event, l",
+    ""
+   ]
+  ]
+ },
+ {
+  "path": "packages/desktop/src/main/webRemoteControlManager.ts",
+  "pairs": 12,
+  "applied": 12,
+  "missed": []
+ }
+]

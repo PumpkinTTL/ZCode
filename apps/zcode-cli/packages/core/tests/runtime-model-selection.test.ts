@@ -2,15 +2,18 @@ import { describe, expect, it } from "vitest";
 import { createTestModelSelection } from "./test-model-selection.js";
 import {
   CoreErrorType,
+
   SessionEventType,
   createModelId,
   createModelProviderId,
   createSessionId,
+
 } from "@zcode/contracts";
 import { createTestAgentRuntime } from "./test-agent-runtime.js";
 import { createTestSessionEventStore } from "./test-event-store.js";
 import { createTestModelFactory } from "./test-runtime-model.js";
 import { createRecordingSubagentSessionStore } from "./subagent-test-store.js";
+
 
 describe("AgentRuntime model selection event", () => {
   it("首轮只按 admitted Active Model 构造一次 Context", async () => {
@@ -564,18 +567,6 @@ describe("AgentRuntime model selection event", () => {
     },
   );
 
-<<<<<<< HEAD
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-=======
   it.each([ModelErrorCode.ProviderNotFound, ModelErrorCode.ModelNotFound])(
     "falls back before the request when execution Selection creation fails with %s",
     async (code) => {
@@ -1542,7 +1533,6 @@ describe("AgentRuntime model selection event", () => {
     ).toHaveLength(1);
   });
 
->>>>>>> upstream/main
   it("preserves an explicit source-less model boundary in ModelSelected", async () => {
     const sessionId = createSessionId("runtime-model-selection-source-less-boundary");
     const eventStore = createTestSessionEventStore();
@@ -1568,4 +1558,5 @@ describe("AgentRuntime model selection event", () => {
       },
     });
   });
+
 });

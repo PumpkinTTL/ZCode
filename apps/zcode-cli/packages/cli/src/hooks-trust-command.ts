@@ -161,15 +161,9 @@ function formatHuman(status: WorkspaceHookTrustCliStatus, action: string): strin
   if (status.reasonCode === "workspace_hooks_pending_trust" && status.bundleDigest) {
     lines.push(
       "Pretrust exact declarations with:",
-<<<<<<< HEAD
-      `  polaris hooks trust grant --workspace ${quote(status.workspaceIdentity)} --hook-digest <sha256>`,
-      "Or trust every currently enabled declaration in this exact bundle with:",
-      `  polaris hooks trust grant --workspace ${quote(status.workspaceIdentity)} --all-current --bundle-digest ${status.bundleDigest}`,
-=======
       `  zcode hooks trust grant --workspace ${quote(workspaceTrustCommandArgument(status))} --hook-digest <sha256>`,
       "Or trust every currently enabled declaration in this exact bundle with:",
       `  zcode hooks trust grant --workspace ${quote(workspaceTrustCommandArgument(status))} --all-current --bundle-digest ${status.bundleDigest}`,
->>>>>>> upstream/main
     );
   }
   if (status.reasonCode === "workspace_hooks_trust_store_corrupt") {

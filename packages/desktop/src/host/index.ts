@@ -28,6 +28,7 @@ import {
   type IDisposable,
   type IChannelServer,
   LoggingChannelServer,
+
 } from "@zcode/rpc";
 import { startHostMemoryDiagnosticsLog } from "./hostMemoryDiagnosticsLog.js";
 import { createBrowserControlMainBridge } from "./browserControlMainBridge.js";
@@ -221,6 +222,7 @@ import {
   createRemotePromptAttachmentTransferService,
   type RemotePromptAttachmentTransferService,
 } from "./promptAttachmentTransferService.js";
+
 type HostRemoteConnection = ServerRemoteConnection;
 interface HostRemoteConnectionCapabilities {
   promptAttachmentTransferFactory?: (
@@ -885,8 +887,6 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
       sessionId: taskId,
     });
     lifecycle.admitted();
-<<<<<<< HEAD
-=======
     // 只有 init 实际新建；绑定首跑和跨票续跑只是原 Session 的后续输入。
     if (dispatchKind === "init") {
       reportHostSessionCreate(parentPort, {
@@ -897,7 +897,6 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
         workspaceIdentity: request.workspaceIdentity,
       });
     }
->>>>>>> upstream/main
     return { conversationId: taskId, sessionId: taskId, lifecycleManaged: true };
   } catch (error) {
     if (trackedKey) disposeOffPeakRunSubscription(trackedKey);
@@ -1187,8 +1186,6 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       clientMode: "desktop-continuous",
       automationId: request.automationId,
     });
-<<<<<<< HEAD
-=======
     // prompt 创建的定时任务带 targetTaskId，追加原会话不能计成 session_create。
     if (!request.targetTaskId) {
       reportHostSessionCreate(parentPort, {
@@ -1199,7 +1196,6 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
         workspaceIdentity: request.workspaceIdentity,
       });
     }
->>>>>>> upstream/main
     return { taskId: task.taskId, sessionId: task.taskId };
   } catch (error) {
     if (trackedKey) disposeCronRunSubscription(trackedKey);
@@ -1286,6 +1282,7 @@ process.on("warning", (warning) => logger.warn(`${warning.name}: ${warning.messa
 const hostMemoryDiagnosticsLog = startHostMemoryDiagnosticsLog({
   logger,
   collectCounters: collectServiceMemoryDiagnostics,
+
 });
 
 const runtimeProcessLifecycleReporter = {
@@ -1991,10 +1988,6 @@ async function createWindowRemoteConnectionHandle(params: {
   let managerConnectionInvalidatedSubscription: { dispose(): void } | undefined;
   let managerReconnectSubscription: { dispose(): void } | undefined;
   let services: ServiceCollection;
-<<<<<<< HEAD
-  // Polaris：远端资源遥测订阅随遥测栈整体移除；server 目标自身持有 media service，
-  // 不再为本机 remote 预览代理建工厂（与 server-remote service collection 同口径）。
-=======
   let resourceTelemetry: IDisposable | undefined;
   const refreshResourceTelemetry = () => {
     resourceTelemetry?.dispose();
@@ -2014,7 +2007,6 @@ async function createWindowRemoteConnectionHandle(params: {
       onError: (error) => logger.warn("remote resource telemetry subscription failed", error),
     });
   };
->>>>>>> upstream/main
   let lastNotifiedRecoveryAttempt = 0;
   let disposed = false;
   let sourceClosed = false;
@@ -2165,6 +2157,7 @@ async function createWindowRemoteConnectionHandle(params: {
         sourceServices: activeServices ?? undefined,
         targetKind: params.target.kind,
       });
+
       lastNotifiedRecoveryAttempt = 0;
       for (const listener of reconnectListeners) listener();
     });
@@ -2189,6 +2182,7 @@ async function createWindowRemoteConnectionHandle(params: {
       if (!disposed && !sourceClosed && event.channel === "state:projects") notifyProjectChange();
     });
   }
+
   // 桌面 attachment 对远端媒体走 Host loopback Range 数据面；services 会随 Source 重连换代，
   // 工厂在调用时再取当前 file service。server 直连保持 renderer inline 读取。
   const remoteMediaPreviewFactory =
@@ -2297,6 +2291,7 @@ async function createWindowRemoteConnectionHandle(params: {
       managerConnectionInvalidatedSubscription?.dispose();
       managerReconnectSubscription?.dispose();
       projectSubscription?.dispose();
+
       await disposeHostRemoteConnection(connection);
     },
   };
@@ -2590,8 +2585,6 @@ const windowHostControllerRuntime = createWindowHostControllerRuntime({
   },
 });
 
-<<<<<<< HEAD
-=======
 // 手机 project.readTree 叠加实时待处理交互；只有手机 attachment 存在时才监听投影并广播。
 const webRemoteProjectTreeActivity = createWebRemoteProjectTreeActivityBridge({
   readRows: () => windowHostControllerRuntime.readTaskRows(),
@@ -2599,27 +2592,7 @@ const webRemoteProjectTreeActivity = createWebRemoteProjectTreeActivityBridge({
   notifyProjectChange,
 });
 
-function wireLocalResourceTelemetry(services: ServiceCollection): void {
-  activeLocalResourceTelemetry?.dispose();
-  activeLocalResourceTelemetry = registerHostServiceResourceTelemetry({
-    services,
-    postMessage: (message) => parentPort?.postMessage(message),
-    runtimeSurface: "local",
-    onError: (error) => logger.warn("local resource telemetry subscription failed", error),
-  });
-}
 
-function disposeLocalResourceTelemetry(): void {
-  try {
-    activeLocalResourceTelemetry?.dispose();
-  } catch {
-    // 资源遥测释放失败不能阻塞 Host 的既有 shutdown barrier。
-  } finally {
-    activeLocalResourceTelemetry = null;
-  }
-}
-
->>>>>>> upstream/main
 type ExposedServicePortHandle = {
   server: IChannelServer & { ready(): void };
   dispose(): void;
@@ -3010,12 +2983,9 @@ async function disposeHostResources(reason: string): Promise<HostShutdownResult>
 
     appControlNavigation.dispose();
     pluginSandboxRegistrationBridge.dispose();
-<<<<<<< HEAD
-=======
     windowHostExtensions?.dispose();
     windowHostExtensions = null;
-    stopHostNetworkTelemetry();
->>>>>>> upstream/main
+
     hostNetworkCapture.setCaptureId(null);
     hostMemoryDiagnosticsLog.stop();
     disposeAttachedServicePorts();
@@ -3109,12 +3079,9 @@ function disposeHostResourcesBestEffort(reason: string): void {
 
   logger.info(`disposing host resources, reason=${reason}`);
   pluginSandboxRegistrationBridge.dispose();
-<<<<<<< HEAD
-=======
   windowHostExtensions?.dispose();
   windowHostExtensions = null;
-  stopHostNetworkTelemetry();
->>>>>>> upstream/main
+
   hostNetworkCapture.setCaptureId(null);
   hostMemoryDiagnosticsLog.stop();
   disposeAttachedServicePorts();
@@ -4417,8 +4384,6 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           },
         );
         services.register(ISourceServerManagementService, sourceServerManagementService);
-<<<<<<< HEAD
-=======
         // 数据同步页的设备同步状态只属于本机 Host：不进入远程 workspace RPC 合同、
         // source-settings 服务集合，也不在手机 attachment 白名单中。
         services.register(
@@ -4460,8 +4425,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
         services.register(IExtensionsService, windowHostExtensions.service);
         services.register(IExtensionViewsService, windowHostExtensions.viewsService);
         services.register(IExtensionGrantsService, windowHostExtensions.grantsService);
-        wireLocalResourceTelemetry(services);
->>>>>>> upstream/main
+
         hasDisposedHostResources = false;
         disposeHostResourcesInFlight = null;
         const agentWarmupTargets =

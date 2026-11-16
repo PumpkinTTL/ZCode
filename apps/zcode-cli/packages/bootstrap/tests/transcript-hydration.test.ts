@@ -949,9 +949,6 @@ describe("transcript→event 合成", () => {
     });
   });
 
-<<<<<<< HEAD
-  
-=======
   it("cold hydration preserves the canonical sending session source without parsing message text", () => {
     const input = userMessage("u-session-source", "普通正文，不含来源提示", 1000);
     const source = { kind: "session", sessionId: "source-session", title: "来源会话" } as const;
@@ -1076,7 +1073,6 @@ describe("transcript→event 合成", () => {
     });
   });
 
->>>>>>> upstream/main
   it("cold retry intent preserves original cause provenance", () => {
     const retried = userMessage("u-retry", "original text", 1000);
     retried.info.metadata = {

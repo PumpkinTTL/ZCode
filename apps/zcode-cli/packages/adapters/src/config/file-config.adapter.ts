@@ -56,7 +56,7 @@ export interface PluginRemovePatchResult {
   removedOptions: boolean;
 }
 
-export const VISUALIZE_PLUGIN_ID = "visualize@zcode-plugins-official";
+export const VISUALIZE_PLUGIN_ID = "visualize@polaris-plugins-official";
 const VISUALIZE_MIGRATION_KEY = "visualizeDefaultOffMigrated";
 
 const DEFAULT_CONFIG_FILE = "config.json";

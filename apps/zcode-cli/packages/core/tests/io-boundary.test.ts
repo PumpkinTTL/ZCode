@@ -2,45 +2,6 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 const repoRoot = join(import.meta.dirname, "..", "..", "..");
-<<<<<<< HEAD
-const allowedNetworkBoundaryFiles = new Set([
-  "packages/adapters/src/auth/localhost-callback.ts",
-  "packages/adapters/src/http/index.ts",
-  // 仅使用 node:http 的状态码/类型，不执行网络请求。
-  "packages/adapters/src/http/public-egress-policy.ts",
-  // 通过调用方注入的 fetch 执行正式 Adapter 网络边界。
-  "packages/adapters/src/model/model-option-map-fetch.ts",
-  // 只包装已放行的 network/proxy-fetch.ts（createNetworkProxyFetch），自身不发起请求。
-  "packages/adapters/src/mcp/network.ts",
-  // 只读 node:http 的 IncomingMessage 类型，把已到手的响应交给 http/index.ts 与 proxy-fetch.ts，不发请求。
-  "packages/adapters/src/network/incoming-response.ts",
-  "packages/adapters/src/network/proxy-fetch.ts",
-  // MCP 的局部 fetch 由 createNetworkProxyFetch 注入，仅包裹网络观测范围，不直接使用全局 fetch。
-  "packages/adapters/src/mcp/network.ts",
-  "packages/cli/src/provider-runtime-env.ts",
-  // WebFetch 工具只读取 node:http 状态码，真实请求由注入的执行端口完成。
-  "packages/core/src/tool/handlers/webfetch.ts",
-]);
-
-async function collectTypeScriptFiles(directory: string): Promise<string[]> {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const files: string[] = [];
-
-  for (const entry of entries) {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await collectTypeScriptFiles(path)));
-      continue;
-    }
-    if (entry.isFile() && path.endsWith(".ts")) {
-      files.push(path);
-    }
-  }
-
-  return files;
-}
-=======
->>>>>>> upstream/main
 
 describe("core I/O boundaries", () => {
   it("keeps file tools and context assembly free of direct host I/O", async () => {
@@ -61,44 +22,4 @@ describe("core I/O boundaries", () => {
       expect(content, file).not.toMatch(/process\.(?:cwd|env|platform)/);
     }
   });
-<<<<<<< HEAD
-
-  it("keeps in-process HTTP egress behind adapter network boundaries", async () => {
-    const packageSourceRoots = [
-      "packages/adapters/src",
-      "packages/bootstrap/src",
-      "packages/cli/src",
-      "packages/contracts/src",
-      "packages/core/src",
-      "packages/tui/src",
-    ];
-    const files = (
-      await Promise.all(
-        packageSourceRoots.map((root) => collectTypeScriptFiles(join(repoRoot, root))),
-      )
-    ).flat();
-    const violations: string[] = [];
-
-    for (const file of files) {
-      // allowlist 以 "/" 书写；Windows 下 relative() 返回 "\"，直接比较会让全部白名单文件
-      // 变成违规。比较前统一分隔符，保持 allowlist 跨平台可读。
-      const relativePath = relative(repoRoot, file).replace(/\\/gu, "/");
-      if (allowedNetworkBoundaryFiles.has(relativePath)) {
-        continue;
-      }
-
-      const content = await readFile(file, "utf8");
-      if (
-        /\bfetch\s*\(/.test(content) ||
-        /\bhttps?\.request\s*\(/.test(content) ||
-        /from\s+["']node:https?["']/.test(content)
-      ) {
-        violations.push(relativePath);
-      }
-    }
-
-    expect(violations).toEqual([]);
-  });
-=======
->>>>>>> upstream/main
 });

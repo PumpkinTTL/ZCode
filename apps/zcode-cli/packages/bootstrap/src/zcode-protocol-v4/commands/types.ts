@@ -43,6 +43,7 @@ export interface V4CommandLogger {
 
 export type V4QueueItemCommand = QueueItem;
 
+
 export type V4StableForkTargetResolution =
   | {
       ok: true;
@@ -96,23 +97,9 @@ export interface V4CommandCoreHost {
   /** guide eligibility：只阻止已有 ordinary queue；已有 guide 仍允许继续按 FIFO admission。 */
   hasQueuedDelivery?(sessionId: string, delivery: "guide" | "queue"): boolean;
   getQueueLength?(sessionId: string): number;
-<<<<<<< HEAD
-=======
   /** 队首正被 composer 编辑态冻结（投影 queue.items[0].editLock）。 */
   isQueueHeadEditLocked?(sessionId: string): boolean;
-  /** Highspeed queue 的执行材料含凭据，只允许驻留内存，禁止进入 queue event/snapshot。 */
-  retainQueuedTurnExecution?(
-    sessionId: string,
-    sourceCommandId: string,
-    execution: V4QueuedTurnExecution,
-  ): void;
-  readQueuedTurnExecution?(
-    sessionId: string,
-    sourceCommandId: string,
-  ): V4QueuedTurnExecution | undefined;
-  deleteQueuedTurnExecution?(sessionId: string, sourceCommandId: string): void;
-  clearQueuedTurnExecutions?(sessionId: string): void;
->>>>>>> upstream/main
+
   /** timeline/child 这类无 user message 的成功副作用持久化查重事实。 */
   recordPersistentCommandFact?(
     sessionId: string,
@@ -211,6 +198,7 @@ export interface V4CommandCoreHost {
       feedback: "like" | "dislike" | null;
     },
   ): Promise<void>;
+
   /**
    * 交互应答登记表（v4 原生基础设施，非过渡钩子）：interaction-broker 发起
    * 反向请求（permission/AskUserQuestion）时注册 deferred，resolveInteraction 命令

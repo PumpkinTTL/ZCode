@@ -1,13 +1,9 @@
-<<<<<<< HEAD
-=======
 import {
   BROWSER_LOCAL_PREVIEW_PRIVILEGES,
   installBrowserLocalPreview,
 } from "@desktop/main/browser-local-preview/index.js";
 import { createRemoteConversationTelemetryDispatcher } from "@zcode/shared/conversation-telemetry";
-import { installRequestSecurityDiagnostics } from "./request-security-edition/index.js";
-import { createLocalTtftExporter } from "./localTtftExporter.js";
->>>>>>> upstream/main
+
 /* eslint-disable max-lines */
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
@@ -17,6 +13,7 @@ import {
   onLocalDatabaseStartupReady,
   configureDatabaseStartupQuit,
 } from "./databaseStartupRelay.js";
+
 import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
 import {
   createDesktopContextPromptRollout,
@@ -45,6 +42,7 @@ import {
   ipcMain,
   MessageChannelMain,
   nativeImage,
+
   protocol,
   session,
   shell,
@@ -56,20 +54,16 @@ import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { homedir, hostname } from "node:os";
 import {
+
   createSettingService,
   createCredentialService,
   buildRuntimeProcessEnvPatch,
   captureLoginShellEnvSnapshot,
-<<<<<<< HEAD
-  DATA_ROOT_DIR_NAME,
-  getConversationWorkspaceDir,
-=======
   getAppConfigDir,
   getConversationWorkspaceDir,
   getDataBaseDir,
   getExportLogDir,
   getZCodeDataRootDir,
->>>>>>> upstream/main
   normalizeRuntimeProcessEnv,
   setDataBaseDir,
   migrateApplicationStorage,
@@ -94,13 +88,16 @@ import {
   buildZCodeEndpointUrls,
   resolveWebRemoteControlRelayWsUrl,
   resolveZCodeEndpointOrigin,
+
   type UpdateStatePayload,
+
   HostMessageTypes,
   InternalChannels,
 } from "@zcode/shared";
 import { logger, webRemoteControlRelayLogger, flushLocalTtftLogs } from "./logger.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
 import { createCuaPipFocusRouter, resolveCuaPipWindowKey } from "./cuaPipFocusRouter.js";
+
 import {
   acknowledgePostUpdateReleaseNotes,
   getAutoUpdaterState,
@@ -115,6 +112,7 @@ import {
 } from "./autoUpdater.js";
 import { BroadcastHub } from "./broadcastHub.js";
 import { TaskRealtimeBus } from "./taskRealtimeBus.js";
+
 import {
   resolveAppShutdownPolicy,
   selectAppShutdownPolicy,
@@ -215,6 +213,7 @@ import {
   isWorkspaceOpenUrl,
 } from "./desktopDeepLinkUrl.js";
 import { createRemoteWorkspaceSessionManager } from "./desktopRemoteSessions.js";
+
 import { resolveCanonicalWslTarget } from "./desktopWslTargetResolver.js";
 import {
   listRegisteredHostAgentProcessIds,
@@ -230,14 +229,15 @@ import {
   saveCliMcpToUserDirectory,
 } from "./mcpUserDirectory/index.js";
 import { registerRemoteIpcHandlers } from "./desktopMainIpcRemote.js";
+
 import { applyDesktopChromiumNetworkPolicies } from "./desktopNetworkPolicy.js";
-// 内置浏览器站点权限（上游新能力）：权限策略 + 站点权限存储 + 原生权限 UI 桥。
 import { applyEmbeddedBrowserPermissionPolicy } from "./embeddedBrowserPermissionPolicy.js";
 import { createEmbeddedBrowserSitePermissionStore } from "./embeddedBrowserSitePermissionStore.js";
 import {
   createEmbeddedBrowserPermissionUiBridge,
   setActiveEmbeddedBrowserPermissionUiBridge,
 } from "./embeddedBrowserPermissionUiBridge.js";
+
 import {
   findWindowsProcessesReferencingResourceMarkers,
   probeWindowsPackagedResourceWritable,
@@ -246,6 +246,7 @@ import {
   snapshotWindowsPackagedResources,
   WINDOWS_UPDATE_LOCK_RELEASE_GRACE_MS,
 } from "./windowsInstallResourceLocks.js";
+
 import {
   PLUGIN_SANDBOX_PRIVILEGED_SCHEME,
   getPluginSandboxHost,
@@ -275,8 +276,6 @@ const localMediaPreviewPathRegistry = createLocalMediaPreviewPathRegistry();
 // e2e 由 Chromedriver 管理远程调试端口；如果这里继续固定到 9229，
 // 会和开发态已打开的 ZCode Dev 抢端口，导致 WebDriver session 创建前白屏超时。
 // 仅本地开发运行默认开启远程调试端口，并允许 e2e 通过环境变量交给 Chromedriver 接管。
-// 多个同族 Electron 开发实例并跑（Polaris Dev / Lyra / ZCode Dev）都会默认抢 9229：
-// 后启动者绑定失败、DevTools 静默不可用。端口可用环境变量按树错开。
 if (!app.isPackaged && process.env.ZCODE_DISABLE_FIXED_REMOTE_DEBUGGING_PORT !== "1") {
   app.commandLine.appendSwitch(
     "remote-debugging-port",
@@ -298,22 +297,6 @@ if (!shouldUseElectronDefaultUserDataPath) {
   app.setPath("sessionData", runtimeSessionDataPath);
 }
 process.title = runtimeApplicationName;
-
-// 打包版封死开发者工具键盘入口：菜单 role 与命令处理器已按 isPackaged 门控，
-// 这里对所有 webContents（主窗口/关于窗/弹窗/webview guest）统一拦截 F12 与
-// DevTools 默认加速键，防止未来新增 surface 绕过；dev 态不受影响。
-if (app.isPackaged) {
-  app.on("web-contents-created", (_event, contents) => {
-    contents.on("before-input-event", (event, input) => {
-      if (input.type !== "keyDown") return;
-      const key = input.key.toLowerCase();
-      const isF12 = key === "f12";
-      const isCtrlShiftI = (input.control || input.meta) && input.shift && key === "i";
-      const isCmdAltI = input.meta && input.alt && key === "i";
-      if (isF12 || isCtrlShiftI || isCmdAltI) event.preventDefault();
-    });
-  });
-}
 
 process.on("unhandledRejection", (reason) => {
   logger.error("unhandledRejection:", reason);
@@ -599,6 +582,7 @@ const WINDOWS_AGENT_FORCE_KILL_TIMEOUT_MS = 2_000;
 
 const broadcastHub = new BroadcastHub();
 const taskRealtimeBus = new TaskRealtimeBus({ logger });
+
 const hostProcessLocalEnv = loadHostProcessEnvFromLocalFiles();
 interface RuntimeProcessEnvPreparation {
   patchPromise: Promise<Record<string, string>>;
@@ -672,10 +656,6 @@ const windowUnreadCountMap = new Map<number, number>();
 const windowHostProcessMap = new Map<number, ElectronUtilityProcess>();
 const cuaPipFocusRouter = createCuaPipFocusRouter({
   send: (windowId, event) => {
-    // PiP 只在 macOS 上可能启用（services/node.ts 的 cuaPipSessionEnabled：darwin +
-    // desktop-local）。其它平台投递必被静默丢弃，这里直接不发，省掉每轮 turn/focus 的
-    // 跨进程空跑。
-    if (process.platform !== "darwin") return;
     windowHostProcessMap.get(windowId)?.postMessage({
       type: HostMessageTypes.CuaPipFocusChanged,
       event,
@@ -745,19 +725,12 @@ const UPDATE_STATUS_WINDOW_PROGRESS_HEIGHT = 224;
 const UPDATE_STATUS_WINDOW_READY_HEIGHT = UPDATE_STATUS_WINDOW_PROGRESS_HEIGHT - 54;
 const UPDATE_STATUS_WINDOW_TRAFFIC_LIGHT_POSITION = { x: 10, y: 10 } as const;
 const mainSettingService = createSettingService();
-// Web 远程控制（上游新能力）用独立凭据服务解析中继鉴权；遥测栈整体移除后不再有 telemetry 凭据服务。
 const webRemoteControlCredentialService = createCredentialService();
-<<<<<<< HEAD
-async function resolveCurrentZCodeEndpointOrigin(
-  options: { ignoreEnvBaseOrigin?: boolean } = {},
-) {
-=======
 const appLaunchGate = createAppLaunchGate();
 const appLaunchCoordinator = createAppLaunchCoordinator(appLaunchGate);
 const appTelemetryCredentialService = createCredentialService();
 const autoUpdateCredentialService = createCredentialService();
 async function resolveCurrentZCodeEndpointOrigin() {
->>>>>>> upstream/main
   return resolveZCodeEndpointOrigin({
     env: ZCODE_ENV,
     // 打包正式版必须忽略机器环境变量（ZCODE_BASE_URL/ZCODE_ENDPOINT_ORIGIN）：装了
@@ -816,8 +789,6 @@ function awaitFirstHostSpawnDecision(): Promise<void> {
   })();
   return firstHostSpawnDecisionPromise;
 }
-<<<<<<< HEAD
-=======
 const appTelemetryCore = createTelemetryCore({
   loadUserId: createTelemetryUserIdLoader(appTelemetryCredentialService),
   loadAuthorization: createTelemetryAuthorizationLoader(appTelemetryCredentialService),
@@ -873,14 +844,15 @@ function syncAppTelemetryInteractiveState(): void {
   void armsUserIdentitySync.refresh();
 }
 
->>>>>>> upstream/main
 app.on("browser-window-focus", (_event, win) => {
+
   rebuildMenu();
   // 设置/更新等无 Host 的 ZCode 窗口也算前台：router 会先把旧 workspace Host 清成 null，
   // 再把无 Host 的新窗口事实静默丢弃，避免旧会话 PiP 继续显示。
   cuaPipFocusRouter.focusWindow(resolveCuaPipWindowKey(win));
 });
 app.on("browser-window-blur", (_event, win) => {
+
   cuaPipFocusRouter.blurWindow(resolveCuaPipWindowKey(win));
 });
 app.on("browser-window-created", (_event, win) => {
@@ -1049,11 +1021,7 @@ const webRemoteControlManager = createWebRemoteControlManager({
     migrateLegacyCommonMcp: (payload) => migrateLegacyCommonMcp(payload),
   },
   reconnectWorkspace: reconnectWebRemoteControlWorkspaceInRenderer,
-<<<<<<< HEAD
-  // Polaris：本地遥测栈已整体移除，上游在此处接入的 renderer 事件上报 / 远程用量埋点已一并剥除。
-=======
   runRendererAction: runWebRemoteControlActionInRenderer,
->>>>>>> upstream/main
   prepareProjectWorkspace: async (windowId, project, requestId) => {
     const win = BrowserWindow.fromId(windowId);
     if (!win || win.isDestroyed()) throw new Error("项目导航窗口已关闭");
@@ -1068,6 +1036,7 @@ const webRemoteControlManager = createWebRemoteControlManager({
         requestId,
       );
   },
+
   onStatusChanged: (windowId, status) => {
     sendWebRemoteControlStatusChangedToWindow(BrowserWindow.fromId(windowId), status);
   },
@@ -1264,6 +1233,7 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
   windowsCuaOperationIndicator.dispose();
   browserScreenshotSurfaceCoordinator.dispose();
 
+
   const cronSchedulerToDispose = cronScheduler;
   cronScheduler = null;
   const extensionHostToDispose = extensionHostSupervisor;
@@ -1279,8 +1249,6 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
   appQuitPreparationInFlight = Promise.all([
     // 退出屏障结束后再启动窗口尺寸写入，可能在 app.exit 前留下 setting.json.lock。
     // 尺寸已在 resize 防抖或最大化状态变化时保存，退出屏障不再创建新的尺寸写入。
-<<<<<<< HEAD
-=======
     // 修复原因：Main 过去不会等待仍在发送的 /event/report，正常退出也会直接丢事件。
     // 与其它 owner 并行进入既有屏障，最多等待 2 秒，避免 telemetry 串行放大退出预算。
     appTelemetryCore.flushPendingReports({ timeoutMs: 2_000 }),
@@ -1289,7 +1257,6 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
     rendererActionTraceBroker.shutdown().catch((error) => {
       logger.warn(`[app-quit] renderer action trace shutdown failed (${reason}):`, error);
     }),
->>>>>>> upstream/main
     // 旧流程先等待 Cron 的 1.5s deadline，再启动 Host timer，导致声明的
     // 4.5s/9s 退出总预算被串行放大。两类 owner 无关闭依赖，统一并行进入同一屏障。
     (async () => {
@@ -2029,8 +1996,6 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
             windowsCuaOperationIndicator.handleState(source, event),
           onCuaOperationStateSourceExited: (source) =>
             windowsCuaOperationIndicator.clearSource(source),
-<<<<<<< HEAD
-=======
           onAgentProcessExited: (event) => reportAgentProcessExitToArms(event, logger),
           onAgentProcessError: (event) => reportAgentProcessSpawnErrorToArms(event, logger),
           onAgentProcessException: (event) => reportAgentProcessExceptionToArms(event, logger),
@@ -2047,7 +2012,6 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
           onSessionCreateTelemetry: (message) => {
             void appTelemetryCore.reportEvent(message.event).catch(() => {});
           },
->>>>>>> upstream/main
           onCronRunResult: forwardCronRunResult,
           onOffPeakRunResult: forwardOffPeakRunResult,
           onCronSchedulerWakeRequested: wakeCronScheduler,
@@ -2121,6 +2085,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
       await mainSettingService.update({ desktopWindowSize: state });
     },
   });
+
   return win;
 }
 
@@ -2353,6 +2318,7 @@ app.whenReady().then(async () => {
   void initAutoUpdater({
     enabled: ZCODE_PRODUCT_FLAVOR === "production" && ZCODE_AUTO_UPDATE_ENABLED,
     onBeforeQuitAndInstall: async () => {
+
       await prepareAppQuit("auto-update quitAndInstall", "update-install");
       if (process.platform === "win32") {
         await prepareWindowsProcessesForUpdateInstall();
@@ -2361,13 +2327,9 @@ app.whenReady().then(async () => {
     settingService: mainSettingService,
     locale: currentApplicationLocale,
     deviceMid,
-<<<<<<< HEAD
     resolveEndpointOrigin: () =>
       resolveCurrentZCodeEndpointOrigin({ ignoreEnvBaseOrigin: app.isPackaged }),
-=======
-    resolveEndpointOrigin: resolveCurrentZCodeEndpointOrigin,
     resolveZcodeJwtToken: () => autoUpdateCredentialService.load("zcodejwttoken"),
->>>>>>> upstream/main
     updateFeedSource: resolveUpdateFeedSourceFromStartupConfig({
       argv: process.argv,
       env: process.env,
@@ -2555,8 +2517,10 @@ app.whenReady().then(async () => {
     deviceMid,
   });
 
+
   registerRemoteIpcHandlers({
     logger,
+
     webRemoteControlManager,
     createRemoteWorkspaceSession: remoteSessionManager.createRemoteWorkspaceSession,
     // Polaris：getRemoteConnectionStats 仅用于 ARMS 远程用量采样，随遥测栈移除。
@@ -2629,6 +2593,7 @@ app.whenReady().then(async () => {
 
   logger.info("[startup] 创建主窗口");
   await primaryWindowCoordinator.ensurePrimaryWindow("app-ready");
+
 
   // 启动后检测 CPU 架构是否匹配（如 Apple 芯片误装 x64 版本经 Rosetta 转译运行），
   // 命中后异步弹框提示安装原生架构版本，不阻塞主界面。

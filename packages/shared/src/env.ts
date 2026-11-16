@@ -53,5 +53,10 @@ export const ZCODE_AUTO_UPDATE_ENABLED: boolean =
 export const RUNTIME_ZCODE_DEBUG =
   typeof process !== "undefined" ? process.env.ZCODE_DEBUG : undefined;
 
+// 上游 schema/类型面仍引用的两个端点环境变量名常量（仅名称字符串；上报实现已随
+// Polaris 埋点砍除移除，不存在任何使用这两个名称出网的代码路径）。
+export const ZCODE_ARMS_RUM_ENDPOINT = "ZCODE_ARMS_RUM_ENDPOINT";
+export const ZCODE_TELEMETRY_REPORT_ENDPOINT = "ZCODE_TELEMETRY_REPORT_ENDPOINT";
+
 // Polaris：上游的桌面端埋点体系（官方 RUM / 数仓上报 / 资源与网络采样）已整体移除，
 // 不再保留开关与端点常量。第三方模型、CLI/agent 侧的 OTLP 遥测与这里无关。

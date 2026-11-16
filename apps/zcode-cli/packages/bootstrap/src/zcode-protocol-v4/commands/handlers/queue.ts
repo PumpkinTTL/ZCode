@@ -8,6 +8,7 @@ import type {
   CommandPayloadMap,
   CommandResult,
 } from "@zcode/shared/zcode-protocol-v4";
+
 import { mapAttachmentRefsToTurnAttachments } from "../attachment-refs.js";
 import { inputIntentMetadataFromQueueItem } from "../input-intent.js";
 import { startPromptTurn, turnBackgroundAttributionOf } from "../prompt-turn.js";
@@ -19,6 +20,7 @@ import {
   startManualCompact,
   V4GoalCompactRejectedError,
 } from "./goal-compact.js";
+
 import { preemptActiveTurnAndWait } from "./session-flow.js";
 import { V4CommandNoopError } from "../../v4-gateway.js";
 import { commandExecutionContextOf } from "../executor.js";
@@ -92,14 +94,11 @@ async function deleteQueueItem(
 ): Promise<CommandResult | undefined> {
   const payload = envelope.payload as CommandPayloadMap["deleteQueueItem"];
   const record = requireRecord(host, envelope.sessionId);
-<<<<<<< HEAD
-=======
-  const queueItem = host.getQueueItem?.(record.app.sessionId, payload.queueItemId) ?? null;
+
   // Core 同样拒绝删除冻结项；这里先给出可判别的 guard，避免误报成 itemMissing。
   if (record.app.runtime.getPendingInputEditLock?.(payload.queueItemId)) {
     throw new V4QueueItemEditLockedError(payload.queueItemId);
   }
->>>>>>> upstream/main
   // 未命中（并发 drain/重复删除的竞态）= noop，不算失败；留 warn 供观测。
   const removed = await record.app.removeQueueItem(payload.queueItemId);
   if (!removed) {
@@ -111,6 +110,7 @@ async function deleteQueueItem(
     // queue 撤回编辑因此可能把已消费的旧投影再次恢复到 composer。
     throw new V4CommandNoopError("queue.itemMissing");
   }
+
   return undefined;
 }
 
@@ -385,6 +385,7 @@ async function sendQueuedNow(
       leaseReleaseOwnedByBackground = goalContinuationWillStart;
     } else {
       const intent = inputIntentMetadataFromQueueItem(queueItem, queueItem.text);
+
       const started = await startPromptTurn(host, record, {
         content: queueItem.text,
         inputId: queueItem.sourceCommandId,
@@ -394,6 +395,7 @@ async function sendQueuedNow(
         // Bug 根因：提升曾只回放 inputId 和 denylist，导致可信 automation attribution 丢失。
         ...turnBackgroundAttributionOf({ automationId: queueItem.automationId }),
         toolDisallowlist: queueItem.toolDisallowlist,
+
         ...(attachments ? { attachments } : {}),
       });
       // 旧 fake app/兼容命令可能不返回 admission receipt；真实 app 已在 Core admission
@@ -401,6 +403,7 @@ async function sendQueuedNow(
       if (started.admission.kind === "queued" || started.admission.kind === "rejected") {
         throw new V4QueuePromotionLeaseUnavailableError();
       }
+
     }
     startAdmitted = true;
     const removed = await record.app.removeQueueItem(payload.queueItemId, {

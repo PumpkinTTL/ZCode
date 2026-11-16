@@ -29,11 +29,6 @@ import {
 } from "./serialize.js";
 import { maybeThrowStorageFsFault } from "../storage/fs-fault-injection.js";
 
-<<<<<<< HEAD
-// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
-// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
-const DATA_ROOT_DIR_NAME = ".polaris";
-=======
 let reportedTtftDrops = 0;
 const localTtftLogs = createLocalTtftLogQueue(async (entries, dropped) => {
   const files = new Map<string, string>();
@@ -52,7 +47,6 @@ const localTtftLogs = createLocalTtftLogQueue(async (entries, dropped) => {
 export async function flushLocalTtftLogs(): Promise<void> {
   await localTtftLogs.flush();
 }
->>>>>>> upstream/main
 
 export {
   LOG_CLEANUP_STARTUP_DELAY_MS,

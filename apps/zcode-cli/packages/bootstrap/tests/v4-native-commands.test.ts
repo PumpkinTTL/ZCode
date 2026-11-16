@@ -12,6 +12,7 @@ import { createInputFacade } from "../src/app/input-facade.js";
 import type { SendInputOptions } from "../src/app/types.js";
 import { V4CommandExecutor } from "../src/zcode-protocol-v4/commands/executor.js";
 import { V4PromptRejectedError } from "../src/zcode-protocol-v4/commands/prompt-turn.js";
+
 import type {
   V4CommandCoreHost,
   V4SessionRecordView,
@@ -38,7 +39,7 @@ function makeApp(overrides: Record<string, unknown> = {}) {
         id: "event-started",
         type: SessionEventType.TurnStarted,
         payload: { messageId: "msg-event-started" },
-      });
+      
       return {
         completion: Promise.resolve({}),
         kind: "started_turn",
@@ -454,11 +455,6 @@ describe("v4 原生 sendText", () => {
     });
   });
 
-<<<<<<< HEAD
-  
-  
-  
-=======
   it("Highspeed turn 运行中再次发送仍进入 queue，加速执行材料只暂存在 CLI 内存", async () => {
     const app = makeApp();
     const record = makeRecord({ app, activeAbortController: new AbortController() });
@@ -721,7 +717,6 @@ describe("v4 原生 sendText", () => {
     });
   });
 
->>>>>>> upstream/main
   it("execution-scoped Selection 直接进入 Core，Session 模型从不临时切换", async () => {
     const order: string[] = [];
     const currentModel = "user-provider/user-model";
@@ -1991,8 +1986,6 @@ describe("v4 原生 stop", () => {
 });
 
 describe("supports 分流", () => {
-<<<<<<< HEAD
-=======
   it("协议命令全部原生（回落面清零）；未知命令不 supports", () => {
     const executor = new V4CommandExecutor(makeHost(makeRecord()));
     // 与 packages/shared/src/zcode-protocol-v4/command.ts 的 payload map 同步维护。
@@ -2029,5 +2022,5 @@ describe("supports 分流", () => {
       expect(executor.supports(command), command).toBe(true);
     }
     expect(executor.supports("unknownCommand" as never)).toBe(false);
->>>>>>> upstream/main
   });
+});

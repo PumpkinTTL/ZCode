@@ -11,12 +11,14 @@ import { PERMISSION_FULL_ACCESS_OPTION_ID } from "@zcode/shared/zcode-protocol-v
 import { pluginInstallRequestPayloadSchema } from "@zcode/shared/zcode-protocol-v4";
 import type {
   AssistantFeedbackUpdatedPayload,
+
   CompactLifecyclePayload,
   DynamicWorkflowRunProgressPayload,
   HookRunLifecyclePayload,
   ModelCompletePayload,
   ModelNetworkStatusPayload,
   ModelSelectedPayload,
+
   ModelStreamingPayload,
   ModelUsage,
   PermissionDeniedPayload,
@@ -78,6 +80,7 @@ import {
   ZCODE_FILE_STREAMING_TOOL_INPUT_PREVIEW_MIN_INTERVAL_MS,
   extractPlanStepsFromToolInput,
   extractPlanStepsFromToolOutput,
+
   isZCodeFileStreamingToolInputPreviewTool,
   isZCodeModelRetryRecoveryProgressPayload,
   parseZCodeBackgroundTaskNotifications,
@@ -428,6 +431,7 @@ interface FileToolInputPreviewState {
   pendingAppend: string;
 }
 
+
 type TurnModelBaseline =
   | { kind: "silentInitial" }
   | { kind: "sourceLess" }
@@ -712,6 +716,7 @@ export class ProductProjection {
   >();
   private productTurnSplitOrdinalByRuntimeTurnId = new Map<string, number>();
   private currentProductTurnStartedAtMs: number | null = null;
+
   // 投递语义侧表：TurnSteerQueued 时按事件 payload（或 followupMode 兜底）记录，
   // drain 时决定切轮 vs 内联；账本落地后以账本为准。
   private deliveryByPendingInputId = new Map<string, "guide" | "queue">();
@@ -1111,6 +1116,7 @@ export class ProductProjection {
       }
       return { ok: true, action, row, messageId };
     }
+
     if (row.kind !== "turnHeader") {
       return {
         ok: false,
@@ -1472,6 +1478,7 @@ export class ProductProjection {
       this.productTurnSplitOrdinalByRuntimeTurnId,
     );
     clone.currentProductTurnStartedAtMs = this.currentProductTurnStartedAtMs;
+
     clone.deliveryByPendingInputId = new Map(this.deliveryByPendingInputId);
     clone.currentTurnId = this.currentTurnId;
     clone.currentTurnStartedModelOnly = this.currentTurnStartedModelOnly;
@@ -1518,6 +1525,7 @@ export class ProductProjection {
     this.runtimeTurnIdByProductTurnId = candidate.runtimeTurnIdByProductTurnId;
     this.productTurnSplitOrdinalByRuntimeTurnId = candidate.productTurnSplitOrdinalByRuntimeTurnId;
     this.currentProductTurnStartedAtMs = candidate.currentProductTurnStartedAtMs;
+
     this.deliveryByPendingInputId = candidate.deliveryByPendingInputId;
     this.currentTurnId = candidate.currentTurnId;
     this.currentTurnStartedModelOnly = candidate.currentTurnStartedModelOnly;
@@ -2537,6 +2545,7 @@ export class ProductProjection {
         ...userInputSubmittedConfig(fact),
         ...(fact.botGroupSource ? { botGroupSource: fact.botGroupSource } : {}),
         ...(fact.clientId ? { clientId: fact.clientId } : {}),
+
         ...(fact.workflowLaunch ? { workflowLaunch: fact.workflowLaunch } : {}),
         ...(fact.epilogueStart === undefined ? {} : { epilogueStart: fact.epilogueStart }),
         ...(attachments && attachments.length > 0 ? { attachments } : {}),
@@ -2847,6 +2856,7 @@ export class ProductProjection {
   private onModelNetworkStatus(event: SessionEvent): ConversationDelta[] {
     if (!this.acceptsActiveModelEvent(event)) return [];
     const payload = event.payload as ModelNetworkStatusPayload;
+
     switch (payload.type) {
       case "model_retry_scheduled": {
         const attempt = positiveInteger(payload.attempt, 1);
@@ -2890,6 +2900,7 @@ export class ProductProjection {
       // 不映射成重试/等待标签。
       case "model_request_queued":
       case "model_request_admitted":
+
         return [];
     }
   }
@@ -3141,6 +3152,7 @@ export class ProductProjection {
     if (row.feedback === payload.feedback) return [];
     return [{ op: "row.upserted", row: { ...row, feedback: payload.feedback } }];
   }
+
 
   private openReasoningRow(
     event: SessionEvent,
@@ -3487,6 +3499,7 @@ export class ProductProjection {
   private onToolCallActivity(event: SessionEvent): ConversationDelta[] {
     if (this.isMirroredSubagentToolEvent(event) || !this.isRunning()) return [];
     const payload = event.payload as ToolCallStartedPayload;
+
     const row = this.findToolRow(String(payload.toolCallId));
     if (!row) return [];
     return projectToolActivity(event, row);
@@ -3538,6 +3551,7 @@ export class ProductProjection {
     if (this.isMirroredSubagentToolEvent(event) || !this.isRunning()) return [];
     const payload = event.payload as ToolCallResultPayload;
     const toolCallId = String(payload.toolCallId);
+
     const row = this.findToolRow(toolCallId);
     if (!row) return [];
     const success = payload.result.success;
@@ -3623,6 +3637,7 @@ export class ProductProjection {
   private onToolCallError(event: SessionEvent): ConversationDelta[] {
     if (this.isMirroredSubagentToolEvent(event) || !this.isRunning()) return [];
     const payload = event.payload as ToolCallErrorPayload;
+
     const row = this.findToolRow(String(payload.toolCallId));
     if (!row) return [];
     const cancelled =
@@ -4023,6 +4038,7 @@ export class ProductProjection {
       payload.intent?.requestedDelivery ?? existing?.delivery.requested ?? admittedDelivery;
     const fallbackReasonCode =
       payload.intent?.fallbackReasonCode ?? existing?.delivery.fallbackReasonCode;
+
     const nextItem: QueueItem = {
       queueItemId,
       kind:
@@ -4081,13 +4097,10 @@ export class ProductProjection {
               ? { state: "steering" }
               : { state: "notRequested" },
       dispatch: { state: "queued" },
-<<<<<<< HEAD
-=======
-      ...(highspeed ? { highspeed } : {}),
+
       // 编辑锁由独立事件裁决；同 id 重发 queued（例如权限批量改写）不能顺带解锁。
       ...(existing?.editLock ? { editLock: existing.editLock } : {}),
       automationId: payload.automationId ?? existing?.automationId,
->>>>>>> upstream/main
       ...(payload.toolDisallowlist ? { toolDisallowlist: [...payload.toolDisallowlist] } : {}),
       admittedAt: payload.intent?.admittedAt ?? existing?.admittedAt ?? this.ms(event),
     };
@@ -4283,6 +4296,7 @@ export class ProductProjection {
         // 旧消息沿用当前工具栏，重跑会静默换模型/权限（MR 3454 评审 CR-01）。与 TurnStarted 共用投影。
         ...userInputSubmittedConfig(item.intent),
         ...(item.intent?.clientId ? { clientId: item.intent.clientId } : {}),
+
         ...(item.intent?.attachmentRefs?.length ? { attachments: item.intent.attachmentRefs } : {}),
         ...(item.intent?.source ? { source: item.intent.source } : {}),
       };
@@ -5900,6 +5914,7 @@ export class ProductProjection {
     state: "completedSuccess" | "completedInterrupted" | "failed",
     activeMs?: number,
     historyRoundCount?: number,
+
   ): ConversationDelta[] {
     const row = this.turnHeaderForEvent(event);
     if (!row) return [];
@@ -5912,6 +5927,7 @@ export class ProductProjection {
           state,
           endedAt,
           ...(activeMs !== undefined ? { activeMs } : {}),
+
           ...(historyRoundCount !== undefined ? { historyRoundCount } : {}),
           ...(row.workSegments
             ? {
@@ -5922,6 +5938,7 @@ export class ProductProjection {
       },
     ];
   }
+
 
   private openGuidedWorkSegment(event: SessionEvent, triggerEntityId: string): ConversationDelta[] {
     const row = this.turnHeaderForEvent(event);

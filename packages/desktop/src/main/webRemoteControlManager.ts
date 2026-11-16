@@ -1,3 +1,4 @@
+
 /* eslint-disable max-lines -- Web 远程控制 manager 承担外部 relay app payload 路由与 workspace bridge 编排。 */
 import type { MessagePortMain, UtilityProcess as ElectronUtilityProcess } from "electron";
 import { randomUUID } from "node:crypto";
@@ -9,6 +10,7 @@ import {
 } from "@zcode/client";
 import {
   buildWebRemoteControlExternalQrUrl,
+
   WEB_REMOTE_CONTROL_OUTBOUND_PAYLOAD_BUFFER_TIMEOUT_MS,
   type ZCodeEndpointUrls,
   type HostPreparedProjectWorkspace,
@@ -37,6 +39,7 @@ import {
   type WebRemoteControlWorkspaceBridgeOpenPayload,
   type WebRemoteControlWorkspaceListResult,
   type WebRemoteControlWorkspaceTarget,
+
   measureWebRemoteControlRpcRelayEnvelopeBytes,
 } from "@zcode/shared";
 import { WebRemoteControlV2ConnectionError } from "@zcode/shared/web-remote-relay";
@@ -69,6 +72,7 @@ interface WebRemoteControlHostAttachmentHandle {
   attachmentId: string;
   process: ElectronUtilityProcess;
   port: MessagePortMain;
+
 }
 
 interface WorkspaceBridgeRuntime {
@@ -202,6 +206,7 @@ interface WebRemoteControlManagerDependencies {
     requestId: string,
   ) => Promise<HostPreparedProjectWorkspace>;
   cancelProjectPreparation?: (windowId: number, requestId: string) => void;
+
   onStatusChanged?: (windowId: number, status: WebRemoteControlStatus) => void;
   attachWorkspaceHost: (
     windowId: number,
@@ -334,53 +339,10 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
   let registrationQueue: Promise<unknown> = Promise.resolve();
   const startAuthorizations = new Map<string, WebRemoteControlStartAuthorization>();
   const availableWorkspacesByWindowId = new Map<number, WebRemoteControlWorkspaceTarget[]>();
-<<<<<<< HEAD
-  // Polaris：上游在此定义的远程用量/渲染器遥测辅助函数随遥测栈整体移除。
-=======
   const mobileLogPulls = createMobileLogPullCoordinator({
     shardTimeoutMs: dependencies.mobileLogPullShardTimeoutMs,
   });
-
-  function reportRemoteUsageEvent(windowId: number, event: TelemetryEventPayload): void {
-    try {
-      dependencies.reportRemoteUsageEvent?.(windowId, event);
-    } catch (error) {
-      // 埋点是旁路能力，任何异常都不能改变远控配对和 bridge 的业务结果。
-      dependencies.logger.warn("[web-remote-control] remote usage telemetry failed", {
-        elementName: event.elementName,
-        error,
-      });
-    }
-  }
-
-  function resolveRemoteKind(
-    target: WebRemoteControlWorkspaceTarget,
-    acquired?: WebRemoteControlHostAttachmentHandle,
-  ): RemoteUsageRemoteKind | undefined {
-    if (target.kind !== "remote") {
-      return undefined;
-    }
-    return (
-      acquired?.remoteKind ??
-      (target.workspaceIdentity
-        ? parseRemoteWorkspaceIdentity(target.workspaceIdentity)?.kind
-        : undefined)
-    );
-  }
-
-  function resolveRuntimeWorkspaceDimensions(runtime: WindowControlRuntime): {
-    workspaceKind: "local" | "remote";
-    remoteKind?: RemoteUsageRemoteKind;
-  } {
-    const remoteKind = runtime.workspaceIdentity
-      ? parseRemoteWorkspaceIdentity(runtime.workspaceIdentity)?.kind
-      : undefined;
-    return {
-      workspaceKind:
-        runtime.workspaceIdentity?.trim() || runtime.remoteSessionId ? "remote" : "local",
-      remoteKind,
-    };
-  }
+  // Polaris：上游在此定义的远程用量/渲染器遥测辅助函数随遥测栈整体移除。
   /**
    * Bugfix: 401 只否定发起请求时用的 JWT。旧实现直接把在途旧 JWT 的 401 当成当前登录失效，
    * 同账号刚重新登录（signed-in 已处理完）后旧请求才返回，远控就停在 auth-required，需要第二次登录通知。
@@ -521,7 +483,6 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       status,
     };
   }, dependencies.logger);
->>>>>>> upstream/main
   const pushedWorkspaceListSignaturesByWindowId = new Map<number, string>();
   let startupRestoreClaimed = false;
   let lifecycleRevision = 0;
@@ -1353,8 +1314,10 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         `[web-remote-control] workspace bridge active window=${runtime.windowId} session=${runtime.deviceSid} bridgeSession=${request.bridgeSessionId}`,
       );
 
+
       return toExternalBridge(bridgeRuntime);
     } catch (error) {
+
       if (acquired) {
         dependencies.releaseWorkspaceHostAttachment(acquired.attachmentId);
       }
@@ -1588,6 +1551,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       case "rpc-frame-ack":
         routeRpcTransportPayload(runtime, payload);
         break;
+
       case "mobile-diagnostic":
         logMobileDiagnostic(runtime, payload);
         break;

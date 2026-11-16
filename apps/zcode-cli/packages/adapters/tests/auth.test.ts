@@ -3,13 +3,13 @@ import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import {
+
   SHARED_ZCODE_CREDENTIAL_KEYS,
+
   createSharedZCodeCredentialStore,
-<<<<<<< HEAD
-=======
   loadSharedZCodeCredential,
->>>>>>> upstream/main
 } from "../src/auth/index.js";
 
 const TEST_ENV = {
@@ -21,8 +21,6 @@ afterEach(() => {
 });
 
 describe("shared ZCode credentials", () => {
-<<<<<<< HEAD
-=======
   it("clears the associated account when the current global login is cleared", async () => {
     const dir = await mkdtemp(join(tmpdir(), "zcode-auth-clear-associated-"));
     const store = createSharedZCodeCredentialStore({ baseDir: dir, env: TEST_ENV });
@@ -214,7 +212,6 @@ describe("shared ZCode credentials", () => {
     }
   });
 
->>>>>>> upstream/main
   it("reads legacy plaintext credential values", async () => {
     const dir = await mkdtemp(join(tmpdir(), "zcode-auth-"));
     const credentialsDir = join(dir, ".polaris", "v2");
@@ -446,4 +443,5 @@ async function runConcurrentCredentialWorkers(
     }
   }
 }
+
 

@@ -12,12 +12,6 @@ import {
   updateMarketplace,
 } from "../src/plugins/index.js";
 
-<<<<<<< HEAD
-describe("Polaris official marketplace partitions", () => {
-  const OFFICIAL_ID = "polaris-plugins-official";
-  // 历史市场名：Z.ai 原站镜像至今以此名声明 manifest，只能作为输入，落盘必须归一化为本地官方 id。
-  const LEGACY_CDN_ID = "zcode-plugins-official";
-=======
 vi.mock("node:fs/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs/promises")>();
   return {
@@ -32,8 +26,10 @@ vi.mock("../src/plugins/helpers.js", async (importOriginal) => {
   return { ...actual, writePluginTextIfChanged: vi.fn(actual.writePluginTextIfChanged) };
 });
 
-describe("ZCode official marketplace partitions", () => {
->>>>>>> upstream/main
+describe("Polaris official marketplace partitions", () => {
+  const OFFICIAL_ID = "polaris-plugins-official";
+  // 历史市场名：Z.ai 原站镜像至今以此名声明 manifest，只能作为输入，落盘必须归一化为本地官方 id。
+  const LEGACY_CDN_ID = "zcode-plugins-official";
   const cleanups: string[] = [];
 
   afterEach(async () => {
@@ -69,7 +65,7 @@ describe("ZCode official marketplace partitions", () => {
     const bundled = writeBundledOfficialMarketplacePartition({
       storageRoot,
       manifest: {
-        name: "zcode-plugins-official",
+        name: OFFICIAL_ID,
         plugins: [{ name: "bundled", version: "1" }],
       },
     });
@@ -77,7 +73,7 @@ describe("ZCode official marketplace partitions", () => {
     const cdn = writeCdnOfficialMarketplacePartition({
       storageRoot,
       manifest: {
-        name: "zcode-plugins-official",
+        name: LEGACY_CDN_ID,
         plugins: [{ name: "cdn", version: "2" }],
       },
     });
@@ -89,10 +85,7 @@ describe("ZCode official marketplace partitions", () => {
       await Promise.all([bundled, cdn]);
     }
     const manifest = JSON.parse(
-      await readFile(
-        join(storageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
-        "utf8",
-      ),
+      await readFile(join(storageRoot, "marketplaces", OFFICIAL_ID, "marketplace.json"), "utf8"),
     );
     expect(manifest.plugins.map((plugin: { name: string }) => plugin.name)).toEqual([
       "cdn",
@@ -132,7 +125,7 @@ describe("ZCode official marketplace partitions", () => {
 
     await writeBundledOfficialMarketplacePartition({
       manifest: {
-        name: OFFICIAL_ID,
+        name: LEGACY_CDN_ID,
         plugins: [
           { name: "shared", source: "filesystem", version: "1.0.0" },
           { name: "bundled-only", source: "filesystem", version: "1.0.0" },
@@ -143,7 +136,7 @@ describe("ZCode official marketplace partitions", () => {
     });
     await writeCdnOfficialMarketplacePartition({
       manifest: {
-        name: LEGACY_CDN_ID,
+        name: OFFICIAL_ID,
         featured: ["remote"],
         plugins: [
           { name: "shared", source: { source: "url", type: "zip" }, version: "9.0.0" },
@@ -174,14 +167,14 @@ describe("ZCode official marketplace partitions", () => {
 
     await writeCdnOfficialMarketplacePartition({
       manifest: {
-        name: LEGACY_CDN_ID,
+        name: OFFICIAL_ID,
         plugins: [{ name: "remote", source: { source: "url", type: "zip" } }],
       },
       storageRoot,
     });
     await writeBundledOfficialMarketplacePartition({
       manifest: {
-        name: OFFICIAL_ID,
+        name: LEGACY_CDN_ID,
         plugins: [{ name: "bundled-v2", source: "sea", version: "2.0.0" }],
         version: 1,
       },
@@ -189,7 +182,10 @@ describe("ZCode official marketplace partitions", () => {
     });
 
     const merged = JSON.parse(
-      await readFile(join(storageRoot, "marketplaces", OFFICIAL_ID, "marketplace.json"), "utf8"),
+      await readFile(
+        join(storageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+        "utf8",
+      ),
     ) as { plugins: Array<{ name: string }> };
     expect(merged.plugins.map((plugin) => plugin.name)).toEqual(["remote", "bundled-v2"]);
   });
@@ -197,11 +193,11 @@ describe("ZCode official marketplace partitions", () => {
   it("does not rewrite unchanged official marketplace files", async () => {
     const storageRoot = await makeStorageRoot();
     const bundledManifest = {
-      name: OFFICIAL_ID,
+      name: "zcode-plugins-official",
       plugins: [{ name: "bundled", source: "filesystem", version: "1.0.0" }],
     };
     const cdnManifest = {
-      name: LEGACY_CDN_ID,
+      name: "zcode-plugins-official",
       plugins: [{ name: "remote", source: { source: "url", type: "zip" } }],
     };
     const marketplaceRoot = join(storageRoot, "marketplaces", OFFICIAL_ID);
@@ -239,18 +235,6 @@ describe("ZCode official marketplace partitions", () => {
   it("normalizes a retired CDN marketplace id instead of creating a compatibility alias", async () => {
     const storageRoot = await makeStorageRoot();
 
-<<<<<<< HEAD
-    const persisted = writeCdnOfficialMarketplacePartitionSync({
-      manifest: { name: "zcode-plugins", plugins: [] },
-      storageRoot,
-    });
-    // 镜像只贡献内容：远端声明的历史/第三方名不得成为落盘身份，本地官方 id 才是权威。
-    expect(persisted.name).toBe(OFFICIAL_ID);
-    const stored = JSON.parse(
-      await readFile(join(storageRoot, "marketplaces", OFFICIAL_ID, "cdn-marketplace.json"), "utf8"),
-    ) as { name: string };
-    expect(stored.name).toBe(OFFICIAL_ID);
-=======
     await expect(
       (async () =>
         await writeCdnOfficialMarketplacePartition({
@@ -258,7 +242,6 @@ describe("ZCode official marketplace partitions", () => {
           storageRoot,
         }))(),
     ).rejects.toThrow("Official marketplace manifest must be named zcode-plugins-official");
->>>>>>> upstream/main
   });
 
   it("refreshes the registered official source and returns the merged plugin count", async () => {

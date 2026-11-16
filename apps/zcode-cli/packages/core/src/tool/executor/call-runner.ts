@@ -1,10 +1,7 @@
-<<<<<<< HEAD
-import type { SkillTelemetryMetadata } from "@zcode/contracts";
-=======
 import { toolSearchNameForMode } from "@zcode/contracts";
->>>>>>> upstream/main
 import { resolveDeferredToolCall } from "../deferred-call.js";
 import {
+
   CoreErrorType,
   HookEventName,
   createChildTraceContext,
@@ -14,16 +11,12 @@ import {
   traceContextToLogContext,
   type AgentTelemetryErrorCategory,
   type SessionEvent,
-  type ToolExecutionSpanWriter,
 } from "@zcode/contracts";
 import {
   OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION,
   attestOfficialCuaFrameContent,
   containsOfficialCuaImageRefCredentialText,
 } from "@zcode/zcode-cua/frame-contract";
-import { resolveEmbeddedSearchBranchCapability } from "../../embedded-search/capability.js";
-import { hasOfficialCuaFrameAuthority } from "../../mcp/image-normalization.js";
-import { mergeToolExecutionTelemetry, readToolExecutionTelemetry } from "../handlers/tool-perf.js";
 import {
   normalizeToolExecutionInput,
   prepareInitialToolExecutionInput,
@@ -50,18 +43,12 @@ import {
   runPostToolUseHooks,
   runPreToolUseHooks,
 } from "./hook-flow.js";
-import { createToolModelStatusSink, withDefaultToolModelStatusSink } from "./model-status-sink.js";
 import { resolveToolCallCapabilityFlags } from "./permission-capability.js";
 import { resolveToolPermission } from "./permission-flow.js";
 import { snapshotPermissionInput } from "./permission-input.js";
 import { buildToolInputResolutionContext } from "./permission-input-adjustments.js";
 import { createMcpToolDisplay, createToolResultDisplay } from "./result-display.js";
-<<<<<<< HEAD
-import { appendHookAdditionalContexts, serializeOutput } from "./result-serialization.js";
-import { runToolCallWithTelemetry } from "./telemetry.js";
-=======
 import { serializeOutput } from "./result-serialization.js";
->>>>>>> upstream/main
 import {
   ToolDeadline,
   executeWithTimeout,
@@ -69,14 +56,17 @@ import {
   observeToolAdmissionClock,
   resolveTimeoutMs,
 } from "./timeout.js";
+
 import {
   withAutomationCreateLimitTurnStop,
   withPlanExitDeniedTurnStop,
   withTerminalToolTurnStop,
   withWorkflowRefineDeniedFollowUp,
 } from "./turn-control.js";
+
 import type { ToolExecuteOptions, ToolExecutorDeps } from "./types.js";
 import { validateInitialModelToolInput, validateInput, validateOutput } from "./validation.js";
+
 
 const UNDISCOVERED_TOOL_SCHEMA_EXPLANATION =
   "\n\nThis tool's schema was not sent to the API — it was not in the discovered-tool set derived from message history. " +

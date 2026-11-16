@@ -20,11 +20,8 @@ import type {
   TurnFileChangeSummary,
   TurnInputIntentMetadata,
 } from "@zcode/contracts";
-<<<<<<< HEAD
-=======
 import { INTERRUPT_MARKER_SOURCE, joinTaskNotificationBatch } from "@zcode/core";
-import { isHighspeedProviderId } from "@zcode/shared";
->>>>>>> upstream/main
+
 import type { EventId, SessionEvent, SessionId, TraceId, TurnId } from "@zcode/contracts";
 import {
   CompactTimelineStatus,
@@ -39,6 +36,7 @@ import {
 import {
   getConversationModelOnlyTurnTriggerSource,
   getConversationMessageProjectionPolicy,
+
   isConversationRealUserTurnStarter,
 } from "@zcode/shared";
 import {
@@ -420,6 +418,7 @@ function stringField(
 }
 
 function inputIntentOfMessage(message: MessageWithParts): TurnInputIntentMetadata | undefined {
+
   const fullIntent = conversationInputIntentSchema.safeParse(
     message.info.metadata?.conversationInputIntent,
   );
@@ -448,6 +447,7 @@ function inputIntentOfMessage(message: MessageWithParts): TurnInputIntentMetadat
         ? { fallbackReasonCode: value.delivery.fallbackReasonCode }
         : {}),
       ...(value.attachments.length > 0 ? { attachmentRefs: value.attachments } : {}),
+
       ...(value.inputOrigin ? { inputOrigin: value.inputOrigin } : {}),
       ...(value.conversationQuotes ? { conversationQuotes: value.conversationQuotes } : {}),
       ...(value.botGroupSource ? { botGroupSource: value.botGroupSource } : {}),
@@ -590,7 +590,7 @@ function attachmentMetasOfMessage(
       bytes: part.metadata?.sizeBytes ?? 0,
       ...(urlIsStableRef ? { ref: part.url } : {}),
     };
-  });
+  };
 }
 
 function forkContextOfMessage(message: MessageWithParts):
@@ -1200,6 +1200,7 @@ function hydratedModelKey(modelSelection: ModelSelection): string {
   return `${modelSelection.providerId}\u0000${modelSelection.modelId}\u0000${modelSelection.options?.reasoningLevel ?? ""}`;
 }
 
+
 function turnModelSelectionOfUserMessage(message: MessageWithParts): ModelSelection | null {
   if (message.info.role !== "user") return null;
   return message.info.modelSelection ?? null;
@@ -1215,7 +1216,7 @@ function assistantModelSelectionOf(message: MessageWithParts): ModelSelection | 
     ...(message.info.reasoningLevel
       ? { options: { reasoningLevel: message.info.reasoningLevel } }
       : {}),
-  };
+  });
 }
 
 function modelChangeToModelOf(message: MessageWithParts): HydratedTimelineModel | null {

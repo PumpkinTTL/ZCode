@@ -53,6 +53,7 @@ import type {
   AiSdkModelTextRequest,
   ResolvedAiSdkModel,
 } from "./runner-runtime.js";
+
 import { resolveModelForAttempt, RuntimeHeadersRefreshError } from "./runner-runtime-headers.js";
 import {
   nextUnrecognizedCodeStreak,
@@ -98,6 +99,7 @@ export async function runGenerateText(input: {
   const isDev = isDevelopmentModelIOEnv(input.env);
   let requestMessages = input.request.messages;
   let signatureRepairAttempted = false;
+
   let emptyCompletionRetryCount = 0;
   // 不认识的业务码在本次请求里连续出现的次数：workflow 策略表据此停下，见 workflow-model-failure-policy.ts。
   let unrecognizedCodeStreak = 0;
@@ -420,25 +422,8 @@ export async function runGenerateText(input: {
           ? true
           : retryBudgetAllows(retryBudget, retryBudgetAttempt, input.retry.maxAttempts) &&
             // workflow 流量（无上限预算）读策略表而不是分类器的 retryable；有界预算逐字不变。
-<<<<<<< HEAD
-            retryAllowedByFailurePolicy(
-              failure,
-              retryBudget,
-              inspectProviderFailure(error).providerErrorCode,
-            );
-      const canRetry = retryWithRepairedHistory || canRetryWithFailurePolicy;
-=======
             retryAllowedByFailurePolicy(failure, retryBudget, providerCode, unrecognizedCodeStreak);
-      const retryWithAuth = authRetry.claim(error, options === undefined);
-      if (retryWithAuth)
-        statusContext = {
-          ...statusContext,
-          maxAttempts: statusMaxAttempts(
-            Number(signatureRepairAttempted) + authRetry.extraAttempts,
-          ),
-        };
-      const canRetry = retryWithAuth || retryWithRepairedHistory || canRetryWithFailurePolicy;
->>>>>>> upstream/main
+      const canRetry = retryWithRepairedHistory || canRetryWithFailurePolicy;
 
       if (options) {
         recordGenerateTextDebug({
@@ -494,6 +479,7 @@ export async function runGenerateText(input: {
           unrecognizedCodeStreak,
         });
       }
+
 
       if (retryWithRepairedHistory) {
         input.logger?.warn("Retrying model request after thinking signature rejection", {
@@ -654,11 +640,13 @@ function statusPublishOptions(
   input: {
     logger?: Logger;
     request: AiSdkModelTextRequest;
+
     statusSink?: ModelStatusSink;
   },
   admission?: AttemptAdmission,
 ) {
   return {
+
     logger: input.logger,
     requestStatusSink: input.request.statusSink,
     statusSink: input.statusSink,

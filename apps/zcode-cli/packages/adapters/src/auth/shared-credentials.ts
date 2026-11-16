@@ -1,8 +1,5 @@
-<<<<<<< HEAD
-=======
 import { randomUUID } from "node:crypto";
 import { OAUTH_SESSION_REVISION_KEY, OAUTH_LINKED_BIGMODEL_KEY } from "@zcode/shared";
->>>>>>> upstream/main
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -22,19 +19,11 @@ import {
 } from "@zcode/shared/credential-security";
 
 const ZCODE_DATA_BASE_DIR_ENV_KEY = "ZCODE_DATA_BASE_DIR";
-<<<<<<< HEAD
 // Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
 // 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
 const DATA_ROOT_DIR_NAME = ".polaris";
-const credentialChangeListeners = new Map<
-  string,
-  Set<() => void | Promise<void>>
->();
-=======
-const ZAI_PROVIDER_ID = "zai";
 const WRITE_PROBE_VALUE = "zcode-credential-write-probe";
 const credentialChangeListeners = new Map<string, Set<() => void | Promise<void>>>();
->>>>>>> upstream/main
 
 export const SHARED_ZCODE_CREDENTIAL_KEYS = {
   activeProvider: "oauth:active_provider",
@@ -59,22 +48,6 @@ export interface SharedZCodeCredentialStoreOptions {
   filePath?: string;
 }
 
-<<<<<<< HEAD
-export interface SharedZCodeCredentialStore {
-  readonly filePath: string;
-=======
-export interface ZaiLoginCredentialUser {
-  avatar?: string;
-  email?: string;
-  name?: string;
-  user_id: string;
-}
-
-export interface ZaiLoginCredentialPayload {
-  accessToken: string;
-  jwtToken: string;
-  user: ZaiLoginCredentialUser;
-}
 
 export interface SharedCredentialRecoveryGuard {
   readonly run: CredentialFileGuard;
@@ -88,8 +61,7 @@ export interface SharedZCodeCredentialStore {
   assertWritable(): Promise<void>;
   /** 跨请求流程在启动时捕获，不能等网络返回后领取恢复后的新代次。 */
   captureRecoveryGuard(): Promise<SharedCredentialRecoveryGuard>;
-  clearZaiLoginCredentials(): Promise<void>;
->>>>>>> upstream/main
+
   delete(key: string): Promise<void>;
   deleteIfValue(key: string, expectedValue: string): Promise<boolean>;
   deleteIfValues(
@@ -111,14 +83,11 @@ export interface SharedZCodeCredentialStore {
   save(key: string, value: string): Promise<void>;
   saveMany(entries: Readonly<Record<string, string>>): Promise<void>;
   saveReplacing(key: string, value: string, replacedKeys: readonly string[]): Promise<void>;
-<<<<<<< HEAD
-=======
   saveZaiLoginCredentials(
     payload: ZaiLoginCredentialPayload,
     expected?: Readonly<Record<string, string | null>>,
     assertCurrent?: () => void,
   ): Promise<void>;
->>>>>>> upstream/main
 }
 
 export function createSharedZCodeCredentialStore(
@@ -234,8 +203,6 @@ export function createSharedZCodeCredentialStore(
       return { run, commit: (operation) => withFileLock(filePath, () => run(operation)) };
     },
 
-<<<<<<< HEAD
-=======
     updateMany,
     loadOAuthSessionSnapshot,
     async clearZaiLoginCredentials(): Promise<void> {
@@ -257,7 +224,6 @@ export function createSharedZCodeCredentialStore(
       );
     },
 
->>>>>>> upstream/main
     async delete(key: string): Promise<void> {
       const validatedKey = validateCredentialKey(key);
       await mutate(async (rawCredentials) => {
@@ -381,11 +347,6 @@ export function createSharedZCodeCredentialStore(
         }
       });
     },
-<<<<<<< HEAD
-  };
-}
-
-=======
 
     async saveZaiLoginCredentials(payload, expected, assertCurrent): Promise<void> {
       const snapshot = expected ?? (await loadOAuthSessionSnapshot());
@@ -414,7 +375,6 @@ export async function loadSharedZCodeCredential(
   const value = await createSharedZCodeCredentialStore(options).load(key);
   return value?.trim() ? value : undefined;
 }
->>>>>>> upstream/main
 
 export function resolveSharedZCodeCredentialsPath(
   options: SharedZCodeCredentialStoreOptions = {},

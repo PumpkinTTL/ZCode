@@ -317,9 +317,6 @@ export type TurnSteerSource = "plan_approval_feedback" | "workflow_refine_feedba
  */
 export type TurnSteerDeliveryMode = "guide" | "queue";
 
-<<<<<<< HEAD
-/** 协议无关的输入 intent metadata；bootstrap v4 在事件边界组装为 ConversationInputIntent。 */
-=======
 /** message.data metadata.highspeed 的持久化契约；不包含运行时凭据。 */
 export interface HighspeedMessageMetadata {
   schemaVersion: 1;
@@ -348,7 +345,6 @@ export interface HighspeedMessageMetadata {
  * 协议无关的输入 intent metadata；bootstrap v4 在事件边界组装为 ConversationInputIntent。
  * 与 @zcode/shared 的 conversationInputSourceSchema 一一对应（docs/design/v2/conversation-input-source.md）。
  */
->>>>>>> upstream/main
 export type TurnInputSourceMetadata =
   | { kind: "pluginUi"; pluginId: string; toolCallId: string }
   | { kind: "genUi"; path: string; title?: string }
@@ -440,12 +436,9 @@ export interface TurnInputIntentMetadata {
     sourceKind?: "clipboard-text" | "topic-history";
     messageCount?: number;
   }>;
-<<<<<<< HEAD
-=======
-  highspeed?: HighspeedMessageMetadata;
+
   /** 发送时冻结的页面状态；不得混入用户正文或出队时重新读取。 */
   genUiContext?: GenUiModelContext;
->>>>>>> upstream/main
   sharedContextRefs?: Array<{
     kind: "shared_context_import";
     context_id: string;

@@ -1,9 +1,6 @@
 import type { ToolSearchExecutionContext, ToolSearchMode } from "@zcode/contracts";
-<<<<<<< HEAD
-=======
 import type { SessionControlBinding } from "../tool/session-control/contract.js";
 import type { ExecutionState, RequestVerificationReason } from "@zcode/shared";
->>>>>>> upstream/main
 import type { GetAgentDefinitions, LoadAgentDefinitions } from "../subagent/definitions.js";
 import type { RuntimeInputPresentation } from "@zcode/contracts";
 /* eslint-disable max-lines -- Runtime 类型集中承载 core/runtime 对外结构，拆分需要单独迁移。 */
@@ -469,6 +466,7 @@ export interface ProviderRuntimeHeadersPort {
   shouldRefreshBeforeModelRequest?(input: { providerId: string; modelId: string }): boolean;
   refreshBeforeModelRequest(input: {
     accountAccess?: ZCodeProviderAccountAccess;
+
     abortSignal?: AbortSignal;
     modelId: string;
     providerId: string;
@@ -500,6 +498,7 @@ export interface ModelExecutionContext {
   /** 仅当前 Turn 跳过自动 Project Memory Extraction；不修改 Session Memory 配置。 */
   memoryExtraction?: "skip";
   selectionScope: "execution";
+
   /**
    * Polaris：执行 Selection 的降级声明保留为协议兼容字段（admission/preflight 只读），
    * core 内不再消费——原退回执行链（turn-execution-fallback）不接入。
@@ -508,13 +507,6 @@ export interface ModelExecutionContext {
     providerId: string;
     rules: ReadonlyArray<{ reason: string; providerErrorCode?: string }>;
     target?: ModelSelection;
-  };
-  /** 接纳边界固定的 Session 候选快照；仅随内存命令传递，core 不再作退回使用。 */
-  highspeedFallbackSelection?: ModelSelection;
-  requestDependencies?: ModelRequestDependencies;
-  subagents?: {
-    foregroundModel: "submission";
-    background: "deny" | "allow";
   };
 }
 

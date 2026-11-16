@@ -193,27 +193,6 @@ export async function preflightPromptTurn(
   if (!usesExecutionSelection && record.restoreWarning) {
     throw new V4PromptRejectedError("restoreWarning", record.restoreWarning.message);
   }
-<<<<<<< HEAD
-  if (!usesExecutionSelection) {
-    await host.ensureModelReady?.(record);
-  }
-  const requestedSelection = params.intent?.modelSelection;
-  const availableModels =
-    typeof record.app.listModels === "function" ? record.app.listModels() : undefined;
-  const isSelectionAvailable = (selection: typeof requestedSelection): boolean =>
-    selection !== undefined &&
-    availableModels?.some(
-      (model) =>
-        model.ref.providerId === selection.providerId && model.ref.modelId === selection.modelId,
-    ) === true;
-  if (requestedSelection && availableModels && !isSelectionAvailable(requestedSelection)) {
-    // 普通 Selection 必须在 ACK 前拒绝，避免后台创建 Model 失败后静默丢输入。
-    throw new V4PromptRejectedError(
-      "modelUnavailable",
-      `Provider Registry 中不存在 Model: ${requestedSelection.providerId}/${requestedSelection.modelId}`,
-    );
-  }
-=======
   // 普通 Selection 必须在 ACK 前拒绝，避免后台创建 Model 失败后静默丢输入。
   // Bug 原因：这里曾把带声明式退回的 execution Selection 也按普通 Selection 拒绝，
   // 导致 Highspeed 的 Provider/Model 缺失在 Core 执行 fallback 前直接失败。只有非排队、
@@ -225,7 +204,6 @@ export async function preflightPromptTurn(
     requireQueue: params.requireQueue,
   });
   if (unavailable) throw new V4PromptRejectedError(MODEL_UNAVAILABLE_REASON_CODE, unavailable);
->>>>>>> upstream/main
 }
 
 /**

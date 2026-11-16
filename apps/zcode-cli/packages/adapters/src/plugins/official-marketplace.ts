@@ -29,16 +29,6 @@ export async function writeBundledOfficialMarketplacePartition(input: {
 export async function writeCdnOfficialMarketplacePartition(input: {
   manifest: Record<string, unknown>;
   storageRoot: string;
-<<<<<<< HEAD
-}): Record<string, unknown> {
-  const persistedManifest = normalizeOfficialManifest(input.manifest);
-  writeJsonFileSync(partitionPath(input.storageRoot, CDN_PARTITION_FILE), persistedManifest);
-  return rebuildOfficialMarketplaceSync(input.storageRoot);
-}
-
-export function loadBundledOfficialPluginRootsSync(storageRoot: string): string[] | undefined {
-  const bundledPartition = readBundledPartition(storageRoot);
-=======
 }): Promise<Record<string, unknown>> {
   assertOfficialManifest(input.manifest);
   return publishPartition(input.storageRoot, async () => {
@@ -62,7 +52,6 @@ export async function loadBundledOfficialPluginRoots(
   storageRoot: string,
 ): Promise<string[] | undefined> {
   const bundledPartition = await readBundledPartition(storageRoot);
->>>>>>> upstream/main
   if (!bundledPartition) return undefined;
 
   const officialCacheRoot = resolve(storageRoot, "cache", ZCODE_OFFICIAL_PLUGIN_MARKETPLACE);
@@ -98,13 +87,9 @@ async function rebuildOfficialMarketplace(storageRoot: string): Promise<Record<s
   // 无 source 的独立市场并在刷新时报 not found。两个分片必须独立持久化后再合并，
   // 否则应用启动时的 seed 会覆盖 CDN 目录，或 CDN 刷新会覆盖内置目录。同名时以
   // 可刷新的 CDN 市场条目为准，但只过滤合并目录，不删除应用内置缓存。
-  //
-  // 身份（name / description / owner）归 Polaris：远端镜像只贡献"内容"字段。
-  // 否则镜像 manifest 里的厂商品牌（如 `owner: {name: "Z.ai"}` 与它的 description）
-  // 会随合并写入本地状态，最后显示成官方目录自己的品牌与文案。
   const merged = {
-    ...readCdnContributedFields(cdnManifest),
     ...(bundledManifest ?? {}),
+
     name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE,
     plugins: [...cdnPlugins, ...bundledPlugins],
   };
@@ -112,35 +97,10 @@ async function rebuildOfficialMarketplace(storageRoot: string): Promise<Record<s
   return merged;
 }
 
-<<<<<<< HEAD
-/**
- * 允许从远端镜像目录带入的"内容"字段白名单。
- *
- * `featured` 是策展名单，`allowCrossMarketplaceDependenciesOn` 是跨市场依赖白名单——两者
- * 都是内容声明。其余字段（name / description / owner / …）属于目录身份，必须由本地决定，
- * 不能由镜像覆盖。
- */
-const CDN_CONTRIBUTED_FIELDS = ["featured", "allowCrossMarketplaceDependenciesOn"] as const;
-
-function readCdnContributedFields(
-  cdnManifest: Record<string, unknown> | undefined,
-): Record<string, unknown> {
-  if (!cdnManifest) return {};
-  const contributed: Record<string, unknown> = {};
-  for (const field of CDN_CONTRIBUTED_FIELDS) {
-    if (field in cdnManifest) contributed[field] = cdnManifest[field];
-  }
-  return contributed;
-}
-
-function readBundledPartition(storageRoot: string): BundledMarketplacePartition | undefined {
-  const value = readJsonRecord(partitionPath(storageRoot, BUNDLED_PARTITION_FILE));
-=======
 async function readBundledPartition(
   storageRoot: string,
 ): Promise<BundledMarketplacePartition | undefined> {
   const value = await readJsonRecord(partitionPath(storageRoot, BUNDLED_PARTITION_FILE));
->>>>>>> upstream/main
   if (!value || value.version !== 1 || !isRecord(value.manifest)) return undefined;
   return {
     manifest: value.manifest,
@@ -178,19 +138,6 @@ function assertOfficialManifest(manifest: Record<string, unknown>): void {
       `Official marketplace manifest must be named ${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`,
     );
   }
-}
-
-/**
- * 官方目录镜像 manifest 的归一化：远端可以携带历史声明名（Z.ai 原站至今如此），
- * 但落盘的身份字段必须是本地官方 id —— 与 rebuild 的字段白名单同一原则（镜像只贡献内容）。
- */
-function normalizeOfficialManifest(manifest: Record<string, unknown>): Record<string, unknown> {
-  if (typeof manifest.name !== "string" || manifest.name.length === 0) {
-    throw new Error("Official marketplace manifest must declare a name");
-  }
-  return manifest.name === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE
-    ? manifest
-    : { ...manifest, name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE };
 }
 
 function partitionPath(storageRoot: string, fileName: string): string {

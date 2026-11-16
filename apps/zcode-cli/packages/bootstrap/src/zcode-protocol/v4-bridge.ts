@@ -27,6 +27,7 @@ import {
   type AttachmentRef,
   type CommandEnvelope,
   type ConversationInputIntent,
+
   type V4ConversationFileChangesResult,
   type V4ConversationFileRewindPreviewResult,
   type SessionSummary,
@@ -56,6 +57,7 @@ import { queueItemIdForCommand } from "../zcode-protocol-v4/command-inbox.js";
 import { resolveStableForkTargetFromTranscript } from "../zcode-protocol-v4/stable-fork-target.js";
 import { shouldAutoDrainV4QueueHead } from "../zcode-protocol-v4/queue-auto-drain.js";
 import { persistAssistantFeedback } from "../zcode-protocol-v4/assistant-feedback-persistence.js";
+
 import {
   TASK_LIST_SESSION_TYPES,
   isTaskListSessionType,
@@ -83,12 +85,10 @@ import type {
   MessageId,
   MessageWithParts,
   SessionEvent,
+
   SessionId,
-<<<<<<< HEAD
-=======
   SessionInfo,
-  SessionStorePort,
->>>>>>> upstream/main
+
   StableForkGoalBoundaryMetadata,
   TraceId,
   TurnId,
@@ -266,6 +266,7 @@ interface InputCommandForAdmission {
   requestedDelivery?: ConversationInputIntent["delivery"]["requested"];
   admittedDelivery?: ConversationInputIntent["delivery"]["admitted"];
   fallbackReasonCode?: string;
+
   provenance?: ConversationInputIntent["provenance"];
 }
 
@@ -337,11 +338,8 @@ export function resolveInputCommandForAdmission(
       text: string;
       attachments?: AttachmentRef[];
       context_refs?: ConversationInputIntent["sharedContextRefs"];
-<<<<<<< HEAD
-=======
       genUiContext?: ConversationInputIntent["genUiContext"];
-      highspeedMeta?: ConversationInputIntent["highspeed"];
->>>>>>> upstream/main
+
       inputOrigin?: "desktop" | "mobile";
       conversationQuotes?: import("@zcode/contracts").TurnInputIntentMetadata["conversationQuotes"];
       botGroupSource?: ConversationInputIntent["botGroupSource"];
@@ -353,6 +351,7 @@ export function resolveInputCommandForAdmission(
         : { text: payload.text }),
       attachments: payload.attachments ?? [],
       ...(payload.context_refs ? { sharedContextRefs: payload.context_refs } : {}),
+
       ...(payload.inputOrigin ? { inputOrigin: payload.inputOrigin } : {}),
       ...(payload.conversationQuotes ? { conversationQuotes: payload.conversationQuotes } : {}),
       ...(payload.botGroupSource ? { botGroupSource: payload.botGroupSource } : {}),
@@ -458,6 +457,7 @@ function buildForkInitialInput(
       : { state: "notRequested" },
     dispatch: { state: "admitted" },
     admittedAt: admission.admittedAt,
+
     ...(input.provenance ? { provenance: input.provenance } : {}),
   });
   return {
@@ -590,6 +590,7 @@ export async function registerCommittedForkBestEffort(
   }
 }
 
+
 export function createConversationV4Gateway(
   context: ZCodeProtocolAgentServerContext,
 ): ConversationV4Gateway {
@@ -618,6 +619,7 @@ export function createConversationV4Gateway(
   });
   let nativeExecutor: V4CommandExecutor;
   const autoDrainRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
   const autoDrainV4QueueIfReady = async (record: ZCodeProtocolSessionRecord): Promise<void> => {
     const head = context.v4Gateway?.getQueueHead(record.app.sessionId);
     if (!head) {
@@ -737,6 +739,7 @@ export function createConversationV4Gateway(
     hasQueuedDelivery: (sessionId, delivery) =>
       context.v4Gateway?.hasQueuedDelivery(sessionId, delivery) ?? false,
     getQueueLength: (sessionId) => context.v4Gateway?.getQueueLength(sessionId) ?? 0,
+
     waitForProjectionEventCommit: (sessionId, eventId, options) => {
       const gateway = context.v4Gateway;
       if (!gateway) {
@@ -814,6 +817,7 @@ export function createConversationV4Gateway(
             : { state: "notRequested" },
         dispatch: { state: "admitted" },
         admittedAt: admission.admittedAt,
+
         ...(input.provenance ? { provenance: input.provenance } : {}),
       });
       await context.deps.sessionStore.saveSessionInput({
@@ -1112,6 +1116,7 @@ export function createConversationV4Gateway(
           }),
       });
     },
+
     // ── 过渡钩子（死期 = M5 波次 2）──────────────────────────────
     // 切模型前确认目标 Provider 已存在于当前 Environment Registry。普通模型命令只提交
     // Selection；Provider 事实始终由 Worker 自己的 Registry 解释。
@@ -1138,20 +1143,8 @@ export function createConversationV4Gateway(
         // handler 已校验存在性；此处只兜并发竞态（重复删除幂等成功）。
         return;
       }
-<<<<<<< HEAD
-      record.unsubscribe?.();
-      await record.app.close?.();
-      // v4 通道：会话关闭同时清 publisher / 订阅调度；重开会话走 snapshot 冷启动。
-      // disposeSession 必须在注册表删除之前调用——
-      // gateway 靠 getSessionWorkspaceId（读 context.sessions）定位 workspace 才能把
-      // session.removed 推给 sessions-index 订阅者；先 delete 再 dispose 时 workspaceId
-      // 恒为 null，删除会话后侧栏列表项永不消失（e2e conversation-session-v4-sidebar 抓出）。
-      context.v4Gateway?.disposeSession(sessionId, { deleted: true });
-      context.sessions.delete(sessionId);
-=======
       await closeSessionRuntime(context, sessionId, true);
-      queuedTurnExecutions.delete(sessionId);
->>>>>>> upstream/main
+
     },
     // createSession 的执行面：record 建立/事件接线/catalog 同步/失败自清理全在旧
     // createSession op 内（半初始化 record 的回收顺序修过 bug，不重复实现）。
@@ -1635,6 +1628,7 @@ export function createConversationV4Gateway(
           });
         });
     },
+
     // Gateway 的单一 READY promise 负责并发与水位；binder 只恢复 runtime 并返回 M0/M1。
     retainSessionRuntime: async (sessionId) =>
       (await context.sessionResidentPool?.acquireOperation(sessionId)) ?? (() => undefined),

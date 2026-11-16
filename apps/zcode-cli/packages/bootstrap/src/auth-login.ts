@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-import {
-=======
 export { ZCodeCliLoginError } from "./auth-login-contract.js";
 export type {
   CodingPlanProviderId,
@@ -27,18 +24,14 @@ import {
 } from "./auth-login-contract.js";
 import {
   createCodingPlanApiKeyResolver,
->>>>>>> upstream/main
   createSharedZCodeCredentialStore,
+
   SHARED_ZCODE_CREDENTIAL_KEYS,
-<<<<<<< HEAD
-=======
-  type CliOAuthClient,
->>>>>>> upstream/main
+  type SharedZCodeCredentialStore,
   type SharedZCodeCredentialStore,
 } from "@zcode/adapters";
+
 import type { EnvRecord } from "@zcode/adapters/model";
-<<<<<<< HEAD
-=======
 import { buildZCodeEndpointUrls, resolveRuntimeZCodeEndpointOrigin } from "@zcode/shared";
 import { setTimeout as delay } from "node:timers/promises";
 import {
@@ -62,7 +55,6 @@ import { throwIfAborted, waitWithAbort } from "./auth-login-abort.js";
 import { pollUntilReady } from "./auth-login-polling.js";
 
 const DEFAULT_LOGIN_TIMEOUT_MS = 5 * 60 * 1_000;
->>>>>>> upstream/main
 
 /**
  * Polaris fork：官方账号登录（Z.ai / BigModel Coding Plan OAuth、手动 API Key 连接、
@@ -72,12 +64,6 @@ const DEFAULT_LOGIN_TIMEOUT_MS = 5 * 60 * 1_000;
  * 这里只保留 `logout`：它只清理本地共享凭据文件，不含任何网络请求，用于把旧版本
  * 登录残留的官方 token 清干净。接自有账号体系时在此处重新实现登录编排即可。
  */
-<<<<<<< HEAD
-
-export interface LogoutZCodeCliOptions {
-  credentialStore?: SharedZCodeCredentialStore;
-  env?: EnvRecord;
-=======
 export async function loginZCodeCli(
   options: LoginZCodeCliOptions = {},
 ): Promise<LoginZCodeCliResult> {
@@ -229,7 +215,6 @@ export async function loginZCodeCli(
   } finally {
     clearTimeout(timer);
   }
->>>>>>> upstream/main
 }
 
 export interface LogoutZCodeCliResult {
@@ -247,14 +232,6 @@ export async function logoutZCodeCli(
 ): Promise<LogoutZCodeCliResult> {
   const credentialStore =
     options.credentialStore ?? createSharedZCodeCredentialStore({ env: options.env });
-<<<<<<< HEAD
-  const keys = Object.values(SHARED_ZCODE_CREDENTIAL_KEYS);
-  const current = await credentialStore.loadMany(keys);
-  await credentialStore.deleteIfValues(
-    Object.fromEntries(
-      Object.entries(current).flatMap(([key, value]) => (value === null ? [] : [[key, value]])),
-    ),
-=======
   // 手填 Key 也可能等待配置锁；必须沿用入口代次，避免恢复后仍提交旧默认模型。
   const credentialGuard = await credentialStore.captureRecoveryGuard();
   const configPatch = await credentialGuard.run(() =>
@@ -267,60 +244,12 @@ export async function logoutZCodeCli(
       personalProviderConfigPath: options.personalProviderConfigPath,
       providerId: options.providerId,
     }),
->>>>>>> upstream/main
   );
   return {
     credentialsPath: credentialStore.filePath,
   };
 }
-<<<<<<< HEAD
-=======
 
-function createOAuthClient(options: LoginZCodeCliOptions, env: EnvRecord): CliOAuthClient {
-  return createCliOAuthClient({
-    baseUrl:
-      options.baseUrl ?? buildZCodeEndpointUrls(resolveCliZCodeEndpointOrigin(env)).apiBaseUrl,
-    providerId: options.providerId ?? "zai",
-    httpClient: options.httpClient ?? createDefaultHttpClient(env),
-  });
-}
-
-function resolveCliZCodeEndpointOrigin(env: EnvRecord): string {
-  return resolveRuntimeZCodeEndpointOrigin(env);
-}
-
-function createDefaultHttpClient(env: EnvRecord) {
-  const config = createConfig({ env });
-  return createNodeHttpClientAdapter({
-    env,
-    proxyUrl: config.config.network.httpProxy,
-    noProxy: config.config.network.noProxy,
-    caCertFile: config.config.network.caCertFile,
-    timeoutMs: config.config.network.timeout,
-  });
-}
-
-async function resolveCodingPlanMaterial(input: {
-  accessToken: string;
-  env: EnvRecord;
-  httpClient?: Parameters<typeof createCodingPlanApiKeyResolver>[0]["httpClient"];
-  family: CodingPlanProviderId;
-  signal?: AbortSignal;
-  resolver?: ReturnType<typeof createCodingPlanApiKeyResolver>;
-}) {
-  const resolver =
-    input.resolver ??
-    createCodingPlanApiKeyResolver({
-      httpClient: input.httpClient ?? createDefaultHttpClient(input.env),
-    });
-  return resolver.resolveMaterial(
-    {
-      accessToken: input.accessToken,
-      family: input.family,
-    },
-    { signal: input.signal },
-  );
-}
 
 interface StandaloneCodingPlanPersistenceResult {
   readonly mainModel: string;
@@ -427,4 +356,3 @@ export async function logoutZCodeCli(
     credentialsPath: credentialStore.filePath,
   };
 }
->>>>>>> upstream/main

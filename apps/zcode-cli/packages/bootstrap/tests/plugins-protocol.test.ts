@@ -68,7 +68,7 @@ describe("plugins protocol contracts", () => {
     async (enabled) => {
       const root = await mkdtemp(join(tmpdir(), "zcode-plugin-user-config-"));
       const pluginRoot = join(root, "extension");
-      const userConfigPath = join(FAKE_HOME, ".zcode", "cli", "config.json");
+      const userConfigPath = join(FAKE_HOME, ".polaris", "cli", "config.json");
       const manifestPath = join(pluginRoot, ".claude-plugin", "plugin.json");
       const userConfig = {
         track: { type: "string", default: "auto", options: ["auto", "transform"] },
@@ -488,7 +488,7 @@ describe("plugins protocol contracts", () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-plugin-option-source-view-"));
     const pluginRoot = join(root, "user-plugin");
     const pluginId = "option-source-view@inline";
-    const userConfigPath = join(FAKE_HOME, ".polaris", "cli", "config.json");
+    const userConfigPath = join(FAKE_HOME, ".zcode", "cli", "config.json");
     try {
       await writeTestFile(
         join(pluginRoot, ".claude-plugin", "plugin.json"),
@@ -545,7 +545,7 @@ describe("plugins protocol contracts", () => {
       };
       try {
         await writeTestFile(
-          join(root, ".zcode", "config.json"),
+          join(root, ".polaris", "config.json"),
           JSON.stringify({ plugins: { enabledPlugins: { [pluginId]: true } } }),
         );
         const params = {
@@ -603,7 +603,7 @@ describe("plugins protocol contracts", () => {
     const pluginId = "missing-fixture@personal-market";
     try {
       await writeTestFile(
-        join(root, ".polaris", "config.json"),
+        join(root, ".zcode", "config.json"),
         JSON.stringify({
           plugins: { enabledPlugins: { [pluginId]: true } },
         }),
@@ -647,18 +647,12 @@ describe("plugins protocol contracts", () => {
         workspace: { workspacePath: root, workspaceKey: root },
       });
       expect(
-<<<<<<< HEAD
-        result.plugins.find((plugin) => plugin.id === "browser-use@polaris-plugins-official")
-          ?.hostMcpServerNames,
-      ).toEqual(["node_repl"]);
-=======
         [
           ...overview.availablePlugins,
           ...overview.installedPlugins,
           ...overview.restorableBuiltins,
         ].map((plugin) => plugin.id),
       ).not.toContain(NODE_REPL_HOST_PLUGIN_ID);
->>>>>>> upstream/main
     } finally {
       if (previousStorageDir === undefined) delete process.env.ZCODE_STORAGE_DIR;
       else process.env.ZCODE_STORAGE_DIR = previousStorageDir;

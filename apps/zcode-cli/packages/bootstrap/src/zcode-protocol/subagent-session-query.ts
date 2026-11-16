@@ -314,31 +314,6 @@ function findBackgroundTask(
 }
 
 /**
-<<<<<<< HEAD
- * 无人佐证的 running 兜底陈旧界。
- *
- * runningStatus 的三个兜底分支（async launch ACK 窗口、父 activeToolCalls、
- * part 卡 pending/running）都是「缺反证即视为运行」：journal 缺 Stopped、
- * part 永久停在 running/pending、后台任务记录丢失时，几周前死掉的子代理会被
- * 冷恢复重新判成 running（实测：用户面板出现「已运行 3 万分钟」的 26 条陈旧
- * 条目）。这里的界只收兜底分支——**有当前进程活跃佐证**的分支（background
- * status=running / childProjection running/waiting）不受影响，它们正是跨重启
- * 保住真运行子代理的路径（回归场景：后台 Agent 重启后 running 不丢、Stop
- * 控制可用）。被界拦下的候选落 ended（endedStatus 兜底 lost）；若子会话其实
- * 还活着，后续子投影/事件会重新给出 running，误伤自愈。
- *
- * 24h 与渲染层时长封顶（formatBackgroundTaskElapsedLabel）同口径。
- */
-const UNCORROBORATED_RUNNING_STALE_AFTER_MS = 24 * 60 * 60 * 1000;
-
-function isStaleUnattendedRunning(
-  candidate: SubagentCandidate,
-  background: BackgroundTaskInfo | undefined,
-): boolean {
-  const start = startedAt(candidate, background);
-  if (start === undefined) return false;
-  return Date.now() - start > UNCORROBORATED_RUNNING_STALE_AFTER_MS;
-=======
  * 上一代 runtime 进程启动、且之后再没有活动的 Agent。child 只在启动它的进程里运行，进程退出
  * （崩溃、被杀）后不可能仍在跑；新进程的 registry 是空的，持久化的 launch ACK / running part
  * 又不会被改写，旧逻辑因此把它们永久显示成 running（停止按钮也找不到目标）。
@@ -364,7 +339,6 @@ function isFromPreviousRuntime(input: {
     launchedAt < input.runtimeStartedAt &&
     input.childSession.time.updated < input.runtimeStartedAt
   );
->>>>>>> upstream/main
 }
 
 function runningStatus(input: {
@@ -391,20 +365,14 @@ function runningStatus(input: {
     input.childProjection === undefined &&
     input.candidate.stoppedStatus === undefined &&
     input.childOutcome.status === undefined &&
-<<<<<<< HEAD
     // launch ACK 窗口的保护只需要秒/分钟级；陈旧界拦住「async 启动后进程就死了、
     // 记录再没更新过」的候选。
-    !isStaleUnattendedRunning(input.candidate, input.background)
-=======
+    !isStaleUnattendedRunning(input.candidate, input.background) &&
     !input.fromPreviousRuntime
->>>>>>> upstream/main
   ) {
     return "running";
   }
-  // 下面两个分支的唯一依据是持久化 part 的状态：part 卡在 running/pending 的
-  // 死代理（journal 无 Stopped）在这里被陈旧界拦下，落 ended 而不是永占 running。
   if (
-    !isStaleUnattendedRunning(input.candidate, input.background) &&
     input.parentProjection?.activeToolCalls.some(
       (tool) =>
         tool.toolCallId === input.candidate.part.callID &&
@@ -414,11 +382,7 @@ function runningStatus(input: {
     return "running";
   }
   return input.parentProjection &&
-<<<<<<< HEAD
-    !isStaleUnattendedRunning(input.candidate, input.background) &&
-=======
     !input.fromPreviousRuntime &&
->>>>>>> upstream/main
     (input.candidate.part.state.status === "pending" ||
       input.candidate.part.state.status === "running")
     ? "running"

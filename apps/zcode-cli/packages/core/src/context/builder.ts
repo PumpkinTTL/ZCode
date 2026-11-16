@@ -100,14 +100,8 @@ export class ContextBuilder {
     const isWorkflowActor = workflowActor !== undefined;
     const midConversationSystem = this.config.midConversationSystem !== false;
 
-<<<<<<< HEAD
-    // 1. CLI / product prefix. Keep this as the short leading identity block.
-    // 「You are Polaris, an interactive coding agent」对一个
-    // 只对脚本说话、可能连读文件工具都没有的子代理是错的身份，且走在正确身份段前面。
-=======
     // 1. CLI / 产品前缀。工作流子代理只向脚本返回结果，
     // 不使用面向用户交互的身份前缀，直接以工作流身份开头。
->>>>>>> upstream/main
     if (!isWorkflowActor) {
       sections.push(buildCliPrefixSection());
     }

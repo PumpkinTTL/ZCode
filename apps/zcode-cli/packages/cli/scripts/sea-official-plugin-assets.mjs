@@ -67,10 +67,7 @@ export const officialSeaPlugins = [
     version: "0.7.0",
   },
   {
-<<<<<<< HEAD
     marketplace: "polaris-plugins-official",
-=======
-    marketplace: "zcode-plugins-official",
     name: "android-emulator",
     packageName: "@zcode/android-emulator-plugin",
     requiresRuntime: true,
@@ -79,8 +76,7 @@ export const officialSeaPlugins = [
     version: "0.1.1",
   },
   {
-    marketplace: "zcode-plugins-official",
->>>>>>> upstream/main
+    marketplace: "polaris-plugins-official",
     name: "documents",
     packageName: "@zcode/documents-plugin",
     // 0.2.0 起带查看面板：SEA 必须在嵌入前校验 office-runtime 构建出的 server 与面板资源。
@@ -184,7 +180,7 @@ export const officialSeaPlugins = [
     version: "0.1.0",
   },
   {
-    marketplace: "polaris-plugins-official",
+    marketplace: "zcode-plugins-official",
     name: "plugin-creator",
     packageName: "@zcode/plugin-creator-plugin",
     requiresRuntime: false,
@@ -197,7 +193,7 @@ export const officialSeaPlugins = [
     // runtime 按 (name, version) 精确匹配 SEA 资产，这里落后会让整个插件在 SEA 下不 seed
     // （browser-use 0.3.1 的既有教训，build-sea.test.mjs:564 钉住四处对齐）。
     // 0.3.0：`/workflow` 与 dynamic-workflows 技能移出本插件（见 sea-bundled-skill-assets.mjs）。
-    marketplace: "polaris-plugins-official",
+    marketplace: "zcode-plugins-official",
     name: "zcode-guide",
     packageName: "@zcode/zcode-guide-plugin",
     requiresRuntime: false,

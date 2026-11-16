@@ -17,6 +17,7 @@ import {
   ModelTransportKind,
   SESSION_ENTRY_TARGET_COMPLETION_VERIFICATION,
   SessionEventType,
+
 } from "@zcode/contracts";
 import type {
   AutomationPort,
@@ -49,12 +50,8 @@ import type {
   UpdateSessionInput,
 } from "@zcode/contracts";
 import { createTestAgentRuntime } from "./test-agent-runtime.js";
-<<<<<<< HEAD
-=======
-import { MessageHistoryImpl } from "../src/agent/message-history.js";
-import { hydrateMessageHistoryFromSession } from "../src/agent/session-history-hydrator.js";
+
 import { buildProviderRequestMessages } from "../src/runtime/helpers/provider-request-messages.js";
->>>>>>> upstream/main
 import { DEFAULT_MODEL_REQUEST_MEDIA_BUDGET_BYTES } from "../src/runtime/helpers/media-budget.js";
 import { MAX_TURN_STEER_INPUT_BYTES } from "../src/runtime/helpers/steering.js";
 import { projectIdFromDirectory } from "../src/runtime/helpers/project.js";
@@ -11384,11 +11381,6 @@ describe("AgentRuntime tool loop", () => {
     });
   });
 
-<<<<<<< HEAD
-  
-  
-  
-=======
   it.each([
     { expectedPartStatus: "completed", executionState: "completed" as const },
     { expectedPartStatus: "error", executionState: "running" as const },
@@ -11879,7 +11871,6 @@ describe("AgentRuntime tool loop", () => {
     expect(toolHandlerCallCount).toBe(1);
   });
 
->>>>>>> upstream/main
   it("recovers a retryable stream failure after partial text by starting a new stream", async () => {
     const sessionId = createSessionId("runtime-stream-partial-text-recovery");
     const eventStore = createTestSessionEventStore();

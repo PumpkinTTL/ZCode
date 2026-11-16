@@ -1,3 +1,4 @@
+
 /* eslint-disable max-lines -- AI SDK 模型执行装配集中维护 provider factory、鉴权和网络错误适配，拆分会让状态同步更脆弱。 */
 // ============================================================
 // Vercel AI SDK model execution
@@ -17,23 +18,22 @@ import {
   type ModelId,
   type ModelProviderId,
   type ModelRequestAuth,
+
 } from "@zcode/contracts";
 import type { RegistryProviderConfig } from "@zcode/provider";
 import { withOpenRouterAttributionHeaders } from "@zcode/shared";
 import { createAnthropicCompatFetch } from "./anthropic-stream-compat.js";
+
 import { createOpenAIResponsesJsonCompatFetch } from "./openai-responses-json-compat.js";
 import { createModelOptionMapFetch, type RawRequestBodyCapture } from "./model-option-map-fetch.js";
 import { createNetworkProxyFetch } from "../network/proxy-fetch.js";
+
 import { normalizeModelTlsFailure } from "./failure-tls.js";
-<<<<<<< HEAD
-import { mergeModelRequestHeaders } from "./model-request-headers.js";
-=======
 import {
   mergeModelRequestHeaders,
   withoutModelAuthHeaders,
   withoutContextOwnedModelHeaders,
 } from "./model-request-headers.js";
->>>>>>> upstream/main
 
 export type AiSdkProviderKind = "openai" | "anthropic" | "openai-compatible";
 
@@ -52,11 +52,13 @@ interface AiSdkProviderConfig {
 export interface AiSdkModelExecutionConfig {
   /** 执行环境提供的默认来源信息，不属于 Provider 持久化配置。 */
   defaultHeaders?: Readonly<Record<string, string>>;
+
   env?: EnvRecord;
   network?: AiSdkNetworkConfig;
 }
 
 export interface AiSdkModelExecutionOptions {
+
   logger?: Logger;
   transport?: ProviderFetch;
   /** 在代理和 CA 解析之后旁路观测，不替换产品网络策略。 */
@@ -78,12 +80,9 @@ export interface AiSdkResolvedModel {
   providerKind: AiSdkProviderKind;
   providerOptions?: Record<string, unknown>;
   rawRequestBodyCapture?: RawRequestBodyCapture;
-<<<<<<< HEAD
-=======
-  requestObservations?: ModelRequestSecurityPort;
+
   /** 每次 resolveRequest 独立持有，不能跨并发请求或重试共享。 */
   streamTiming?: { firstContentAt?: number };
->>>>>>> upstream/main
 }
 
 export interface AiSdkBoundModelResolution {
@@ -100,6 +99,7 @@ type ProviderCode = string | number;
 
 export interface ProviderBusinessErrorFetchOptions {
   caCertFile?: string;
+
   env?: EnvRecord;
   providerId: string;
   providerKind: AiSdkProviderKind;
@@ -171,24 +171,22 @@ export class AiSdkModelExecution {
   private readonly env: EnvRecord;
   private readonly defaultHeaders: Record<string, string>;
   private readonly network: AiSdkNetworkConfig;
+
   private readonly logger?: Logger;
   private readonly baseTransport?: ProviderFetch;
   private readonly observeTransport?: AiSdkModelExecutionOptions["observeTransport"];
   private readonly providerTransports = new Map<string, ProviderFetch>();
 
+
   constructor(config: AiSdkModelExecutionConfig = {}, options: AiSdkModelExecutionOptions = {}) {
     this.env = config.env ?? process.env;
     this.defaultHeaders = { ...config.defaultHeaders };
     this.network = { ...config.network };
+
     this.logger = options.logger;
     this.baseTransport = options.transport;
-<<<<<<< HEAD
-=======
     this.observeTransport = options.observeTransport;
-    this.requestSecurity = (
-      options.requestSecurityState ?? createModelRequestSecurityState()
-    ).createExecution({ logger: options.logger });
->>>>>>> upstream/main
+
   }
 
   /**
@@ -265,6 +263,7 @@ export class AiSdkModelExecution {
       rawRequestBodyCapture,
       streamTiming,
       snapshot.supportsJsonSchemaOutput,
+
     );
     return {
       baseURL: providerConfig.baseURL,
@@ -275,11 +274,8 @@ export class AiSdkModelExecution {
       providerKind: providerConfig.kind,
       providerOptions: providerConfig.providerOptions,
       rawRequestBodyCapture,
-<<<<<<< HEAD
-=======
-      requestObservations: this.requestSecurity,
+
       streamTiming,
->>>>>>> upstream/main
     };
   }
 
@@ -291,12 +287,9 @@ export class AiSdkModelExecution {
     rawRequestBodyCapture: RawRequestBodyCapture,
     streamTiming: NonNullable<AiSdkResolvedModel["streamTiming"]>,
     supportsJsonSchemaOutput: boolean,
+
   ): LanguageModelFactory {
     const apiKey = this.resolveApiKey(providerConfig);
-<<<<<<< HEAD
-    const headers = providerConfig.headers;
-    const providerTransport = this.resolveProviderTransport(providerId);
-=======
     // SDK 会合并 factory 默认 header；必须在这里去掉静态来源，才能保证缺失时真正省略。
     const headers = withoutContextOwnedModelHeaders(providerConfig.headers);
     const networkTransport = observeProviderFetch(
@@ -317,7 +310,6 @@ export class AiSdkModelExecution {
       providerConfig,
       transport: providerTransport,
     });
->>>>>>> upstream/main
     const fetch = createProviderBusinessErrorFetch({
       fetch: providerTransport,
       providerId,
@@ -390,15 +382,10 @@ export class AiSdkModelExecution {
       httpProxy: this.network.httpProxy,
       noProxy: this.network.noProxy,
     });
-<<<<<<< HEAD
-    this.providerTransports.set(providerId, transport);
-    return transport;
-=======
     // 观测若放在底层 fetch 注入点，配置代理或 CA 时会被网络适配器绕过。
     const observedTransport = this.observeTransport?.(networkTransport) ?? networkTransport;
     this.providerTransports.set(providerId, observedTransport);
     return observedTransport;
->>>>>>> upstream/main
   }
 }
 
@@ -438,6 +425,7 @@ function applyModelRequestAuth(
   requestAuth: ModelRequestAuth | undefined,
 ): AiSdkProviderConfig {
   if (!requestAuth) return providerConfig;
+
   return {
     ...providerConfig,
     ...(requestAuth.apiKey ? { apiKey: requestAuth.apiKey } : {}),

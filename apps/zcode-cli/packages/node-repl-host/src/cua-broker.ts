@@ -67,11 +67,7 @@ export function createNodeReplCuaBroker(input: {
 async function handleSocket(
   socket: Socket,
   runtime: ComputerUseRuntime,
-<<<<<<< HEAD
-  token: string,
-=======
   ledger: NodeReplCallLedger,
->>>>>>> upstream/main
 ): Promise<void> {
   const abortController = new AbortController();
   let completed = false;
@@ -130,15 +126,6 @@ async function handleSocket(
   }
 }
 
-<<<<<<< HEAD
-function assertToken(actualValue: unknown, expectedValue: string): void {
-  if (typeof actualValue !== "string")
-    throw new Error("Computer Use broker request is not authorized");
-  const actual = Buffer.from(actualValue);
-  const expected = Buffer.from(expectedValue);
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
-    throw new Error("Computer Use broker request is not authorized");
-=======
 /**
  * 从 producer 的 app-associations 元数据里取出单一目标应用。
  *
@@ -153,7 +140,6 @@ function readPrimaryAppIdentity(result: CallToolResult): NodeReplCuaAppIdentity 
   const associations = (meta as Record<string, unknown>)[CUA_APP_ASSOCIATIONS_META_KEY];
   if (!associations || typeof associations !== "object" || Array.isArray(associations)) {
     return undefined;
->>>>>>> upstream/main
   }
   const primary = (associations as { primary?: unknown }).primary;
   if (!primary || typeof primary !== "object" || Array.isArray(primary)) return undefined;
@@ -237,17 +223,13 @@ function parseContext(value: unknown): ComputerUseRuntimeContext {
       ? { remoteSessionId: context.remoteSessionId }
       : {}),
     ...(typeof context.turnId === "string" ? { turnId: context.turnId } : {}),
-<<<<<<< HEAD
-    ...(context.clientMode === "web-remote-replayable" ||
-    context.clientMode === "desktop-continuous"
-=======
     // badge 文字（spec §4.8）：node_repl cell title。白名单重组此前把它丢掉，
     // 导致 actionTitle 断在 cua-broker socket 这一跳——badge 从未出现（2026-10-25 真机）。
     ...(typeof context.actionTitle === "string" && context.actionTitle.trim()
       ? { actionTitle: context.actionTitle.trim().slice(0, 120) }
       : {}),
-    ...(context.clientMode === "web-remote-replayable" || context.clientMode === "desktop-continuous"
->>>>>>> upstream/main
+    ...(context.clientMode === "web-remote-replayable" ||
+    context.clientMode === "desktop-continuous"
       ? { clientMode: context.clientMode }
       : {}),
     ...(context.deliveryKind === "web-remote-replayable" ||

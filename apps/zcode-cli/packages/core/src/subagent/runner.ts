@@ -1000,11 +1000,7 @@ function createSubagentLifecycle(
   const childSessionId = createSessionId(`subagent_${agentId}`);
   const startedAt = Date.now();
   const agentOutputDir = join(
-<<<<<<< HEAD
-    options.outputRootDir ?? join(tmpdir(), "polaris-agents"),
-=======
     resolveAgentOutputRootDir(options.outputRootDir),
->>>>>>> upstream/main
     request.sessionId,
     agentId,
   );
@@ -1058,11 +1054,7 @@ function createSubagentLifecycleFromTask(
   const startedAt = Date.now();
   const agentOutputDir = task.outputFile
     ? dirname(task.outputFile)
-<<<<<<< HEAD
-    : join(options.outputRootDir ?? join(tmpdir(), "polaris-agents"), request.sessionId, agentId);
-=======
     : join(resolveAgentOutputRootDir(options.outputRootDir), request.sessionId, agentId);
->>>>>>> upstream/main
   const metadataFile = join(agentOutputDir, "metadata.json");
   const outputFile = join(agentOutputDir, "output.txt");
   const taskOutputFile = join(agentOutputDir, "task.output");

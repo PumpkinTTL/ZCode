@@ -14,9 +14,6 @@ test("rejects an incomplete documents SEA seed", async () => {
   const stagingDirectory = join(directory, "staging");
 
   try {
-<<<<<<< HEAD
-    await writeTestFile(root, "packages/documents-plugin/.zcode-plugin/plugin.json", "{}");
-=======
     // 夹具必须覆盖清单里除 documents 之外的所有条目：collect 按清单顺序对每个
     // 条目先校验 manifest 与 seed 资产，任何先于 documents 的条目缺资产都会
     // 以别的错误先抛，让本测试想覆盖的 documents 拒绝路径永远走不到（历史上
@@ -30,7 +27,6 @@ test("rejects an incomplete documents SEA seed", async () => {
       for (const seedPath of entry.requiredSeedPaths ?? [])
         await writeTestFile(root, join(entry.rootPath, seedPath), "");
     }
->>>>>>> upstream/main
 
     await assert.rejects(
       collectSeaOfficialPluginAssets({ root, stagingDirectory }),

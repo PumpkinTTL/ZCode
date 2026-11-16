@@ -39,6 +39,7 @@ import { resolveMcpNodeFallbackProvider } from "./app/mcp-node-fallback.js";
 import { getCliStorageRoot, getPluginStorageRoot, getProjectMemoryRoot } from "./app/paths.js";
 import { startProcessProviderRegistryRuntime } from "./app/process-provider-registry-runtime.js";
 import { scheduleStartupLogRetentionCleanup } from "./log-retention.js";
+
 import { StartupTimer, startupNow } from "./startup-logging.js";
 import { installZCodeProtocolAiSdkWarningLogger } from "./zcode-protocol/ai-sdk-warning-logger.js";
 import {
@@ -59,8 +60,10 @@ import {
 import { ZCodeProtocolAgentServer } from "./zcode-protocol/server.js";
 import { ZCodeProtocolNdjsonConnection } from "./zcode-protocol/transport.js";
 import { cleanupProtocolRuntime } from "./zcode-protocol/runtime-cleanup.js";
+
 import { acquireProtocolStartupResource } from "./zcode-protocol/startup-resource.js";
 import { prepareZCodeTelemetryEnv, shutdownZCodeTelemetry } from "./telemetry-bootstrap.js";
+
 
 export function applyProtocolPresentationSurface(
   options: Omit<ZCodeAppOptions, "providerRegistry">,
@@ -150,6 +153,7 @@ export async function runZCodeProtocolAgent(
   let mcpTelemetryTracker: McpTelemetryTracker | undefined;
   let mcpResourceSink: ((samples: ZCodeMcpResourceSample[]) => void) | undefined;
   let mcpTelemetrySink: ((event: ZCodeMcpTelemetryEvent) => void) | undefined;
+
   let providerRegistryRuntime:
     | Awaited<ReturnType<typeof startProcessProviderRegistryRuntime>>
     | undefined;
@@ -234,8 +238,6 @@ export async function runZCodeProtocolAgent(
     // server 就绪前该端口返回 official_auth_unavailable；HTTP tools/call 会匿名交给服务端
     // 返回结构化权限错误，stdio 则把 reason 下发给插件。连接与工具发现都不受影响。
     let officialMcpAuthContext: OfficialMcpAuthRequestContext | undefined;
-<<<<<<< HEAD
-=======
     credentialCipherBridge = createProtocolCredentialCipher(() => officialMcpAuthContext);
     const mcpCredentialStore = createSharedZCodeCredentialStore({
       env: options.env,
@@ -251,7 +253,6 @@ export async function runZCodeProtocolAgent(
         network: configResult.config.network,
         sourceTitle: "electron",
       });
->>>>>>> upstream/main
     // stdio 官方 MCP 没有 url 可供校验，targetOrigin 只能由宿主给出。
     // 与下面 trustedOrigins 的 resolveZCodeApiOrigin 必须是同一个表达式，否则两侧判定分叉。
     const resolveZCodeApiOrigin = (): string =>
@@ -376,12 +377,9 @@ export async function runZCodeProtocolAgent(
                   }),
               }
             : {}),
-<<<<<<< HEAD
-=======
-          providerEndpointRoutingPort,
+
           officialCommandEnv: (sessionId, workspace, observer) =>
             activeOfficialCommandEndpoint.envForSession(sessionId, workspace, observer),
->>>>>>> upstream/main
           sourceTitle: "electron",
           onToolExecResource: (params) =>
             connection.send({ method: zcodeProtocolNotifications.toolExecResource, params }),
@@ -447,6 +445,7 @@ export async function runZCodeProtocolAgent(
     };
     connection.start();
     mcpTelemetryTracker?.start();
+
     startupTimer.complete("ZCode Protocol agent startup completed", {
       event: "zcode_protocol.startup.completed",
       stage: "total",
@@ -475,8 +474,6 @@ export async function runZCodeProtocolAgent(
       logger,
       deadlineAt: options.lifecycle?.deadlineAt,
       server: serverForCleanup,
-<<<<<<< HEAD
-=======
       pluginPreparation: {
         dispose: async () => {
           pluginDiscovery?.dispose();
@@ -484,8 +481,7 @@ export async function runZCodeProtocolAgent(
           await pluginPrewarm;
         },
       },
-      processResourceSampler,
->>>>>>> upstream/main
+
       mcpTelemetryTracker,
       nodeReplBrowserBroker,
       mcpPort,

@@ -175,12 +175,12 @@ const pluginsSchema = z.object({
 });
 
 // CUA 插件 id 沿革（老配置兼容）：
-//   zcode-cua@zcode-plugins-official      —— 最初名（市场 id 改名前的时代）
-//   computer-use@zcode-plugins-official   —— 更名 computer-use 后、市场 id 改名前的规范名
+//   zcode-cua@polaris-plugins-official      —— 最初名（市场 id 改名前的时代）
+//   computer-use@polaris-plugins-official   —— 更名 computer-use 后、市场 id 改名前的规范名
 //   computer-use@polaris-plugins-official —— 现行规范名（市场 id 改名后）
 export const LEGACY_CUA_PLUGIN_IDS: readonly string[] = [
-  "zcode-cua@zcode-plugins-official",
-  "computer-use@zcode-plugins-official",
+  "zcode-cua@polaris-plugins-official",
+  "computer-use@polaris-plugins-official",
 ];
 export const CANONICAL_CUA_PLUGIN_ID = "computer-use@polaris-plugins-official";
 

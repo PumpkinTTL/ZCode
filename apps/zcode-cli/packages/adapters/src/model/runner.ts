@@ -1,3 +1,4 @@
+
 // ============================================================
 // Vercel AI SDK model runner
 // ============================================================
@@ -45,6 +46,7 @@ import {
 import { resolveModelRequestCapabilities } from "./tool-search.js";
 import { createModel, type ModelExecutionRequest } from "./model.js";
 
+
 export type { AiSdkModelRetryOptions } from "./retry-policy.js";
 export type {
   AiSdkGenerateTextOptions,
@@ -61,6 +63,7 @@ export interface AiSdkModelAdapterOptions {
   transport?: typeof globalThis.fetch;
   observeTransport?: (transport: typeof globalThis.fetch) => typeof globalThis.fetch;
   defaultHeaders?: AiSdkModelExecutionConfig["defaultHeaders"];
+
   network?: AiSdkNetworkConfig;
   runtime?: AiSdkModelRuntime;
   env?: EnvRecord;
@@ -97,18 +100,14 @@ export class AiSdkModelAdapter {
     this.execution = new AiSdkModelExecution(
       {
         defaultHeaders: options.defaultHeaders,
+
         ...(options.network ? { network: options.network } : {}),
         ...(options.env ? { env: options.env } : {}),
       },
       {
-<<<<<<< HEAD
-=======
         ...(options.transport ? { transport: options.transport } : {}),
         ...(options.observeTransport ? { observeTransport: options.observeTransport } : {}),
-        ...(options.requestSecurityState
-          ? { requestSecurityState: options.requestSecurityState }
-          : {}),
->>>>>>> upstream/main
+
         ...(options.logger ? { logger: options.logger } : {}),
       },
     );
@@ -174,6 +173,7 @@ export class AiSdkModelAdapter {
       const shouldAttachReasoningTelemetry = request.options.reasoningLevel !== undefined;
       const selectedReasoningLevel = request.options.reasoningLevel;
       const requestAuthDependency = options.requestDependencies?.requestAuth;
+
       const requestAuthRequired =
         options.providerConfig.access.type === "zhipu-account" &&
         options.providerConfig.access.mode === "off-peak";
@@ -317,7 +317,6 @@ export class AiSdkModelAdapter {
       request: projectedRequest,
       resolveModel,
       resolved,
-      // 按请求预算档位收敛 maxAttempts（single-attempt 供执行作用域请求使用）。
       retry: resolveRetryOptionsForBudget(this.retry, projectedRequest.modelRetryBudget),
       runtime: this.runtime,
       statusSink: this.statusSink,

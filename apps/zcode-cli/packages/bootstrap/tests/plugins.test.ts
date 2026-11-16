@@ -10,12 +10,8 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConfig } from "@zcode/adapters/config";
 import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "@zcode/shared";
-<<<<<<< HEAD
-import type { Logger } from "@zcode/contracts";
-=======
-import { ZCODE_PLUGIN_HOST_COMMAND } from "@zcode/contracts";
+
 import type { Logger, PluginDiscoverRequest } from "@zcode/contracts";
->>>>>>> upstream/main
 import { describe, expect, it, vi } from "vitest";
 import { resolveStartupPlugins } from "../src/app/startup-marks.js";
 import {
@@ -49,6 +45,7 @@ import {
 import { StartupTimer } from "../src/startup-logging.js";
 
 
+
 it("Settings 默认启用集合与 CLI 的官方插件声明一致", () => {
   expect([...DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS].sort()).toEqual(
     OFFICIAL_PLUGIN_DEFINITIONS.filter((definition) => definition.defaultEnabled)
@@ -68,8 +65,6 @@ it("computer-use 默认不启用（电脑控制需用户在设置页显式开启
     false,
   );
 });
-<<<<<<< HEAD
-=======
 it("design 默认关闭，等待用户安装或启用", () => {
   const design = OFFICIAL_PLUGIN_DEFINITIONS.find((definition) => definition.name === "design");
   expect(design).toBeDefined();
@@ -77,10 +72,7 @@ it("design 默认关闭，等待用户安装或启用", () => {
   expect(DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS.has("design@zcode-plugins-official")).toBe(false);
 });
 
-const ANDROID_EMULATOR_PLUGIN_ID = "android-emulator@zcode-plugins-official";
-const IOS_SIMULATOR_MCP_ID = "plugin:ios-simulator:ios-simulator";
-const ANDROID_EMULATOR_MCP_ID = "plugin:android-emulator:android-emulator";
->>>>>>> upstream/main
+
 const BROWSER_USE_PLUGIN_ID = "browser-use@zcode-plugins-official";
 const DOCUMENTS_PLUGIN_ID = "documents@zcode-plugins-official";
 const RESTORE_LEGACY_SESSIONS_PLUGIN_ID = "restore-legacy-sessions@zcode-plugins-official";
@@ -106,13 +98,8 @@ const OFFICIAL_BROWSER_USE_PLUGIN_CACHE_PATH = join(
 const OFFICIAL_DOCUMENTS_PLUGIN_CACHE_PATH = join(
   "cache",
   "zcode-plugins-official",
-<<<<<<< HEAD
-  "documents",
-  "0.1.6",
-=======
   "android-emulator",
   "0.1.1",
->>>>>>> upstream/main
 );
 const OFFICIAL_RESTORE_LEGACY_SESSIONS_PLUGIN_CACHE_PATH = join(
   "cache",
@@ -702,13 +689,8 @@ describe("ZCode plugins", () => {
           expect.objectContaining({
             id: "polaris-plugins-official",
             isOfficial: true,
-<<<<<<< HEAD
-            name: "polaris-plugins-official",
-            pluginCount: 11,
-=======
             name: "zcode-plugins-official",
             pluginCount: 16,
->>>>>>> upstream/main
             source: {
               source: "url",
               url: "https://nimbus.bitlesu.com/plugins/marketplace.json",
@@ -1943,10 +1925,6 @@ describe("ZCode plugins", () => {
     }
   });
 
-<<<<<<< HEAD
-  
-  
-=======
   it("projects bundled iOS simulator skills, commands, and MCP when enabled", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-plugins-enabled-"));
     const configPath = join(root, "config.json");
@@ -2119,7 +2097,6 @@ describe("ZCode plugins", () => {
     }
   });
 
->>>>>>> upstream/main
   it("persists sensitive plugin options in the selected User or Workspace config", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-plugin-options-"));
     const userConfigPath = join(root, "user-config.json");
@@ -2660,11 +2637,7 @@ describe("ZCode plugins", () => {
       expect(
         overview.marketplaces.find((marketplace) => marketplace.id === "polaris-plugins-official"),
       ).toMatchObject({
-<<<<<<< HEAD
-        pluginCount: 11,
-=======
         pluginCount: 16,
->>>>>>> upstream/main
         source: {
           source: "url",
           url: "https://nimbus.bitlesu.com/plugins/marketplace.json",
