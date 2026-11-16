@@ -56,27 +56,15 @@ async function sendText(
   };
   const record = requireRecord(host, envelope.sessionId);
   // Bug 根因：旧校验只看正文，UI 已允许的 attachment-only query 会在 CLI 被误判为空。
-  if (!hasPromptInput(payload.text, payload.attachments) && !payload.conversationQuotes?.length) {
+  if (
+    !hasPromptInput(originalPayload.text, originalPayload.attachments) &&
+    !originalPayload.conversationQuotes?.length
+  ) {
     throw new V4InputAdmissionRejectedError("proto.invalidPayload", "input must not be empty");
   }
-  const activeAutomationId = resolveTurnAutomationId({
-    automationId: rawPayload.automationId,
-  });
-  // Bug 根因：Highspeed admission 与 automation 派发来自不同上游；契约漂移时可能把
-  // automationId、highspeedMeta 和加速执行材料同时送到同一轮。定时执行身份必须优先：
-  // 既不能拿加速卡凭据发请求，也不能把普通模型输出持久化成 Highspeed 消息。
-  const dropsHighspeed =
-    activeAutomationId !== undefined &&
-    (rawPayload.highspeedMeta !== undefined ||
-      isHighspeedProviderId(rawPayload.modelSelection?.providerId));
-  const payload: CommandPayloadMap["sendText"] = dropsHighspeed
-    ? {
-        ...rawPayload,
-        highspeedMeta: undefined,
-        modelSelection: undefined,
-        modelExecution: undefined,
-      }
-    : rawPayload;
+  // Polaris：Highspeed 卡业务已整体移除——不存在加速凭据与 automation 混派的场景，
+  // admission 直接消费原始净荷（上游的 dropsHighspeed 剥离分支随业务一并删除）。
+  const payload: CommandPayloadMap["sendText"] = rawPayload;
   // canonical intent 必须和 admission 看同一份净荷，否则 transcript 会留下没有凭据的加速标记。
   const intentEnvelope = { ...envelope, payload } as CommandEnvelope;
   const attachments = await mapAttachmentRefsToTurnAttachments(record.app, payload.attachments);

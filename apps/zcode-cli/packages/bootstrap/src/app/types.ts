@@ -48,6 +48,7 @@ import type {
   PluginLoadOutcome,
   PluginMetadata,
   PluginReferenceCatalog,
+  ProviderEndpointRoutingPort,
   QueryId,
   SessionEvent,
   SessionEventSink,
@@ -183,6 +184,7 @@ export interface ZCodeAppOptions {
   modelIoFullRetentionEnabled?: boolean;
   /** 同进程嵌入宿主可注入完整的 borrowed 进程级 Owner；Endpoint 配置不得覆盖它。 */
   telemetryOwner?: AgentTelemetryRuntimeOwner;
+  providerEndpointRoutingPort?: ProviderEndpointRoutingPort;
   /**
    * provider runtime headers 端口：主 runtime 每次调用报自己的会话；child runtime 一律向父
    * runtime 取派生实例。
@@ -297,7 +299,7 @@ export type SendInputOptions = SubmitPromptOptions & {
   delivery?: InputDelivery;
   /** sendText 的产品 guide/queue 意图；是否 busy 仍由 Core admission 判断。 */
   queueDelivery?: "guide" | "queue";
-  /** 必须延后到独立 turn 的输入，即使 admission 时已转为空闲也保持排队。 */
+  /** Highspeed 等必须延后到独立 turn 的输入，即使 admission 时已转为空闲也保持排队。 */
   requireQueue?: boolean;
   requireIdle?: boolean;
   expectedTurnId?: TurnId;
@@ -893,6 +895,7 @@ export interface RunZCodeProtocolAgentOptions {
   input?: NodeJS.ReadableStream;
   output?: NodeJS.WritableStream;
   presentationSurface?: PresentationSurface;
+  providerEndpointRoutingPort?: ProviderEndpointRoutingPort;
   version?: string;
 }
 

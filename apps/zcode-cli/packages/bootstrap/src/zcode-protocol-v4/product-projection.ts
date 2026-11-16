@@ -2902,6 +2902,8 @@ export class ProductProjection {
       case "model_request_admitted":
 
         return [];
+      default:
+        return [];
     }
   }
 

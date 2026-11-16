@@ -38,6 +38,7 @@ import { closeSessionStore, getSessionDbPath } from "./app/session-store.js";
 import { resolveMcpNodeFallbackProvider } from "./app/mcp-node-fallback.js";
 import { getCliStorageRoot, getPluginStorageRoot, getProjectMemoryRoot } from "./app/paths.js";
 import { startProcessProviderRegistryRuntime } from "./app/process-provider-registry-runtime.js";
+import { resolveProcessProviderEndpointRoutingPort } from "./provider-endpoint-routing.js";
 import { scheduleStartupLogRetentionCleanup } from "./log-retention.js";
 
 import { StartupTimer, startupNow } from "./startup-logging.js";

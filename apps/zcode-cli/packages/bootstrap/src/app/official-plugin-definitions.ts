@@ -68,6 +68,8 @@ export interface OfficialPluginDefinition {
 // Polaris：官方插件图原本指向 cdn-zcode.z.ai，现已移除。客户端按插件 id 命中打包
 // 素材（见 ui/src/lib/pluginIconSource.ts），未命中时降级为中性占位图标。
 const OFFICIAL_PLUGIN_AUTHOR = { name: "Polaris", url: "https://nimbus.bitlesu.com" } as const;
+// Polaris：官方插件资产不走上游 CDN；保留常量形状（上游新增条目引用），基址为空由本地资产命中。
+const OFFICIAL_PLUGIN_ASSETS_BASE_URL = "";
 
 export const OFFICIAL_NODE_REPL_HOST_REQUIRED_SEED_PATHS = ["dist/mcp/server.js"] as const;
 const NODE_REPL_HOST_BUILD_IDENTITY_PATH = "dist/build-identity.json";
@@ -402,7 +404,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     // 设计工作流（HTML 设计稿、交互原型、HTML 演示稿）。纯内容型，默认关闭；用户可启用、可停用、不可卸载。
     // 版本与 package.json / 两份 plugin.json / sea-official-plugin-assets.mjs 同步 bump。
     listing: {
-      author: ZAI_AUTHOR,
+      author: OFFICIAL_PLUGIN_AUTHOR,
       category: "productivity",
       displayName: "Design",
       // 英文名与描述回退到 manifest（displayName / description）；这里只放 zh-CN 覆盖。
@@ -440,7 +442,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     // 以兼容原生 Helper identity；EN 描述基线走 manifest
     // description，这里只放 zh-CN 覆盖；resolveLocalizedText 在 en-US 时回退到 manifest。
     listing: {
-      author: ZAI_AUTHOR,
+      author: OFFICIAL_PLUGIN_AUTHOR,
       category: "productivity",
       displayName: "Computer Use",
       displayName_i18n: { "zh-CN": "电脑控制" },
@@ -474,7 +476,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     name: "zcode-site",
     defaultEnabled: true,
     listing: {
-      author: ZAI_AUTHOR,
+      author: OFFICIAL_PLUGIN_AUTHOR,
       category: "productivity",
       displayName: "ZCode Sites",
       displayName_i18n: { "zh-CN": "ZCode Sites" },
