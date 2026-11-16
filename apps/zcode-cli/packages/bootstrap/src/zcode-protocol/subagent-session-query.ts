@@ -367,7 +367,6 @@ function runningStatus(input: {
     input.childOutcome.status === undefined &&
     // launch ACK 窗口的保护只需要秒/分钟级；陈旧界拦住「async 启动后进程就死了、
     // 记录再没更新过」的候选。
-    !isStaleUnattendedRunning(input.candidate, input.background) &&
     !input.fromPreviousRuntime
   ) {
     return "running";

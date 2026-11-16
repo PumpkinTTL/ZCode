@@ -120,6 +120,8 @@ export const SessionEventType = {
   SystemMessage: "system_message",
   ModelRequest: "model_request",
   ModelSelected: "model_selected",
+  // Polaris：Highspeed 行为链已移除；事件名保留协议兼容（hydration 白名单引用）。
+  TurnExecutionModelFallback: "turn_execution_model_fallback",
   ModelStreaming: "model_streaming",
   StreamingToolLedgerUpdated: "streaming_tool_ledger_updated",
   StreamRecoveryAnchorCreated: "stream_recovery_anchor_created",
@@ -1394,3 +1396,15 @@ export type SessionEventPayload =
   | CheckpointCreatedPayload
   | RewindTriggeredPayload
   | CompactBoundaryPayload;
+
+// Polaris：Highspeed 行为链已移除；以下类型仅保留协议兼容形状。
+export type TurnExecutionModelFallbackReason =
+  | "highspeed_card_expired"
+  | "highspeed_request_failed"
+  | "highspeed_selection_unavailable";
+
+export interface TurnExecutionModelFallbackPayload {
+  inputId?: string;
+  reason: TurnExecutionModelFallbackReason;
+  [key: string]: unknown;
+}

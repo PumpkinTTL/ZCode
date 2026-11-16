@@ -44,6 +44,16 @@ export interface V4CommandLogger {
 export type V4QueueItemCommand = QueueItem;
 
 
+/**
+ * Polaris：Highspeed 行为链已移除；队列执行材料接口保留协议形状，无生产写入方。
+ */
+export type V4TurnExecution = NonNullable<CommandPayloadMap["sendText"]["modelExecution"]>;
+
+export interface V4QueuedTurnExecution {
+  modelSelection: NonNullable<CommandPayloadMap["sendText"]["modelSelection"]>;
+  modelExecution: V4TurnExecution;
+}
+
 export type V4StableForkTargetResolution =
   | {
       ok: true;
@@ -114,6 +124,18 @@ export interface V4CommandCoreHost {
     admission: { admissionSeq: number; admittedAt: number; queueItemId: string },
   ): Promise<ConversationInputIntent | null>;
   cancelInputCommand?(sessionId: string, queueItemId: string, reason: string): Promise<void>;
+  /** Polaris：Highspeed 行为链已移除；队列执行材料接口保留形状，恒空实现。 */
+  retainQueuedTurnExecution?(
+    sessionId: string,
+    sourceCommandId: string,
+    execution: V4QueuedTurnExecution,
+  ): void;
+  readQueuedTurnExecution?(
+    sessionId: string,
+    sourceCommandId: string,
+  ): V4QueuedTurnExecution | undefined;
+  deleteQueuedTurnExecution?(sessionId: string, sourceCommandId: string): void;
+  clearQueuedTurnExecutions?(sessionId: string): void;
   discardSharedContext?(sessionId: string, contextId: string): Promise<boolean>;
   /**
    * 当前输入路由模式（数据源 = v4 投影 inputRouting.mode）。

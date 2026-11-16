@@ -3,8 +3,8 @@
 // 决策逻辑直驱 core（app 层 queue API，批1 已搬运）；queueItemId ≡ core 的
 // pendingInputId（同一 id 空间，无需翻译）。queue 变更的事件由 core runtime 自发，
 // 经 gateway ingest 推进 v4 投影——本组不需要 legacy 广播钩子。
-import type {
 import { resolveSessionFallbackModelSelection } from "../input-admission.js";
+import type {
   CommandEnvelope,
   CommandPayloadMap,
   CommandResult,
