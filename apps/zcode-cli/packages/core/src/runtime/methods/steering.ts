@@ -930,7 +930,6 @@ function editedIntent(
     ...(options.mode ? { mode: options.mode } : {}),
     ...(options.planEnabled !== undefined ? { planEnabled: options.planEnabled } : {}),
   };
-  if (options.dropHighspeed) delete next.highspeed;
   return next;
 }
 

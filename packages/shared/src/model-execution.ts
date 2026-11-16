@@ -43,7 +43,10 @@ export const modelExecutionSchema = z
       })
       .strict()
       .optional(),
-    // Polaris：Highspeed 行为链已移除；此字段仅为上游协议结构兼容保留（无生产写入方）。
+    /**
+     * 本次执行的 Selection 失败时，同一 Turn 内退回原模型继续跑完，而不是让整轮失败。
+     * Polaris：Highspeed 行为链已移除；此字段仅为上游协议结构兼容保留（无生产写入方）。
+     */
     selectionFallback: z
       .object({
         providerId: z.string().min(1),

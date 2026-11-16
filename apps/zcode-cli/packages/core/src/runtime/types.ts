@@ -498,6 +498,13 @@ export interface ModelExecutionContext {
   /** 仅当前 Turn 跳过自动 Project Memory Extraction；不修改 Session Memory 配置。 */
   memoryExtraction?: "skip";
   selectionScope: "execution";
+  /** Polaris：Highspeed 卡业务行为链已移除；协议兼容字段（无生产写入方）。 */
+  highspeedFallbackSelection?: ModelSelection;
+  requestDependencies?: ModelRequestDependencies;
+  subagents?: {
+    foregroundModel: "submission";
+    background: "deny" | "allow";
+  };
 
   /**
    * Polaris：执行 Selection 的降级声明保留为协议兼容字段（admission/preflight 只读），
@@ -587,7 +594,6 @@ export interface EditPendingInputOptions {
   mode?: TurnInputIntentMetadata["mode"];
   planEnabled?: boolean;
   /** 用户改了模型：入队时冻结的 Highspeed 卡不能再覆盖用户的新选择。 */
-  dropHighspeed?: boolean;
 }
 
 /** editLocked = 该项被他人锁定且调用方未持锁；lockLost = 调用方声明的锁已不在。 */

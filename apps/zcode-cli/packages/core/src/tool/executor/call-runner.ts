@@ -1,3 +1,10 @@
+import type { ToolExecutionSpanWriter } from "@zcode/contracts";
+import { resolveEmbeddedSearchBranchCapability } from "../../embedded-search/capability.js";
+import { hasOfficialCuaFrameAuthority } from "../../mcp/image-normalization.js";
+import { SkillTelemetryMetadata } from "@zcode/contracts";
+import { createToolModelStatusSink, withDefaultToolModelStatusSink } from "./model-status-sink.js";
+import { runToolCallWithTelemetry } from "./telemetry.js";
+import { mergeToolExecutionTelemetry, readToolExecutionTelemetry } from "../handlers/tool-perf.js";
 import { toolSearchNameForMode } from "@zcode/contracts";
 import { resolveDeferredToolCall } from "../deferred-call.js";
 import {

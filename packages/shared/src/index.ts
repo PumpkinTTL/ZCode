@@ -143,6 +143,7 @@ export interface ICredentialStore {
 
 export * from "./test-ids-workflow.js";
 export * from "./channels.js";
+export * from "./highspeed.js";
 export * from "./storage.js";
 export * from "./oauth.js";
 export * from "./desktopMenu.js";
