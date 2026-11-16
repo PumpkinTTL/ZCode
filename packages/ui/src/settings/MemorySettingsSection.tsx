@@ -10,7 +10,6 @@ import { ServiceProvider } from "@/hooks/useServices.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useSettings, updateSettingsAndRefreshSnapshot } from "@/hooks/useSettingService.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
 import { logger } from "@/logger.js";
 import {
   SettingsScopeBlockedNotice,

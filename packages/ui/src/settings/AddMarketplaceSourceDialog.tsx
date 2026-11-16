@@ -1,5 +1,7 @@
+import type { ZCodePluginMarketplaceSummary } from "@zcode/shared";
+import { PresetPluginMarketplace, isPresetMarketplaceAdded } from "@zcode/shared";
 import { useEffect, useId, useRef, useState, type DragEvent } from "react";
-import { FolderOpen, LoaderCircle, Plus } from "lucide-react";
+import { FolderOpen, Loader2, LoaderCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Checkbox } from "@/components/ui/checkbox.js";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog.js";

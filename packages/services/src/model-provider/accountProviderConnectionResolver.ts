@@ -11,12 +11,15 @@ import { AccountProviderService, createAccountProviderConfigResolver } from "@zc
  * 接自有账号体系时在这里实现真正的 resolver 即可。
  */
 export interface AccountProviderConfigSourceOptions {
+  /** Polaris：上游装配形状兼容字段；空 overlay 不消费，恒返回 null。 */
+  loadSessionRevision?: () => Promise<string | null>;
   readonly configSource: ProviderSource<ProviderConfigSnapshot>;
 }
 
 export function createAccountProviderConfigSource(
   options: AccountProviderConfigSourceOptions,
 ): AccountProviderService {
+  void options.loadSessionRevision;
   return new AccountProviderService({
     configSource: options.configSource,
     // 恒定返回「无账号连接」：空 providers 与空 states。

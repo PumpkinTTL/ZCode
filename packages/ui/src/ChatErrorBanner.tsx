@@ -1,4 +1,3 @@
-import { resolveRequestSecurityErrorMessageId } from "@/request-security-edition/errors.js";
 import { getRemoteConnectionFailureCode } from "@/lib/remoteWorkspaceServiceError.js";
 import { formatRemoteConnectionError } from "@/lib/remoteConnectionPresentation.js";
 /**
@@ -73,17 +72,6 @@ const MODEL_CONFIG_MISSING_CODES = new Set([
   "MODEL_CONFIG_MISSING",
   "ModelConfigMissing",
 ]);
-
-// Core 建模阶段的目录错误码（子代理、目标续跑等不经发送前准入的路径仍会产生）。
-// Bug 根因：体验套餐到期后 Provider 下架，这类 TurnError 曾把 Registry 内部文案
-// "Provider Registry 中不存在 Provider: account:bigmodel-start-plan" 原样展示给用户。
-// 按稳定 code 复用「当前模型已不可用，请重新选择」的本地化文案，不再透出内部实现。
-const MODEL_NOT_IN_REGISTRY_CODES = new Set(["provider_not_found", "model_not_found"]);
-
-/** 投影错误是否只是「会话模型不在 Registry」这一事实的 Core 侧表达。 */
-export function isModelNotInRegistryError(error: Pick<ZCodeUiError, "code">): boolean {
-  return Boolean(error.code && MODEL_NOT_IN_REGISTRY_CODES.has(error.code));
-}
 
 function isModelConfigMissingError(error: Pick<ZCodeUiError, "code" | "message">): boolean {
   // Bugfix: 桌面端发送前 registry 为空时，agent 会退回 CLI config 并抛 Model config is missing。
@@ -164,10 +152,6 @@ export function resolveChatErrorBannerDisplayMessage(
 
   if (isSuspiciousEmptyModelResultMessage(error.message)) {
     return intl.formatMessage({ id: "zcode.error.modelSuspiciousEmpty" });
-  }
-
-  if (isModelNotInRegistryError(error)) {
-    return intl.formatMessage({ id: "zcode.error.ZCODE_RUNTIME_MODEL_UNAVAILABLE" });
   }
 
   return error.code && LOCALIZED_ERROR_CODES.has(error.code)

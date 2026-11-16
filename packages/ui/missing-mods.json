@@ -1,0 +1,42 @@
+{
+ "@/CodingPlanBillingDiscount.js": [
+  "useCodingPlanBillingDiscountFromService"
+ ],
+ "@/global-notice/globalNoticeStore.js": [
+  "browserGlobalNoticeStore"
+ ],
+ "@/hooks/usePlanIdentitySnapshot.js": [
+  "usePlanIdentitySnapshot"
+ ],
+ "@/hooks/useStartPlanRecommendation.js": [
+  "useStartPlanRecommendation"
+ ],
+ "@/lib/accountProviderAccess.js": [
+  "resolveEntitledAccountProviderAccess"
+ ],
+ "@/lib/appTelemetry.js": [
+  "toTelemetryUiMode"
+ ],
+ "@/lib/codingPlanFunnelTelemetry.js": [
+  "createCodingPlanFunnelContext",
+  "resolveCodingPlanEntryPlanState"
+ ],
+ "@/lib/selectionSideInheritedModel.js": [
+  "resolveSelectionSideInheritedModel"
+ ],
+ "@/lib/sessionCreateTelemetry.js": [
+  "reportSessionCreate"
+ ],
+ "@/remote-connection/RemoteConnectionNavigationDot.js": [
+  "RemoteConnectionNavigationDot"
+ ],
+ "@/request-security-edition/errors.js": [
+  "isRequestVerificationConfigNetworkError"
+ ],
+ "@/settings/CodingPlanUpgradeDialogProvider.js": [
+  "useOptionalCodingPlanUpgradeDialog"
+ ],
+ "@/settings/SettingsMachine.js": [
+  "SettingsMachinesProvider"
+ ]
+}

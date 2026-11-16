@@ -27,6 +27,9 @@ import {
 function memoryCredentials(): ICredentialService & { dump(): Map<string, string> } {
   const store = new Map<string, string>();
   return {
+    // 上游 v3.18 新增存储健康检查契约；内存实现恒为健康。
+    inspectStore: async () => ({ status: "healthy" } as const),
+    recoverStore: async () => ({ status: "changed" } as const),
     load: async (key) => store.get(key) ?? null,
     save: async (key, value) => {
       store.set(key, value);

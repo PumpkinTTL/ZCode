@@ -23,7 +23,13 @@ import type {
 /* eslint-disable max-lines -- ZCode agent service 接口集中声明 protocol/session/workspace 方法，拆分会增加 service descriptor 迁移成本。 */
 import type { RemoteConversationTelemetryEvent } from "@zcode/shared/conversation-telemetry";
 import type { Event, IDisposable } from "@zcode/rpc";
-import { ServiceChannels } from "@zcode/shared";
+import {
+  type AgentLaneResourceSample,
+  type ZCodeMcpTelemetryEvent,
+  type ZCodeMcpResourceSample,
+  type ZCodeToolExecResource,
+  ServiceChannels,
+} from "@zcode/shared";
 import type { AppUsageRange, AppUsageSnapshot, ZCodeTaskTokenUsageResult } from "@zcode/shared";
 import type { DynamicWorkflowMode } from "@zcode/shared";
 import type { ZCodeAutomation, ZCodeAutomationRun } from "@zcode/shared";

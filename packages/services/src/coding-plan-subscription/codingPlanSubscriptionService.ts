@@ -1,3 +1,4 @@
+import type { OAuthAccountMaterial } from "#src/oauth/repo/oauthCredentialRepo.js";
 import { resolveDynamicWorkflowClientConfig } from "@zcode/shared";
 import type { ApiClient } from "@zcode/shared";
 import type { ModelSelectionView } from "@zcode/provider";

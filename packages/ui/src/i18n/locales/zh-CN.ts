@@ -6927,7 +6927,6 @@ const zhCN: Record<string, string> = {
   "voiceInput.error.upstream_timeout": "语音识别超时，请重试。",
   "voiceInput.error.audio_limit_exceeded": "已达到单次录音时长上限，已保留识别到的文字。",
   "voiceInput.error.failed": "语音识别失败，请重试。",
-  ...requestSecurityMessagesZhCN,
 };
 
 export default zhCN;

@@ -304,6 +304,7 @@ async function connectRemoteUnchecked(
   return {
     services,
     client,
+    userConfigSyncService: services.userConfigSyncService,
     dispose() {
       beginDisposal();
       disposeBackend();

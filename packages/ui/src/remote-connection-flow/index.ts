@@ -56,7 +56,12 @@ import {
   getRemoteDevicePresentationInput,
   resolveRemoteConnectionPresentation,
 } from "@/lib/remoteConnectionPresentation.js";
-import { runSourceServerUpdate } from "@/lib/sourceServerUpdateAction.js";
+import {
+  getSourceServerDowngradeConfirmation,
+  getSourceServerReinstallConfirmation,
+  resolveSourceServerReinstallAvailability,
+  runSourceServerUpdate,
+} from "@/lib/sourceServerUpdateAction.js";
 // Polaris：userActionTelemetry 上报链已随业务剪除；连接流程保留取消/完成/失败
 // 接缝为本地空实现，调用点结构不变。
 interface UserActionHandle {
@@ -69,13 +74,6 @@ const startUserAction = (..._input: unknown[]): UserActionHandle => ({
   complete() {},
   fail() {},
 });
-import {
-  getSourceServerDowngradeConfirmation,
-  getSourceServerReinstallConfirmation,
-  resolveSourceServerReinstallAvailability,
-  runSourceServerUpdate,
-} from "@/lib/sourceServerUpdateAction.js";
-import { startUserAction, type UserActionHandle } from "@/lib/userActionTelemetry.js";
 import {
   useRemoteBoundaryAcknowledgement,
   RemoteConnectionConnectingStep,

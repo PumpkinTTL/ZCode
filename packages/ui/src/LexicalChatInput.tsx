@@ -747,6 +747,7 @@ function KeyboardPlugin({
   enterSubmits: boolean;
 }) {
   const [editor] = useLexicalComposerContext();
+
   // 作用域改绑层：读生效表的 composer 命令切片；ref 透传避免按键监听重挂。
   const effectiveShortcutBindings = useEffectiveShortcutBindings();
   const composerEffectiveRef = useRef({
@@ -1082,6 +1083,18 @@ function TextContentPlugin({
   taskId?: string | null;
 }) {
   const [editor] = useLexicalComposerContext();
+
+  // 是否已反映组合态存在时序不确定性，读不到 true 会把中文/日文长文本组合的高耗时误报成打字卡顿。
+  // 改由 compositionstart/compositionend 事件自行维护，稳健可控。
+  const composingRef = useRef(false);
+  const compositionEndFrameRef = useRef<number | null>(null);
+  const publicationRef = useRef<TextContentPublicationState | null>(null);
+  if (!publicationRef.current) {
+    publicationRef.current = {
+      lastPublishedText: getEditorMarkdown(editor.getEditorState()),
+      pendingComposition: false,
+    };
+  }
 
   useEffect(() => {
     if (!onChange) {

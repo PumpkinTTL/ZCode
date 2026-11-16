@@ -2,7 +2,11 @@ import {
   v4SessionDeletionPreviewSchema,
   v4SessionDeletionResultSchema,
 } from "@zcode/shared/zcode-protocol-v4";
-import { sessionLifecycleSnapshotSchema, type SessionLifecycleSnapshot } from "@zcode/shared";
+import {
+  type AgentLaneResourceSample,
+  sessionLifecycleSnapshotSchema,
+  type SessionLifecycleSnapshot,
+} from "@zcode/shared";
 import { credentialCipherRequestSchema } from "@zcode/shared";
 import {
   executeCredentialCipherRequest,
@@ -1677,6 +1681,7 @@ export function createZCodeAgentService(
   >();
   const activeClientsByWorkspaceKey = new Map<string, ActiveWorkspaceClient>();
   const interactionPreferenceSyncByClient = new WeakMap<ZCodeProtocolClient, Promise<void>>();
+  const interactionPreferenceSyncByWorkspaceKey = new Map<string, unknown>();
   let latestAppRuntimePreferences: ZCodeAgentAppRuntimePreferences | undefined;
   /** 服务端「提供」的进程内单次读取；见 resolveDynamicWorkflowGate 的注释。 */
   let dynamicWorkflowOffer: Promise<DynamicWorkflowClientConfig | undefined> | undefined;
@@ -4247,7 +4252,7 @@ export function createZCodeAgentService(
   async function getPluginManagementClient(): Promise<ZCodeProtocolClient> {
     const workspace = { workspacePath: ensurePluginManagementWorkspacePath() };
     const client = await pluginProcessManager.getClient(workspace);
-    wireClient(client, workspace);
+    wireClient(client, workspace, "plugin");
     return client;
   }
 
@@ -4303,7 +4308,7 @@ export function createZCodeAgentService(
   async function getMcpStatusClient(): Promise<ZCodeProtocolClient> {
     const workspace = { workspacePath: ensurePluginManagementWorkspacePath() };
     const client = await mcpStatusProcessManager.getClient(workspace);
-    wireClient(client, workspace);
+    wireClient(client, workspace, "mcp-status");
     return client;
   }
 
@@ -4558,7 +4563,7 @@ export function createZCodeAgentService(
   const service: IZCodeAgentService & { disposeAllAndWait(): Promise<void> } = {
     async prepareStorage(params) {
       const client = await processManager.getClient(params);
-      wireClient(client, params);
+      wireClient(client, params, "chat");
       await client.storageStartup.wait();
     },
     async getStorageStartupState(params) {

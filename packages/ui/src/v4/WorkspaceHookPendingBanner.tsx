@@ -114,6 +114,8 @@ export const WorkspaceHookPendingIndicator = memo(function WorkspaceHookPendingI
     }
   }, [admission, commandBindings, openSettingsTab, sessionId, workspaceIdentity, workspacePath]);
 
+  const [dismissRevision, setDismissRevision] = useState(0);
+
   const handleDismiss = useCallback(() => {
     if (admission) {
       workspaceHookPendingDismissStore.dismiss(sessionId, admission.bundleDigest);

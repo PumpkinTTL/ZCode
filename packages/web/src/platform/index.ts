@@ -142,8 +142,6 @@ export function createWebPlatform(options?: {
     openExternalFile: () => Promise.resolve({ success: false, error: "Not supported in web mode" }),
     registerOAuthState: (_payload) => {},
     onOAuthCallback: () => () => {},
-    onPaymentCallback: () => () => {},
-    onShareImport: () => () => {},
     notifyRendererReady: () => {},
     reportTelemetryEvent: async (event) => {
       // 手机只开放 session_create 和插件发现事件；管理结果仍由 Desktop Host 唯一上报。

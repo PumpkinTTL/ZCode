@@ -49,7 +49,11 @@ import { HOST_WORKTREE_COMMAND } from "#src/zcode-agent/zcodeAgent.js";
 import { createTaskGroupService, ITaskGroupService, groupTaskKey } from "#src/task-groups/index.js";
 import { IGenUiService } from "./gen-ui/contract.js";
 import { createGenUiService } from "./gen-ui/node.js";
-// import { channelReplyHostRequestSchema, channelReplyResultSchema } from "@zcode/shared";
+import {
+  type ProviderFamilyDomain,
+  channelReplyHostRequestSchema,
+  channelReplyResultSchema,
+} from "@zcode/shared";
 /* eslint-disable max-lines -- host process 服务注册和启动装配需要集中维护，拆散后会更难追踪依赖注入顺序 */
 // Node.js service implementations — NOT safe to import in browser code
 import { createHash, randomBytes } from "node:crypto";
@@ -575,7 +579,7 @@ import {
 import { ensureAppCaCert } from "./runtime-tools/appCaCert.js";
 import { buildHelperOpenArgs, isCuaLocalDevelopmentRuntime } from "@zcode/zcode-cua/broker/server";
 import { createServiceLogger, type ServiceLogger } from "#src/logger/serviceLogger.js";
-import { ensureTelemetryDeviceMid } from "#src/telemetry/telemetryCore.js";
+import { ensureDeviceMid } from "./device/deviceMid.js";
 import { IOffPeakTaskService } from "./session/offPeakTask.js";
 import { OffPeakTaskService } from "./session/offPeakTaskService.js";
 import { OffPeakTaskRepo } from "./session/offPeakTaskRepo.js";
@@ -1408,7 +1412,6 @@ export function createLocalServices(options: {
     onDidMutate: ({ keys, operation }) => {
       if (operation === "recover") {
         invalidatePluginUiAccounts?.();
-        invalidateProjectTokens();
         options.onProviderProvisioningSourceChanged?.("credential");
         return;
       }
@@ -1416,7 +1419,6 @@ export function createLocalServices(options: {
         keys.some((key) => key === "oauth:active_provider" || /^oauth:[^:]+:user_info$/.test(key))
       )
         invalidatePluginUiAccounts?.();
-      if (keys.some((key) => provisioningOAuthKeys.has(key))) invalidateProjectTokens();
       if (keys.some((key) => provisioningOAuthKeys.has(key))) {
         options.onProviderProvisioningSourceChanged?.("credential");
       }
@@ -1437,30 +1439,8 @@ export function createLocalServices(options: {
   const zcodeJwtLogoutHandlerRef: {
     current: ((input: string | URL, headers: Headers) => void) | null;
   } = { current: null };
-  const associatedProfileRefreshRef: {
-    current:
-      | ((
-          expected: Pick<OAuthAccountAvailability, "loginProvider" | "userId" | "sessionRevision">,
-        ) => Promise<void>)
-      | null;
-  } = { current: null };
   const apiClient = createNodeApiClient({
-    fetchImpl: hostApiNetworkTransport.fetch,
-    resolveAssociatedCredentialRefresh: async (input, headers) => {
-      const material = await resolveAssociatedOAuthCredentialRequest({
-        input,
-        headers,
-        loadMaterial: () => oauthCredentialRepo.loadFamilyMaterial("bigmodel"),
-      });
-      if (!material) return null;
-      return async () => {
-        await associatedProfileRefreshRef.current?.({
-          loginProvider: material.loginProvider,
-          userId: material.zcodeUserId,
-          sessionRevision: material.sessionRevision,
-        });
-      };
-    },
+    fetchImpl: fetch,
     onZcodeJwtInvalid: (input, headers) => zcodeJwtLogoutHandlerRef.current?.(input, headers),
     isZcodeJwtRequest: (input, headers) =>
       isCurrentOAuthCredentialRequest({ input, headers, credentialService }),
@@ -1524,6 +1504,8 @@ export function createLocalServices(options: {
       });
     },
   });
+  const loadOAuthAccountMaterial = (family: ProviderFamilyDomain) =>
+    oauthCredentialRepo.loadFamilyMaterial(family);
   // Polaris：官方账号请求鉴权链（OAuth token / Coding Plan key / Team Plan key）已移除，
   // 这里返回空壳：没有账号请求材料，读接口返回 null、写接口抛可读错误。
   const accountRequestAuthService = createAccountRequestAuthService();
@@ -2106,7 +2088,7 @@ export function createLocalServices(options: {
     : async () => (await settingService.get()).dynamicWorkflowMode;
   const codingPlanSubscriptionService = createCodingPlanSubscriptionService({
     apiClient,
-    loadOAuthAccountMaterial,
+    loadOAuthAccountMaterial: (family) => loadOAuthAccountMaterial(family),
     credentialService,
     ...(resolveDynamicWorkflowUserMode ? { resolveDynamicWorkflowUserMode } : {}),
     resolveOffPeakModelSelectionView: async () => {
@@ -2270,9 +2252,7 @@ export function createLocalServices(options: {
     ...(agentAccountProviderConfigSource
       ? { accountProviderConfigSource: agentAccountProviderConfigSource }
       : {}),
-    accountRequestAuthService,
-    readRequestVerificationConfig: () =>
-      codingPlanSubscriptionService.getRequestVerificationConfig(),
+    // Polaris：账号鉴权链已砍——走「两者皆缺」联合分支（readRequestVerificationConfig 不注入）。
     ...(modelSelectionReadinessSource ? { modelSelectionReadinessSource } : {}),
     authorizeLocalMediaPreviewPath: options?.authorizeLocalMediaPreviewPath,
     ...offPeakToolWiring,
@@ -2711,8 +2691,14 @@ export function createLocalServices(options: {
     apiClient,
     onProviderLogout: handleOAuthProviderLogout,
   });
+  const associatedProfileRefreshRef: {
+    current:
+      | ((expected: { loginProvider: string; userId: string; sessionRevision: number }) => Promise<void>)
+      | null;
+  } = { current: null };
   associatedProfileRefreshRef.current = async (expected) => {
-    await oauthService.refreshAccountProfile(expected);
+    // Polaris：官方账号 profile 刷新链已移除；ref 保留形状，恒为 no-op。
+    void expected;
   };
   const zcodeJwtLogoutLogger = createServiceLogger("zcode-jwt-logout");
   zcodeJwtLogoutHandlerRef.current = (input, headers) => {
@@ -3274,7 +3260,7 @@ export async function createServerHostServices(options: {
   // buildZCodeSourceHeaders() 又只读不生成。原修复只放在旧 stdio entry，SSH/WSL/Docker 的 Core 与
   // Lite HTTP 入口共用本装配却没有确保，首次 Start Plan 权益查询返回 400，Start 模型被判为不可用。
   // 收口到本装配，所有独立 Server 入口在创建 services 前得到本机自己的 deviceMid；失败只告警、不阻断启动、不伪造 ID。
-  await ensureTelemetryDeviceMid().catch((error: unknown) => {
+  await ensureDeviceMid({}).catch((error: unknown) => {
     createServiceLogger("server-host").warn(
       undefined,
       "deviceMid 初始化失败，ZCode endpoint 请求将不带 X-Device-Mid:",

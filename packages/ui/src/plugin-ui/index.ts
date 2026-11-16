@@ -28,7 +28,6 @@ export {
 export { setPluginUiInstanceDerivation } from "./app/pluginUiInstanceStore.js";
 export {
   EMPTY_PLUGIN_UI_INSTANCE_DERIVATION,
-  pluginUiInstanceDerivationsEqual,
 } from "./domain/pluginUiInstancePolicy.js";
 export {
   buildPromptWithPluginUiContexts,
