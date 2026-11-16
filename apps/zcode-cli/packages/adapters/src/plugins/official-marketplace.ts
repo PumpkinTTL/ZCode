@@ -89,7 +89,7 @@ async function rebuildOfficialMarketplace(storageRoot: string): Promise<Record<s
   // 可刷新的 CDN 市场条目为准，但只过滤合并目录，不删除应用内置缓存。
   const merged = {
     ...(bundledManifest ?? {}),
-
+    ...(cdnManifest ?? {}),
     name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE,
     plugins: [...cdnPlugins, ...bundledPlugins],
   };

@@ -215,6 +215,7 @@ export function createSharedZCodeCredentialStore(
 
     updateMany,
     loadOAuthSessionSnapshot,
+    async clearZaiLoginCredentials(): Promise<void> {
       const expected = await loadOAuthSessionSnapshot();
       await updateMany(
         {
@@ -342,7 +343,8 @@ export function createSharedZCodeCredentialStore(
     },
 
     async saveReplacing(
-          value: string,
+      key: string,
+      value: string,
       replacedKeys: readonly string[],
     ): Promise<void> {
       const validatedKey = validateCredentialKey(key);

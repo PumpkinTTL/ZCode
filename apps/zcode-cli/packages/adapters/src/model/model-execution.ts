@@ -1,6 +1,4 @@
 import { withoutRequestVerificationHeaders } from "@zcode/shared";
-    this.providerTransports.set(providerId, transport);
-    return transport;
 /* eslint-disable max-lines -- AI SDK 模型执行装配集中维护 provider factory、鉴权和网络错误适配，拆分会让状态同步更脆弱。 */
 // ============================================================
 // Vercel AI SDK model execution
@@ -10,6 +8,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
+import {
   compileModelOptionMaps,
   type CompiledModelOptionMaps,
   type ModelOptionValues,
@@ -32,6 +31,8 @@ import { createNetworkProxyFetch } from "../network/proxy-fetch.js";
 import { createProviderEndpointRoutingFetch } from "./provider-endpoint-routing-fetch.js";
 import { normalizeModelTlsFailure } from "./failure-tls.js";
 import {
+  mergeModelRequestHeaders,
+  withoutModelAuthHeaders,
   withoutContextOwnedModelHeaders,
 } from "./model-request-headers.js";
 
@@ -292,6 +293,7 @@ export class AiSdkModelExecution {
     apiKeyId?: string,
   ): LanguageModelFactory {
     const apiKey = this.resolveApiKey(providerConfig);
+    // SDK 会合并 factory 默认 header；必须在这里去掉静态来源，才能保证缺失时真正省略。
     const headers = withoutContextOwnedModelHeaders(providerConfig.headers);
     const networkTransport = observeProviderFetch(
       this.resolveProviderTransport(providerId),

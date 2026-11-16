@@ -41,7 +41,8 @@ export const ModelRequestSessionType = {
  *   给 workflow actor（taskType workflow_child / nested_workflow_child）使用：模型错误绝不是
  *   workflow 错误，唯一出口是用户 cancel。
  * - `single-attempt`：本次请求 maxAttempts 收敛为 1，瞬态失败也不重试、首次失败即上抛。
- *   给失败即终态、由上层自行决策后续动作的执行作用域请求使用。
+ *   给带 selectionFallback 声明的执行作用域 Selection（如 Highspeed 加速卡）使用：失败后由 core
+ *   退回会话模型继续本轮，适配层再按默认 10 次退避重试只会把降级拖到数分钟之后。
  */
 export const ModelRetryBudget = {
   Default: "default",
@@ -276,9 +277,21 @@ export interface ModelTelemetryMilestoneStatusEvent extends ModelNetworkStatusBa
   elapsedMs: number;
 }
 
+/** 仅投递进程内 telemetry statusSink，不进入请求 UI 事件；字段不得携带凭据或用户内容。 */
+export type ModelRequestObservation = Readonly<{
+  kind: string;
+  [field: string]: string | number | boolean | undefined;
+}>;
+
+export interface ModelRequestObservationStatusEvent extends ModelNetworkStatusBase {
+  type: "model_request_observation";
+  observation: ModelRequestObservation;
+}
+
 export type ModelNetworkStatusEvent =
   | ModelRequestQueuedStatusEvent
   | ModelRequestAdmittedStatusEvent
+  | ModelRequestObservationStatusEvent
   | ModelRequestStartedStatusEvent
   | ModelRequestCompletedStatusEvent
   | ModelRequestFailedStatusEvent

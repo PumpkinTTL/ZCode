@@ -1,4 +1,4 @@
-import type { ModelId, ModelProviderId } from "../model/index.js";
+import type { ModelRequestObservation, ModelId, ModelProviderId } from "../model/index.js";
 import type {
   AgentExecutionTelemetryPort,
   AgentTelemetryAbandonReason,
@@ -344,6 +344,8 @@ export interface ModelAttemptSpanWriter extends AgentTelemetryScope {
   markFirstContent(): void;
   markFirstText(): void;
   markStreamStalled(idleMs: number): void;
+  /** 请求观测交由发行实现映射到 Attribute 与 Event。 */
+  recordRequestObservation(observation: ModelRequestObservation): void;
   finishCompleted(): void;
   finishFailed(
     stage: ModelAttemptFailureStage,

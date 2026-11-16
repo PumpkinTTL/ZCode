@@ -1,25 +1,4 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-      // 快路径：只取清单，不 clone、不复制源树。取不到再走原有 clone 路径。
-      const manifestOnly = awa
-    ...(input.sourceRoot ? { sourceRoot: input.sourceRoot } : {}),
-  // 仅相对路径来源需要：按需取到的市场源树。
-  sourceRoot?: string;
-    await cleanupPluginSourceBestEffort(sourceTree?.cleanup);
-      ...(sourceTree ? { sourceRoot: sourceTree.path } : {}),
-    // 只有相对路径条目才需要市场源树；自带 url/git/npm/zip 的条目直接解析，不必取仓。
-    if (readRelativeSour
-  let sourceTree: ResolvedPluginSourceRoot | undefined;
-  } finally {
-    for (const cleanup of sourceTreeCleanups) {
-      await cleanu
-        ...(sourceTree ? { sourceRoot: sourceTree.path } : {}),
-      const sourceTree = await resolveTreeFor(marketplace);
-  // 相对路径条目按住的市场源树：每个市场最多取一次，整个安装结束后统一清理。
-  const sourceTrees = new Map<string, 
-    const diagnostic = toValidationDiagnostic(lastError, record.id);
-    await p
-    const canonicalMarketplaceName = claimsOfficialName
-      ? ZCODE_OFFICIAL_P
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -474,6 +453,7 @@ export async function addMarketplace(input: {
         ? applyClaudePluginIcons(loaded.manifest.raw, iconSources)
         : loaded.manifest.raw;
     const enrichedManifest = parseRequiredMarketplaceManifest(enrichedRaw);
+    const persistedManifest =
       loaded.manifest.name === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE
         ? parseRequiredMarketplaceManifest(
             await writeCdnOfficialMarketplacePartition({
