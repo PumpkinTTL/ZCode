@@ -266,7 +266,7 @@ async function findDefaultUserInstructionFile(
     return undefined;
   }
 
-  const filePath = join(resolveUserHomeDir(env), DATA_ROOT_DIR_NAME, "AGENTS.md");
+  const filePath = join(resolveUserHomeDir(env), ".zcode", "AGENTS.md");
   if (await isInstructionFileCandidate(filePath)) {
     return { filePath, fileName: "AGENTS.md" };
   }

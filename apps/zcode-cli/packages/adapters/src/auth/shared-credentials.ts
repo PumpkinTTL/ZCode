@@ -19,9 +19,7 @@ import {
 } from "@zcode/shared/credential-security";
 
 const ZCODE_DATA_BASE_DIR_ENV_KEY = "ZCODE_DATA_BASE_DIR";
-// Polaris fork：数据根目录名。CLI 不依赖 @zcode/services，无法直接 import DATA_ROOT_DIR_NAME，
-// 因此保留字面量——必须与 packages/services/src/paths.ts 的 `DATA_ROOT_DIR_NAME` 一致。
-const DATA_ROOT_DIR_NAME = ".polaris";
+const ZAI_PROVIDER_ID = "zai";
 const WRITE_PROBE_VALUE = "zcode-credential-write-probe";
 const credentialChangeListeners = new Map<string, Set<() => void | Promise<void>>>();
 
@@ -48,6 +46,18 @@ export interface SharedZCodeCredentialStoreOptions {
   filePath?: string;
 }
 
+export interface ZaiLoginCredentialUser {
+  avatar?: string;
+  email?: string;
+  name?: string;
+  user_id: string;
+}
+
+export interface ZaiLoginCredentialPayload {
+  accessToken: string;
+  jwtToken: string;
+  user: ZaiLoginCredentialUser;
+}
 
 export interface SharedCredentialRecoveryGuard {
   readonly run: CredentialFileGuard;
@@ -61,7 +71,7 @@ export interface SharedZCodeCredentialStore {
   assertWritable(): Promise<void>;
   /** 跨请求流程在启动时捕获，不能等网络返回后领取恢复后的新代次。 */
   captureRecoveryGuard(): Promise<SharedCredentialRecoveryGuard>;
-
+  clearZaiLoginCredentials(): Promise<void>;
   delete(key: string): Promise<void>;
   deleteIfValue(key: string, expectedValue: string): Promise<boolean>;
   deleteIfValues(
@@ -205,7 +215,6 @@ export function createSharedZCodeCredentialStore(
 
     updateMany,
     loadOAuthSessionSnapshot,
-    async clearZaiLoginCredentials(): Promise<void> {
       const expected = await loadOAuthSessionSnapshot();
       await updateMany(
         {
@@ -333,8 +342,7 @@ export function createSharedZCodeCredentialStore(
     },
 
     async saveReplacing(
-      key: string,
-      value: string,
+          value: string,
       replacedKeys: readonly string[],
     ): Promise<void> {
       const validatedKey = validateCredentialKey(key);
@@ -385,7 +393,7 @@ export function resolveSharedZCodeCredentialsPath(
 
   const env = options.env ?? process.env;
   const baseDir = options.baseDir ?? env[ZCODE_DATA_BASE_DIR_ENV_KEY] ?? homedir();
-  return join(resolveUserPath(baseDir), DATA_ROOT_DIR_NAME, "v2", "credentials.json");
+  return join(resolveUserPath(baseDir), ".zcode", "v2", "credentials.json");
 }
 
 async function readRawCredentialRecord(
@@ -404,7 +412,7 @@ async function readRawCredentialRecordUnchecked(filePath: string): Promise<Recor
     if (getErrorCode(error) === "ENOENT") {
       return {};
     }
-    throw new Error(`Unable to read shared Polaris credentials: ${filePath}`, { cause: error });
+    throw new Error(`Unable to read shared ZCode credentials: ${filePath}`, { cause: error });
   }
 
   try {
@@ -415,7 +423,7 @@ async function readRawCredentialRecordUnchecked(filePath: string): Promise<Recor
     // 先保留现场再失败，调用方必须显式处理恢复，不能静默覆盖。
     const backupPath = await backupCorruptFile(filePath).catch(() => undefined);
     const evidence = backupPath ? ` Backup: ${backupPath}` : "";
-    throw new Error(`Shared Polaris credentials are corrupt: ${filePath}.${evidence}`, {
+    throw new Error(`Shared ZCode credentials are corrupt: ${filePath}.${evidence}`, {
       cause: error,
     });
   }
