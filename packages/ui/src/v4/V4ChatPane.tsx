@@ -39,12 +39,13 @@ export interface V4ChatPaneProps {
   /** Prompt 模板埋点当前仅覆盖 Desktop。 */
   isDesktop?: boolean;
   readOnly?: boolean;
+  readOnlyReason?: string;
   allowEscapeStopOutsidePane?: boolean;
   compactForRemoteControl?: boolean;
   /** CLI session id；null = draft 首发。 */
   sessionId: string | null;
   provider?: ZCodeProvider;
-  onSessionCreated?: (sessionId: string) => void;
+  onSessionCreated?: (sessionId: string, origin?: "draft-promotion") => void;
   /** deleteSession：删除当前会话后回到 draft。 */
   onSessionDeleted?: () => void;
   /** 草稿态 composer contextHeader（m5，壳层构造下发）。 */
@@ -90,6 +91,7 @@ export function V4ChatPane({
   workspaceIdentity,
   isDesktop = false,
   readOnly = false,
+  readOnlyReason,
   allowEscapeStopOutsidePane = false,
   compactForRemoteControl = false,
   sessionId,
@@ -151,6 +153,7 @@ export function V4ChatPane({
       <SessionPane
         paneId="workspace-main"
         readOnly={readOnly}
+        readOnlyReason={readOnlyReason}
         allowEscapeStopOutsidePane={allowEscapeStopOutsidePane}
         sessionId={sessionId}
         workspacePath={workspacePath}

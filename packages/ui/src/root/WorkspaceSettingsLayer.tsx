@@ -18,8 +18,10 @@ export function WorkspaceSettingsLayer({
   isWebRemoteControl,
   captionWorkspacePath,
   onBack,
+  onOpenTask,
   onCreateTask,
   onOpenWorkspace,
+  onOpenRemoteWorkspace,
   allowOpenWorkspace,
   onLogin,
   user,
@@ -43,8 +45,10 @@ export function WorkspaceSettingsLayer({
               isWebRemoteControl={isWebRemoteControl}
               captionWorkspacePath={captionWorkspacePath}
               onBack={onBack}
+              onOpenTask={onOpenTask}
               onCreateTask={onCreateTask}
               onOpenWorkspace={onOpenWorkspace}
+              onOpenRemoteWorkspace={onOpenRemoteWorkspace}
               allowOpenWorkspace={allowOpenWorkspace}
               onLogin={onLogin}
               user={user}
@@ -58,8 +62,10 @@ export function WorkspaceSettingsLayer({
             isWebRemoteControl={isWebRemoteControl}
             captionWorkspacePath={captionWorkspacePath}
             onBack={onBack}
+            onOpenTask={onOpenTask}
             onCreateTask={onCreateTask}
             onOpenWorkspace={onOpenWorkspace}
+            onOpenRemoteWorkspace={onOpenRemoteWorkspace}
             allowOpenWorkspace={allowOpenWorkspace}
             onLogin={onLogin}
             user={user}

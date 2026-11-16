@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import type { Locale } from "@zcode/shared";
+import { toZhOrEnLocale, type Locale } from "@zcode/shared";
 
 // Polaris：菜单项注册表键名改为自有身份（展示名早已是 Polaris）。
 // 改名前写入的 ZCode.OpenInZCode 在资源管理器右键里会变成一个重复的菜单项，
@@ -28,7 +28,7 @@ export interface WindowsOpenFolderRegistryOperation {
 }
 
 export function getWindowsOpenFolderMenuName(locale: Locale): string {
-  return MENU_LABELS[locale] ?? MENU_LABELS["en-US"];
+  return MENU_LABELS[toZhOrEnLocale(locale)];
 }
 
 function quoteWindowsCommandArg(value: string): string {

@@ -29,6 +29,7 @@ export function TaskActionMenuContent({
   disableTaskTargetActions = false,
   disablePinTaskAction = false,
   disabledReason,
+  archiveDisabledReason,
   hideMobileUnsupportedActions = false,
   Item,
   Separator,
@@ -39,6 +40,8 @@ export function TaskActionMenuContent({
   onMarkTaskAsUnread,
   onOpenInSplitPane,
   openInSplitPaneDisabled = false,
+  onRestartTask,
+  restartPending = false,
   onOpenTaskFeedback,
   onOpenTaskPathInFileManager,
   onCopyWorkspacePath,
@@ -66,12 +69,15 @@ export function TaskActionMenuContent({
   disableTaskTargetActions?: boolean;
   disablePinTaskAction?: boolean;
   disabledReason?: string;
+  /** 归档专属的禁用原因（运行中任务）；其余操作不受影响。 */
+  archiveDisabledReason?: string;
   hideMobileUnsupportedActions?: boolean;
   Item: React.ComponentType<TaskActionMenuItemProps>;
   Separator: React.ComponentType<TaskActionMenuSeparatorProps>;
   onTogglePinTask: () => void;
   onStartRenameTask: () => void;
-  onArchiveTask: () => void;
+  /** 不传则不展示归档项：Header 拿不到实时运行态，归档只在侧栏提供。 */
+  onArchiveTask?: () => void;
   /** 真删（不可恢复）；缺省不渲染删除入口。 */
   onDeleteTask?: () => void;
   onMarkTaskAsUnread: () => void;
@@ -79,6 +85,8 @@ export function TaskActionMenuContent({
   onOpenInSplitPane?: () => void;
   /** 当前 session 或 pane 数达上限且目标无已有归属时禁用（保留布局与层级）。 */
   openInSplitPaneDisabled?: boolean;
+  onRestartTask?: () => void;
+  restartPending?: boolean;
   onOpenTaskFeedback?: () => void;
   onOpenTaskPathInFileManager: () => void;
   onCopyWorkspacePath: () => void;
@@ -114,17 +122,19 @@ export function TaskActionMenuContent({
       >
         {intl.formatMessage({ id: "taskList.rename" })}
       </Item>
-      <Item
-        disabled={taskTargetActionsDisabled}
-        title={disabledReason}
-        onSelect={() => {
-          if (!taskTargetActionsDisabled) {
-            onArchiveTask();
-          }
-        }}
-      >
-        {intl.formatMessage({ id: isArchived ? "taskList.unarchive" : "taskList.archive" })}
-      </Item>
+      {onArchiveTask ? (
+        <Item
+          disabled={taskTargetActionsDisabled || Boolean(archiveDisabledReason)}
+          title={disabledReason ?? archiveDisabledReason}
+          onSelect={() => {
+            if (!taskTargetActionsDisabled && !archiveDisabledReason) {
+              onArchiveTask();
+            }
+          }}
+        >
+          {intl.formatMessage({ id: isArchived ? "taskList.unarchive" : "taskList.archive" })}
+        </Item>
+      ) : null}
       <Item
         disabled={taskTargetActionsDisabled}
         title={disabledReason}
@@ -157,6 +167,15 @@ export function TaskActionMenuContent({
           onSelect={onOpenInSplitPane}
         >
           {intl.formatMessage({ id: "taskList.openInSplitPane" })}
+        </Item>
+      ) : null}
+      {onRestartTask ? (
+        <Item
+          data-testid="task-restart"
+          disabled={taskTargetActionsDisabled || restartPending}
+          onSelect={onRestartTask}
+        >
+          {intl.formatMessage({ id: restartPending ? "taskList.restarting" : "taskList.restart" })}
         </Item>
       ) : null}
       <Separator />

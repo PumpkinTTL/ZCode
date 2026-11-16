@@ -249,7 +249,7 @@ Actions resolve to `undefined` on success and throw `ComputerUseError` otherwise
   decide from what you see.
 - `retry` — `"reobserve"`, `"retry"` or `"never"`.
 
-`CONTROLLER_BUSY` means another live Polaris Computer Use session owns input. It is
+`CONTROLLER_BUSY` means another live ZCode Computer Use session owns input. It is
 never retryable: report the owner from the error and ask the user to close that
 session.
 
@@ -283,7 +283,8 @@ get_app_state({app_ref, include_screenshot?=false, disable_diffing?=false})
 
 left_click({target, mouse_button?="left", click_count?=1, modifiers?="",
            strategy?, app_ref?, return_state?})
-left_click_drag({from_target, to, modifiers?="", app_ref?, return_state?})
+left_click_drag({from_target, to, modifiers?="", strategy?, app_ref?,
+                return_state?})
 scroll({target, scroll_direction, scroll_amount, strategy?, app_ref?,
        return_state?})
 

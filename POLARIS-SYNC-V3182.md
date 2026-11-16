@@ -55,3 +55,12 @@ v3.18.1/.2 补丁。
 ## 五、回滚
 
 `git reset --hard pre-v3182-merge`（sync 分支）；enterprise 全程不动直至验证全绿。
+
+### 六、重大政策变化：上游退役 App 业务单测（v3.18）
+
+实测：ui/services/shared/web 的单测被上游整套退役（ui 942→69、services 226→2、shared 137→3、web 35→1），
+desktop 保留且加码（852→932，e2e 为主）；根 vitest.config 只剩 engineering 清单 + zcode-cua 两个项目；
+根 test:unit 脚本删除；新增 scripts/test/retired-app-unit-evidence.test.mjs 守护门禁（拒绝文档引用已退役单测）。
+处置：UD 冲突 237 个全部接受上游删除（含我们改过的上游源测试）；我们自有新建测试文件（上游从未有过的路径）不受影响保留。
+后续补救（收官后）：Polaris 专属守护断言（品牌/额度/端点红线类）可在 desktop 测试域或 engineering 清单中重建——desktop 域上游仍允许单测。
+统一验证改为：test:engineering + architecture:check + build + desktop 测试域抽样 + 三道业务扫。

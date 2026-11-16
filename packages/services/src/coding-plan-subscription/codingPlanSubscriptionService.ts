@@ -9,6 +9,7 @@ import type {
 
 interface CodingPlanSubscriptionServiceDependencies {
   apiClient: ApiClient;
+  loadOAuthAccountMaterial: (family: "zai" | "bigmodel") => Promise<OAuthAccountMaterial | null>;
   credentialService: Pick<ICredentialService, "load">;
   resolveOffPeakModelSelectionView?: () => Promise<ModelSelectionView>;
 }

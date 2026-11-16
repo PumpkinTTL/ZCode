@@ -477,6 +477,8 @@ export async function executeDesktopCommand(options: {
   zcodeEndpointEnvBaseOrigin?: string | null;
   credentialsDir: string;
   currentApplicationLocale: Locale;
+  /** 远控诊断：向已配对手机拉取日志并导出（窗口 id 为命令来源窗口）。 */
+  pullMobileLogs?: (windowId: number | undefined) => Promise<unknown>;
 }) {
   const targetWindow = resolveTargetWindow(options.senderWindow);
   options.logger.info(
@@ -592,6 +594,9 @@ export async function executeDesktopCommand(options: {
       return;
     case DesktopCommandIds.ExportLogs:
       await exportLogs();
+      return;
+    case DesktopCommandIds.PullMobileLogs:
+      await options.pullMobileLogs?.(targetWindow?.id);
       return;
     case DesktopCommandIds.ToggleDevTools:
       // 打包版封死：菜单入口已摘除，这里兜住残余调用方；e2e 不经此命令开 DevTools。

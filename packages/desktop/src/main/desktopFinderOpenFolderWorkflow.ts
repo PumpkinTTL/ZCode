@@ -2,18 +2,19 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
-import type { Locale } from "@zcode/shared";
+import { toZhOrEnLocale, type Locale } from "@zcode/shared";
 
 // Polaris：Finder 快捷操作的目录名与 bundle id 改为自有身份。
-// 旧版本（上游/改名前）写下的 `Open in ZCode.workflow` 会在 ~/Library/Services 里表现成
+// 旧版本（上游/改名前）写下的 `Open in Polaris.workflow` 会在 ~/Library/Services 里表现成
 // 一个**重复的**服务项（展示名相同），所以安装时按 legacy bundle id 确认归属后删掉它。
 const WORKFLOW_NAME = "Open in Polaris.workflow";
 const WORKFLOW_BUNDLE_ID = "app.polaris.finder-open-workflow";
-const LEGACY_WORKFLOW_NAME = "Open in ZCode.workflow";
+const LEGACY_WORKFLOW_NAME = "Open in Polaris.workflow";
 const LEGACY_WORKFLOW_BUNDLE_ID = "dev.zcode.app.finder-open-workflow";
 const WORKFLOW_VERSION = "5";
-const SERVICES_MENU_LABELS: Record<Locale, string> = {
-  "zh-CN": "在 Polaris 中打开",
+// Finder 服务菜单只内置中英；其它界面语言用英文。
+const SERVICES_MENU_LABELS: Record<"zh-CN" | "en-US", string> = {
+  "zh-CN": "在Polaris中打开",
   "en-US": "Open in Polaris",
 };
 
@@ -41,7 +42,7 @@ function escapeXml(value: string): string {
 }
 
 function getServicesMenuLabel(locale: Locale): string {
-  return SERVICES_MENU_LABELS[locale] ?? SERVICES_MENU_LABELS["en-US"];
+  return SERVICES_MENU_LABELS[toZhOrEnLocale(locale)];
 }
 
 function buildInfoPlist(locale: Locale): string {

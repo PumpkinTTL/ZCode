@@ -108,10 +108,8 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   "skill-creator@polaris-plugins-official",
   "plugin-creator@polaris-plugins-official",
   "zcode-guide@polaris-plugins-official",
-  // visualize（交互视图）随 UI 插件合入时 CLI 定义已标 defaultEnabled，但这里漏加，
-  // Settings 会把它当成默认关闭，与 CLI 实际启用状态不一致。
-  "visualize@polaris-plugins-official",
-  // 电脑控制回退为默认关闭，故 computer-use 不在此名单内。
+  "zcode-site@polaris-plugins-official",
+  // 电脑控制和交互视图默认关闭，故 computer-use、visualize 不在此名单内。
   // 该集合必须与 official-plugin-definitions.ts 里标了 defaultEnabled 的插件逐一对应，
   // bootstrap 的「Settings 默认启用集合与 CLI 的官方插件声明一致」单测机械对照两者。
 ]);
@@ -120,7 +118,7 @@ export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
   {
     // Polaris：插件市场能力保留，源改指自有地址，并保留镜像降级能力。
     // 本地 seed 分片仍在 Agent storage 内合并；CDN/镜像 manifest 的 name 允许是历史名
-    // （zcode-plugins-official），adapter 层会归一化为本地官方 id —— 身份归 Polaris，镜像只贡献内容。
+    // （polaris-plugins-official），adapter 层会归一化为本地官方 id —— 身份归 Polaris，镜像只贡献内容。
     // 自有市场尚未部署时，刷新会按 OFFICIAL_PLUGIN_MARKETPLACE_MIRRORS 降级到下一个镜像；
     // 全部不可达且本地无快照时才会报错，不影响本地已安装/内置插件。
     id: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,

@@ -81,6 +81,8 @@ const requiredDevPluginRuntimeBuilds = [
     packageName: `@zcode/${name}-plugin`,
     artifactPath: `${name}-plugin/dist/server.mjs`,
   })),
+  // Sites 面板的 MCP server 由插件自己构建；不构建时面板入口可见但 MCP 启动失败。
+  { packageName: "@zcode/zcode-site-plugin", artifactPath: "zcode-site-plugin/dist/server.mjs" },
 ];
 const defaultBuildFilters = [
   ...cliWorkspaceBuilds.map(({ packageName }) => packageName),
@@ -157,8 +159,8 @@ function stageDevOfficialPlugins() {
   console.log(`[stage:agent-bundle] staged ${staged} official plugin packages`);
 }
 
-function stageDevAgentBundle() {
-  stageAgentBundle({
+async function stageDevAgentBundle() {
+  await stageAgentBundle({
     repoRoot,
     platformKey: `${process.platform}-${process.arch}`,
   });
@@ -202,7 +204,7 @@ function runBootstrapWithRemoteBuild() {
 
 if (useBootstrapWithRemoteBuild) {
   runBootstrapWithRemoteBuild();
-  stageDevAgentBundle();
+  await stageDevAgentBundle();
   stageDevCuaPluginRuntime({ env: cuaPluginRuntimeStagingEnv });
   process.exit(0);
 }
@@ -224,7 +226,7 @@ if (!useTurboBuild) {
     env: pnpmRunEnv,
     stdio: "inherit",
   });
-  stageDevAgentBundle();
+  await stageDevAgentBundle();
   stageDevCuaPluginRuntime({ env: cuaPluginRuntimeStagingEnv });
   process.exit(0);
 }
@@ -246,5 +248,5 @@ runCommand(
     stdio: "inherit",
   },
 );
-stageDevAgentBundle();
+await stageDevAgentBundle();
 stageDevCuaPluginRuntime({ env: cuaPluginRuntimeStagingEnv });

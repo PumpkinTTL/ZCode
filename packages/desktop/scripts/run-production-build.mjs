@@ -22,9 +22,11 @@ export function resolveDesktopProductionCleanPaths(cwd) {
     // 漏掉它会让上一代的 orphan chunk 与 sourcemap 一直留在 out 里被 electron-builder 打进 app.asar
     // （实测 out/scheduler 里残留过 3 天前的 chunk 与旧代码的 sourcemap）。
     resolve(cwd, "out/scheduler"),
+    resolve(cwd, "out/extension-host"),
     resolve(cwd, "out/.main-build-ready"),
     resolve(cwd, "out/.host-build-ready"),
     resolve(cwd, "out/.preload-build-ready"),
+    resolve(cwd, "out/.extension-host-build-ready"),
   ];
 }
 

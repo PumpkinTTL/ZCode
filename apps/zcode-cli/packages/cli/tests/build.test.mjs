@@ -258,3 +258,30 @@ test("built CLI embeds the compact registry without a runtime Fig dependency", a
   assert.doesNotMatch(bundle, /node_modules\/@withfig\/autocomplete/);
   assert.doesNotMatch(bundle, /@withfig\/autocomplete\/build/);
 });
+<<<<<<< HEAD
+=======
+
+test("request security subpath bundles through its edition entry", async () => {
+  const result = await build({
+    stdin: {
+      contents: 'import * as security from "@zcode/shared/request-security"; export { security };',
+      resolveDir: resolve(import.meta.dirname, ".."),
+    },
+    alias: resolveBuildAliases(),
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    write: false,
+    metafile: true,
+  });
+  assert.ok(
+    Object.keys(result.metafile.inputs).some((path) =>
+      path.endsWith("shared/src/request-security-edition/index.ts"),
+    ),
+  );
+});
+
+test("CLI leaves system keyring native loading to the runtime", () => {
+  assert.ok(resolveBuildExternal().includes("@napi-rs/keyring"));
+});
+>>>>>>> upstream/main

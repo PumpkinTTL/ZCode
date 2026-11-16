@@ -115,7 +115,7 @@ export interface V4ComposerToolbarProps {
     model: string,
     sourceModel: ModelSelectionSource | null,
     reasoningLevel?: string,
-  ) => void;
+  ) => void | Promise<void>;
   /** 选中思考深度；modelContext 固定本次用户操作的目标模型。 */
   onSelectThought: (thought: string, modelContext: { provider: string; model: string }) => void;
   onSwitchMode: (mode: string) => void;
@@ -163,6 +163,12 @@ function V4ComposerModelControlsImpl({
   // Ctrl+M 热键：递增 openRequestKey 请求 ModelConfigSelect 打开菜单（旧 handleOpenModelMenuShortcut 语义）。
   const [modelMenuOpenRequestKey, setModelMenuOpenRequestKey] = useState(0);
   const [recoveryPending, setRecoveryPending] = useState(false);
+  // 独立档位下拉沿用选中关闭；合并模型面板不能因 ACK 等待收起，否则选模和滑杆都会中断。
+  useEffect(() => {
+    if (modelSelectionPending) {
+      onConfigPickerOpenChange("thought", false);
+    }
+  }, [modelSelectionPending, onConfigPickerOpenChange]);
   const handleOpenModelMenuShortcut = useCallback(() => {
     setModelMenuOpenRequestKey((current) => current + 1);
   }, []);
@@ -413,17 +419,20 @@ function V4ComposerModelControlsImpl({
       }
       if (decoded) {
         if (reasoningLevel !== undefined)
-          onSelectModel(decoded.providerId, decoded.modelName ?? "", sourceModel, reasoningLevel);
-        else onSelectModel(decoded.providerId, decoded.modelName ?? "", sourceModel);
-        return;
+          return onSelectModel(
+            decoded.providerId,
+            decoded.modelName ?? "",
+            sourceModel,
+            reasoningLevel,
+          );
+        else return onSelectModel(decoded.providerId, decoded.modelName ?? "", sourceModel);
       }
       const slashIndex = value.indexOf("/");
       if (slashIndex > 0) {
-        onSelectModel(value.slice(0, slashIndex), value.slice(slashIndex + 1), sourceModel);
-        return;
+        return onSelectModel(value.slice(0, slashIndex), value.slice(slashIndex + 1), sourceModel);
       }
       // 裸 model id：provider 沿用当前（宿主从最新投影补齐）。
-      onSelectModel("", value, sourceModel);
+      return onSelectModel("", value, sourceModel);
     },
     [
       configOptionsError,
@@ -632,6 +641,8 @@ function V4ComposerModelControlsImpl({
   // 模型留空是正常的待选择状态，包括已有会话；不能因为没有已选模型隐藏重选入口。
   // 有可选组时正常显示；无组但有「管理模型」入口时也显示，避免用户零模型入口。
   const modelMenuVisible = modelSelectGroups.length > 0 || showManageModelsAction;
+  // 配置恢复不是用户改选：未知时不显示“选择模型”，首次恢复不播放新旧标签滚动。
+  const sessionConfigPending = sessionId !== null && draftConfig?.mode === undefined;
   // Bug 根因：手机端固定宽度的二级菜单没有消费 Radix 测得的当前方向可用宽度，
   // 共享 min-w-32 还会阻止极窄空间继续收缩。保持二级交互，同时把窗口边缘作为硬上限。
   const providerSubmenuClassName =
@@ -720,11 +731,17 @@ function V4ComposerModelControlsImpl({
         </Button>
       ) : modelMenuVisible ? (
         <ModelConfigSelect
-          key={workspaceIdentity?.trim() || workspacePath}
+          key={JSON.stringify([
+            workspaceIdentity?.trim() || workspacePath,
+            sessionId,
+            sessionConfigPending,
+          ])}
           modelGroups={modelSelectGroups}
           contentAlign="center"
           normalizedValue={normalizedModelValue}
-          triggerLabel={modelTriggerDisplay.modelLabel}
+          triggerLabel={
+            sessionConfigPending && !effectiveConfig?.model ? "" : modelTriggerDisplay.modelLabel
+          }
           composerOptions={composerOptions}
           showManageModelsAction={showManageModelsAction}
           manageModelsLabel={manageModelsLabel}
@@ -732,8 +749,10 @@ function V4ComposerModelControlsImpl({
           lockReasonMessage={modelLockReasonMessage}
           isItemLocked={isModelOptionLocked}
           onValueChange={handleModelValueChange}
+          pending={modelSelectionPending || connectionSwitch.pending}
           disabled={
             disabled ||
+            modelSelectionPending ||
             recoveryPending ||
             (modelSelectionState.status !== "ready" &&
               !(modelSelectionState.status === "loading" && modelSelectionState.catalog))

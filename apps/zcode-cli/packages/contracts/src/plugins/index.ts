@@ -39,6 +39,7 @@ export type PluginSource = "official" | "inline" | "cache";
 export type PluginDiagnosticSeverity = "warning" | "error";
 
 export type PluginDiagnosticCode =
+  | "plugin_startup_timeout"
   | "plugin_root_not_found"
   | "plugin_manifest_not_found"
   | "plugin_manifest_invalid"
@@ -62,6 +63,8 @@ export type PluginDiagnosticCode =
   | "plugin_marketplace_source_unsupported"
   | "plugin_validation_deferred"
   | "plugin_variable_missing"
+  // 敏感选项私有文件读不出（损坏或 I/O 失败）：按空处理，诊断里只有文件路径，不含任何值。
+  | "plugin_secrets_unreadable"
   | "plugin_duplicate_id"
   | "plugin_not_found"
   | "plugin_ambiguous_name";
@@ -110,6 +113,8 @@ export type PluginComponentKind = "agent" | "command" | "skill" | "hook" | "mcp"
 
 export interface PluginComponentItem {
   name: string;
+  /** 发现的 agent 源文件路径；仅供 CLI 加载，不投影到组件详情协议。 */
+  path?: string;
   /** 来自组件 frontmatter / manifest 的描述；缺失时省略，绝不伪造。 */
   description?: string;
 }
@@ -294,6 +299,8 @@ export interface PluginLoadOutcome {
 }
 
 export interface PluginDiscoverRequest {
+  workspaceIdentity?: string;
+  remoteSessionId?: string;
   config: PluginConfig;
   env?: Record<string, string | undefined>;
   // bootstrap 可以把"安全到默认就开"的 official plugin id 列表传进来,
@@ -312,6 +319,8 @@ export interface PluginOperationOptions {
 }
 
 export interface PluginPort {
+  /** 管理写入完成后清除可复用材料；无缓存实现可省略。 */
+  invalidate?(): void;
   discoverPlugins(
     request: PluginDiscoverRequest,
     options?: PluginOperationOptions,

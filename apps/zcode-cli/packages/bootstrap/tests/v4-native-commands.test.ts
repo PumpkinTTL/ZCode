@@ -3,7 +3,11 @@
 // 08-phasing M4 完成定义的 L2 层（命令 → core 调用 → 状态推进，不经旧协议代码）。
 import { SessionEventType, type SessionEvent } from "@zcode/contracts";
 import { describe, expect, it, vi } from "vitest";
-import type { CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
+import { V4InteractionRegistry } from "../src/zcode-protocol-v4/interaction-registry.js";
+import {
+  PERMISSION_FULL_ACCESS_OPTION_ID,
+  type CommandEnvelope,
+} from "@zcode/shared/zcode-protocol-v4";
 import { createInputFacade } from "../src/app/input-facade.js";
 import type { SendInputOptions } from "../src/app/types.js";
 import { V4CommandExecutor } from "../src/zcode-protocol-v4/commands/executor.js";
@@ -94,6 +98,25 @@ function envelope(type: string, payload: unknown): CommandEnvelope {
     baseRevision: 0,
   } as unknown as CommandEnvelope;
 }
+
+it("完全访问仅在实际授权后向发起端返回可保存的权限凭据", async () => {
+  const interactions = new V4InteractionRegistry();
+  interactions.register("permission", vi.fn(), {
+    sessionId: "s1",
+    kind: "other",
+    fullAccess: async () => {},
+  });
+  const executor = new V4CommandExecutor(makeHost(makeRecord(), { interactions }));
+  const command = envelope("resolveInteraction", {
+    interactionId: "permission",
+    answer: { optionId: PERMISSION_FULL_ACCESS_OPTION_ID },
+  });
+  expect(await executor.execute(command)).toMatchObject({
+    type: "resolveInteraction",
+    resolvedBy: { clientId: command.clientId, optionId: PERMISSION_FULL_ACCESS_OPTION_ID },
+  });
+  expect(await executor.execute({ ...command, commandId: "late" })).toBeUndefined();
+});
 
 async function settle() {
   // 后台 turn 是 void 起跑的微任务链，flush 两轮保证 finally 执行完。
@@ -431,9 +454,274 @@ describe("v4 原生 sendText", () => {
     });
   });
 
+<<<<<<< HEAD
   
   
   
+=======
+  it("Highspeed turn 运行中再次发送仍进入 queue，加速执行材料只暂存在 CLI 内存", async () => {
+    const app = makeApp();
+    const record = makeRecord({ app, activeAbortController: new AbortController() });
+    const retainQueuedTurnExecution = vi.fn();
+    const host = makeHost(record, {
+      getInputRoutingMode: () => "enqueue",
+      retainQueuedTurnExecution,
+    });
+
+    await expect(
+      new V4CommandExecutor(host).execute(
+        envelope("sendText", {
+          text: "排队继续问",
+          highspeedMeta: {
+            schemaVersion: 1,
+            cardId: "card-1",
+            taskId: "s1",
+            provider: "bigmodel",
+            model: "GLM-5.3",
+            issuedAt: 1,
+            expiresAt: Date.now() + 60_000,
+          },
+          modelSelection: {
+            providerId: "account:bigmodel-highspeed-card",
+            modelId: "GLM-5.3",
+          },
+          modelExecution: {
+            selectionScope: "execution",
+            requestAuth: { apiKey: "card-jwt", headers: { "X-Highspeed-Card-ID": "card-1" } },
+            selectionFallback: {
+              providerId: "account:bigmodel-highspeed-card",
+              target: ORDINARY_MODEL_SELECTION,
+              rules: [
+                { reason: "highspeed_card_expired", providerErrorCode: "3402" },
+                { reason: "highspeed_request_failed" },
+              ],
+            },
+          },
+        }),
+      ),
+    ).resolves.toEqual({
+      type: "inputAccepted",
+      delivery: "queue",
+      inputId: "cmd-1",
+    });
+
+    expect(app.sendInput).toHaveBeenCalledWith(
+      { text: "排队继续问" },
+      expect.objectContaining({
+        requireQueue: true,
+        intent: expect.objectContaining({
+          highspeed: expect.objectContaining({ cardId: "card-1" }),
+          // 队列只持久化普通模型；临时 Selection 与凭据必须成包驻留内存。
+          modelSelection: ORDINARY_MODEL_SELECTION,
+        }),
+      }),
+    );
+    // 凭据不进队列事件，只按 (sessionId, sourceCommandId) 暂存在 CLI 进程内。
+    expect(retainQueuedTurnExecution).toHaveBeenCalledWith("s1", "cmd-1", {
+      modelSelection: {
+        providerId: "account:bigmodel-highspeed-card",
+        modelId: "GLM-5.3",
+      },
+      modelExecution: expect.objectContaining({
+        selectionScope: "execution",
+        requestAuth: expect.objectContaining({ apiKey: "card-jwt" }),
+      }),
+    });
+  });
+
+  it("Highspeed 入队忽略被污染为加速 Provider 的退回目标", async () => {
+    const app = makeApp({ getModel: () => "builtin:bigmodel-coding-plan/GLM-5.3" });
+    const record = makeRecord({ app, activeAbortController: new AbortController() });
+    const host = makeHost(record, {
+      getInputRoutingMode: () => "enqueue",
+      retainQueuedTurnExecution: vi.fn(),
+    });
+
+    await new V4CommandExecutor(host).execute(
+      envelope("sendText", {
+        text: "退回目标被污染时仍保存普通模型",
+        highspeedMeta: {
+          schemaVersion: 1,
+          cardId: "card-polluted-fallback",
+          taskId: "s1",
+          provider: "bigmodel",
+          model: "GLM-5.3",
+          issuedAt: 1,
+          expiresAt: Date.now() + 60_000,
+        },
+        modelSelection: {
+          providerId: "account:bigmodel-highspeed-card",
+          modelId: "GLM-5.3",
+        },
+        modelExecution: {
+          selectionScope: "execution",
+          requestAuth: { apiKey: "card-jwt" },
+          selectionFallback: {
+            providerId: "account:bigmodel-highspeed-card",
+            target: {
+              providerId: "account:bigmodel-highspeed-card",
+              modelId: "GLM-5.3",
+            },
+            rules: [{ reason: "highspeed_request_failed" }],
+          },
+        },
+      }),
+    );
+
+    expect(app.sendInput).toHaveBeenCalledWith(
+      { text: "退回目标被污染时仍保存普通模型" },
+      expect.objectContaining({
+        requireQueue: true,
+        intent: expect.objectContaining({ modelSelection: ORDINARY_MODEL_SELECTION }),
+      }),
+    );
+  });
+
+  it("Highspeed 运行中输入在 guide 模式下仍进入 queue", async () => {
+    const app = makeApp({
+      runtime: { getActiveTurnInfo: vi.fn().mockReturnValue({ steerable: true }) },
+    });
+    const record = makeRecord({ app, activeAbortController: new AbortController() });
+    const retainQueuedTurnExecution = vi.fn();
+    const host = makeHost(record, {
+      getInputRoutingMode: () => "guide",
+      hasQueuedDelivery: () => false,
+      retainQueuedTurnExecution,
+    });
+
+    await new V4CommandExecutor(host).execute(
+      envelope("sendText", {
+        text: "加速输入不应内联当前轮",
+        highspeedMeta: {
+          schemaVersion: 1,
+          cardId: "card-guide",
+          taskId: "s1",
+          provider: "bigmodel",
+          model: "GLM-5.3",
+          issuedAt: 1,
+          expiresAt: Date.now() + 60_000,
+        },
+        modelSelection: {
+          providerId: "account:bigmodel-highspeed-card",
+          modelId: "GLM-5.3",
+        },
+        modelExecution: {
+          selectionScope: "execution",
+          requestAuth: { apiKey: "card-jwt", headers: { "X-Highspeed-Card-ID": "card-guide" } },
+          selectionFallback: {
+            providerId: "account:bigmodel-highspeed-card",
+            target: ORDINARY_MODEL_SELECTION,
+            rules: [
+              { reason: "highspeed_card_expired", providerErrorCode: "3402" },
+              { reason: "highspeed_request_failed" },
+            ],
+          },
+        },
+      }),
+    );
+
+    expect(app.sendInput).toHaveBeenCalledWith(
+      { text: "加速输入不应内联当前轮" },
+      expect.objectContaining({
+        requireQueue: true,
+        intent: expect.objectContaining({
+          requestedDelivery: "guide",
+          admittedDelivery: "queue",
+          fallbackReasonCode: "highspeed.requiresQueue",
+          highspeed: expect.objectContaining({ cardId: "card-guide" }),
+          modelSelection: ORDINARY_MODEL_SELECTION,
+        }),
+      }),
+    );
+    expect(retainQueuedTurnExecution).toHaveBeenCalledWith("s1", "cmd-1", {
+      modelSelection: {
+        providerId: "account:bigmodel-highspeed-card",
+        modelId: "GLM-5.3",
+      },
+      modelExecution: expect.objectContaining({ selectionScope: "execution" }),
+    });
+  });
+
+  it("Core active turn 已存在但 controller 与投影尚未同步时，Highspeed 输入仍进入 queue", async () => {
+    const app = makeApp({
+      runtime: {
+        getActiveTurnInfo: vi.fn().mockReturnValue({
+          kind: "regular",
+          steerable: true,
+          turnId: "turn-highspeed",
+        }),
+      },
+    });
+    const listModels = vi.fn(() => [{ ref: ORDINARY_MODEL_SELECTION }]);
+    app.listModels = listModels;
+    const record = makeRecord({ app });
+    const retainQueuedTurnExecution = vi.fn();
+    const host = makeHost(record, {
+      getInputRoutingMode: () => "startNow",
+      retainQueuedTurnExecution,
+    });
+
+    await expect(
+      new V4CommandExecutor(host).execute(
+        envelope("sendText", {
+          text: "controller 同步前也要排队",
+          highspeedMeta: {
+            schemaVersion: 1,
+            cardId: "card-1",
+            taskId: "s1",
+            provider: "bigmodel",
+            model: "GLM-5.3",
+            issuedAt: 1,
+            expiresAt: Date.now() + 60_000,
+          },
+          modelSelection: {
+            providerId: "account:bigmodel-highspeed-card",
+            modelId: "GLM-5.3",
+          },
+          modelExecution: {
+            selectionScope: "execution",
+            requestAuth: { apiKey: "card-jwt", headers: { "X-Highspeed-Card-ID": "card-1" } },
+            selectionFallback: {
+              providerId: "account:bigmodel-highspeed-card",
+              target: ORDINARY_MODEL_SELECTION,
+              rules: [
+                { reason: "highspeed_card_expired", providerErrorCode: "3402" },
+                { reason: "highspeed_request_failed" },
+              ],
+            },
+          },
+        }),
+      ),
+    ).resolves.toEqual({
+      type: "inputAccepted",
+      delivery: "queue",
+      inputId: "cmd-1",
+    });
+
+    expect(app.sendInput).toHaveBeenCalledWith(
+      { text: "controller 同步前也要排队" },
+      expect.objectContaining({
+        requireQueue: true,
+        intent: expect.objectContaining({
+          highspeed: expect.objectContaining({ cardId: "card-1" }),
+          modelSelection: ORDINARY_MODEL_SELECTION,
+        }),
+      }),
+    );
+    // 入队只下发普通 Selection 与卡元数据，不下发 execution 与凭据，仍按普通轮做 Session 模型
+    // preflight：卡失效后提升使用 QueueItem 的普通 Selection，模型不可用必须在 admission 就暴露。
+    expect(listModels).toHaveBeenCalled();
+    expect(app.sendInput.mock.calls[0]?.[1]).not.toHaveProperty("modelExecution");
+    expect(retainQueuedTurnExecution).toHaveBeenCalledWith("s1", "cmd-1", {
+      modelSelection: {
+        providerId: "account:bigmodel-highspeed-card",
+        modelId: "GLM-5.3",
+      },
+      modelExecution: expect.objectContaining({ selectionScope: "execution" }),
+    });
+  });
+
+>>>>>>> upstream/main
   it("execution-scoped Selection 直接进入 Core，Session 模型从不临时切换", async () => {
     const order: string[] = [];
     const currentModel = "user-provider/user-model";
@@ -456,9 +744,6 @@ describe("v4 原生 sendText", () => {
     });
     const record = makeRecord({ app });
     const host = makeHost(record, {
-      ensureModelReady: vi.fn().mockImplementation(async () => {
-        order.push(`preflight:${currentModel}`);
-      }),
       afterLegacyStateMutation: vi.fn().mockImplementation(async () => {
         order.push(`ready:${currentModel}`);
       }),
@@ -488,7 +773,6 @@ describe("v4 原生 sendText", () => {
     await settle();
 
     expect(order).toEqual(["send:user-provider/user-model", "ready:user-provider/user-model"]);
-    expect(host.ensureModelReady).not.toHaveBeenCalled();
     expect(capturedOptions?.intent?.modelSelection).toEqual({
       providerId: "account:zai-offpeak-idle-plan",
       modelId: "GLM-5.2",
@@ -514,7 +798,6 @@ describe("v4 原生 sendText", () => {
       restoreWarning: { message: "session model unavailable", type: "model_unavailable" },
     });
     const host = makeHost(record, {
-      ensureModelReady: vi.fn(),
       hasUsableRuntimeModelTarget: vi.fn().mockReturnValue(false),
     });
 
@@ -532,7 +815,6 @@ describe("v4 原生 sendText", () => {
     ).resolves.toBeDefined();
     await settle();
 
-    expect(host.ensureModelReady).not.toHaveBeenCalled();
     expect(record.restoreWarning).toEqual({
       message: "session model unavailable",
       type: "model_unavailable",
@@ -568,9 +850,7 @@ describe("v4 原生 sendText", () => {
         }),
       });
       const record = makeRecord({ app });
-      const host = makeHost(record, {
-        ensureModelReady: vi.fn(),
-      });
+      const host = makeHost(record);
 
       await new V4CommandExecutor(host).execute(
         envelope("sendText", {
@@ -663,22 +943,19 @@ describe("v4 原生 sendText", () => {
     expect(app.sendInput.mock.calls[1]?.[1]).not.toHaveProperty("toolDisallowlist");
   });
 
-  it("automation runId inputId 漏传 automationId 时也隐藏全部写工具", async () => {
+  it("调用方伪造 automation inputId 时不恢复任务身份", async () => {
     const app = makeApp();
     const record = makeRecord({ app });
     const host = makeHost(record);
 
     await new V4CommandExecutor(host).execute({
-      ...envelope("sendText", { text: "automation prompt" }),
-      commandId: "automation-parent:manual:run-1",
+      ...envelope("sendText", { text: "ordinary prompt" }),
+      commandId: "automation-other-task:manual:forged-run",
     });
     await settle();
 
-    expect(app.sendInput.mock.calls[0]?.[1]).toEqual(
-      expect.objectContaining({
-        toolDisallowlist: ["CronCreate", "CronUpdate", "CronDelete"],
-      }),
-    );
+    expect(app.sendInput.mock.calls[0]?.[1]).not.toHaveProperty("automationId");
+    expect(app.sendInput.mock.calls[0]?.[1]).not.toHaveProperty("toolDisallowlist");
     expect(record.activeAutomationId).toBeUndefined();
   });
 
@@ -745,14 +1022,14 @@ describe("v4 原生 sendText", () => {
     expect(app.steerTurn).not.toHaveBeenCalled();
   });
 
+  // 立即发送是用户的新指令：实际抢占旧执行后，输入仍是普通用户消息，与空闲时发送相同。
   it.each([
-    { stopKind: "stopped", attachmentMime: undefined, expected: "user_steer" },
-    { stopKind: "idle", attachmentMime: undefined, expected: undefined },
-    { stopKind: "stopped", attachmentMime: "text/plain", expected: undefined },
-    { stopKind: "stopped", attachmentMime: "image/png", expected: undefined },
+    { stopKind: "stopped", attachmentMime: undefined },
+    { stopKind: "idle", attachmentMime: undefined },
+    { stopKind: "stopped", attachmentMime: "text/plain" },
   ])(
-    "startNow human 提示：$stopKind / $attachmentMime",
-    async ({ stopKind, attachmentMime, expected }) => {
+    "startNow 抢占后仍是普通用户输入：$stopKind / $attachmentMime",
+    async ({ stopKind, attachmentMime }) => {
       const app = makeApp({
         runtime: {
           acquireForegroundPromotionLease: vi.fn().mockReturnValue({ kind: "acquired" }),
@@ -785,7 +1062,7 @@ describe("v4 原生 sendText", () => {
       expect(app.sendInput).toHaveBeenCalledTimes(1);
       const [input, options] = app.sendInput.mock.calls[0]!;
       expect(input.text).toBe("先处理这个短任务");
-      expect(options.inputPresentation).toBe(expected);
+      expect(options).not.toHaveProperty("inputPresentation");
       expect(options).toMatchObject({
         inputId: "cmd-1",
         requireIdle: true,
@@ -794,7 +1071,7 @@ describe("v4 原生 sendText", () => {
     },
   );
 
-  it("startNow 的 human 标记经真实 input facade 进入新轮 Core admission", async () => {
+  it("抢占后的 startNow 经真实 input facade 以普通用户输入进入新轮 Core admission", async () => {
     const runtime = {
       acquireForegroundPromotionLease: vi.fn().mockReturnValue({ kind: "acquired" }),
       getActiveForegroundExecutionId: vi.fn().mockReturnValue(undefined),
@@ -821,12 +1098,12 @@ describe("v4 原生 sendText", () => {
       "短任务",
       undefined,
       expect.objectContaining({
-        inputPresentation: "user_steer",
         inputId: "cmd-1",
         requireIdle: true,
         delivery: "start_turn",
       }),
     );
+    expect(runtime.admitPrompt.mock.calls[0]![2]).not.toHaveProperty("inputPresentation");
   });
 
   it("运行中 startNow：原子抢占后直接启动新 turn，不创建 queue item", async () => {
@@ -870,11 +1147,11 @@ describe("v4 原生 sendText", () => {
     expect(releaseForegroundPromotionLease).toHaveBeenCalledWith("send-now:cmd-1");
   });
 
-  it("automation 运行中会话：Core queue 保留完整 automation denylist", async () => {
+  it("伪造 automation inputId 排队时仍保持普通用户轮", async () => {
     const app = makeApp({
       sendInput: vi.fn().mockResolvedValue({
         kind: "queued",
-        pendingInputId: "pending-automation-followup",
+        pendingInputId: "pending-ordinary-followup",
         queueLength: 1,
         turnId: "turn-1",
       }),
@@ -883,18 +1160,19 @@ describe("v4 原生 sendText", () => {
     const host = makeHost(record);
 
     await new V4CommandExecutor(host).execute({
-      ...envelope("sendText", { text: "automation followup" }),
-      commandId: "automation-parent:manual:run-1",
+      ...envelope("sendText", { text: "ordinary followup" }),
+      commandId: "automation-other-task:manual:forged-run",
     });
 
     expect(app.sendInput).toHaveBeenCalledWith(
-      { text: "automation followup" },
+      { text: "ordinary followup" },
       expect.objectContaining({
         delivery: "start_turn",
-        inputId: "automation-parent:manual:run-1",
-        toolDisallowlist: ["CronCreate", "CronUpdate", "CronDelete"],
+        inputId: "automation-other-task:manual:forged-run",
       }),
     );
+    expect(app.sendInput.mock.calls[0]?.[1]).not.toHaveProperty("automationId");
+    expect(app.sendInput.mock.calls[0]?.[1]).not.toHaveProperty("toolDisallowlist");
     expect(app.steerTurn).not.toHaveBeenCalled();
   });
 
@@ -1073,6 +1351,7 @@ describe("v4 原生 sendText", () => {
     expect(app.sendInput).toHaveBeenCalledWith(
       { text: "automation busy prompt" },
       expect.objectContaining({
+        automationId: "automation-1",
         delivery: "start_turn",
         inputId: "cmd-1",
         queryId: "cmd-1",
@@ -1712,4 +1991,43 @@ describe("v4 原生 stop", () => {
 });
 
 describe("supports 分流", () => {
+<<<<<<< HEAD
+=======
+  it("协议命令全部原生（回落面清零）；未知命令不 supports", () => {
+    const executor = new V4CommandExecutor(makeHost(makeRecord()));
+    // 与 packages/shared/src/zcode-protocol-v4/command.ts 的 payload map 同步维护。
+    const allCommands = [
+      "createSession",
+      "sendText",
+      "sendGoalCommand",
+      "stop",
+      "compact",
+      "forkAssistant",
+      "applyFileRewind",
+      "editUserQuery",
+      "retryTurn",
+      "setAssistantFeedback",
+      "setHighspeedMetrics",
+      "sendQueuedNow",
+      "editQueueItem",
+      "applyQueueItemsConfig",
+      "lockQueueItemEdit",
+      "releaseQueueItemEdit",
+      "reorderQueueItem",
+      "deleteQueueItem",
+      "setAutoDrain",
+      "resolveInteraction",
+      "snoozeInteractionAutoResolution",
+      "switchModelConfig",
+      "setFollowupMode",
+      "resumeGoal",
+      "cancelBackgroundWork",
+      "renameSession",
+      "deleteSession",
+    ] as const;
+    for (const command of allCommands) {
+      expect(executor.supports(command), command).toBe(true);
+    }
+    expect(executor.supports("unknownCommand" as never)).toBe(false);
+>>>>>>> upstream/main
   });

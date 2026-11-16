@@ -53,7 +53,7 @@ export const officialSeaPlugins = [
       "skills/visualize/assets/standalone-shell.js",
     ],
     rootPath: join("packages", "visualize-plugin"),
-    version: "0.1.0",
+    version: "0.1.2",
   },
   {
     // node_repl 宿主：Browser Use 与 Computer Use 共用的运行时产物，自己不是面向用户的插件
@@ -64,10 +64,23 @@ export const officialSeaPlugins = [
     requiresRuntime: true,
     requiredRuntimePaths: ["dist/mcp/server.js"],
     rootPath: join("packages", "node-repl-host"),
-    version: "0.6.1",
+    version: "0.7.0",
   },
   {
+<<<<<<< HEAD
     marketplace: "polaris-plugins-official",
+=======
+    marketplace: "zcode-plugins-official",
+    name: "android-emulator",
+    packageName: "@zcode/android-emulator-plugin",
+    requiresRuntime: true,
+    requiredRuntimePaths: ["dist/mcp/server.js"],
+    rootPath: join("packages", "android-emulator-plugin"),
+    version: "0.1.1",
+  },
+  {
+    marketplace: "zcode-plugins-official",
+>>>>>>> upstream/main
     name: "documents",
     packageName: "@zcode/documents-plugin",
     // 0.2.0 起带查看面板：SEA 必须在嵌入前校验 office-runtime 构建出的 server 与面板资源。
@@ -80,7 +93,7 @@ export const officialSeaPlugins = [
     ],
     rootPath: join("packages", "documents-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.0",
+    version: "0.2.2",
   },
   {
     marketplace: "polaris-plugins-official",
@@ -106,7 +119,7 @@ export const officialSeaPlugins = [
     ],
     rootPath: join("packages", "pdf-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.1",
+    version: "0.2.3",
   },
   {
     marketplace: "polaris-plugins-official",
@@ -122,7 +135,7 @@ export const officialSeaPlugins = [
     ],
     rootPath: join("packages", "presentations-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.0",
+    version: "0.2.2",
   },
   {
     marketplace: "polaris-plugins-official",
@@ -138,7 +151,7 @@ export const officialSeaPlugins = [
     ],
     rootPath: join("packages", "spreadsheets-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.0",
+    version: "0.2.2",
   },
   {
     // browser-use 使用真实 node_repl MCP runtime，SEA 必须校验并嵌入 server.js。
@@ -191,6 +204,51 @@ export const officialSeaPlugins = [
     requiredSeedPaths: ["skills/zcode-configuration-guide/SKILL.md"],
     rootPath: join("packages", "zcode-guide-plugin"),
     version: "0.3.0",
+  },
+  {
+    // skill + start.sh 模板 + 零依赖的 zcode-site CLI，加上 Sites 面板（dist/ 下的 MCP server 与页面，
+    // 由插件自己的 build 脚本构建）。版本与 package.json / plugin.json / official-plugin-definitions.ts 同步 bump。
+    marketplace: "zcode-plugins-official",
+    name: "zcode-site",
+    packageName: "@zcode/zcode-site-plugin",
+    requiresRuntime: true,
+    requiredRuntimePaths: ["dist/server.mjs", "dist/ui/panel.html"],
+    requiredSeedPaths: [
+      "scripts/zcode-site.mjs",
+      "scripts/stage.mjs",
+      "scripts/errors.mjs",
+      "skills/site-deploy/SKILL.md",
+    ],
+    rootPath: join("packages", "zcode-site-plugin"),
+    version: "0.5.0",
+  },
+  {
+    // design：纯内容型（技能 + 设计资源 + SessionStart hook），requiresRuntime:false。
+    // requiredSeedPaths 与 official-plugin-definitions.ts 的 OFFICIAL_DESIGN_REQUIRED_SEED_PATHS 一致；
+    // 版本与 package.json / plugin.json / definitions 同步 bump。
+    marketplace: "zcode-plugins-official",
+    name: "design",
+    packageName: "@zcode/design-plugin",
+    requiresRuntime: false,
+    requiredSeedPaths: [
+      "skills/design/SKILL.md",
+      "skills/design/references/catalog.md",
+      "skills/design/references/check.md",
+      "skills/design/references/create.md",
+      "skills/design/references/design-system.md",
+      "skills/design/references/interact.md",
+      "skills/design/references/output.md",
+      "skills/design/references/redesign.md",
+      "skills/design/scripts/adapt-canvas.mjs",
+      "skills/design/scripts/design-lint.mjs",
+      "skills/design/scripts/design-tokens.mjs",
+      "skills/design/scripts/import-design-system.mjs",
+      "hooks/hooks.json",
+      "hooks/run-hook.cmd",
+      "hooks/design-rules",
+    ],
+    rootPath: join("packages", "design-plugin"),
+    version: "0.7.2",
   },
   // superpowers 已从内置插件下线，改走 UI 推荐区按需安装；这里不再打入 SEA 资源清单。
 ];

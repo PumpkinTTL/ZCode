@@ -1,8 +1,8 @@
-import { readdir, readFile } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-
 const repoRoot = join(import.meta.dirname, "..", "..", "..");
+<<<<<<< HEAD
 const allowedNetworkBoundaryFiles = new Set([
   "packages/adapters/src/auth/localhost-callback.ts",
   "packages/adapters/src/http/index.ts",
@@ -39,6 +39,8 @@ async function collectTypeScriptFiles(directory: string): Promise<string[]> {
 
   return files;
 }
+=======
+>>>>>>> upstream/main
 
 describe("core I/O boundaries", () => {
   it("keeps file tools and context assembly free of direct host I/O", async () => {
@@ -59,6 +61,7 @@ describe("core I/O boundaries", () => {
       expect(content, file).not.toMatch(/process\.(?:cwd|env|platform)/);
     }
   });
+<<<<<<< HEAD
 
   it("keeps in-process HTTP egress behind adapter network boundaries", async () => {
     const packageSourceRoots = [
@@ -96,4 +99,6 @@ describe("core I/O boundaries", () => {
 
     expect(violations).toEqual([]);
   });
+=======
+>>>>>>> upstream/main
 });
