@@ -21,7 +21,7 @@ import type {
   TurnInputIntentMetadata,
 } from "@zcode/contracts";
 import { INTERRUPT_MARKER_SOURCE, joinTaskNotificationBatch } from "@zcode/core";
-
+import { isHighspeedProviderId } from "@zcode/shared";
 import type { EventId, SessionEvent, SessionId, TraceId, TurnId } from "@zcode/contracts";
 import {
   CompactTimelineStatus,
@@ -36,7 +36,7 @@ import {
 import {
   getConversationModelOnlyTurnTriggerSource,
   getConversationMessageProjectionPolicy,
-
+  highspeedMessageMetaSchema,
   isConversationRealUserTurnStarter,
 } from "@zcode/shared";
 import {
@@ -418,7 +418,7 @@ function stringField(
 }
 
 function inputIntentOfMessage(message: MessageWithParts): TurnInputIntentMetadata | undefined {
-
+  const persistedHighspeed = highspeedMessageMetaSchema.safeParse(message.info.metadata?.highspeed);
   const fullIntent = conversationInputIntentSchema.safeParse(
     message.info.metadata?.conversationInputIntent,
   );
@@ -447,7 +447,11 @@ function inputIntentOfMessage(message: MessageWithParts): TurnInputIntentMetadat
         ? { fallbackReasonCode: value.delivery.fallbackReasonCode }
         : {}),
       ...(value.attachments.length > 0 ? { attachmentRefs: value.attachments } : {}),
-
+      ...(value.highspeed
+        ? { highspeed: value.highspeed }
+        : persistedHighspeed.success
+          ? { highspeed: persistedHighspeed.data }
+          : {}),
       ...(value.inputOrigin ? { inputOrigin: value.inputOrigin } : {}),
       ...(value.conversationQuotes ? { conversationQuotes: value.conversationQuotes } : {}),
       ...(value.botGroupSource ? { botGroupSource: value.botGroupSource } : {}),
@@ -477,7 +481,10 @@ function inputIntentOfMessage(message: MessageWithParts): TurnInputIntentMetadat
   ) {
     return undefined;
   }
-  return value as unknown as TurnInputIntentMetadata;
+  return {
+    ...(value as unknown as TurnInputIntentMetadata),
+    ...(persistedHighspeed.success ? { highspeed: persistedHighspeed.data } : {}),
+  };
 }
 
 function executionKindOfMessage(message: MessageWithParts): "agent" | "controlOnly" | undefined {
@@ -590,7 +597,7 @@ function attachmentMetasOfMessage(
       bytes: part.metadata?.sizeBytes ?? 0,
       ...(urlIsStableRef ? { ref: part.url } : {}),
     };
-  };
+  });
 }
 
 function forkContextOfMessage(message: MessageWithParts):
@@ -1200,17 +1207,26 @@ function hydratedModelKey(modelSelection: ModelSelection): string {
   return `${modelSelection.providerId}\u0000${modelSelection.modelId}\u0000${modelSelection.options?.reasoningLevel ?? ""}`;
 }
 
+function sessionModelSelectionOfHydratedMessage(
+  modelSelection: ModelSelection,
+): ModelSelection | null {
+  // Bug 原因：加速卡是单轮执行 Selection（selectionScope=execution），消息保留它用于记录
+  // 真实执行模型；但冷恢复曾把该字段误当成会话选型，重启后因此生成「加速 → 原模型」的
+  // 虚假切换提示。live 路径的 execution 作用域本就不发 ModelSelected，cold 必须同语义。
+  return isHighspeedProviderId(modelSelection.providerId) ? null : modelSelection;
+}
 
 function turnModelSelectionOfUserMessage(message: MessageWithParts): ModelSelection | null {
   if (message.info.role !== "user") return null;
-  return message.info.modelSelection ?? null;
+  const modelSelection = message.info.modelSelection;
+  return modelSelection ? sessionModelSelectionOfHydratedMessage(modelSelection) : null;
 }
 
 function assistantModelSelectionOf(message: MessageWithParts): ModelSelection | null {
   if (message.info.role !== "assistant") return null;
   if (message.info.semantics?.kind === "timeline_event") return null;
   if (!message.info.providerId || !message.info.modelId) return null;
-  return {
+  return sessionModelSelectionOfHydratedMessage({
     providerId: String(message.info.providerId),
     modelId: String(message.info.modelId),
     ...(message.info.reasoningLevel
