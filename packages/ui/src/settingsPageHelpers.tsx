@@ -991,3 +991,8 @@ export function AgentBehaviorSectionContent({
     </div>
   );
 }
+
+/** Polaris：上游 SettingsPage 引用的分区页头组件；这里提供中性默认实现。 */
+export function GeneralSectionHeader(_props: { title?: string; [key: string]: unknown }): unknown {
+  return null;
+}

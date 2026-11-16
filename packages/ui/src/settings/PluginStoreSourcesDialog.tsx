@@ -1,4 +1,4 @@
-import { AlertTriangle, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import type { ZCodePluginMarketplaceSummary } from "@zcode/shared";
 import { CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
@@ -49,7 +49,7 @@ export function PluginStoreSourceRefreshFailure({
 }: {
   failure: NonNullable<ZCodePluginMarketplaceSummary["refreshFailure"]>;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl } = useZCodeIntl();
   return (
     <div
       className="mt-1 flex min-w-0 items-start gap-1 text-ui-base text-destructive"
@@ -59,7 +59,7 @@ export function PluginStoreSourceRefreshFailure({
       <span className="min-w-0 break-words">
         {intl.formatMessage(
           { id: "settings.plugins.store.sources.refreshFailed" },
-          { time: formatSourceTime(failure.failedAt, locale) },
+          { time: formatSourceTime(failure.failedAt) },
         )}
         {`: ${failure.message}`}
       </span>
@@ -135,7 +135,7 @@ export function PluginStoreSourcesDialog({
                       {marketplace.lastUpdated
                         ? ` · ${intl.formatMessage(
                             { id: "settings.plugins.store.sources.lastUpdated" },
-                            { time: formatSourceTime(marketplace.lastUpdated, locale) },
+                            { time: formatSourceTime(marketplace.lastUpdated) },
                           )}`
                         : ""}
                     </div>
@@ -181,7 +181,7 @@ export function PluginStoreSourcesDialog({
                       onClick={() => onRemoveMarketplace(marketplace.id)}
                     >
                       {removing ? (
-                        <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
+                        <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
                       ) : (
                         <Trash2 className="size-3.5" aria-hidden="true" />
                       )}
@@ -197,9 +197,8 @@ export function PluginStoreSourcesDialog({
   );
 }
 
-// 按界面语言格式化时间（不跟系统语言）
-function formatSourceTime(value: string, locale: string): string {
+function formatSourceTime(value: string): string {
   const time = new Date(value);
   if (Number.isNaN(time.getTime())) return value;
-  return time.toLocaleString(locale);
+  return time.toLocaleString();
 }

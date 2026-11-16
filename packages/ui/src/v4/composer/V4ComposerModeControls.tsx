@@ -1,4 +1,3 @@
-import { modeTriggerColor } from "@/chat-input-toolbar/display-help.js";
 import { memo, useCallback, useMemo } from "react";
 import { LightbulbIcon, XIcon, ChevronDownIcon } from "lucide-react";
 import {
@@ -30,8 +29,6 @@ import {
   resolveModeOptionIcon,
 } from "@/chat-input-toolbar/display.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { useYoloModeConfirmation } from "@/hooks/useConfirmDialog.js";
-import { useConfirmDialogStore } from "@/store/confirmDialogStore.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
@@ -63,14 +60,6 @@ function V4ComposerModeSwitchImpl({
   | "onSwitchMode"
 >) {
   const { intl } = useZCodeIntl();
-  // 原草稿回调随 scope 换代，旧确认不能把权限写入后来选中的任务。
-  const confirmMode = useYoloModeConfirmation(disabled ? null : onSwitchMode, draftConfig?.mode);
-  const requestSwitchMode = useCallback(
-    (mode: string) => {
-      confirmMode(mode, () => onSwitchMode(mode));
-    },
-    [confirmMode, onSwitchMode],
-  );
   const displayProvider = provider ?? ZCODE_AGENT_PROVIDER;
   const modeShortcutLabel = useShortcutCommandLabel("cycleSessionMode");
   const modes = getZCodeAgentAvailableModes();
@@ -100,8 +89,8 @@ function V4ComposerModeSwitchImpl({
   );
   const cycle = useCallback(() => {
     const next = getNextConfigSelectValue(modeOption);
-    if (next) requestSwitchMode(next);
-  }, [modeOption, requestSwitchMode]);
+    if (next) onSwitchMode(next);
+  }, [modeOption, onSwitchMode]);
   useToolbarShortcutBindings({
     hasAnyOption: Boolean(selected),
     toolbarDisabled: disabled,
@@ -134,7 +123,9 @@ function V4ComposerModeSwitchImpl({
               aria-label={intl.formatMessage({ id: "chat.toolbar.mode.label" })}
               className={cn(
                 "group/mode h-7 gap-1 rounded-lg px-2 text-ui-base data-[composer-compact=true]:w-7 data-[composer-compact=true]:px-0",
-                modeTriggerColor(selected.id),
+                selected.id === "yolo" && "text-warning hover:text-warning",
+                selected.id === "guarded" &&
+                  "text-icon-blue hover:text-icon-blue aria-expanded:text-icon-blue",
               )}
             >
               <Icon className="size-4" />
@@ -152,7 +143,7 @@ function V4ComposerModeSwitchImpl({
           className="w-64"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
-            if (!useConfirmDialogStore.getState().pendingRequest && !isCoarseTouchDevice())
+            if (!isCoarseTouchDevice())
               document
                 .querySelector<HTMLElement>(`[data-testid="${TID_V4_COMPOSER_INPUT}"]`)
                 ?.focus();
@@ -175,7 +166,7 @@ function V4ComposerModeSwitchImpl({
             </span>
           </DropdownMenuCheckboxItem>
           <DropdownMenuSeparator />
-          <DropdownMenuRadioGroup value={selected.id} onValueChange={requestSwitchMode}>
+          <DropdownMenuRadioGroup value={selected.id} onValueChange={onSwitchMode}>
             {permissions.map((mode) => {
               const ModeIcon = resolveModeOptionIcon(mode.id);
               const descriptionId = getModeOptionDescriptionMessageId(displayProvider, {

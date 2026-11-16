@@ -1,7 +1,6 @@
 import { resolvePluginIconSource } from "@/lib/pluginIconSource.js";
 import type { ZCodePluginReferenceCatalogEntry } from "@zcode/shared";
-import type { ConversationRowsPartition } from "@zcode/shared/zcode-protocol-v4";
-import { memoizeByRows, type ConversationStoreStatus } from "@/v4/conversationProjectionStore.js";
+import type { ConversationStoreStatus } from "@/v4/conversationProjectionStore.js";
 
 export function isSessionPluginCatalogReady(
   projectionStatus: ConversationStoreStatus,
@@ -11,28 +10,10 @@ export function isSessionPluginCatalogReady(
   return Boolean(projectionStatus === "live" && sessionId && snapshotSessionId === sessionId);
 }
 
-export function hasPluginReferenceRows(
-  rows: readonly {
-    kind: string;
-    text?: string;
-    display?: { ui?: { pluginId?: string }; kind?: string };
-  }[],
+export function hasPluginReferenceUserRows(
+  rows: readonly { kind: string; text?: string }[],
 ): boolean {
-  return rows.some(
-    (row) =>
-      (row.kind === "userInput" && row.text?.includes("(plugin://")) ||
-      (row.kind === "toolCall" && Boolean(row.display?.ui?.pluginId)),
-  );
-}
-
-const pluginReferenceRowsByRows = memoizeByRows(hasPluginReferenceRows);
-
-/**
- * 与 hasPluginReferenceRows(history ++ tail) 结果相同。
- * Bug 根因：SessionPane 每次渲染（流式时每帧）都逐行扫描全部历史；历史段判定按引用缓存后只扫尾轮。
- */
-export function hasPluginReferenceRowsInPartition(partition: ConversationRowsPartition): boolean {
-  return pluginReferenceRowsByRows(partition.history) || pluginReferenceRowsByRows(partition.tail);
+  return rows.some((row) => row.kind === "userInput" && row.text?.includes("(plugin://"));
 }
 
 /**

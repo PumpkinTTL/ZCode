@@ -1,7 +1,6 @@
 import type { SessionCreateSource } from "@zcode/shared";
-import type { ComposerRecentReceipt, FullAccessRecentReceipt } from "@/lib/composerRecent.js";
+import type { ComposerRecentReceipt } from "@/lib/composerRecent.js";
 export interface PendingCommandClientContext {
-  fullAccess?: FullAccessRecentReceipt;
   composer?: ComposerRecentReceipt & { draftId?: string; submittedText?: string };
   workspace?: {
     workspacePath: string;

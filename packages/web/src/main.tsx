@@ -749,7 +749,6 @@ export function createHomeOnlyWebRemoteControlServices(): RootServices {
     // 闲时任务仅桌面本地（D13）；web home-only 环境按不支持处理。
     offPeakTaskService:
       createUnsupportedHomeOnlyService<RootServices["offPeakTaskService"]>("offPeakTaskService"),
-      ),
     skillsService: createEmptyHomeOnlyService<RootServices["skillsService"]>({
       list: async () => ({
         skills: [],

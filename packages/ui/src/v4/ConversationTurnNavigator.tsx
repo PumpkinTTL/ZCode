@@ -7,28 +7,32 @@ import {
   testId,
 } from "@zcode/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card.js";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
-  createConversationTurnNavigatorItemsSelector,
-  type ConversationTurnNavigatorItem,
+  buildConversationTurnNavigatorItems,
   resolveConversationTurnNavigatorActiveUnitIndex,
   resolveConversationTurnNavigatorBarVisualState,
   resolveConversationTurnNavigatorVisualFocusItemIndex,
   type ConversationTurnNavigatorVirtualItem,
 } from "@/v4/conversationTurnNavigatorHelpers.js";
-import type { ConversationTurnRenderUnitsPartition } from "@/v4/conversationTurnRenderUnits.js";
+import type { ConversationTurnRenderUnit } from "@/v4/conversationTurnRenderUnits.js";
 
 export interface ConversationTurnNavigatorProps {
-  enabled?: boolean;
-  /** 按「历史 + 尾轮」分区的 render unit；历史段引用在流式帧之间不变。 */
-  renderUnits: ConversationTurnRenderUnitsPartition;
+  renderUnits: readonly ConversationTurnRenderUnit[];
   scrollOffsetPx: number;
   viewportHeightPx: number;
   virtualItems: readonly ConversationTurnNavigatorVirtualItem[];
   activeQueryRowId?: number;
   isHydratingDirectory?: boolean;
-  onJumpToQuery: (target: { unitIndex: number; rowId: number }, behavior: ScrollBehavior) => void;
+  onJumpToQuery: (
+    target: { unitIndex: number; rowId: number },
+    behavior: ScrollBehavior,
+  ) => void;
 }
 
 function usePrefersReducedMotion() {
@@ -49,7 +53,6 @@ function usePrefersReducedMotion() {
 }
 
 function ConversationTurnNavigatorImpl({
-  enabled = true,
   renderUnits,
   scrollOffsetPx,
   viewportHeightPx,
@@ -60,11 +63,12 @@ function ConversationTurnNavigatorImpl({
 }: ConversationTurnNavigatorProps) {
   const { intl } = useZCodeIntl();
   const prefersReducedMotion = usePrefersReducedMotion();
-  const [interactionItemIndex, setInteractionItemIndex] = useState<number | undefined>(undefined);
-  const selectItems = useMemo(() => createConversationTurnNavigatorItemsSelector(), []);
+  const [interactionItemIndex, setInteractionItemIndex] = useState<number | undefined>(
+    undefined,
+  );
   const items = useMemo(
     () =>
-      selectItems(renderUnits, {
+      buildConversationTurnNavigatorItems(renderUnits, {
         assistantEmptyPreview: intl.formatMessage({
           id: "chat.turnNavigator.emptyAssistant",
         }),
@@ -75,7 +79,7 @@ function ConversationTurnNavigatorImpl({
           id: "chat.turnNavigator.userFallback",
         }),
       }),
-    [intl, renderUnits, selectItems],
+    [intl, renderUnits],
   );
 
   const activeUnitIndex = useMemo(
@@ -100,7 +104,9 @@ function ConversationTurnNavigatorImpl({
     return { byRowId, firstByUnitIndex };
   }, [items]);
   const activeItemIndex =
-    (activeQueryRowId === undefined ? undefined : itemIndexes.byRowId.get(activeQueryRowId)) ??
+    (activeQueryRowId === undefined
+      ? undefined
+      : itemIndexes.byRowId.get(activeQueryRowId)) ??
     (activeUnitIndex === undefined
       ? undefined
       : itemIndexes.firstByUnitIndex.get(activeUnitIndex)) ??
@@ -111,9 +117,11 @@ function ConversationTurnNavigatorImpl({
   });
   const railScrollRef = useRef<HTMLDivElement>(null);
   const getRailScrollElement = useCallback(() => railScrollRef.current, []);
-  const getRailItemKey = useCallback((index: number) => items[index]?.key ?? index, [items]);
+  const getRailItemKey = useCallback(
+    (index: number) => items[index]?.key ?? index,
+    [items],
+  );
   const railVirtualizer = useVirtualizer({
-    enabled,
     count: items.length,
     estimateSize: () => 10,
     getItemKey: getRailItemKey,
@@ -123,7 +131,7 @@ function ConversationTurnNavigatorImpl({
   const virtualRows = railVirtualizer.getVirtualItems();
 
   useEffect(() => {
-    if (!enabled || activeItemIndex < 0 || items.length < 2) return;
+    if (activeItemIndex < 0 || items.length < 2) return;
     railVirtualizer.scrollToIndex(activeItemIndex, { align: "auto" });
     const element = railScrollRef.current;
     if (!element) return;
@@ -134,7 +142,7 @@ function ConversationTurnNavigatorImpl({
       // 只同步 rail observer，确保活动项对应的可视窗口立即挂载。
       element.dispatchEvent(new Event("scroll"));
     });
-  }, [activeItemIndex, enabled, items.length, railVirtualizer]);
+  }, [activeItemIndex, items.length, railVirtualizer]);
 
   if (items.length < 2) {
     return null;
@@ -157,28 +165,109 @@ function ConversationTurnNavigatorImpl({
         onPointerLeave={() => setInteractionItemIndex(undefined)}
         onScroll={() => setInteractionItemIndex(undefined)}
       >
-        <div className="relative w-9" style={{ height: `${railVirtualizer.getTotalSize()}px` }}>
+        <div
+          className="relative w-9"
+          style={{ height: `${railVirtualizer.getTotalSize()}px` }}
+        >
           {virtualRows.map((virtualRow) => {
             const itemIndex = virtualRow.index;
             const item = items[itemIndex];
             if (!item) return null;
+            const active = itemIndex === activeItemIndex;
+            const visualState = resolveConversationTurnNavigatorBarVisualState({
+              itemIndex,
+              visualFocusItemIndex,
+            });
+            const showScrollActiveColor =
+              visualFocusItemIndex === undefined && active;
             return (
-              <ConversationTurnNavigatorItemView
+              <div
                 key={item.key}
-                item={item}
-                itemIndex={itemIndex}
-                itemCount={items.length}
-                start={virtualRow.start}
-                active={itemIndex === activeItemIndex}
-                visualDistance={
-                  visualFocusItemIndex === undefined
-                    ? undefined
-                    : Math.min(3, Math.abs(itemIndex - visualFocusItemIndex))
-                }
-                prefersReducedMotion={prefersReducedMotion}
-                onInteractionChange={setInteractionItemIndex}
-                onJumpToQuery={onJumpToQuery}
-              />
+                className="absolute left-0 top-0 h-2.5 w-9"
+                style={{ transform: `translateY(${virtualRow.start}px)` }}
+              >
+                <HoverCard closeDelay={80} openDelay={120}>
+                  <HoverCardTrigger asChild>
+                    <button
+                      type="button"
+                      aria-current={active ? "location" : undefined}
+                      aria-label={intl.formatMessage(
+                        { id: "chat.turnNavigator.jumpToQuery" },
+                        { index: String(itemIndex + 1) },
+                      )}
+                      aria-posinset={itemIndex + 1}
+                      aria-setsize={items.length}
+                      data-testid={testId(TID_V4_TURN_NAVIGATOR_ITEM, item.key)}
+                      data-item-index={itemIndex}
+                      data-unit-index={item.unitIndex}
+                      data-turn-id={item.turnId}
+                      data-query-row-id={item.rowId}
+                      data-active={active ? "true" : "false"}
+                      data-running={item.isRunning ? "true" : "false"}
+                      data-visual-color-tone={visualState.colorTone}
+                      data-visual-scale={String(visualState.scaleX)}
+                      data-visual-tone={visualState.tone}
+                      onBlur={() => setInteractionItemIndex(undefined)}
+                      onClick={() =>
+                        onJumpToQuery(
+                          { unitIndex: item.unitIndex, rowId: item.rowId },
+                          prefersReducedMotion ? "auto" : "smooth",
+                        )
+                      }
+                      onFocus={() => setInteractionItemIndex(itemIndex)}
+                      onPointerEnter={() => setInteractionItemIndex(itemIndex)}
+                      onPointerLeave={() => setInteractionItemIndex(undefined)}
+                      className="flex h-2.5 w-9 items-center justify-start rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
+                      <span
+                        className={cn(
+                          "block h-0.5 w-3 origin-left rounded-full transition-[height,opacity,transform,background-color] duration-150 ease-out motion-reduce:transition-none",
+                          visualState.colorTone === "focus" && "bg-foreground",
+                          visualState.colorTone === "muted" &&
+                            (showScrollActiveColor
+                              ? "bg-foreground"
+                              : "bg-foreground-subtlest"),
+                        )}
+                        style={{
+                          opacity:
+                            showScrollActiveColor
+                              ? 0.9
+                              : item.isRunning
+                                ? Math.max(visualState.opacity, 0.72)
+                                : visualState.opacity,
+                          transform: `scaleX(${visualState.scaleX})`,
+                        }}
+                      />
+                    </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent
+                    align="start"
+                    side="right"
+                    sideOffset={8}
+                    data-testid={testId(
+                      TID_V4_TURN_NAVIGATOR_TOOLTIP,
+                      item.key,
+                    )}
+                    className="w-80 max-w-[calc(100vw-2rem)] border border-popover-border bg-popover p-3 text-popover-foreground shadow-lg"
+                  >
+                    <div className="space-y-2">
+                      <p className="line-clamp-2 whitespace-pre-line text-ui-base font-medium leading-5">
+                        {item.userPreview}
+                      </p>
+                      <p
+                        className={cn(
+                          "line-clamp-3 whitespace-pre-line text-ui-base leading-5",
+                          item.assistantPreviewKind === "text"
+                            ? "text-popover-foreground/80"
+                            : "text-foreground-subtle",
+                        )}
+                      >
+                        {item.assistantPreview}
+                      </p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
             );
           })}
         </div>
@@ -187,134 +276,4 @@ function ConversationTurnNavigatorImpl({
   );
 }
 
-// 父级每个 hover/stream 都执行全部 HoverCard；按条目实际视觉输入隔离，仍保留邻近山峰变化。
-const ConversationTurnNavigatorItemView = memo(function ConversationTurnNavigatorItemView({
-  item,
-  itemIndex,
-  itemCount,
-  start,
-  active,
-  visualDistance,
-  prefersReducedMotion,
-  onInteractionChange,
-  onJumpToQuery,
-}: {
-  item: ConversationTurnNavigatorItem;
-  itemIndex: number;
-  itemCount: number;
-  start: number;
-  active: boolean;
-  visualDistance: number | undefined;
-  prefersReducedMotion: boolean;
-  onInteractionChange: (index: number | undefined) => void;
-  onJumpToQuery: ConversationTurnNavigatorProps["onJumpToQuery"];
-}) {
-  const { intl } = useZCodeIntl();
-  const visualState = resolveConversationTurnNavigatorBarVisualState({
-    itemIndex: 0,
-    visualFocusItemIndex: visualDistance,
-  });
-  const showScrollActiveColor = visualDistance === undefined && active;
-  return (
-    <div
-      className="absolute left-0 top-0 h-2.5 w-9"
-      style={{ transform: `translateY(${start}px)` }}
-    >
-      <HoverCard closeDelay={80} openDelay={120}>
-        <HoverCardTrigger asChild>
-          <button
-            type="button"
-            aria-current={active ? "location" : undefined}
-            aria-label={intl.formatMessage(
-              { id: "chat.turnNavigator.jumpToQuery" },
-              { index: String(itemIndex + 1) },
-            )}
-            aria-posinset={itemIndex + 1}
-            aria-setsize={itemCount}
-            data-testid={testId(TID_V4_TURN_NAVIGATOR_ITEM, item.key)}
-            data-item-index={itemIndex}
-            data-unit-index={item.unitIndex}
-            data-turn-id={item.turnId}
-            data-query-row-id={item.rowId}
-            data-active={active ? "true" : "false"}
-            data-running={item.isRunning ? "true" : "false"}
-            data-visual-color-tone={visualState.colorTone}
-            data-visual-scale={String(visualState.scaleX)}
-            data-visual-tone={visualState.tone}
-            onBlur={() => onInteractionChange(undefined)}
-            onClick={() =>
-              onJumpToQuery(
-                { unitIndex: item.unitIndex, rowId: item.rowId },
-                prefersReducedMotion ? "auto" : "smooth",
-              )
-            }
-            onFocus={() => onInteractionChange(itemIndex)}
-            onPointerEnter={() => onInteractionChange(itemIndex)}
-            onPointerLeave={() => onInteractionChange(undefined)}
-            className="flex h-2.5 w-9 items-center justify-start rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            {/* 入场位移与 hover 缩放分层，避免覆盖同一个 transform；按钮命中区域保持不动。 */}
-            <span className="zcode-turn-navigator-enter block" aria-hidden="true">
-              <span
-                className={cn(
-                  "block h-0.5 w-3 origin-left rounded-full transition-[height,opacity,transform,background-color] duration-150 ease-out motion-reduce:transition-none",
-                  visualState.colorTone === "focus" && "bg-foreground",
-                  visualState.colorTone === "muted" &&
-                    (showScrollActiveColor ? "bg-foreground" : "bg-foreground-subtlest"),
-                )}
-                style={{
-                  opacity: showScrollActiveColor
-                    ? 0.9
-                    : item.isRunning
-                      ? Math.max(visualState.opacity, 0.72)
-                      : visualState.opacity,
-                  transform: `scaleX(${visualState.scaleX})`,
-                }}
-              />
-            </span>
-          </button>
-        </HoverCardTrigger>
-        <HoverCardContent
-          align="start"
-          side="right"
-          sideOffset={8}
-          data-testid={testId(TID_V4_TURN_NAVIGATOR_TOOLTIP, item.key)}
-          className="w-80 max-w-[calc(100vw-2rem)] border border-popover-border bg-popover p-3 text-popover-foreground shadow-lg"
-        >
-          <div className="space-y-2">
-            <p className="line-clamp-2 whitespace-pre-line text-ui-base font-medium leading-5">
-              {item.userPreview}
-            </p>
-            <p
-              className={cn(
-                "line-clamp-3 whitespace-pre-line text-ui-base leading-5",
-                item.assistantPreviewKind === "text"
-                  ? "text-popover-foreground/80"
-                  : "text-foreground-subtle",
-              )}
-            >
-              {item.assistantPreview}
-            </p>
-          </div>
-        </HoverCardContent>
-      </HoverCard>
-    </div>
-  );
-});
-
-export const ConversationTurnNavigator = memo(ConversationTurnNavigatorImpl, (previous, next) => {
-  if (previous.enabled !== next.enabled) return false;
-  // CSS 隐藏时保留外壳的过渡，但不传播正文更新；恢复 enabled 会读取完整的最新 props。
-  if (next.enabled === false) return true;
-  return (
-    previous.renderUnits === next.renderUnits &&
-    previous.isHydratingDirectory === next.isHydratingDirectory &&
-    previous.onJumpToQuery === next.onJumpToQuery &&
-    previous.activeQueryRowId === next.activeQueryRowId &&
-    // 已有精确 query 锚点时，像素偏移不会改变目录显示。尚未挂载锚点时仍更新 unit fallback。
-    (next.activeQueryRowId !== undefined ||
-      (previous.scrollOffsetPx === next.scrollOffsetPx &&
-        previous.viewportHeightPx === next.viewportHeightPx &&
-        previous.virtualItems === next.virtualItems))
-  );
-});
+export const ConversationTurnNavigator = memo(ConversationTurnNavigatorImpl);

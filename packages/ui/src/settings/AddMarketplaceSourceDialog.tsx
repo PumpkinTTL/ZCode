@@ -1,5 +1,6 @@
 import type { ZCodePluginMarketplaceSummary } from "@zcode/shared";
-import { PresetPluginMarketplace, isPresetMarketplaceAdded } from "@zcode/shared";
+import type { PresetPluginMarketplace } from "@zcode/shared";
+import { isPresetMarketplaceAdded } from "@zcode/shared";
 import { useEffect, useId, useRef, useState, type DragEvent } from "react";
 import { FolderOpen, Loader2, LoaderCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button.js";

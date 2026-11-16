@@ -33,7 +33,8 @@ export function ensureConversationFindHighlightStyle() {
     return;
   }
 
-  const style = document.getElementById(FIND_STYLE_ID) ?? document.createElement("style");
+  const style =
+    document.getElementById(FIND_STYLE_ID) ?? document.createElement("style");
   style.id = FIND_STYLE_ID;
   if (style.textContent !== FIND_HIGHLIGHT_STYLE) {
     // 开发态 HMR 会复用旧 style 节点；内容变化时必须同步更新。
@@ -82,7 +83,10 @@ function shouldSkipTextNode(textNode: Text): boolean {
   );
 }
 
-function collectTextRangesInElement(element: HTMLElement, normalizedQuery: string): Range[] {
+function collectTextRangesInElement(
+  element: HTMLElement,
+  normalizedQuery: string,
+): Range[] {
   const ranges: Range[] = [];
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
@@ -117,7 +121,7 @@ function collectTextRangesInElement(element: HTMLElement, normalizedQuery: strin
   return ranges;
 }
 
-export function getMountedConversationFindRow(
+function getMountedRowElement(
   root: HTMLElement,
   rowId: number,
 ): HTMLElement | null {
@@ -133,7 +137,7 @@ export function getMountedConversationFindRange(
   if (!normalizedQuery) {
     return null;
   }
-  const rowElement = getMountedConversationFindRow(root, match.rowId);
+  const rowElement = getMountedRowElement(root, match.rowId);
   if (!rowElement) {
     return null;
   }
@@ -158,28 +162,17 @@ export function applyConversationFindHighlights({
     return null;
   }
 
-  // 同一行的每个命中都重新遍历全文会放大为二次复杂度；屏外行也不应逐命中查 DOM。
-  const mountedRows = new Map<number, HTMLElement>();
-  for (const element of root.querySelectorAll<HTMLElement>("[data-row-id]")) {
-    const rowId = Number(element.dataset.rowId);
-    if (!mountedRows.has(rowId)) mountedRows.set(rowId, element);
-  }
-  const rowRanges = new Map<number, Range[]>();
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const resolveRange = (match: ConversationFindMatch): Range | null => {
-    const element = mountedRows.get(match.rowId);
-    if (!element || !normalizedQuery) return null;
-    let found = rowRanges.get(match.rowId);
-    if (!found) {
-      found = collectTextRangesInElement(element, normalizedQuery);
-      rowRanges.set(match.rowId, found);
-    }
-    return found[match.rowMatchIndex] ?? null;
-  };
-  const ranges = matches.map(resolveRange).filter((range): range is Range => range !== null);
-  const activeRange = activeMatch ? resolveRange(activeMatch) : null;
+  const ranges = matches
+    .map((match) => getMountedConversationFindRange(root, query, match))
+    .filter((range): range is Range => range !== null);
+  const activeRange = activeMatch
+    ? getMountedConversationFindRange(root, query, activeMatch)
+    : null;
 
-  support.highlights.set(FIND_HIGHLIGHT_NAME, createHighlight(support.Highlight, ranges, 0));
+  support.highlights.set(
+    FIND_HIGHLIGHT_NAME,
+    createHighlight(support.Highlight, ranges, 0),
+  );
   support.highlights.set(
     ACTIVE_FIND_HIGHLIGHT_NAME,
     createHighlight(support.Highlight, activeRange ? [activeRange] : [], 1),
@@ -212,9 +205,7 @@ export function applySearchResultHighlight({
 export function scrollConversationFindRangeIntoView(range: Range) {
   const container = range.commonAncestorContainer;
   const element = container instanceof Element ? container : container.parentElement;
-  // 虚拟窗口居中会挂载新的缓冲行；后续测高补偿会取消原生 smooth 动画，留下错误落点。
-  // 先立即完成命中定位，再由既有锚点补偿保持相对位置，不与动画争夺滚动权。
-  element?.scrollIntoView({ block: "center", behavior: "auto" });
+  element?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 export function clearConversationFindHighlights() {

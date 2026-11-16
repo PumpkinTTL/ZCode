@@ -1,4 +1,3 @@
-import type { ImageFilePreviewContext } from "@/hooks/useImageFilePreview.js";
 import type { ChannelContentPart } from "@zcode/shared";
 import { ChannelMentionContent } from "@/v4/ChannelMentionContent.js";
 import { ConversationUserInputEpilogue } from "@/v4/ConversationUserInputEpilogue.js";
@@ -13,7 +12,6 @@ export function ConversationUserInputBubble({
   attachments,
   contextAttachmentCount,
   epilogue,
-  imagePreviewContext,
 }: {
   text: string;
   contentParts?: readonly ChannelContentPart[];
@@ -21,7 +19,6 @@ export function ConversationUserInputBubble({
   attachments?: readonly unknown[];
   contextAttachmentCount?: number;
   epilogue?: string;
-  imagePreviewContext?: ImageFilePreviewContext;
 }) {
   if (!text.trim() && epilogue === undefined) return null;
   return (
@@ -36,7 +33,6 @@ export function ConversationUserInputBubble({
           ) : (
             <ConversationUserInputContent
               text={text}
-              imagePreviewContext={imagePreviewContext}
               attachments={attachments}
               contextAttachmentCount={contextAttachmentCount}
             />

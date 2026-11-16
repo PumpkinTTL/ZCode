@@ -343,3 +343,10 @@ export function buildAggregatedSourceStatusMap(
     ]) ?? [],
   );
 }
+
+// Polaris：上游 SettingsPage 引用的导航 presentation 入口；我方导航点为纯展示，直接复用主解析。
+export function resolveRemoteConnectionNavigationPresentation(
+  ...args: Parameters<typeof resolveRemoteConnectionPresentation>
+): ReturnType<typeof resolveRemoteConnectionPresentation> {
+  return resolveRemoteConnectionPresentation(...args);
+}

@@ -41,7 +41,7 @@ import {
 import { useConversationPanePresentation } from "@/side-pane-full-view/index.js";
 import { WorkbenchLeafPane, type WorkbenchShellBinding } from "@/v4/WorkbenchPane.js";
 import { WorkbenchSplitDivider } from "@/v4/WorkbenchSplitDivider.js";
-import { type RegisterConversationDropTarget } from "@/v4/composer/conversationDropTarget.js";
+import type { ConversationDropTargetController } from "@/v4/composer/conversationDropTarget.js";
 import type {
   ChatSearchResultHighlightRequest,
   ChatViewSummaryPanelVariant,
@@ -61,7 +61,6 @@ export interface V4WorkspaceChatAreaProps {
   /** Prompt 模板埋点当前仅覆盖 Desktop；Web / 手机远控保留 UI 行为但不触发该事件。 */
   isDesktop?: boolean;
   readOnly?: boolean;
-  readOnlyReason?: string;
   allowEscapeStopOutsidePane?: boolean;
   /** Settings 等覆盖层打开时为 false，隐藏 Pane 不得消费一次性 Composer 请求。 */
   foregroundEnabled?: boolean;
@@ -72,7 +71,7 @@ export interface V4WorkspaceChatAreaProps {
   activeSelectionSideChatSessionId?: string | null;
   provider?: ZCodeProvider;
   /** primary pane createSession/fork 后接入既有选择路径（handleSelectTask）。 */
-  onSessionCreated?: (sessionId: string, origin?: "draft-promotion") => void;
+  onSessionCreated?: (sessionId: string) => void;
   /** primary pane 会话删除后回 draft（shell 起新草稿）。 */
   onSessionDeleted?: () => void;
   /**
@@ -81,7 +80,9 @@ export interface V4WorkspaceChatAreaProps {
    */
   draftComposerHeader?: ReactNode;
   /** 桌面轻量草稿标题栏复用主草稿 composer 的 drop controller。 */
-  onPrimaryDraftDropTargetControllerChange?: RegisterConversationDropTarget;
+  onPrimaryDraftDropTargetControllerChange?: (
+    controller: ConversationDropTargetController | null,
+  ) => void;
   gitSummary?: GitRepositorySummary | null;
   gitDirtyFileCount?: number;
   gitWorktreeReviewSourceId?: GitChangeSourceId | null;
@@ -91,11 +92,7 @@ export interface V4WorkspaceChatAreaProps {
   onSummaryPanelVariantOverrideChange?: (variant: ChatViewSummaryPanelVariant | null) => void;
   onRefreshGit?: () => void;
   onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
-  onPaneActiveSessionChange?: (
-    scope: PaneWorkspaceScope,
-    sessionId: string,
-    origin?: "draft-promotion",
-  ) => void;
+  onPaneActiveSessionChange?: (scope: PaneWorkspaceScope, sessionId: string) => void;
   onOpenBrowserUrl?: (url: string) => void;
   onOpenAutomationsMain?: OpenAutomationsMain;
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
@@ -138,7 +135,6 @@ export function V4WorkspaceChatArea({
   workspaceIdentity,
   isDesktop = false,
   readOnly = false,
-  readOnlyReason,
   allowEscapeStopOutsidePane = false,
   foregroundEnabled = true,
   remoteSessionId,
@@ -267,7 +263,6 @@ export function V4WorkspaceChatArea({
       isDesktop,
       compactForRemoteControl,
       readOnly,
-      readOnlyReason,
       allowEscapeStopOutsidePane,
       sessionId: primaryPaneSessionId,
       // primaryPaneSessionId 在 active task 被 split pane 接管时会刻意置空，
@@ -318,7 +313,6 @@ export function V4WorkspaceChatArea({
       isDesktop,
       compactForRemoteControl,
       readOnly,
-      readOnlyReason,
       allowEscapeStopOutsidePane,
       primaryPaneSessionId,
       activeSelectionSideChatSessionId,

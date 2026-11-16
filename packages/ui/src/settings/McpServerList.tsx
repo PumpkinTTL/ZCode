@@ -15,7 +15,7 @@ import {
   resolveMcpFailureMessageId,
 } from "@/settings/McpFailurePresentation.js";
 import { SettingsResourceList } from "@/settings/SettingsResourceGroup.js";
-import { CircleIcon, Cable, Loader2Icon, ExternalLink, Plus } from "lucide-react";
+import { CircleIcon, Cable, Loader2Icon, Loader2, ExternalLink, Plus } from "lucide-react";
 
 export function McpStatusDot({
   status,
@@ -42,7 +42,7 @@ export function McpStatusDot({
 
   const icon =
     !disabled && status === "connecting" ? (
-      <LoaderCircle className={`size-3 shrink-0 animate-spin ${color}`} aria-hidden="true" />
+      <Loader2 className={`size-3 shrink-0 animate-spin ${color}`} aria-hidden="true" />
     ) : (
       <CircleIcon className={`size-2.5 shrink-0 fill-current ${color}`} aria-hidden="true" />
     );

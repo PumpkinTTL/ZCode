@@ -181,7 +181,8 @@ export function BrowserSettingsSection({
       try {
         const result = await platform.clearEmbeddedBrowserData(mode);
         if (result.success && mode === "all") clearBrowserRecentVisits();
-        trace.complete({ resultSource: "platform_result" });
+        // Polaris：trace 观测已随遥测链移除。
+        void result;
         toast(
           intl.formatMessage({
             id: result.success
