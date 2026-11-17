@@ -97,7 +97,8 @@ afterEach(() => {
   events.dispose();
   vi.clearAllMocks();
 });
-const sessions = (query = "", workspaceScope = "same-authority-workspaces" as const) =>
+// 命名以 use 开头：满足 react-hooks 规则（renderHook 内调用自定义 hook）。
+const useTestSessions = (query = "", workspaceScope = "same-authority-workspaces" as const) =>
   useSessionsMentionProvider(
     "glm",
     "/cwd",
@@ -112,7 +113,7 @@ const sessions = (query = "", workspaceScope = "same-authority-workspaces" as co
 
 it("# reads unopened tasks from the current Host and groups by project including unclassified", async () => {
   tree.projects[0]!.deleted = true;
-  const { result } = renderHook(() => sessions(), { wrapper });
+  const { result } = renderHook(() => useTestSessions(), { wrapper });
   await waitFor(() => expect(result.current.items).toHaveLength(2));
   expect(readTree).toHaveBeenCalledWith({ includeDeleted: true });
   expect(
@@ -128,7 +129,7 @@ it("# searches before limiting each project, so unopened older results remain fi
     ...Array.from({ length: 21 }, (_, i) => task(`p${i}`, "p", { updatedAt: 100 - i })),
     ...Array.from({ length: 21 }, (_, i) => task(`q${i}`, "q", { updatedAt: 100 - i })),
   ];
-  const { result, rerender } = renderHook(({ query }) => sessions(query), {
+  const { result, rerender } = renderHook(({ query }) => useTestSessions(query), {
     wrapper,
     initialProps: { query: "" },
   });
@@ -167,7 +168,7 @@ it("project refresh discards an earlier response that would restore a moved task
         resolveOld = resolve;
       }),
   );
-  const { result } = renderHook(() => sessions(), { wrapper });
+  const { result } = renderHook(() => useTestSessions(), { wrapper });
   await waitFor(() => expect(readTree).toHaveBeenCalledOnce());
   act(() => events.fire({ channel: "state:projects" }));
   await waitFor(() => expect(result.current.items).toHaveLength(2));

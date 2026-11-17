@@ -35,7 +35,6 @@ type RemoteDisconnectReason =
   | "host-exit"
   | "window-closed"
   | "app-shutdown";
-import { ProviderProvisioningEnvironmentCoordinator } from "./providerProvisioningEnvironmentCoordinator.js";
 import {
   ProviderProvisioningEnvironmentCoordinator,
   ProviderProvisioningExecutionError,

@@ -100,10 +100,7 @@ import type {
 } from "@zcode/shared";
 import { unwrapRemoteWorkspaceBindResult } from "./remoteWorkspaceBindBridge.js";
 // scopedServicePortPayloadSchema 是运行时 zod schema：误并入 import type 块会在转译后被擦除，
-// ScopedServicePort 事件到达时直接 ReferenceError（preload 整体失效）。
-import { scopedServicePortPayloadSchema } from "@zcode/shared";
-import { InternalChannels, PlatformChannels } from "@zcode/shared/channels";
-import { formatZCodeRendererProcessName } from "@zcode/shared/process-names";
+// ScopedServicePort 事件到达时直接 ReferenceError（preload 整体失效）——因此用独立值导入，不得并入上方 type 块。
 import {
   InternalChannels,
   PlatformChannels,

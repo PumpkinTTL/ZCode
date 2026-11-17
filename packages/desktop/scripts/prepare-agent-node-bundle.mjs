@@ -431,29 +431,6 @@ function stageOfficialPlugins() {
   }
 }
 
-function stageBundledSkillPack() {
-  const sourceRoot = resolve(repoRoot, bundledSkillPack.relativePath);
-  const targetRoot = resolve(glmDir, bundledSkillPack.stagedPath);
-  mkdirSync(targetRoot, { recursive: true });
-  for (const entryName of bundledSkillPack.topLevelPaths) {
-    const sourcePath = resolve(sourceRoot, entryName);
-    if (!existsSync(sourcePath)) continue;
-    cpSync(sourcePath, resolve(targetRoot, entryName), {
-      recursive: true,
-      filter: shouldCopyOfficialPluginAsset,
-    });
-  }
-  for (const relativePath of bundledSkillPack.requiredPaths) {
-    const stagedAssetPath = resolve(targetRoot, ...relativePath.split("/"));
-    if (!existsSync(stagedAssetPath)) {
-      throw new Error(
-        `[prepare:agent-bundle] missing staged bundled skill asset: ${stagedAssetPath}`,
-      );
-    }
-  }
-  console.log(`[prepare:agent-bundle] staged bundled skill pack ${bundledSkillPack.stagedPath}`);
-}
-
 // stdio MCP 的 npm/npx 回退（用户没装 Node 时由 Electron Node 运行随包 npm）。
 // tarball 按 sha512 缓存在 node_modules/.cache，重复打包不再下载。
 async function stageBundledNpmRuntime() {
