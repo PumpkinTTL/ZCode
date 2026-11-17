@@ -240,3 +240,6 @@ export interface OAuthUserProfile {
   avatarUrl?: string;
   rawProfile?: unknown;
 }
+
+/** 登出范围 */
+export type OAuthLogoutScope = "active" | "all";

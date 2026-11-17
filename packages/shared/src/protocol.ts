@@ -2,11 +2,10 @@ import type { RemoteAssetInstallMode } from "./remoteAssetInstallMode.js";
 import type { RemoteResourcePackageSelection } from "./remoteResourcePackages.js";
 import type { ProviderFamilyDomain } from "./model-provider-family.js";
 import type { ProviderFamilyConnectionSelectionSettings } from "./provider-family-connection-selection.js";
-
+import type { ZCodeProvider } from "./zcode-task-types-core.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 import type { DynamicWorkflowMode } from "./dynamic-workflow-feature.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
-import type { ZCodeProvider } from "./zcode-task-types-core.js";
 import type { AppToolSearchMode } from "./app-runtime-preferences.js";
 
 // ── Domain types ──
@@ -338,12 +337,6 @@ export interface AppSettings {
   messageStreamShowReasoningMigrationInitialized?: boolean;
   /** 是否在消息流中展示 todo 工具渲染；不影响摘要面板的 todo */
   messageStreamShowTodos?: boolean;
-  /** 是否把连续的只读工具调用聚合成 Explore。Polaris：上游 v3.18 删除了该设置项，我方保留。 */
-  toolGroupingExploreEnabled?: boolean;
-  /** 是否把连续的非只读 Shell 工具调用聚合成 Terminal。 */
-  toolGroupingTerminalEnabled?: boolean;
-  /** 是否把连续的 Write/Edit/ApplyPatch 工具调用聚合成 Changes。 */
-  toolGroupingChangesEnabled?: boolean;
   /** ZCode 运行中继续输入时，是排队到下一轮，还是引导到下一次工具调用后运行 */
   zcodeInteractionBehavior?: ZCodeInteractionBehavior;
   /** Agent 提问五分钟无人回答时是否允许自动继续；缺失按开启兼容旧配置。 */
@@ -419,7 +412,7 @@ export interface AppSettings {
   lastActiveTabIndex?: number;
   /** 每个 workspace 的最后活跃 taskId，下次打开自动恢复 */
   lastActiveTaskByWorkspace?: Record<string, string>;
-  /** 数据目录的根路径（替代 homedir），默认为 os.homedir()；.polaris/v2 后缀不变 */
+  /** 数据目录的根路径（替代 homedir），默认为 os.homedir()；.zcode/v2 后缀不变 */
   dataBaseDir?: string;
   /** 自动更新安装完成后，等待首次启动展示的版本说明 */
   pendingPostUpdateReleaseNotes?: {

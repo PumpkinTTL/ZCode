@@ -69,7 +69,7 @@ export const ARMS_CUSTOM_EVENT_PROPERTY_LIMIT = 20;
 const PROCESS_RESOURCE_GLOBAL_PROPERTY_KEYS = [
   "platform",
   "app_version",
-  "telemetry_env",
+  "arms_env",
   "device_mid",
 ] as const;
 

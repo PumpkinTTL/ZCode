@@ -906,7 +906,7 @@ export const v4AttachmentBeginParamsSchema = z
       .string()
       .min(1)
       .max(255)
-      .regex(/^[^\u0000\r\n]+$/),
+      .regex(/^[^\0\r\n]+$/),
     mime: z
       .string()
       .min(3)

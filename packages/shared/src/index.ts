@@ -48,7 +48,7 @@ export type {
 } from "./locale.js";
 export { ZCODE_VERSION, ZCODE_COMMIT, ZCODE_BUILD_TIME } from "./version.js";
 export type { HelloMessage, HelloAckMessage } from "./handshake.js";
-export type { ZCodeEnv, ZCodeProductFlavor } from "./env.js";
+export type { ArmsRumEnv, ZCodeEnv, ZCodeProductFlavor } from "./env.js";
 export type { RemoteAssetInstallMode } from "./remoteAssetInstallMode.js";
 export type {
   RemoteResourcePackageId,
@@ -88,12 +88,11 @@ export {
   ZCODE_ARMS_RUM_ENDPOINT,
   ZCODE_TELEMETRY_REPORT_ENDPOINT,
   ZCODE_AUTO_UPDATE_ENABLED,
+  mapZCodeEnvToArmsRumEnv,
   normalizeZCodeEnv,
   normalizeZCodeProductFlavor,
 } from "./env.js";
 export * from "./errors.js";
-export type { SessionCreateSource } from "./sessionCreateSource.js";
-export { resolveSafeEndpointHostname } from "./endpointHostname.js";
 export {
   USER_INSTRUCTIONS_MAX_BYTES,
   USER_INSTRUCTIONS_TOO_LARGE_ERROR_CODE,
@@ -143,7 +142,6 @@ export interface ICredentialStore {
 
 export * from "./test-ids-workflow.js";
 export * from "./channels.js";
-export * from "./highspeed.js";
 export * from "./storage.js";
 export * from "./oauth.js";
 export * from "./desktopMenu.js";
@@ -154,6 +152,7 @@ export * from "./helpAppConfig.js";
 export * from "./remoteAssetInstallMode.js";
 export * from "./onboardingRecord.js";
 export * from "./remoteResourcePackages.js";
+export * from "./plan-identity.js";
 export {
   BROWSER_SCREENSHOT_SURFACE_PREPARE_TIMEOUT_MS,
   BROWSER_VIEW_RESTORE_BOOTSTRAP_URL,
@@ -301,6 +300,7 @@ export * from "./off-peak-types.js";
 export * from "./background-task-control-merge.js";
 export * from "./background-task-controls.js";
 export * from "./background-task-notifications.js";
+export * from "./background-bash-jobs.js";
 export * from "./zcode-agent-model-state.js";
 export * from "./task-realtime.js";
 export { formatTimestamp, formatLogPrefix } from "./log-format.js";
@@ -401,13 +401,5 @@ export * from "./attachment-source.js";
 
 export * from "./channel-mention.js";
 export * from "./plugin-store-visibility.js";
-
-// Polaris fork：request-security 已被裁剪为本文件的空实现 stub（无验证头、无遥测），
-// 但上游测试/工具仍从包入口引用这两个名字，保留 re-export 以维持模块契约。
-export {
-  requestSecuritySensitiveHeaders,
-  isRequestSecurityFailure,
-} from "./request-security-edition/policy.js";
-export * from "./request-security-edition/verification-policy.js";
 
 export * from "./conversation-share-tool-presentation.js";

@@ -514,8 +514,6 @@ export const TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER = "subagent-built-in-model-trig
 export const TID_SETTINGS_USAGE_TAB = "settings-usage-tab";
 /** 侧边栏头像菜单使用统计入口 */
 export const TID_SIDEBAR_CODING_PLAN_USAGE_BUTTON = "sidebar-coding-plan-usage-button";
-/** 侧边栏头像菜单「用量额度」入口（打开 Nimbus 额度弹层） */
-export const TID_SIDEBAR_QUOTA_USAGE_BUTTON = "sidebar-quota-usage-button";
 
 // Model Provider Settings
 /** 模型供应商顶部添加按钮 */
@@ -800,8 +798,6 @@ export const TID_V4_SPLIT_CLOSE = "v4-split-close";
 export const TID_V4_SPLIT_DIVIDER = "v4-split-divider";
 /** v4 pane header 的 workspace 徽标（跨 workspace pane 显示归属） */
 export const TID_V4_PANE_WORKSPACE_BADGE = "v4-pane-workspace-badge";
-/** 侧栏会话项上下文菜单「在分屏打开」（仅桌面 shell，收尾） */
-export const TID_V4_TASK_OPEN_IN_SPLIT = "v4-task-open-in-split";
 /** v4 时间线「加载更早」按钮（游标分页；窗口首行未到全序首行时出现） */
 export const TID_V4_TIMELINE_LOAD_OLDER = "v4-timeline-load-older";
 /** v4 对话轮次全局导航 rail（宽屏 2+ 可导航 turn 时出现） */
@@ -892,6 +888,8 @@ export function virtualProjectActionTestId(actionId: string, context = false): s
   return `${TID_VIRTUAL_PROJECT_ACTION_PREFIX}-${scoped ? "context-" : ""}${actionId}`;
 }
 
+/** 左侧栏头像上方的可手动领取 Start Plan banner。 */
+export const TID_MANUAL_CLAIM_PLAN_BANNER = "manual-claim-plan-banner";
 
 /** 插件 UI 沙箱卡片容器与其中的 webview。 */
 export const TID_PLUGIN_UI_CARD = "plugin-ui-card";

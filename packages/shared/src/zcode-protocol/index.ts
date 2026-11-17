@@ -1,3 +1,4 @@
+import { requestVerificationReasons } from "../request-security-edition/verification-policy.js";
 import { zcodeProtocolTraceSchema } from "./trace.js";
 export * from "../app-control/contract.js";
 import { appControlProtocol, appControlCancelMethod } from "../app-control/contract.js";
@@ -41,6 +42,7 @@ import { zcodeAutomationBotDeliveryTargetSchema } from "../bots.js";
 import { executionOutputPreviewSchema } from "../execution-output-preview.js";
 import { completeModelPropertiesDataSchema } from "../model-config.js";
 import { modelExecutionSchema } from "../model-execution.js";
+export type { ModelExecutionSelectionFallback } from "../model-execution.js";
 export * from "../off-peak-execution.js";
 import { modelSelectionSchema } from "../model-selection.js";
 import { APP_USAGE_RANGES, appUsageSnapshotSchema } from "../usage-stats.js";
@@ -131,9 +133,7 @@ export {
   type SessionsIndexReconcileResult,
 } from "../zcode-protocol-v4/sessions-index.js";
 
-// 常量名是内部标识（保留）；值是对外显示的协议名，且**没有任何等值校验**：
-// 它只被写入会话元数据与 "<name>/<version>" 展示串，因此改成自有身份不会破坏握手。
-export const ZCODE_PROTOCOL_NAME = "Polaris Protocol" as const;
+export const ZCODE_PROTOCOL_NAME = "ZCode Protocol" as const;
 export const ZCODE_PROTOCOL_VERSION = 1 as const;
 // V4 wire 与 legacy 主协议并存；禁止为了 V4 physical framing 改写 legacy 版本。
 export const ZCODE_PROTOCOL_V4_WIRE_VERSION = 3 as const;
@@ -735,6 +735,7 @@ export const zcodeProcessResourceSampleSchema = z
   .strict();
 export type ZCodeProcessResourceSample = z.infer<typeof zcodeProcessResourceSampleSchema>;
 
+export const zcodeProcessChildProcessesParamsSchema = z.object({}).strict();
 export const zcodeProcessChildProcessSchema = z
   .object({
     pid: z.number().int().positive(),
@@ -1276,7 +1277,15 @@ export const zcodeProviderAccountAccessSchema = z
   .object({
     type: z.literal("zhipu-account"),
     accountType: z.enum(["zai", "bigmodel"]),
-    mode: z.enum(["start-plan", "individual-coding-plan", "team-coding-plan", "off-peak"]),
+    // `highspeed` 指加速卡这一账号访问类别（隐藏 Provider + 免签网关），与模型名
+    // GLM-5.1-Highspeed 无关，仅字面重合。见 docs/highspeed/highspeed-access-mode-migration.md。
+    mode: z.enum([
+      "start-plan",
+      "individual-coding-plan",
+      "team-coding-plan",
+      "off-peak",
+      "highspeed",
+    ]),
     entitled: z.boolean(),
   })
   .strict();
@@ -2084,6 +2093,7 @@ export const zcodeUsageStatsParamsSchema = z
     timeZone: z.string().optional(),
   })
   .strict();
+export const zcodeUsageStatsResultSchema = appUsageSnapshotSchema;
 export const zcodeTaskTokenUsageParamsSchema = z
   .object({
     sessionId: nonEmptyString,
@@ -2896,7 +2906,7 @@ export const zcodeUserInputResponseSchema = z
   .strict();
 export type ZCodeUserInputResponse = z.infer<typeof zcodeUserInputResponseSchema>;
 
-export const zcodeProviderRuntimeHeadersRequestReasonSchema = z.enum(["model-request"]);
+export const zcodeProviderRuntimeHeadersRequestReasonSchema = z.enum(requestVerificationReasons);
 export const zcodeProviderRuntimeHeadersRequestParamsSchema = z
   .object({
     requestId: nonEmptyString,
@@ -3312,7 +3322,7 @@ export const zcodeSavedWorkflowMetaSchema = z
   })
   .strict();
 export type ZCodeSavedWorkflowMeta = z.infer<typeof zcodeSavedWorkflowMetaSchema>;
-// 作用域两档：项目档落 `<cwd>/.zcode/workflows/`、全局档落 agent 机器的 `~/.polaris/workflows/`。作用域由文件所在目录推得，frontmatter 不存 scope。
+// 作用域两档：项目档落 `<cwd>/.zcode/workflows/`、全局档落 agent 机器的 `~/.zcode/workflows/`。作用域由文件所在目录推得，frontmatter 不存 scope。
 export const zcodeSavedWorkflowScopeSchema = z.enum(["project", "global"]);
 export type ZCodeSavedWorkflowScope = z.infer<typeof zcodeSavedWorkflowScopeSchema>;
 export const zcodeSavedWorkflowEntrySchema = z
@@ -3349,7 +3359,7 @@ const zcodeSavedWorkflowFailureSchema = z
 export const zcodeWorkflowsListParamsSchema = z
   .object({
     workspace: zcodeWorkspaceRefSchema,
-    // 缺省即 `project`（本项目档）。给 `global` 时改扫本机 `~/.polaris/workflows/`；此时 `workspace`
+    // 缺省即 `project`（本项目档）。给 `global` 时改扫本机 `~/.zcode/workflows/`；此时 `workspace`
     // 仍必填，但只是**载体运行时**——协议处理器对全局档不读它的路径。
     scope: zcodeSavedWorkflowScopeSchema.optional(),
   })
@@ -3772,8 +3782,6 @@ export const zcodePluginMarketplaceSummarySchema = z
     isOfficial: z.boolean().optional(),
     // 目录顶层 featured 策展名单（商店「公开」分段 Featured 区）。
     featured: z.array(z.string()).optional(),
-    // 降级：刷新失败但本地仍有上一次成功目录，商店展示旧快照而非报错。
-    degraded: z.boolean().optional(),
     refreshFailure: z
       .object({
         code: z.string(),

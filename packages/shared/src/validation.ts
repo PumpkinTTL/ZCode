@@ -1,8 +1,11 @@
-import { automationSessionCreateTelemetrySchema } from "./sessionCreateTelemetry.js";
 import { mobilePluginDiscoveryTelemetrySchema, telemetryUiModeSchema } from "./telemetry.js";
 import { remoteConversationTelemetryEventSchema } from "./conversation-telemetry/remoteTelemetryEvent.js";
 import { databaseStartupControlSchema, databaseStartupStateSchema } from "./database-startup.js";
 import { mcpAppInstanceSchema } from "./mcp-apps/instance.js";
+import {
+  automationSessionCreateTelemetrySchema,
+  sessionCreateTelemetrySchema,
+} from "./sessionCreateTelemetry.js";
 /* eslint-disable max-lines -- 运行时 schema 当前集中在共享包入口，外部 relay payload 校验加入后先保持单一导出面。 */
 import { z } from "zod";
 
@@ -369,6 +372,12 @@ const webRemoteControlActionPayloadSchemas = [
 ] as const;
 
 const webRemoteControlAppPayloadSchemas = [
+  z
+    .object({
+      zcode_type: z.literal("telemetry-report"),
+      event: z.union([sessionCreateTelemetrySchema, mobilePluginDiscoveryTelemetrySchema]),
+    })
+    .strict(),
   z.object({
     zcode_type: z.literal("bootstrap-request"),
     terminalClientSessionId: webRemoteControlTransportIdSchema.optional(),
@@ -662,7 +671,7 @@ export const telemetryRendererContextSchema = z.object({
   uiMode: telemetryUiModeSchema.optional(),
   clientTimezone: nonEmptyStringSchema,
   clientLanguage: nonEmptyStringSchema,
-  screenResolution: z.string(),
+  screenResolution: nonEmptyStringSchema,
 });
 
 export const rendererTelemetryEventPayloadSchema = z.object({
@@ -1740,6 +1749,26 @@ export const hostPluginSandboxRegisterRequestResponseSchema = z
     "Invalid sandbox provenance",
   );
 
+export const networkObservationSchema = z.object({
+  transport: z.enum(["http", "websocket", "rpc"]),
+  interface: z.string(),
+  durationMs: z.number(),
+  ok: z.boolean(),
+  statusCode: z.number().optional(),
+  errorKind: z.string().optional(),
+  attempt: z.number().int().positive().optional(),
+  dnsMs: z.number().optional(),
+  tcpMs: z.number().optional(),
+  tlsMs: z.number().optional(),
+  ttfbMs: z.number().optional(),
+  downloadMs: z.number().optional(),
+});
+
+export const hostNetworkTelemetryBatchResponseSchema = z.object({
+  type: z.literal("network-telemetry-batch"),
+  observations: z.array(networkObservationSchema).max(500),
+});
+
 export const hostProviderProvisioningSourceChangedResponseSchema = z
   .object({
     type: z.literal("provider-provisioning-source-changed"),
@@ -1846,6 +1875,7 @@ export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostCredentialCipherRequestResponseSchema,
   hostCredentialKeyShareRequestResponseSchema,
   hostPluginSandboxRegisterRequestResponseSchema,
+  hostNetworkTelemetryBatchResponseSchema,
   hostProviderProvisioningSourceChangedResponseSchema,
   hostProviderProvisioningExecutionResultResponseSchema,
   hostProviderProvisioningLaneRequestResponseSchema,
@@ -2018,6 +2048,10 @@ export const zcodeTaskGoalChangedPatchSchema = z.object({
   target: zcodeTaskGoalSchema.nullable(),
   previousTarget: zcodeTaskGoalSchema.nullable().optional(),
 });
+
+export const zcodeTaskTargetStatusSchema = zcodeTaskGoalStatusSchema;
+export const zcodeTaskTargetSchema = zcodeTaskGoalSchema;
+export const zcodeTaskTargetChangedPatchSchema = zcodeTaskGoalChangedPatchSchema;
 
 export const zcodeTaskMetaSchema = z.object({
   taskId: nonEmptyStringSchema,

@@ -1,33 +1,17 @@
 import type { ZCodeEnv } from "./env.js";
-/**
- * V2 relay ws 路径（协议契约见 web-remote-relay/contract.ts 的
- * WEB_REMOTE_CONTROL_RELAY_V2_WS_PATH）。此处内联同值常量：tailwind 的 esm-cache
- * loader 对跨文件 .js 后缀导入按字面解析，vite/tsc 双侧都会破，端点推导必须与其同形。
- */
-const WEB_REMOTE_CONTROL_RELAY_V2_WS_PATH = "/api/v1/remote/ws2";
 
-// Polaris：默认端点指向自有域名（原值为 ZCode 官方 z.ai / bigmodel）。
-// 运行时可由 ZCODE_BASE_URL / BIGMODEL_API_BASE_URL / ZAI_* 等环境变量覆盖，
-// 因此接自有后端无需改代码；OAuth 相关常量保留是因为类型与配置结构仍被引用
-// （Polaris 不提供官方登录，这些端点不会被请求）。
-// test / production flavor 共用同一自有后端：TEST_* 刻意与 DEFAULT_* 同值（上游侧是 z.ai 系两套域名）。
-export const DEFAULT_ZCODE_ENDPOINT_ORIGIN = "https://nimbus.bitlesu.com";
-export const TEST_ZCODE_ENDPOINT_ORIGIN = DEFAULT_ZCODE_ENDPOINT_ORIGIN;
-export const DEFAULT_BIGMODEL_API_ORIGIN = "https://nimbus.bitlesu.com";
-export const TEST_BIGMODEL_API_ORIGIN = DEFAULT_BIGMODEL_API_ORIGIN;
-export const DEFAULT_ZAI_OAUTH_ORIGIN = "https://nimbus.bitlesu.com";
-export const TEST_ZAI_OAUTH_ORIGIN = DEFAULT_ZAI_OAUTH_ORIGIN;
-export const DEFAULT_ZAI_BUSINESS_BASE_URL = "https://nimbus.bitlesu.com";
-export const TEST_ZAI_BUSINESS_BASE_URL = DEFAULT_ZAI_BUSINESS_BASE_URL;
+export const DEFAULT_ZCODE_ENDPOINT_ORIGIN = "https://zcode.z.ai";
+export const TEST_ZCODE_ENDPOINT_ORIGIN = "https://zcode.z.ai";
+export const CODING_PLAN_LOCAL_WEBVIEW_ORIGIN = "http://localhost:3000";
+export const DEFAULT_BIGMODEL_API_ORIGIN = "https://bigmodel.cn";
+export const TEST_BIGMODEL_API_ORIGIN = "https://bigmodel.cn";
+export const DEFAULT_ZAI_OAUTH_ORIGIN = "https://chat.z.ai";
+export const TEST_ZAI_OAUTH_ORIGIN = "https://chat.z.ai";
+export const DEFAULT_ZAI_BUSINESS_BASE_URL = "https://api.z.ai";
+export const TEST_ZAI_BUSINESS_BASE_URL = "https://api.z.ai";
 export const DEFAULT_ZAI_OAUTH_CLIENT_ID = "client_P8X5CMWmlaRO9gyO-KSqtg";
 export const TEST_ZAI_OAUTH_CLIENT_ID = "client_P8X5CMWmlaRO9gyO-KSqtg";
-// Polaris：Web 远程控制 relay 默认与自有端点同源（上游原值 wss://zcode.z.ai/api/v1/remote/ws2）。
-// V2 relay 协议契约（web-remote-relay/contract.ts）钉死 ws 路径为 /api/v1/remote/ws2，必须同形；
-// 调用方可传 overrideUrl 覆盖。
-export const DEFAULT_WEB_REMOTE_CONTROL_RELAY_WS_URL = `${DEFAULT_ZCODE_ENDPOINT_ORIGIN.replace(
-  /^http/,
-  "ws",
-)}/api/v1/remote/ws2`;
+export const DEFAULT_WEB_REMOTE_CONTROL_RELAY_WS_URL = "wss://zcode.z.ai/api/v1/remote/ws2";
 export const WEB_REMOTE_CONTROL_V4_MIN_APP_VERSION = "3.4.0";
 
 export interface BuildZCodeEndpointUrlsOptions {
@@ -83,6 +67,10 @@ export interface ZCodeEndpointUrls {
   webRemoteCallbackUrl: string;
   webShareCallbackUrl: string;
   relayWsUrl: string;
+  zcodePlanOpenAiBaseUrl: string;
+  zcodePlanAnthropicBaseUrl: string;
+  zcodePlanBillingCurrentUrl: string;
+  zcodePlanBillingBalanceUrl: string;
 }
 
 export interface RuntimeZCodeEndpointEnv {
@@ -150,14 +138,41 @@ function readRuntimeZCodeEnvScopedValue(
 export function normalizeZCodeEndpointOrigin(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
-    throw new Error("Polaris endpoint origin is empty");
+    throw new Error("ZCode endpoint origin is empty");
   }
 
   const parsed = new URL(trimmed);
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    throw new Error("Polaris endpoint origin must use http or https");
+    throw new Error("ZCode endpoint origin must use http or https");
   }
   return parsed.origin;
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+export function isTrustedCodingPlanWebviewOrigin(
+  value: string | null | undefined,
+  options?: {
+    e2eStoreBridgeEnabled?: boolean;
+  },
+): boolean {
+  if (!value) return false;
+  try {
+    const origin = normalizeZCodeEndpointOrigin(value);
+    if (
+      origin === DEFAULT_ZCODE_ENDPOINT_ORIGIN ||
+      origin === TEST_ZCODE_ENDPOINT_ORIGIN ||
+      origin === CODING_PLAN_LOCAL_WEBVIEW_ORIGIN
+    ) {
+      return true;
+    }
+    const parsed = new URL(origin);
+    return options?.e2eStoreBridgeEnabled === true && isLoopbackHostname(parsed.hostname);
+  } catch {
+    return false;
+  }
 }
 
 export function resolveZCodeEndpointOrigin(options?: {
@@ -207,15 +222,12 @@ export function resolveRuntimeZCodeEndpointOrigin(
 }
 
 export function buildRuntimeZCodeEndpointUrls(
-  env: RuntimeZCodeEndpointEnv = {} as RuntimeZCodeEndpointEnv,
+  env: RuntimeZCodeEndpointEnv = {},
 ): ZCodeEndpointUrls {
   return buildZCodeEndpointUrls(resolveRuntimeZCodeEndpointOrigin(env));
 }
 
-export function buildRuntimeZCodeApiUrl(
-  env: RuntimeZCodeEndpointEnv = {} as RuntimeZCodeEndpointEnv,
-  path: string,
-): string {
+export function buildRuntimeZCodeApiUrl(env: RuntimeZCodeEndpointEnv = {}, path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${resolveRuntimeZCodeEndpointOrigin(env)}${normalizedPath}`;
 }
@@ -233,7 +245,7 @@ export function resolveWebRemoteControlRelayWsUrl(options?: {
     normalizeZCodeEndpointOrigin(options?.endpointOrigin?.trim() || DEFAULT_ZCODE_ENDPOINT_ORIGIN),
   );
   origin.protocol = origin.protocol === "https:" ? "wss:" : "ws:";
-  origin.pathname = WEB_REMOTE_CONTROL_RELAY_V2_WS_PATH;
+  origin.pathname = "/api/v1/remote/ws2";
   return origin.toString();
 }
 
@@ -256,9 +268,13 @@ export function buildBigModelApiUrl(env: RuntimeBigModelApiEnv = {}, path: strin
   return `${resolveBigModelApiOrigin(env)}${normalizedPath}`;
 }
 
-export function buildBigModelCodingPlanTeamManageUrl(
-  env: RuntimeBigModelApiEnv = {} as RuntimeBigModelApiEnv,
-): string {
+export function buildBigModelCodingPlanPersonalManageUrl(env: RuntimeBigModelApiEnv = {}): string {
+  // 修复原因：BigModel Coding Plan 管理页要跟随 ZCODE_ENV；
+  // 测试环境如果继续写死 bigmodel.cn，会把测试账号带到生产套餐页。
+  return buildBigModelApiUrl(env, "/coding-plan/personal/overview");
+}
+
+export function buildBigModelCodingPlanTeamManageUrl(env: RuntimeBigModelApiEnv = {}): string {
   return buildBigModelApiUrl(env, "/coding-plan/team/plans");
 }
 
@@ -361,7 +377,11 @@ export function buildZCodeEndpointUrls(
     remoteUrl: `${normalizedOrigin}/remote/${remoteVersion}`,
     webRemoteCallbackUrl: `${normalizedOrigin}/remote/v4`,
     webShareCallbackUrl: `${normalizedOrigin}/cn/share/callback`,
-    relayWsUrl: `${wsOrigin}${WEB_REMOTE_CONTROL_RELAY_V2_WS_PATH}`,
+    relayWsUrl: `${wsOrigin}/api/v1/remote/ws2`,
+    zcodePlanOpenAiBaseUrl: `${normalizedOrigin}/api/v1/zcode-plan`,
+    zcodePlanAnthropicBaseUrl: `${normalizedOrigin}/api/v1/zcode-plan/anthropic`,
+    zcodePlanBillingCurrentUrl: `${normalizedOrigin}/api/v1/zcode-plan/billing/current`,
+    zcodePlanBillingBalanceUrl: `${normalizedOrigin}/api/v1/zcode-plan/billing/balance`,
   };
 }
 

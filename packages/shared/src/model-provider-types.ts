@@ -28,7 +28,6 @@ export function isBuiltinModelProviderId(id: string): id is BuiltinModelProvider
   );
 }
 
-/** Polaris：上游引用的 provider-id 判别谓词（匹配键语义，惰性；无业务调用路径）。 */
 export function isZaiCodingPlanProviderId(id: string): boolean {
   return (
     id === BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan ||
@@ -37,6 +36,22 @@ export function isZaiCodingPlanProviderId(id: string): boolean {
   );
 }
 
+export function isBigModelStartPlanProviderId(id: string): boolean {
+  return id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan;
+}
+
+export function isStartPlanModelProviderId(id: string): boolean {
+  return (
+    id === BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan ||
+    id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan
+  );
+}
+
+/**
+ * 个人版 Coding Plan（不含 Start Plan 与 Team Plan）。
+ * Start Plan 用 disconnected 展示领取/付费卡，Team Plan 有独立文案，
+ * "服务端明确无权益"只对个人版需要区分成"未开通"。
+ */
 export function isIndividualCodingPlanModelProviderId(id: string): boolean {
   return (
     id === BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan ||
@@ -44,9 +59,11 @@ export function isIndividualCodingPlanModelProviderId(id: string): boolean {
   );
 }
 
-export function isStartPlanModelProviderId(id: string): boolean {
+export function isCodingPlanModelProviderId(id: string): boolean {
   return (
-    id === BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan ||
+    isZaiCodingPlanProviderId(id) ||
+    id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan ||
+    id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan ||
     id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan
   );
 }

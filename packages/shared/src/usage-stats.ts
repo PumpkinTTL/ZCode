@@ -1,10 +1,62 @@
-/* eslint-disable max-lines -- Usage 与 Entitlement 的跨进程协议需要共享同一组 Account Access 字段和运行时 schema，暂时集中维护。 */
+/* eslint-disable max-lines -- Usage、Entitlement 与 Reset 的跨进程协议需要共享同一组 Account Access 字段和运行时 schema，暂时集中维护。 */
 import { z } from "zod";
 
 // 额度类型拆在 usage-quota.ts，见该文件头部说明；这里 re-export 保持既有 import 路径不变。
 export * from "./usage-quota.js";
 import type { UsageMcpQuotaSnapshot, UsageQuotaSnapshot } from "./usage-quota.js";
 import type { ZCodeAccountAccess, ZCodeProviderAccountAccess } from "./zcode-protocol/index.js";
+
+export const ESTIMATED_TOKEN_CHAR_DIVISOR = 3;
+
+export type UsageStatsRange = "all" | "7d" | "30d";
+export type CodingPlanUsageRange = "today" | "7d" | "30d" | "custom";
+export type CodingPlanUsageGranularity = "hour" | "day";
+export type CodingPlanUsageDetailMetric = "credits" | "usage";
+export type CodingPlanUsageDetailSubject = "model" | "tool";
+
+export interface UsageStatsRequest {
+  range: UsageStatsRange;
+  /** 使用统计数据源。App Usage 显式使用本地 session 聚合,Coding Plan 显式使用 monitor 接口。 */
+  dataSource?: "local" | "monitor";
+  /** 设置页可传入用户当前选中的 Z.AI / BigModel 来源，避免两边都配置时只隐式读取第一家。 */
+  preferredProviderId?: string;
+  /** Registry 静态访问类别，或调用边界已解析的动态账号访问上下文。 */
+  accountAccess?: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+  /** 指定来源的场景必须命中 preferredProviderId,否则不允许回退到其它 provider 或本地聚合。 */
+  requirePreferredProvider?: boolean;
+  /** 是否允许 host 环境变量覆盖 provider key。默认允许,显式 provider 场景可关闭。 */
+  allowEnvApiKey?: boolean;
+  /**
+   * 统计按调用端时区归桶。
+   * UI 默认传入浏览器当前时区；缺省时 host 侧回退到系统时区。
+   */
+  timeZone?: string;
+}
+
+export interface CodingPlanUsageRequest {
+  range: CodingPlanUsageRange;
+  /** 自定义日期范围。仅 range=custom 时生效，按调用端自然日解释，最大 30 天。 */
+  customStartDate?: string | null;
+  customEndDate?: string | null;
+  preferredProviderId: string;
+  /** Registry 静态访问类别，或本次 Team 查询绑定的动态账号访问上下文。 */
+  accountAccess: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+  timeZone?: string;
+}
+
+/** Highspeed 只读取普通 Pro/Max decode TPS，不触发完整 Coding Plan 用量聚合。 */
+export interface CodingPlanRegularTpsRequest {
+  preferredProviderId: string;
+  /**
+   * Registry 静态访问类别，或调用边界已解析的动态账号访问上下文。
+   *
+   * Bug 原因：此前该请求只带 organizationId/projectId，请求期鉴权靠 host 自行按 provider
+   * 猜测账号。Provider 重构后 Coding Plan 授权统一由 accountAccess 解析（Team scope 也内含
+   * 其中），缺失时 resolveAuthorization 必定返回 null，节省时间会静默不展示。
+   */
+  accountAccess: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+  timeZone?: string;
+}
 
 export interface UsageEntitlementRequest {
   /** 购买或领取完成后，使对应 Start Plan balance 短期缓存失效。 */
@@ -97,6 +149,27 @@ export interface UsageEntitlementSubscriptionDetail {
     showName?: string | null;
     effectiveTime: string | null;
   }>;
+}
+
+export interface UsageStatsSnapshot {
+  range: UsageStatsRange;
+  generatedAt: number;
+  timeZone: string;
+  estimatedTokenCharDivisor: number;
+  summary: UsageStatsSummary;
+  /** 按日期连续补齐后的日序列，空白日期会补 0，供趋势图直接使用。 */
+  daily: UsageStatsDaySummary[];
+  heatmap: UsageStatsHeatmap;
+  models: UsageStatsModelUsage[];
+  /**
+   * 数据来源标识：用于 UI 识别供应商 monitor 接口或本地 session 聚合数据。
+   * App Usage 显式读取本地 session 聚合；Coding Plan 显式读取当前 provider monitor。
+   */
+  source?: "bigmodel-monitor" | "local";
+  /** 远端用量来源供应商，用于 UI 展示 BigModel / Z.AI 等来源。 */
+  sourceProvider?: UsageEntitlementProviderInfo | null;
+  /** 工具调用维度（仅 BigModel tool-usage 接口可用，本地聚合不填）。 */
+  tools?: UsageStatsToolUsage[];
 }
 
 // ── App Usage（agent 数据库真实统计）────────────────────────────────
@@ -207,6 +280,197 @@ export interface AppUsageRequest {
   timeZone?: string;
 }
 
-/** 粗略 token 估算：core 的 compact/上下文估算共用此除数（活常量，勿删）。 */
-export const ESTIMATED_TOKEN_CHAR_DIVISOR = 3;
+export interface CodingPlanUsageSnapshot {
+  range: CodingPlanUsageRange;
+  rangeStartDate: string;
+  rangeEndDate: string;
+  generatedAt: number;
+  sourceProvider: UsageEntitlementProviderInfo;
+  quota: UsageQuotaSnapshot | null;
+  activity: CodingPlanActivitySnapshot;
+  detail: CodingPlanUsageDetailSnapshot;
+  modelUsage: CodingPlanModelUsageSnapshot;
+  toolUsage: CodingPlanToolUsageSnapshot;
+  health: CodingPlanHealthSnapshot;
+}
 
+export interface CodingPlanActivitySnapshot {
+  summary: CodingPlanActivitySummary;
+  heatmap: AppUsageHeatmap;
+}
+
+export interface CodingPlanActivitySummary {
+  totalTokens: number;
+  peakDailyTokens: number;
+  peakDailyTokensDate: string | null;
+  totalUsageDurationMs: number;
+  currentStreakDays: number;
+  longestStreakDays: number;
+  favoriteModelName: string | null;
+}
+
+export interface CodingPlanUsageDetailSnapshot {
+  model: CodingPlanUsageDetailSummary;
+  tool: CodingPlanUsageDetailSummary;
+}
+
+export interface CodingPlanUsageDetailSummary {
+  cacheHitRate: number | null;
+  cacheHitRateTrend: number | null;
+  totalCredits: number;
+  totalCreditsTrend: number | null;
+  averageDailyCredits: number;
+  averageDailyCreditsTrend: number | null;
+}
+
+export interface CodingPlanModelUsageSnapshot {
+  xTime: string[];
+  granularity: CodingPlanUsageGranularity;
+  totalModelCallCount: number;
+  totalTokensUsage: number;
+  modelDataList: CodingPlanModelData[];
+  modelSummaryList: CodingPlanModelSummary[];
+}
+
+export interface CodingPlanModelData {
+  modelName: string;
+  sortOrder: number;
+  tokensUsage: number[];
+  creditsUsage?: number[];
+  cachedInputTokensUsage?: number[];
+  uncachedInputTokensUsage?: number[];
+  outputTokensUsage?: number[];
+  cachedInputCreditsUsage?: number[];
+  uncachedInputCreditsUsage?: number[];
+  outputCreditsUsage?: number[];
+  totalTokens: number;
+  totalCredits?: number;
+}
+
+export interface CodingPlanModelSummary {
+  modelName: string;
+  totalTokens: number;
+  totalCredits?: number;
+  sortOrder: number;
+}
+
+export interface CodingPlanToolUsageSnapshot {
+  xTime: string[];
+  granularity: CodingPlanUsageGranularity;
+  toolDataList: CodingPlanToolData[];
+  toolSummaryList: CodingPlanToolSummary[];
+}
+
+export interface CodingPlanToolData {
+  toolCode: string;
+  toolName: string;
+  sortOrder: number;
+  usageCount: number[];
+  creditsUsage?: number[];
+  totalUsageCount: number;
+  totalCredits?: number;
+}
+
+export interface CodingPlanToolSummary {
+  toolCode: string;
+  toolName: string;
+  totalUsageCount: number;
+  totalCredits?: number;
+  sortOrder: number;
+}
+
+export interface CodingPlanHealthSnapshot {
+  xTime: string[];
+  proMaxDecodeSpeed: number[];
+  liteDecodeSpeed: number[];
+}
+
+export interface UsageStatsToolUsage {
+  /** 工具内部代号：search-prime / web-reader / zread / search-mcp 等。 */
+  toolCode: string;
+  /** 用于展示的人类可读名称。 */
+  displayName: string;
+  totalCalls: number;
+  /** 与 daily 同长度的按天调用次数，便于绘制趋势。 */
+  dailyCalls: number[];
+}
+
+export interface UsageStatsSummary {
+  totalSessions: number;
+  totalMessages: number;
+  totalCharacters: number;
+  totalEstimatedTokens: number;
+  activeDays: number;
+  mostActiveDay: UsageStatsDaySummary | null;
+  favoriteModel: UsageStatsFavoriteModel | null;
+  longestSessionMs: number;
+  longestStreakDays: number;
+  currentStreakDays: number;
+  firstActivityDate: string | null;
+  lastActivityDate: string | null;
+  peakHour: UsageStatsPeakHour | null;
+}
+
+export interface UsageStatsPeakHour {
+  hour: number;
+  totalEstimatedTokens: number;
+  messageCount: number;
+}
+
+export interface UsageStatsFavoriteModel {
+  modelId: string | null;
+  totalCharacters: number;
+  totalEstimatedTokens: number;
+  share: number;
+}
+
+export interface UsageStatsDaySummary {
+  date: string;
+  label: string;
+  totalCharacters: number;
+  totalEstimatedTokens: number;
+  sessionCount: number;
+  messageCount: number;
+  activityScore: number;
+}
+
+export interface UsageStatsHeatmap {
+  startDate: string | null;
+  endDate: string | null;
+  maxActivityScore: number;
+  weeks: UsageStatsHeatmapWeek[];
+  monthLabels: UsageStatsHeatmapMonthLabel[];
+}
+
+export interface UsageStatsHeatmapWeek {
+  weekIndex: number;
+  days: Array<UsageStatsHeatmapCell | null>;
+}
+
+export interface UsageStatsHeatmapMonthLabel {
+  weekIndex: number;
+  date: string;
+}
+
+export interface UsageStatsHeatmapCell {
+  date: string;
+  level: 0 | 1 | 2 | 3 | 4;
+  totalCharacters: number;
+  totalEstimatedTokens: number;
+  sessionCount: number;
+  messageCount: number;
+  activityScore: number;
+}
+
+export interface UsageStatsModelUsage {
+  modelId: string | null;
+  totalCharacters: number;
+  totalEstimatedTokens: number;
+  inputCharacters: number;
+  inputEstimatedTokens: number;
+  outputCharacters: number;
+  outputEstimatedTokens: number;
+  sessionCount: number;
+  messageCount: number;
+  share: number;
+}

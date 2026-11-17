@@ -173,6 +173,8 @@ export const ServiceChannels = {
   ClientConfig: "client-config",
   /** ZCode 客户端场景配置服务 */
   ClientScenes: "client-scenes",
+  CloudContent: "cloud-content",
+  MarketingTouch: "marketing-touch",
   /** 桌面 Host 的语音输入：连接 zcode-server ASR（docs/chat/composer-voice-input.md，仅本机 base 连接） */
   VoiceInput: "voice-input",
   /** Skills 管理服务 */
@@ -209,14 +211,12 @@ export const ServiceChannels = {
   Bots: "bots",
   /** 用户反馈工单服务 */
   Feedback: "feedback",
-  /** Polaris 自有业务：供应商账号与额度（余额/套餐/用量，供应商可替换） */
-  ProviderQuota: "provider-quota",
-  /** Polaris 自有业务：App 更新检查 / 版本目录（更新日志）/ 在线心跳 */
-  AppUpdate: "app-update",
   /** Composer 附件在 host-local 与 remote runtime 之间的预传服务 */
   PromptAttachmentTransfer: "prompt-attachment-transfer",
   /** 闲时任务管理服务（与 automation 服务面独立） */
   OffPeakTask: "off-peak-task",
+  /** Highspeed 加速卡抽取与分享服务 */
+  HighspeedCard: "highspeed-card",
   /** Onboarding 完成记录服务（本地持久化，后续上传服务器） */
   OnboardingRecord: "onboarding-record",
 } as const;
@@ -245,7 +245,7 @@ export const PlatformChannels = {
   SelectFile: "zcode:select-file",
   /** 打开系统多文件选择框 */
   SelectFiles: "zcode:select-files",
-  /** Renderer → Main：写入宿主 ~/.polaris 临时文本附件 */
+  /** Renderer → Main：写入宿主 ~/.zcode 临时文本附件 */
   CreateTempTextAttachment: "zcode:create-temp-text-attachment",
   /** Renderer → Main：把 dwf 产物某一版的字节落成本机副本（「作为文件打开」） */
   MaterializeWorkflowArtifactFile: "zcode:materialize-workflow-artifact-file",
@@ -380,7 +380,7 @@ export const PlatformChannels = {
   ClearNetworkCapture: "zcode:clear-network-capture",
   /** 打开资源管理器窗口（其他窗口触发） */
   OpenResourceManager: "zcode:open-resource-manager",
-  /** 资源管理器「存储」tab：开始扫描本机 .polaris 占用（main 持有 StorageService，Worker 线程遍历） */
+  /** 资源管理器「存储」tab：开始扫描本机 .zcode 占用（main 持有 StorageService，Worker 线程遍历） */
   StorageStartScan: "zcode:storage-start-scan",
   /** 资源管理器「存储」tab：取消扫描 */
   StorageCancelScan: "zcode:storage-cancel-scan",
@@ -400,7 +400,7 @@ export const PlatformChannels = {
   OpenInFileManager: "zcode:open-in-file-manager",
   /** Renderer → Main：使用系统默认应用打开本地文件 */
   OpenExternalFile: "zcode:open-external-file",
-  /** Renderer → Main：打开 Polaris Computer Use 权限引导 */
+  /** Renderer → Main：打开 ZCode Computer Use 权限引导 */
   OpenCuaPermissionOnboarding: "zcode:open-cua-permission-onboarding",
   /** Renderer → Main：取消当前 renderer 发起的一次权限引导 participant */
   CancelCuaPermissionOnboarding: "zcode:cancel-cua-permission-onboarding",
@@ -422,10 +422,35 @@ export const PlatformChannels = {
   OAuthRegisterState: "zcode:oauth-register-state",
   /** Main → Renderer：转发 deep link URL */
   OAuthCallback: "zcode:oauth-callback",
+  /** Main → Renderer：转发支付 deep link URL */
+  PaymentCallback: "zcode:payment-callback",
   /** Main → Renderer：外部分享页请求导入 share code。 */
   ShareImport: "zcode:share-import",
+  /** Renderer → Main：OAuth 回调已处理完成，可继续后置启动流程 */
+  OAuthCallbackHandled: "zcode:oauth-callback-handled",
   /** Renderer → Main：renderer 已就绪，可接收缓存的 deep link */
   RendererReady: "zcode:renderer-ready",
+  /** Renderer → Main：同步当前 renderer 的 telemetry 上下文 */
+  SyncTelemetryContext: "zcode:sync-telemetry-context",
+  /** Renderer → Main：通过统一 telemetry 层上报业务事件 */
+  ReportTelemetryEvent: "zcode:report-telemetry-event",
+  /** Renderer → Main：上报 ARMS 自定义事件 */
+  ReportArmsCustomEvent: "zcode:report-arms-custom-event",
+  /** Renderer → Main：读取 Renderer 用户操作 Trace 灰度配置。 */
+  GetRendererActionTraceConfig: "zcode:get-renderer-action-trace-config",
+  /** Main → Renderer：Renderer 用户操作 Trace 灰度配置变化。 */
+  RendererActionTraceConfigChanged: "zcode:renderer-action-trace-config-changed",
+  /** Renderer → Main：发送已结束的 ui_action batch。 */
+  ReportRendererActionTraceBatch: "zcode:report-renderer-action-trace-batch",
+  /** Renderer → Main：主窗口 renderer 每 60 秒的 heap 读数，单向 send，不需要回执。 */
+  ReportRendererHeapSample: "zcode:report-renderer-heap-sample",
+  ReportLocalTtftBatch: "zcode:report-local-ttft-batch",
+  /** E2E preload → Main：读取 sendCustom 最终参数的内存 ring。 */
+  ReadFinalArmsCustomEventsE2E: "zcode:e2e:read-final-arms-custom-events",
+  /** E2E preload → Main：清空 sendCustom 最终参数的内存 ring。 */
+  ClearFinalArmsCustomEventsE2E: "zcode:e2e:clear-final-arms-custom-events",
+  /** E2E preload → Main：配置只针对目标 event name 的真实网络抑制。 */
+  ConfigureFinalArmsCustomEventsE2E: "zcode:e2e:configure-final-arms-custom-events",
   /** Renderer → Main：触发任务完成/失败的系统通知 */
   ShowTaskNotification: "zcode:show-task-notification",
   /** Main → Preload：通知 renderer 播放任务通知提示音 */
@@ -436,7 +461,7 @@ export const PlatformChannels = {
   ShowExtensionNotification: "zcode:show-extension-notification",
   /** Main → Preload：用户点了扩展通知，携带插件 id 与要打开的视图 */
   ExtensionNotificationClick: "zcode:extension-notification-click",
-  /** Renderer → Main：导出日志（打包 ~/.polaris/v2 及外部 agent 日志为 zip 并在 Finder 中显示） */
+  /** Renderer → Main：导出日志（打包 ~/.zcode/v2 及外部 agent 日志为 zip 并在 Finder 中显示） */
   ExportLogs: "zcode:export-logs",
   /** Renderer → Main：截取当前窗口作为反馈附件 */
   CaptureWindowScreenshot: "zcode:capture-window-screenshot",
@@ -572,8 +597,17 @@ export interface EmbeddedBrowserWheelBoundaryPayload {
 }
 
 // ============================================================================
-// 插件 UI 沙箱频道 —— sandbox guest preload ↔ embedder renderer
+// Coding Plan WebView 频道 —— 官网页 preload ↔ App renderer
 // ============================================================================
+
+/**
+ * Electron `<webview>`（partition=persist:zcode-coding-plan）的 `sendToHost` / `ipc-message` 频道。
+ * 官网页通过 preload 注入的 window.zcodeBridge 调用，不经过 main process。
+ */
+export const CodingPlanWebviewChannels = {
+  /** 官网页购买成功后通知 App 刷新 entitlements 并关闭 webview。 */
+  PurchaseComplete: "zcode:coding-plan-purchase-complete",
+} as const;
 
 /**
  * 插件 UI 沙箱 guest（partition=plugin-sandbox:<id>）的 main → guest preload 频道。
@@ -583,6 +617,28 @@ export const PluginSandboxChannels = {
   /** main → guest：{ sandboxId, initId, names } + port1[]，shell 据此建立宿主端口 */
   Init: "zcode:plugin-sandbox-init",
 } as const;
+
+/** 购买完成回传 payload。provider 与官网 CodingPlanProvider / auth-ready 事件 detail.provider 同构。 */
+export interface CodingPlanPurchaseCompletePayload {
+  provider: "zai" | "bigmodel";
+  /** 客户端时间戳，用于 App 侧去重/日志，不参与判等。 */
+  timestamp: number;
+}
+
+/**
+ * 官网页 window.__zcodeLang__ 的取值，与 App IntlProvider 的 Locale 一致。
+ * App locale 变化时通过 executeJavaScript 重写此变量并派发 lang-change 事件。
+ */
+export type CodingPlanWebviewLocale = "zh-CN" | "en-US";
+
+/**
+ * 官网页 lang-change 事件 detail。App 用 executeJavaScript 在 main world 派发
+ * `zcode-coding-plan-lang-change` CustomEvent，website 侧（zcodeBridge.onLangChange 或
+ * 直接 window.addEventListener）订阅后切换 copy。
+ */
+export interface CodingPlanWebviewLangChangeDetail {
+  locale: CodingPlanWebviewLocale;
+}
 
 // ============================================================================
 // 内部传输频道 —— 框架级别的通信
@@ -790,6 +846,8 @@ export const HostResponseTypes = {
   LocalMediaPreviewPathAuthorizeRequest: "local-media-preview-path-authorize-request",
   /** host → main：登记已校验的插件 UI HTML 与 CSP，换取 sandbox 句柄（PluginSandboxRegisterRequestPayload） */
   PluginSandboxRegisterRequest: "plugin-sandbox-register-request",
+  /** host → main：RPC 网络遥测批次（channel.command 成功率/耗时） */
+  NetworkTelemetryBatch: "network-telemetry-batch",
   /** host → main：本地 Provisioning Source 成功持久化。 */
   ProviderProvisioningSourceChanged: "provider-provisioning-source-changed",
   /** host → main：一次 Remote Environment 同步执行完毕。 */
@@ -1134,12 +1192,61 @@ export interface PlatformChannelMap {
     request: string;
     response: void;
   };
+  [PlatformChannels.PaymentCallback]: {
+    request: string;
+    response: void;
+  };
   [PlatformChannels.ShareImport]: {
     request: { shareCode: string };
     response: void;
   };
+  [PlatformChannels.OAuthCallbackHandled]: {
+    request: void;
+    response: void;
+  };
   [PlatformChannels.RendererReady]: {
     request: void;
+    response: void;
+  };
+  [PlatformChannels.SyncTelemetryContext]: {
+    request: TelemetryRendererContext;
+    response: void;
+  };
+  [PlatformChannels.ReportTelemetryEvent]: {
+    request: RendererTelemetryEventPayload;
+    response: void;
+  };
+  [PlatformChannels.ReportArmsCustomEvent]: {
+    request: ArmsCustomEventPayload;
+    response: void;
+  };
+  [PlatformChannels.GetRendererActionTraceConfig]: {
+    request: void;
+    response: RendererActionTraceConfigV1;
+  };
+  [PlatformChannels.RendererActionTraceConfigChanged]: {
+    request: RendererActionTraceConfigV1;
+    response: void;
+  };
+  [PlatformChannels.ReportRendererActionTraceBatch]: {
+    request: RendererActionTraceBatchV1;
+    response: void;
+  };
+  // 单向 send（不是 invoke）：60 秒一条的旁路遥测样本，renderer 不等 main 回执。
+  [PlatformChannels.ReportRendererHeapSample]: {
+    request: RendererHeapSample;
+    response: void;
+  };
+  [PlatformChannels.ReadFinalArmsCustomEventsE2E]: {
+    request: void;
+    response: FinalArmsCustomEventE2EEntry[];
+  };
+  [PlatformChannels.ClearFinalArmsCustomEventsE2E]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.ConfigureFinalArmsCustomEventsE2E]: {
+    request: ConfigureFinalArmsCustomEventE2ERequest;
     response: void;
   };
   [PlatformChannels.ShowTaskNotification]: {

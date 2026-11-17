@@ -778,9 +778,11 @@ export const DesktopCommandIds = {
   OpenResourceManager: "openResourceManager",
   ToggleZCodeStdioTapDevProxy: "toggleZCodeStdioTapDevProxy",
   SetZCodeEndpointProduction: "setZCodeEndpointProduction",
+  SetZCodeEndpointTest: "setZCodeEndpointTest",
   SetZCodeEndpointCustom: "setZCodeEndpointCustom",
   ResetZCodeEndpoint: "resetZCodeEndpoint",
   ClearAllData: "clearAllData",
+  ClearCodingPlanWebviewStorage: "clearCodingPlanWebviewStorage",
   GetCuaOsSupport: "getCuaOsSupport",
 } as const;
 
@@ -872,7 +874,7 @@ export interface IPlatformService {
   createLocalMediaPreviewUrl?(path: string): string;
 
   /**
-   * 在宿主 ~/.polaris 临时目录创建文本附件文件。
+   * 在宿主 ~/.zcode 临时目录创建文本附件文件。
    * 手机远控必须通过 shared-host/platform proxy 写到桌面宿主，避免大文本进入 prompt payload。
    */
   createTempTextAttachment?(
@@ -1010,7 +1012,7 @@ export interface IPlatformService {
   /** 使用系统默认应用打开本地文件；普通 Web 平台返回 unsupported。 */
   openExternalFile?(path: string): Promise<{ success: boolean; error?: string }>;
 
-  /** 打开 Polaris Computer Use 的完整权限引导。Desktop only。 */
+  /** 打开 ZCode Computer Use 的完整权限引导。Desktop only。 */
   openCuaPermissionOnboarding?(
     options?: OpenCuaPermissionOnboardingOptions,
   ): Promise<CuaAccessibilitySettingsResult>;
@@ -1034,7 +1036,13 @@ export interface IPlatformService {
    */
   onOAuthCallback(callback: (url: string) => void): () => void;
 
-  /** 注册 `polaris://share/import?code=...` 导入意图（解析层仍兼容旧 `zcode://`）。 */
+  /**
+   * 注册支付 deep link 回调监听
+   * @returns disposer 函数，调用后只移除当前回调
+   */
+  onPaymentCallback(callback: (url: string) => void): () => void;
+
+  /** 注册 `zcode://share/import?code=...` 导入意图。 */
   onShareImport?(callback: (payload: { shareCode: string }) => void): () => void;
 
   /** 通知 main process renderer 已就绪，触发缓存的冷启动 deep link 转发 */
@@ -1246,7 +1254,7 @@ export interface IPlatformService {
   /** 显式 App 导航能力：只在桌面导航 owner 挂载时注册，返回真实导航提交结果。 */
   onAppControlNavigation?(handler: AppNavigationHandler): () => void;
 
-  /** 导出日志：打包 ~/.polaris/v2 及外部 agent 日志为 zip 并在系统文件浏览器中显示 */
+  /** 导出日志：打包 ~/.zcode/v2 及外部 agent 日志为 zip 并在系统文件浏览器中显示 */
   exportLogs(): Promise<{ success: boolean; path?: string; error?: string }>;
 
   /** 截取当前窗口，用于错误反馈携带现场画面；Web fallback 可返回 null */

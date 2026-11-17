@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { modelSelectionSchema, type ModelSelection } from "./model-selection.js";
+import { modelSelectionSchema } from "./model-selection.js";
 
 /**
+ * 执行 Selection 退回 Session Selection 的原因。由发起方在 selectionFallback 规则里声明，
  * CLI 只透传命中规则的原因，不自行解释 provider 错误码。
- * Polaris：Highspeed 卡业务行为链已移除；此 schema 仅为上游协议字段的结构兼容保留。
  */
 export const modelExecutionSelectionFallbackReasonSchema = z.enum([
   "highspeed_card_expired",
@@ -45,7 +45,12 @@ export const modelExecutionSchema = z
       .optional(),
     /**
      * 本次执行的 Selection 失败时，同一 Turn 内退回原模型继续跑完，而不是让整轮失败。
-     * Polaris：Highspeed 行为链已移除；此字段仅为上游协议结构兼容保留（无生产写入方）。
+     * 触发条件由发起方声明：`providerId` 限定只匹配本轮 execution Selection 指向的 provider；
+     * `rules` 按声明顺序匹配，首个命中的规则决定退回原因，`providerErrorCode` 缺省表示该 provider
+     * 的任何失败（用户取消与上下文超窗除外）。CLI 不按 provider id 前缀、模型名或错误文案硬编码。
+     * 退回目标先取 `target`（发起方抽卡时的提交选择，即会话原模型），再取本轮接纳前复制的 runtime 会话常驻 Selection：
+     * 接纳用户消息时绑定普通提交选择，但常驻选择只在 runtime 内存里，冷恢复竞态下可能未绑定，
+     * 所以发起方必须声明 `target`（docs/highspeed/highspeed-card-spec.md §2.2）。
      */
     selectionFallback: z
       .object({
@@ -68,11 +73,8 @@ export const modelExecutionSchema = z
   .strict();
 
 export type ModelExecution = z.infer<typeof modelExecutionSchema>;
-export type ModelExecutionSelectionFallback = NonNullable<
-  ModelExecution["selectionFallback"]
->;
-export type ModelExecutionSelectionFallbackRule =
-  ModelExecutionSelectionFallback["rules"][number];
+export type ModelExecutionSelectionFallback = NonNullable<ModelExecution["selectionFallback"]>;
+export type ModelExecutionSelectionFallbackRule = ModelExecutionSelectionFallback["rules"][number];
 export type ModelExecutionSelectionFallbackReason = z.infer<
   typeof modelExecutionSelectionFallbackReasonSchema
 >;

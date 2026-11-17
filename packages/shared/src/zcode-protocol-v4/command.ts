@@ -16,7 +16,6 @@ import { turnHeaderRowSchema } from "./rows.js";
 import { v4ConversationFileRewindPreviewResultSchema } from "./transport.js";
 import { modelSelectionSchema } from "../model-selection.js";
 import { modelExecutionSchema } from "../model-execution.js";
-import { highspeedMessageMetaSchema } from "../highspeed.js";
 import { submissionModeSchema } from "./submission.js";
 import { botGroupInputSourceSchema, zcodeAutomationBotDeliveryTargetSchema } from "../bots.js";
 import { DYNAMIC_WORKFLOW_MODES } from "../dynamic-workflow-feature.js";
@@ -34,7 +33,9 @@ import {
   zcodeBrowserAmbientContextSchema,
   zcodeProtocolMcpServerSchema,
 } from "../zcode-protocol/index.js";
-import { sharedContextRefSchema } from "./shared-context-ref.js";import { conversationInputSourceSchema } from "./input-intent.js";
+import { highspeedMessageMetaSchema } from "../highspeed.js";
+import { sharedContextRefSchema } from "./shared-context-ref.js";
+import { conversationInputSourceSchema } from "./input-intent.js";
 export type { SharedContextRef } from "./shared-context-ref.js";
 export * from "./workflow-command-rejections.js";
 
@@ -166,6 +167,10 @@ export const commandPayloadSchemas = {
       // 本次执行仍使用上面的标准 Selection；这里只携带不持久化语义、动态鉴权和 child 策略。
       // 仅 idle startNow 接受，防止 Secret/Ticket 进入普通 CommandInbox。
       modelExecution: modelExecutionSchema.optional(),
+      // Highspeed 卡快照随输入事实进入 message.data；不包含 runtime 凭据或 header。
+      // 加速本轮的模型与凭据走上面的 modelSelection + modelExecution，见
+      // docs/highspeed/highspeed-access-mode-migration.md。
+      highspeedMeta: highspeedMessageMetaSchema.optional(),
       automationId: z.string().min(1).optional(),
       offPeakTaskId: z.string().min(1).optional(),
       offPeakRunType: z.enum(["init", "resume"]).optional(),
@@ -251,12 +256,24 @@ export const commandPayloadSchemas = {
     target: conversationRowTargetSchema,
     feedback: z.enum(["like", "dislike"]).nullable(),
   }),
+  setHighspeedMetrics: z.object({
+    target: conversationRowTargetSchema,
+    regularTps: z.number().positive(),
+    outputTokens: z.number().int().nonnegative(),
+    durationMs: z.number().nonnegative(),
+    highspeedTps: z.number().positive(),
+    savedDurationMs: z.number().nonnegative(),
+    modelDurationMs: z.number().nonnegative().optional(),
+    toolDurationMs: z.number().nonnegative().optional(),
+    otherDurationMs: z.number().nonnegative().optional(),
+  }),
   sendQueuedNow: z
     .object({
       queueItemId: z.string(),
-      // 手动提升允许 Renderer 为原队列项补充本次执行材料；凭据不入队列持久化面。
+      // 手动提升允许 Renderer 为原队列项补充同卡执行材料；凭据不入队列持久化面。
       modelSelection: modelSelectionSchema.optional(),
       modelExecution: modelExecutionSchema.optional(),
+      highspeedMeta: highspeedMessageMetaSchema.optional(),
     })
     .superRefine(requireModelSelectionForExecution),
   // 冻结编辑（docs/ui/composer-edit-mode.md）：lock 只对 queued 且无锁的项成功；
@@ -411,6 +428,7 @@ export const ROW_TARGETING_COMMANDS: ReadonlySet<CommandType> = new Set([
   "editUserQuery",
   "retryTurn",
   "setAssistantFeedback",
+  "setHighspeedMetrics",
 ]);
 
 // ── 信封 ──
