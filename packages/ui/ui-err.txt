@@ -1,8 +1,8 @@
 src/app-shell/AnimatedSidePanePanel.tsx(506,9): error TS2353: Object literal may only specify known properties, and 'pluginUiSessionId' does not exist in type 'SidePaneVisibilityScope'.
 src/app-shell/AnimatedSidePanePanel.tsx(1172,68): error TS2339: Property 'restoreUrl' does not exist on type 'BrowserUseSidePaneTab'.
-src/app-shell/AnimatedSidePanePanel.tsx(1236,29): error TS2367: This comparison appears to be unintentional because the types '"terminal" | "browser" | "workflow-run" | "file-manager" | "new-tab" | "browser-permissions" | "git" | "code-viewer" | "treemapping" | "whiteboard" | "model-trajectory" | "plugin-market" | ... 5 more ... | "workflow-artifact"' and '"extension-view"' have no overlap.
+src/app-shell/AnimatedSidePanePanel.tsx(1236,29): error TS2367: This comparison appears to be unintentional because the types '"browser" | "workflow-run" | "terminal" | "developer-tools" | "git" | "treemapping" | "plugin-market" | "workflow-actor-session" | "file-manager" | "new-tab" | "browser-permissions" | ... 6 more ... | "workflow-artifact"' and '"extension-view"' have no overlap.
 src/app-shell/AnimatedSidePanePanel.tsx(1240,55): error TS2339: Property 'id' does not exist on type 'never'.
-src/app-shell/AnimatedSidePanePanel.tsx(1244,29): error TS2367: This comparison appears to be unintentional because the types '"terminal" | "browser" | "workflow-run" | "file-manager" | "new-tab" | "browser-permissions" | "git" | "code-viewer" | "treemapping" | "whiteboard" | "model-trajectory" | "plugin-market" | ... 5 more ... | "workflow-artifact"' and '"extension-logs"' have no overlap.
+src/app-shell/AnimatedSidePanePanel.tsx(1244,29): error TS2367: This comparison appears to be unintentional because the types '"browser" | "workflow-run" | "terminal" | "developer-tools" | "git" | "treemapping" | "plugin-market" | "workflow-actor-session" | "file-manager" | "new-tab" | "browser-permissions" | ... 6 more ... | "workflow-artifact"' and '"extension-logs"' have no overlap.
 src/app-shell/AnimatedSidePanePanel.tsx(1245,72): error TS2339: Property 'id' does not exist on type 'never'.
 src/app-shell/sidePaneTabPresentation.ts(39,7): error TS2367: This comparison appears to be unintentional because the types '"terminal" | "browser" | "workflow-run" | "file-manager" | "new-tab" | "bash-output" | "browser-permissions" | "git" | "code-viewer" | "treemapping" | "whiteboard" | "model-trajectory" | ... 9 more ... | "workflow-artifact"' and '"extension-view"' have no overlap.
 src/app-shell/sidePaneTabPresentation.ts(41,31): error TS2339: Property 'title' does not exist on type 'never'.
@@ -35,7 +35,7 @@ src/app-shell/WorkspaceShellLayout.tsx(1868,77): error TS2339: Property 'worktre
 src/app-shell/WorkspaceShellLayout.tsx(1883,17): error TS2339: Property 'draftWorktreeCreationId' does not exist on type 'WorkspaceZCodeUIState'.
 src/App.tsx(96,3): error TS2724: '"@/lib/taskSidePaneMemory.js"' has no exported member named 'adoptDraftTaskSidePaneFullView'. Did you mean 'peekTaskSidePaneFullView'?
 src/App.tsx(166,7): error TS2353: Object literal may only specify known properties, and 'reportHeapSample' does not exist in type 'StartMemoryDiagnosticsLoggerOptions'.
-src/App.tsx(877,24): error TS2322: Type '"zh-CN" | "en-US" | "ja-JP" | "ru-RU" | "ko-KR"' is not assignable to type '"zh-CN" | "en-US"'.
+src/App.tsx(877,24): error TS2322: Type '"en-US" | "zh-CN" | "ja-JP" | "ru-RU" | "ko-KR"' is not assignable to type '"en-US" | "zh-CN"'.
 src/App.tsx(1137,11): error TS2353: Object literal may only specify known properties, and 'logout' does not exist in type 'QuickPickCommandHandlers'.
 src/browser-use/BrowserViewportSurface.tsx(145,13): error TS2322: Type '{ key: string; browserState: BrowserState; formatMessage: (descriptor: { id: string; }, values?: Record<string, string | number> | undefined) => string; isGuestStarting: boolean; visits: BrowserVisitRecord[]; onOpenRecentVisit: ((url: string) => void) | undefined; onRemoveRecentVisit: ((url: string) => void) | undef...' is not assignable to type 'IntrinsicAttributes & { browserState: BrowserState; formatMessage: (descriptor: { id: string; }) => string; isGuestStarting?: boolean | undefined; }'.
 src/browser-use/UnifiedBrowserView.tsx(1309,9): error TS2322: Type '{ addressValue: string; browserState: BrowserState; permissionControl: Element | null; onOpenSiteSettings: (() => void) | undefined; formatMessage: (descriptor: { id: string; }, values?: Record<...> | undefined) => string; ... 14 more ...; isResponsiveMode: boolean; }' is not assignable to type 'IntrinsicAttributes & { addressValue: string; browserState: BrowserState; permissionControl?: ReactNode; formatMessage: (descriptor: { id: string; }) => string; ... 10 more ...; isResponsiveMode: boolean; }'.
@@ -87,10 +87,10 @@ src/project-sidebar/activity/refresh/contract.test.ts(2,51): error TS2307: Canno
 src/project-sidebar/activity/refresh/contract.test.ts(292,43): error TS7006: Parameter 't' implicitly has an 'any' type.
 src/project-sidebar/activity/refresh/contract.test.ts(296,61): error TS7006: Parameter 't' implicitly has an 'any' type.
 src/project-sidebar/grouped/task-row.tsx(18,3): error TS2305: Module '"@/lib/taskListItemPresentation.js"' has no exported member 'isTaskRowRenameBlockedTarget'.
-src/project-sidebar/index.tsx(232,62): error TS2339: Property 'onUpgradeClick' does not exist on type '{ theme: Theme; localeMenuValue: "zh-CN" | "en-US" | "ja-JP" | "ru-RU" | "ko-KR" | "system"; onLocaleChange: (value: string) => void; onThemeChange: (value: string) => void; onSettingsButtonClick?: (() => void) | undefined; ... 10 more ...; className?: string | undefined; }'.
+src/project-sidebar/index.tsx(232,62): error TS2339: Property 'onUpgradeClick' does not exist on type '{ theme: Theme; localeMenuValue: "en-US" | "zh-CN" | "ja-JP" | "ru-RU" | "ko-KR" | "system"; onLocaleChange: (value: string) => void; onThemeChange: (value: string) => void; onSettingsButtonClick?: (() => void) | undefined; ... 10 more ...; className?: string | undefined; }'.
 src/project-sidebar/index.tsx(234,6): error TS7006: Parameter 'providerId' implicitly has an 'any' type.
 src/project-sidebar/index.tsx(234,18): error TS7006: Parameter 'funnelContext' implicitly has an 'any' type.
-src/project-sidebar/index.tsx(360,17): error TS2322: Type '{ className: string; theme: Theme; localeMenuValue: LocalePreference; onLocaleChange: (value: string) => void; onThemeChange: (value: string) => void; onSettingsButtonClick: () => void; ... 9 more ...; banner: Element; }' is not assignable to type 'IntrinsicAttributes & { theme: Theme; localeMenuValue: "zh-CN" | "en-US" | "ja-JP" | "ru-RU" | "ko-KR" | "system"; onLocaleChange: (value: string) => void; ... 12 more ...; className?: string | undefined; }'.
+src/project-sidebar/index.tsx(360,17): error TS2322: Type '{ className: string; theme: Theme; localeMenuValue: LocalePreference; onLocaleChange: (value: string) => void; onThemeChange: (value: string) => void; onSettingsButtonClick: () => void; ... 9 more ...; banner: Element; }' is not assignable to type 'IntrinsicAttributes & { theme: Theme; localeMenuValue: "en-US" | "zh-CN" | "ja-JP" | "ru-RU" | "ko-KR" | "system"; onLocaleChange: (value: string) => void; ... 12 more ...; className?: string | undefined; }'.
 src/project-sidebar/ProjectSidebarNode.tsx(83,46): error TS2339: Property 'hideProjectDeviceNames' does not exist on type 'ZCodeState'.
 src/project-sidebar/ProjectSidebarNode.tsx(104,49): error TS2345: Argument of type '"projects"' is not assignable to parameter of type 'SettingsSectionId'.
 src/project-sidebar/ProjectTaskRows.tsx(83,9): error TS2322: Type '{ organizationActions: Element; workspacePath: string; workspaceIdentity: string | undefined; remoteSessionId: string | undefined; tasks: ProjectTask[]; pinnedTasks: ProjectTask[]; ... 16 more ...; renameOnDoubleClick: boolean; }' is not assignable to type 'IntrinsicAttributes & { organizationActions?: ReactNode; workspacePath: string; remoteSessionId?: string | undefined; workspaceIdentity?: string | undefined; ... 22 more ...; onOpenFileTree?: (() => void | Promise<...>) | undefined; }'.
@@ -129,6 +129,7 @@ src/settings/AutomationsSection.tsx(860,7): error TS2322: Type 'unknown' is not 
 src/settings/AutomationsSection.tsx(880,7): error TS2322: Type 'unknown' is not assignable to type '(() => void) | undefined'.
 src/settings/AutomationsSection.tsx(1300,38): error TS2339: Property 'telemetrySource' does not exist on type 'OffPeakCreateDraft'.
 src/settings/AutomationsSection.tsx(1926,35): error TS2345: Argument of type '{ mode: "offpeak-create"; draft: { telemetrySource: { eventRegion: string; templateId: string; }; } | { title: string; prompt: string; telemetrySource: { eventRegion: string; templateId: string; }; }; }' is not assignable to parameter of type 'SetStateAction<AutomationsView>'.
+src/settings/CodingPlanEmbeddedWebviewDialog.tsx(30,8): error TS2307: Cannot find module '@/settings/model-provider-section/codingPlanEmbeddedWebview.js' or its corresponding type declarations.
 src/settings/CodingPlanEmbeddedWebviewDialog.tsx(32,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanWebviewChannels'.
 src/settings/CodingPlanEmbeddedWebviewDialog.tsx(33,8): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanPurchaseCompletePayload'.
 src/settings/CodingPlanEntryButton.tsx(40,16): error TS2349: This expression is not callable.
@@ -136,19 +137,7 @@ src/settings/CodingPlanUpgradeDialog.tsx(105,49): error TS2339: Property 'getEnt
 src/settings/CodingPlanUpgradeDialogProvider.tsx(54,48): error TS18046: 'inventoryRef.current.retry' is of type 'unknown'.
 src/settings/CommandsSection.tsx(105,5): error TS2353: Object literal may only specify known properties, and 'cacheAuthorityKey' does not exist in type 'UseCommandsOptions'.
 src/settings/McpSettingsSection.tsx(1330,7): error TS2554: Expected 1 arguments, but got 2.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(5,3): error TS2305: Module '"@zcode/shared"' has no exported member 'isTrustedCodingPlanWebviewOrigin'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(6,3): error TS2305: Module '"@zcode/shared"' has no exported member 'isZaiCodingPlanProviderId'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(13,15): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanWebviewLocale'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(255,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(258,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(259,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(260,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(261,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(262,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(263,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(264,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(265,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/model-provider-section/codingPlanEmbeddedWebview.ts(266,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+src/settings/model-provider-section/codingPlanEnterpriseTiers.ts(2,57): error TS2307: Cannot find module '@/settings/model-provider-section/enterpriseCodingPlanProducts.js' or its corresponding type declarations.
 src/settings/model-provider-section/codingPlanProductPresentation.ts(2,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanCardCopyItem'.
 src/settings/model-provider-section/codingPlanProductPresentation.ts(3,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanProductPreviewPayment'.
 src/settings/model-provider-section/codingPlanProductPresentation.ts(122,11): error TS7006: Parameter 'equity' implicitly has an 'any' type.
@@ -163,21 +152,18 @@ src/settings/model-provider-section/constants.ts(4,3): error TS2724: '"@zcode/sh
 src/settings/model-provider-section/Detail.tsx(10,8): error TS2305: Module '"@zcode/shared"' has no exported member 'StartPlanPreviewConfig'.
 src/settings/model-provider-section/Detail.tsx(12,3): error TS2305: Module '"@zcode/shared"' has no exported member 'isIndividualCodingPlanModelProviderId'.
 src/settings/model-provider-section/Detail.tsx(13,3): error TS2724: '"@zcode/shared"' has no exported member named 'resolveModelProviderFamilySpecByProviderId'. Did you mean 'resolveModelProviderFamilyIdByProviderId'?
+src/settings/model-provider-section/Detail.tsx(34,8): error TS2307: Cannot find module './StatusCards.js' or its corresponding type declarations.
+src/settings/model-provider-section/Detail.tsx(55,39): error TS2307: Cannot find module './useCodingPlanProducts.js' or its corresponding type declarations.
 src/settings/model-provider-section/Detail.tsx(564,9): error TS2322: Type 'unknown' is not assignable to type 'CodingPlanFunnelContext | undefined'.
+src/settings/model-provider-section/Detail.tsx(666,21): error TS7006: Parameter 'options' implicitly has an 'any' type.
+src/settings/model-provider-section/Detail.tsx(677,32): error TS7006: Parameter 'options' implicitly has an 'any' type.
+src/settings/model-provider-section/Detail.tsx(757,23): error TS7006: Parameter 'options' implicitly has an 'any' type.
+src/settings/model-provider-section/Detail.tsx(797,34): error TS7006: Parameter 'options' implicitly has an 'any' type.
 src/settings/model-provider-section/Detail.tsx(1007,25): error TS2349: This expression is not callable.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(3,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanCampaignDiscountDetail'.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(4,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanStaticTeamProduct'.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(5,3): error TS2305: Module '"@zcode/shared"' has no exported member 'EnterpriseCodingPlanCreateOrderRequest'.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(6,3): error TS2305: Module '"@zcode/shared"' has no exported member 'EnterpriseCodingPlanCreateOrderResponse'.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(7,3): error TS2305: Module '"@zcode/shared"' has no exported member 'EnterpriseCodingPlanDiscountDetail'.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(8,3): error TS2305: Module '"@zcode/shared"' has no exported member 'EnterpriseCodingPlanOrderCalculateResponse'.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(9,3): error TS2305: Module '"@zcode/shared"' has no exported member 'EnterpriseCodingPlanPendingOrder'.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(10,3): error TS2305: Module '"@zcode/shared"' has no exported member 'EnterpriseCodingPlanPaymentStatus'.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(11,3): error TS2305: Module '"@zcode/shared"' has no exported member 'EnterpriseCodingPlanPricingProduct'.
-src/settings/model-provider-section/enterpriseCodingPlanProducts.ts(12,3): error TS2305: Module '"@zcode/shared"' has no exported member 'EnterpriseCodingPlanSubscribePeriod'.
 src/settings/model-provider-section/Navigation.tsx(24,3): error TS2724: '"@zcode/shared"' has no exported member named 'resolveModelProviderFamilySpecByProviderId'. Did you mean 'resolveModelProviderFamilyIdByProviderId'?
 src/settings/model-provider-section/providerFamilyConnectionVisibility.ts(12,3): error TS2305: Module '"@zcode/shared"' has no exported member 'isIndividualCodingPlanModelProviderId'.
 src/settings/model-provider-section/providerFamilyConnectionVisibility.ts(15,3): error TS2724: '"@zcode/shared"' has no exported member named 'resolveModelProviderFamilySpecByProviderId'. Did you mean 'resolveModelProviderFamilyIdByProviderId'?
+src/settings/model-provider-section/providerFamilyConnectionVisibility.ts(23,8): error TS2307: Cannot find module '@/settings/model-provider-section/enterpriseCodingPlanProducts.js' or its corresponding type declarations.
 src/settings/model-provider-section/providerFamilyConnectionVisibility.ts(197,7): error TS2322: Type 'unknown' is not assignable to type 'UsageQuotaLimit | null | undefined'.
 src/settings/model-provider-section/providerFamilyConnectionVisibility.ts(243,5): error TS2322: Type 'unknown' is not assignable to type 'UsageQuotaLimit | null | undefined'.
 src/settings/model-provider-section/providerFamilyConnectionVisibility.ts(334,33): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ zai?: { kind: "start-plan"; } | { kind: "individual-coding-plan"; } | { kind: "team-coding-plan"; productId: string; organizationId: string; projectId: string; } | undefined; bigmodel?: { kind: "start-plan"; } | { ...; } | { ...; } | undefined; }'.
@@ -189,63 +175,21 @@ src/settings/model-provider-section/StartPlanCard.tsx(2,15): error TS2305: Modul
 src/settings/model-provider-section/StartPlanCard.tsx(2,39): error TS2305: Module '"@zcode/shared"' has no exported member 'StartPlanPreviewEntitlement'.
 src/settings/model-provider-section/StartPlanCard.tsx(97,6): error TS7006: Parameter 'total' implicitly has an 'any' type.
 src/settings/model-provider-section/StartPlanCard.tsx(97,13): error TS7006: Parameter 'entitlement' implicitly has an 'any' type.
-src/settings/model-provider-section/StatusCards.tsx(6,3): error TS2724: '"@zcode/shared"' has no exported member named 'resolveModelProviderFamilySpecByProviderId'. Did you mean 'resolveModelProviderFamilyIdByProviderId'?
-src/settings/model-provider-section/StatusCards.tsx(378,7): error TS2322: Type 'unknown' is not assignable to type 'boolean | undefined'.
-src/settings/model-provider-section/StatusCards.tsx(384,13): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'CodingPlanFunnelContext | null'.
-src/settings/model-provider-section/StatusCards.tsx(409,13): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'CodingPlanFunnelContext | null'.
-src/settings/model-provider-section/StatusCards.tsx(616,18): error TS2786: 'CodingPlanBillingDiscountBadge' cannot be used as a JSX component.
-src/settings/model-provider-section/StatusCards.tsx(616,49): error TS2322: Type '{ config: unknown; size: string; }' is not assignable to type 'IntrinsicAttributes'.
-src/settings/model-provider-section/StatusCards.tsx(751,5): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(759,7): error TS2322: Type '{} | undefined' is not assignable to type 'UsageQuotaLimit | undefined'.
-src/settings/model-provider-section/StatusCards.tsx(768,7): error TS2322: Type '{} | undefined' is not assignable to type 'UsageQuotaLimit | undefined'.
-src/settings/model-provider-section/StatusCards.tsx(815,29): error TS2339: Property 'opportunityCount' does not exist on type '{}'.
-src/settings/model-provider-section/StatusCards.tsx(816,33): error TS2339: Property 'opportunityExpiresAt' does not exist on type '{}'.
-src/settings/model-provider-section/StatusCards.tsx(820,14): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(821,18): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(822,37): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(853,74): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(854,12): error TS2786: 'CodingPlanQuotaResetOpportunity' cannot be used as a JSX component.
-src/settings/model-provider-section/StatusCards.tsx(855,13): error TS2322: Type '{ count: any; dialog: unknown; dialogOpen: boolean; expiresAt: any; placement: string; visible: any; onDialogOpenChange: Dispatch<SetStateAction<boolean>>; }' is not assignable to type 'IntrinsicAttributes'.
-src/settings/model-provider-section/StatusCards.tsx(855,20): error TS18046: 'opportunityBadge' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(858,24): error TS18046: 'opportunityBadge' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(860,22): error TS18046: 'opportunityBadge' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(878,31): error TS2339: Property 'status' does not exist on type '{}'.
-src/settings/model-provider-section/StatusCards.tsx(879,18): error TS2786: 'LocalizedCodingPlanQuotaResetAction' cannot be used as a JSX component.
-src/settings/model-provider-section/StatusCards.tsx(880,19): error TS2322: Type '{ completedAt: unknown; processing: unknown; onOpenDialog: () => void; }' is not assignable to type 'IntrinsicAttributes'.
-src/settings/model-provider-section/StatusCards.tsx(885,17): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(886,18): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(887,19): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(888,19): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(889,18): error TS2786: 'LocalizedCodingPlanQuotaResetAction' cannot be used as a JSX component.
-src/settings/model-provider-section/StatusCards.tsx(890,19): error TS2322: Type '{ completedAt: unknown; processing: any; resetType: string; onOpenDialog: () => void; }' is not assignable to type 'IntrinsicAttributes'.
-src/settings/model-provider-section/StatusCards.tsx(891,31): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/model-provider-section/StatusCards.tsx(1035,80): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(5,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CODING_PLAN_SYSTEM_BUSY'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(6,8): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanBatchPreviewResponse'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(7,8): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanProductPreviewPayment'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(8,8): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanStaticProduct'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(9,8): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanStaticProductsConfig'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(10,8): error TS2305: Module '"@zcode/shared"' has no exported member 'StartPlanPreviewConfig'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(11,3): error TS2305: Module '"@zcode/shared"' has no exported member 'isZaiCodingPlanProviderId'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(251,41): error TS2339: Property 'batchPreview' does not exist on type 'ICodingPlanSubscriptionService'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(253,38): error TS7006: Parameter 'product' implicitly has an 'any' type.
-src/settings/model-provider-section/useCodingPlanProducts.ts(260,42): error TS7006: Parameter 'product' implicitly has an 'any' type.
-src/settings/model-provider-section/useCodingPlanProducts.ts(279,48): error TS7006: Parameter 'entitlement' implicitly has an 'any' type.
-src/settings/model-provider-section/useCodingPlanProducts.ts(405,22): error TS2339: Property 'getStartPlanPreview' does not exist on type 'ICodingPlanSubscriptionService'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(406,25): error TS2339: Property 'getStartPlanPreview' does not exist on type 'ICodingPlanSubscriptionService'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(457,22): error TS2339: Property 'getStaticProducts' does not exist on type 'ICodingPlanSubscriptionService'.
-src/settings/model-provider-section/useCodingPlanProducts.ts(463,27): error TS2339: Property 'getStaticProducts' does not exist on type 'ICodingPlanSubscriptionService'.
 src/settings/model-provider-section/useEnterpriseCodingPlanProducts.ts(4,8): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanStaticTeamProduct'.
 src/settings/model-provider-section/useEnterpriseCodingPlanProducts.ts(5,8): error TS2305: Module '"@zcode/shared"' has no exported member 'EnterpriseCodingPlanPricingResponse'.
+src/settings/model-provider-section/useEnterpriseCodingPlanProducts.ts(15,8): error TS2307: Cannot find module '@/settings/model-provider-section/enterpriseCodingPlanProducts.js' or its corresponding type declarations.
+src/settings/model-provider-section/useEnterpriseCodingPlanProducts.ts(16,39): error TS2307: Cannot find module '@/settings/model-provider-section/useCodingPlanProducts.js' or its corresponding type declarations.
 src/settings/model-provider-section/useEnterpriseCodingPlanProducts.ts(179,19): error TS2339: Property 'getStaticTeamProducts' does not exist on type 'ICodingPlanSubscriptionService'.
 src/settings/model-provider-section/useEnterpriseCodingPlanProducts.ts(182,23): error TS2339: Property 'getEnterprisePricing' does not exist on type 'ICodingPlanSubscriptionService'.
 src/settings/model-provider-section/useEnterpriseCodingPlanProducts.ts(221,52): error TS7006: Parameter 'product' implicitly has an 'any' type.
 src/settings/model-provider-section/useModelProviderNavigation.ts(13,3): error TS2724: '"@zcode/shared"' has no exported member named 'resolveModelProviderFamilySpecByProviderId'. Did you mean 'resolveModelProviderFamilyIdByProviderId'?
+src/settings/model-provider-section/useModelProviderNavigation.ts(34,57): error TS2307: Cannot find module '@/settings/model-provider-section/enterpriseCodingPlanProducts.js' or its corresponding type declarations.
 src/settings/model-provider-section/useModelProviderNavigation.ts(153,46): error TS2339: Property 'executable' does not exist on type '{}'.
 src/settings/model-provider-section/useModelProviderNavigation.ts(170,9): error TS2322: Type '{ planLevel: string | null; currentProductId: string | null; subscriptionBillingCycle: string | null; subscriptionRenewTime: string | null; subscriptionExpireTime: string | null; ... 15 more ...; status: CodingPlanStatus; }[]' is not assignable to type '{ key: string; type: "codingPlan"; presetId: CodingPlanProviderId; oauthProviderId: OAuthProviderId; label: string; providerName: string; provider: ProviderSettingsFormProvider | null; ... 15 more ...; statusActive: boolean; }[]'.
 src/settings/model-provider-section/useModelProviderNavigation.ts(199,9): error TS2322: Type '({ planLevel: string | null; currentProductId: string | null; subscriptionBillingCycle: string | null; subscriptionRenewTime: string | null; subscriptionExpireTime: string | null; ... 15 more ...; status: CodingPlanStatus; } | { ...; })[]' is not assignable to type 'ModelProviderNavItem[]'.
 src/settings/model-provider-section/useModelProviderNavigation.ts(302,48): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ zai?: { kind: "start-plan"; } | { kind: "individual-coding-plan"; } | { kind: "team-coding-plan"; productId: string; organizationId: string; projectId: string; } | undefined; bigmodel?: { kind: "start-plan"; } | { ...; } | { ...; } | undefined; }'.
 src/settings/model-provider-section/useStartPlanPreview.ts(1,15): error TS2305: Module '"@zcode/shared"' has no exported member 'StartPlanPreviewConfig'.
+src/settings/model-provider-section/useStartPlanPreview.ts(5,74): error TS2307: Cannot find module '@/settings/model-provider-section/useCodingPlanProducts.js' or its corresponding type declarations.
 src/settings/model-provider-section/useStartPlanPreview.ts(36,36): error TS2339: Property 'getStartPlanPreview' does not exist on type 'ICodingPlanSubscriptionService'.
 src/settings/model-provider-section/useStartPlanPreview.ts(110,28): error TS2339: Property 'getStartPlanPreview' does not exist on type 'ICodingPlanSubscriptionService'.
 src/settings/ModelProviderSection.tsx(23,3): error TS2724: '"@zcode/shared"' has no exported member named 'resolveModelProviderFamilySpecByProviderId'. Did you mean 'resolveModelProviderFamilyIdByProviderId'?
@@ -332,49 +276,8 @@ src/settings/usage-stats/codingPlanUsageChartSeries.ts(3,3): error TS2305: Modul
 src/settings/usage-stats/codingPlanUsageChartSeries.ts(4,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanUsageDetailMetric'.
 src/settings/usage-stats/codingPlanUsageChartSeries.ts(5,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanUsageDetailSubject'.
 src/settings/usage-stats/CodingPlanUsageLineChart.tsx(3,15): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanUsageGranularity'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(6,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanModelData'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(7,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanToolData'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(8,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanUsageDetailMetric'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(9,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanUsageDetailSubject'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(10,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanUsageRange'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(11,3): error TS2305: Module '"@zcode/shared"' has no exported member 'CodingPlanUsageSnapshot'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(25,10): error TS2305: Module '"@/hooks/useUsageStats.js"' has no exported member 'useCodingPlanUsageStats'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(69,3): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(117,19): error TS18046: 'effectiveSource.accountAccess' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(136,5): error TS2322: Type 'unknown' is not assignable to type '{ type: "zhipu-account"; accountType: "bigmodel" | "zai"; mode: "start-plan" | "individual-coding-plan" | "team-coding-plan" | "off-peak"; entitled: boolean; } | { type: "zhipu-account"; family: "bigmodel" | "zai"; planKind: "start-plan"; } | { ...; } | { ...; } | undefined'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(154,5): error TS2322: Type 'unknown' is not assignable to type '{ type: "zhipu-account"; accountType: "bigmodel" | "zai"; mode: "start-plan" | "individual-coding-plan" | "team-coding-plan" | "off-peak"; entitled: boolean; } | { type: "zhipu-account"; family: "bigmodel" | "zai"; planKind: "start-plan"; } | { ...; } | { ...; } | undefined'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(170,5): error TS2322: Type '{}' is not assignable to type 'string'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(172,5): error TS2322: Type 'unknown' is not assignable to type '{ type: "zhipu-account"; accountType: "bigmodel" | "zai"; mode: "start-plan" | "individual-coding-plan" | "team-coding-plan" | "off-peak"; entitled: boolean; } | { type: "zhipu-account"; family: "bigmodel" | "zai"; planKind: "start-plan"; } | { ...; } | { ...; } | undefined'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(176,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(259,13): error TS2322: Type 'unknown' is not assignable to type 'UsageQuotaLimit | null'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(261,13): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(262,13): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(263,13): error TS2322: Type 'unknown' is not assignable to type '{ type: "zhipu-account"; accountType: "bigmodel" | "zai"; mode: "start-plan" | "individual-coding-plan" | "team-coding-plan" | "off-peak"; entitled: boolean; } | { type: "zhipu-account"; family: "bigmodel" | "zai"; planKind: "start-plan"; } | { ...; } | { ...; } | undefined'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(290,7): error TS18046: 'source.id' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(357,5): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(364,29): error TS2339: Property 'opportunityCount' does not exist on type '{}'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(365,33): error TS2339: Property 'opportunityExpiresAt' does not exist on type '{}'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(369,14): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(370,18): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(371,40): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(450,76): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(451,14): error TS2786: 'CodingPlanQuotaResetOpportunity' cannot be used as a JSX component.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(452,15): error TS2322: Type '{ count: any; dialog: unknown; dialogOpen: boolean; expiresAt: any; placement: string; visible: any; onDialogOpenChange: Dispatch<SetStateAction<boolean>>; }' is not assignable to type 'IntrinsicAttributes'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(452,22): error TS18046: 'opportunityBadge' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(455,26): error TS18046: 'opportunityBadge' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(457,24): error TS18046: 'opportunityBadge' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(511,33): error TS2339: Property 'status' does not exist on type '{}'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(512,20): error TS2786: 'LocalizedCodingPlanQuotaResetAction' cannot be used as a JSX component.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(513,21): error TS2322: Type '{ completedAt: unknown; processing: unknown; onOpenDialog: () => void; }' is not assignable to type 'IntrinsicAttributes'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(518,19): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(519,20): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(520,21): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(521,21): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(522,20): error TS2786: 'LocalizedCodingPlanQuotaResetAction' cannot be used as a JSX component.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(523,21): error TS2322: Type '{ completedAt: unknown; processing: any; resetType: string; onOpenDialog: () => void; }' is not assignable to type 'IntrinsicAttributes'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(524,33): error TS18046: 'resetUi.week' is of type 'unknown'.
-src/settings/usage-stats/CodingPlanUsagePanel.tsx(532,19): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
-src/SettingsPage.tsx(1403,30): error TS2739: Type '{}' is missing the following properties from type '{ activeTab: UsageStatsSectionTab; providerSourcesLoading: boolean; workspaceIdentity?: string | undefined; workspacePath?: string | undefined; selectedCodingPlanSource?: CodingPlanUsageSource | ... 1 more ... | undefined; }': activeTab, providerSourcesLoading
+src/settings/UsageStatsSection.tsx(5,8): error TS2307: Cannot find module '@/settings/usage-stats/CodingPlanUsagePanel.js' or its corresponding type declarations.
+src/SettingsPage.tsx(1403,30): error TS2739: Type '{}' is missing the following properties from type '{ activeTab: UsageStatsSectionTab; providerSourcesLoading: boolean; workspaceIdentity?: string | undefined; workspacePath?: string | undefined; selectedCodingPlanSource?: any; }': activeTab, providerSourcesLoading
 src/sidebar-activity/SidebarBottomActivity.tsx(20,30): error TS2786: 'MarketingBanner' cannot be used as a JSX component.
 src/v4/composer/ConversationBackgroundWorkTrigger.tsx(1,10): error TS2305: Module '"@/components/workflow-timeline/WorkflowAgentFace.js"' has no exported member 'SubagentCollectionIcon'.
 src/v4/composer/ConversationSelectionReferenceChip.tsx(9,3): error TS2305: Module '"@/lib/conversationSelectionReference.js"' has no exported member 'setHoveredConversationAnnotation'.
@@ -395,40 +298,6 @@ src/v4/composer/useWebElementContexts.ts(103,38): error TS2322: Type 'WebElement
 src/v4/composer/useWebElementContexts.ts(103,38): error TS2353: Object literal may only specify known properties, and 'ordinal' does not exist in type 'WebElementContextComposerAttachment'.
 src/v4/composer/V4ComposerModeControls.tsx(1,10): error TS2305: Module '"@/chat-input-toolbar/display-help.js"' has no exported member 'modeTriggerColor'.
 src/v4/composer/V4ComposerModeControls.tsx(33,10): error TS2305: Module '"@/hooks/useConfirmDialog.js"' has no exported member 'useYoloModeConfirmation'.
-src/v4/composer/V4ComposerToolbar.tsx(24,3): error TS2724: '"@zcode/shared"' has no exported member named 'resolveModelProviderFamilySpecByProviderId'. Did you mean 'resolveModelProviderFamilyIdByProviderId'?
-src/v4/composer/V4ComposerToolbar.tsx(81,3): error TS2724: '"@/lib/composerPlanGroups.js"' has no exported member named 'buildComposerPlanGroups'. Did you mean 'ComposerPlanGroup'?
-src/v4/composer/V4ComposerToolbar.tsx(82,3): error TS2724: '"@/lib/composerPlanGroups.js"' has no exported member named 'composerConnectionKey'. Did you mean 'ComposerConnection'?
-src/v4/composer/V4ComposerToolbar.tsx(83,3): error TS2305: Module '"@/lib/composerPlanGroups.js"' has no exported member 'chooseConnectionModel'.
-src/v4/composer/V4ComposerToolbar.tsx(151,7): error TS2322: Type 'unknown' is not assignable to type 'string | number'.
-src/v4/composer/V4ComposerToolbar.tsx(168,51): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
-src/v4/composer/V4ComposerToolbar.tsx(317,20): error TS2352: Conversion of type 'string' to type 'SidebarUsageCodingPlanSourceId' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
-src/v4/composer/V4ComposerToolbar.tsx(350,8): error TS2339: Property 'subscribedTeamProducts' does not exist on type 'unknown'.
-src/v4/composer/V4ComposerToolbar.tsx(356,5): error TS2571: Object is of type 'unknown'.
-src/v4/composer/V4ComposerToolbar.tsx(363,8): error TS7006: Parameter 'source' implicitly has an 'any' type.
-src/v4/composer/V4ComposerToolbar.tsx(372,23): error TS18046: 'source.accountAccess' is of type 'unknown'.
-src/v4/composer/V4ComposerToolbar.tsx(374,30): error TS2339: Property 'productId' does not exist on type 'Record<"planKind", unknown>'.
-src/v4/composer/V4ComposerToolbar.tsx(375,30): error TS2339: Property 'organizationId' does not exist on type 'Record<"planKind", unknown>'.
-src/v4/composer/V4ComposerToolbar.tsx(376,30): error TS2339: Property 'projectId' does not exist on type 'Record<"planKind", unknown>'.
-src/v4/composer/V4ComposerToolbar.tsx(549,9): error TS2322: Type 'unknown' is not assignable to type 'CodingPlanFunnelContext | undefined'.
-src/v4/composer/V4ComposerToolbar.tsx(720,9): error TS2322: Type 'unknown' is not assignable to type 'SidebarUsageCodingPlanSourceId | undefined'.
-src/v4/composer/V4ComposerToolbar.tsx(733,5): error TS2322: Type '{}' is not assignable to type 'string'.
-src/v4/composer/V4ComposerToolbar.tsx(736,5): error TS2322: Type 'unknown' is not assignable to type '{ type: "zhipu-account"; accountType: "bigmodel" | "zai"; mode: "start-plan" | "individual-coding-plan" | "team-coding-plan" | "off-peak"; entitled: boolean; } | { type: "zhipu-account"; family: "bigmodel" | "zai"; planKind: "start-plan"; } | { ...; } | { ...; } | undefined'.
-src/v4/composer/V4ComposerToolbar.tsx(740,5): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
-src/v4/composer/V4ComposerToolbar.tsx(759,21): error TS2352: Conversion of type 'string' to type 'SidebarUsageCodingPlanProviderId' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
-src/v4/composer/V4ComposerToolbar.tsx(1069,46): error TS7006: Parameter 'group' implicitly has an 'any' type.
-src/v4/composer/V4ComposerToolbar.tsx(1072,23): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ zai?: { kind: "start-plan"; } | { kind: "individual-coding-plan"; } | { kind: "team-coding-plan"; productId: string; organizationId: string; projectId: string; } | undefined; bigmodel?: { kind: "start-plan"; } | { ...; } | { ...; } | undefined; }'.
-src/v4/composer/V4ComposerToolbar.tsx(1083,10): error TS7006: Parameter 'group' implicitly has an 'any' type.
-src/v4/composer/V4ComposerToolbar.tsx(1085,29): error TS7006: Parameter 'item' implicitly has an 'any' type.
-src/v4/composer/V4ComposerToolbar.tsx(1170,9): error TS2322: Type '{}' is not assignable to type 'boolean'.
-src/v4/composer/V4ComposerToolbar.tsx(1172,9): error TS2322: Type 'unknown' is not assignable to type 'string | null'.
-src/v4/composer/V4ComposerToolbar.tsx(1177,18): error TS18046: 'selectConnection' is of type 'unknown'.
-src/v4/composer/V4ComposerToolbar.tsx(1186,20): error TS18046: 'selectConnection' is of type 'unknown'.
-src/v4/composer/V4ComposerToolbar.tsx(1245,5): error TS2322: Type '{}' is not assignable to type 'boolean'.
-src/v4/composer/V4ComposerToolbar.tsx(1247,5): error TS2322: Type '{}' is not assignable to type 'boolean'.
-src/v4/composer/V4ComposerToolbar.tsx(1293,11): error TS2322: Type '{ codingPlanUsageRemaining: ChatCodingPlanUsageRemainingConfig | undefined; taskUsage: { breakdown?: { source: "messages" | "skills" | ... 4 more ... | "mcp_tool_schemas"; chars: number; }[] | undefined; cache?: { ...; } | undefined; used: number; size: number; } | null; ... 5 more ...; compressionDisabled: boolean; }' is not assignable to type 'IntrinsicAttributes & { taskUsage: { used: number; size: number; cache?: { hitRate: number | null; } | undefined; breakdown?: { source: "messages" | "skills" | ... 4 more ... | "mcp_tool_schemas"; chars: number; }[] | undefined; } | null; ... 5 more ...; compressionDisabled?: boolean | undefined; }'.
-src/v4/composer/V4ComposerToolbar.tsx(1305,10): error TS2786: 'HighspeedModelIndicator' cannot be used as a JSX component.
-src/v4/composer/V4ComposerToolbar.tsx(1306,11): error TS2322: Type '{ model: string; originalModel: string; sweepActive: boolean; animateEntrance: boolean; }' is not assignable to type 'IntrinsicAttributes'.
-src/v4/composer/V4ComposerToolbar.tsx(1369,11): error TS2322: Type 'unknown' is not assignable to type 'boolean | undefined'.
 src/v4/composer/WebElementContextAttachmentChip.tsx(62,79): error TS2339: Property 'ordinal' does not exist on type 'WebElementContextComposerAttachment'.
 src/v4/ConversationComposer.tsx(195,3): error TS2305: Module '"@/lib/webElementContext.js"' has no exported member 'webElementScreenshotFiles'.
 src/v4/ConversationComposer.tsx(211,3): error TS2724: '"@/lib/conversationSelectionReference.js"' has no exported member named 'dispatchConversationSelectionEdit'. Did you mean 'dispatchConversationSelectionAdd'?
@@ -438,6 +307,7 @@ src/v4/ConversationComposer.tsx(931,56): error TS2339: Property 'inline' does no
 src/v4/ConversationComposer.tsx(1225,13): error TS2339: Property 'clearHistory' does not exist on type 'LexicalChatInputHandle'.
 src/v4/ConversationComposer.tsx(1433,26): error TS2339: Property 'recovery' does not exist on type 'AppSlashCommand'.
 src/v4/ConversationComposer.tsx(1543,13): error TS2367: This comparison appears to be unintentional because the types 'void' and 'boolean' have no overlap.
+src/v4/ConversationComposer.tsx(2686,15): error TS2322: Type '{ workspacePath: string; workspaceIdentity: string | undefined; modelSelectionView: ModelSelectionView | null; modelSelectionState: ModelSelectionState; ... 25 more ...; onSendCompressionCommand: ((command: string) => void) | undefined; }' is not assignable to type 'IntrinsicAttributes & V4ComposerToolbarProps'.
 src/v4/ConversationComposer.tsx(2939,13): error TS2322: Type '{ error: ZCodeUiError; remoteKind: "ssh" | "wsl" | "docker" | "server" | undefined; onReconnect: (() => void) | undefined; onRetry: (() => void) | undefined; onDismiss: (() => void) | undefined; onOpenModelSettings: (() => void) | undefined; onOpenUpgrade: (() => void) | undefined; modelConfigTarget: ChatErrorBanner...' is not assignable to type 'IntrinsicAttributes & { error: ZCodeUiError; onReconnect?: (() => void) | undefined; remoteKind?: string | undefined; onRetry?: (() => void) | undefined; ... 4 more ...; modelConfigTarget?: ChatErrorBannerModelConfigTarget | undefined; }'.
 src/v4/ConversationComposer.tsx(2980,12): error TS2786: 'HighspeedComposerBackground' cannot be used as a JSX component.
 src/v4/ConversationComposer.tsx(2982,13): error TS2322: Type '{ key: string; animated: boolean; onModelTransitionStart: () => void; }' is not assignable to type 'IntrinsicAttributes'.
@@ -559,7 +429,7 @@ src/v4/SessionPane.tsx(1589,28): error TS2571: Object is of type 'unknown'.
 src/v4/SessionPane.tsx(1594,63): error TS2339: Property 'highspeed' does not exist on type '{}'.
 src/v4/SessionPane.tsx(1597,34): error TS2339: Property 'entityId' does not exist on type '{}'.
 src/v4/SessionPane.tsx(1601,43): error TS2339: Property 'entityId' does not exist on type '{}'.
-src/v4/SessionPane.tsx(1615,11): error TS2345: Argument of type '"setHighspeedMetrics"' is not assignable to parameter of type '"compact" | "stop" | "sendText" | "sendGoalCommand" | "createSession" | "createSelectionSideSession" | "stopSubagent" | "forkAssistant" | "applyFileRewind" | "editUserQuery" | ... 27 more ... | "discardSharedContext"'.
+src/v4/SessionPane.tsx(1615,11): error TS2345: Argument of type '"setHighspeedMetrics"' is not assignable to parameter of type '"stop" | "compact" | "sendText" | "sendGoalCommand" | "createSession" | "createSelectionSideSession" | "stopSubagent" | "forkAssistant" | "applyFileRewind" | "editUserQuery" | ... 27 more ... | "discardSharedContext"'.
 src/v4/SessionPane.tsx(1617,38): error TS2339: Property 'rowId' does not exist on type '{}'.
 src/v4/SessionPane.tsx(1617,63): error TS2339: Property 'entityId' does not exist on type '{}'.
 src/v4/SessionPane.tsx(1666,29): error TS2571: Object is of type 'unknown'.

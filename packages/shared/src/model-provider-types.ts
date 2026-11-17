@@ -28,6 +28,22 @@ export function isBuiltinModelProviderId(id: string): id is BuiltinModelProvider
   );
 }
 
+/** Polaris：上游引用的 provider-id 判别谓词（匹配键语义，惰性；无业务调用路径）。 */
+export function isZaiCodingPlanProviderId(id: string): boolean {
+  return (
+    id === BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan ||
+    id === BUILTIN_MODEL_PROVIDER_IDS.zaiTeamCodingPlan ||
+    id === BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan
+  );
+}
+
+export function isIndividualCodingPlanModelProviderId(id: string): boolean {
+  return (
+    id === BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan ||
+    id === BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan
+  );
+}
+
 export function isStartPlanModelProviderId(id: string): boolean {
   return (
     id === BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan ||
