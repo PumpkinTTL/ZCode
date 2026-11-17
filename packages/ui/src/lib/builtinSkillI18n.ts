@@ -1,4 +1,5 @@
 import type { Locale, SkillScope } from "@zcode/shared";
+import { toZhOrEnLocale } from "@zcode/shared";
 
 interface SkillDisplayCandidate {
   name: string;
@@ -9,13 +10,16 @@ interface SkillDisplayCandidate {
 }
 
 const OFFICIAL_BUILTIN_PLUGIN_NAMES = new Set([
+  "android-emulator",
   "browser",
   "browser-use",
+  "design",
   "document-skills",
   "documents",
   "pdf",
   "presentations",
   "spreadsheets",
+  "ios-simulator",
   "restore-legacy-sessions",
   "skill-creator",
   "plugin-creator",
@@ -24,14 +28,17 @@ const OFFICIAL_BUILTIN_PLUGIN_NAMES = new Set([
 ]);
 
 const OFFICIAL_PLUGIN_PATH_MARKERS = [
-  "/polaris-plugins-official/",
-  "\\polaris-plugins-official\\",
+  "/zcode-plugins-official/",
+  "\\zcode-plugins-official\\",
+  "/android-emulator-plugin/",
   "/browser-use-plugin/",
+  "/design-plugin/",
   "/document-skills-plugin/",
   "/documents-plugin/",
   "/pdf-plugin/",
   "/presentations-plugin/",
   "/spreadsheets-plugin/",
+  "/ios-simulator-plugin/",
   "/restore-legacy-sessions-plugin/",
   "/skill-creator-plugin/",
   "/plugin-creator-plugin/",
@@ -39,15 +46,23 @@ const OFFICIAL_PLUGIN_PATH_MARKERS = [
   "/zcode-guide-plugin/",
 ];
 
-const BUILTIN_SKILL_DESCRIPTIONS: Record<string, Record<Locale, string>> = {
+// 内置 Skill 描述只有中英两套；其它界面语言用英文。
+const BUILTIN_SKILL_DESCRIPTIONS: Record<string, Record<"zh-CN" | "en-US", string>> = {
+  "android-dev": {
+    "zh-CN": "通过 android-emulator MCP 工具构建、运行、检查并轻量自动化 Android 应用。",
+    "en-US": "Build, run, inspect, and lightly automate Android apps through the android-emulator MCP tools.",
+  },
   "brainstorming": {
     "zh-CN": "在任何创造性工作前使用：创建功能、构建组件、增加能力或修改行为；先探索用户意图、需求和设计。",
     "en-US": "Use before any creative work, including creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements, and design before implementation.",
   },
   "control-browser": {
     "zh-CN": "控制 Polaris 内置浏览器，用于打开、检查、点击、输入、截图或验证网页和本地开发页面。",
-    "en-US":
-      "Control Polaris's built-in browser to open, inspect, click, type, screenshot, or verify webpages and local development targets.",
+    "en-US": "Control Polaris's built-in browser to open, inspect, click, type, screenshot, or verify webpages and local development targets.",
+  },
+  "design": {
+    "zh-CN": "设计工作流：交付物是写入工作区的 HTML 设计稿、可交互原型或 HTML 演示稿时使用，覆盖需求理解、新建与改版、品牌配色、视觉探索与审查。对话内的交互视图用 visualize，.pptx 文件交给 presentations。",
+    "en-US": "Design workflow for workspace deliverables: HTML design files, interactive prototypes, and HTML slide decks, covering intake, new designs and redesigns, color and brand, exploration, and review. Use visualize for in-chat views and presentations for .pptx files.",
   },
   "dispatching-parallel-agents": {
     "zh-CN": "面对 2 个以上彼此独立、无共享状态或顺序依赖的任务时使用。",
@@ -68,6 +83,10 @@ const BUILTIN_SKILL_DESCRIPTIONS: Record<string, Record<Locale, string>> = {
   "finishing-a-development-branch": {
     "zh-CN": "实现已完成、测试通过、需要决定如何合并、发 PR 或清理分支时使用。",
     "en-US": "Use when implementation is complete, tests pass, and you need to decide how to integrate the work through merge, PR, or cleanup.",
+  },
+  "ios-dev": {
+    "zh-CN": "通过 ios-simulator MCP 工具构建、运行、检查并轻量自动化 iOS 模拟器应用。",
+    "en-US": "Build, run, inspect, and lightly automate iOS Simulator apps through the ios-simulator MCP tools.",
   },
   "pdf": {
     "zh-CN": "专业 PDF 工具集，覆盖报告、创意视觉、学术 LaTeX 和现有 PDF 处理四条生产线。可按文档类型自动路由，支持报告、海报、论文、简历、提取、合并、拆分、表单填写和格式转换等任务。",
@@ -94,8 +113,8 @@ const BUILTIN_SKILL_DESCRIPTIONS: Record<string, Record<Locale, string>> = {
     "en-US": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements.",
   },
   "restore-legacy-sessions": {
-    "zh-CN": "检查、规划或执行 ACP 时代 ZCode 旧 session 恢复到新的 ZCode 任务与会话库。",
-    "en-US": "Inspect, plan, or restore old ACP-era ZCode sessions into the new ZCode task and session stores.",
+    "zh-CN": "检查、规划或执行 ACP 时代 Polaris 旧 session 恢复到新的 Polaris 任务与会话库。",
+    "en-US": "Inspect, plan, or restore old ACP-era Polaris sessions into the new Polaris task and session stores.",
   },
   "plugin-creator": {
     "zh-CN": "创建、校验 Polaris 插件，并指导本地安装与更新。",
@@ -130,10 +149,8 @@ const BUILTIN_SKILL_DESCRIPTIONS: Record<string, Record<Locale, string>> = {
     "en-US": "Use before claiming work is complete, fixed, or passing. Requires running verification commands and confirming output before success claims.",
   },
   "web-gui-tester": {
-    "zh-CN":
-      "使用 Polaris Browser Use 对网页和本地 Web 前端执行纯 GUI 黑盒测试，通过真实用户交互、DOM 语义证据和截图验证功能、交互与响应式布局。",
-    "en-US":
-      "Run pure GUI black-box tests against websites and local web frontends with Polaris Browser Use, combining real user interactions, semantic DOM evidence, and inspected screenshots.",
+    "zh-CN": "使用 Polaris Browser Use 对网页和本地 Web 前端执行纯 GUI 黑盒测试，通过真实用户交互、DOM 语义证据和截图验证功能、交互与响应式布局。",
+    "en-US": "Run pure GUI black-box tests against websites and local web frontends with Polaris Browser Use, combining real user interactions, semantic DOM evidence, and inspected screenshots.",
   },
   "writing-plans": {
     "zh-CN": "已有规格或多步骤任务需求，在动代码前用于编写实现计划。",
@@ -165,7 +182,7 @@ export function resolveSkillDisplayDescription(
   locale?: Locale,
 ): string {
   const localized = isOfficialBuiltinSkill(skill)
-    ? BUILTIN_SKILL_DESCRIPTIONS[skill.name]?.[locale ?? "en-US"]
+    ? BUILTIN_SKILL_DESCRIPTIONS[skill.name]?.[toZhOrEnLocale(locale)]
     : undefined;
   return localized ?? skill.description;
 }
