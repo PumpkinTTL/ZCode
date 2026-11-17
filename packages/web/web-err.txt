@@ -1,1 +1,0 @@
-src/main.tsx(812,27): error TS2304: Cannot find name 'highspeedCardServiceStub'.

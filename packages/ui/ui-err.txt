@@ -1,1 +1,0 @@
-src/settings/ModelProviderSection.tsx(216,66): error TS2322: Type '"zh-CN" | "en-US" | "ja-JP" | "ru-RU" | "ko-KR"' is not assignable to type '"zh-CN" | "en-US" | undefined'.
