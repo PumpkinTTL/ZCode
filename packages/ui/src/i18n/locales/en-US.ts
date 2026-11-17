@@ -5927,7 +5927,6 @@ const enUS: Record<string, string> = {
   "offPeak.discard.title": "Discard Idle-time task draft?",
   "offPeak.discard.description": "Your changes to the current idle-time task will be lost.",
   "offPeak.discard.confirm": "Discard",
-  "offPeak.create.codingPlanOnly": "This feature is not available for this account yet",
   "offPeak.create.availabilityUnavailable": "Could not verify availability. Refresh and try again.",
   "offPeak.create.limitReachedAt":
     "Free tier limit reached. You can create another task in {time}.",
@@ -5935,7 +5934,6 @@ const enUS: Record<string, string> = {
   "offPeak.create.remaining.hours": "{hours} hr",
   "offPeak.create.remaining.minutes": "{minutes} min",
   "offPeak.create.remaining.lessThanMinute": "less than 1 min",
-  "offPeak.create.codingPlanToast": "Idle-time tasks are not yet available for this account.",
   "automations.moreIdeas": "Scheduled task template",
   "automations.templates.unavailable": "No templates available",
   "automations.runNow": "Run now",

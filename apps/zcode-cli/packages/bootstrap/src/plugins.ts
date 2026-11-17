@@ -1091,7 +1091,7 @@ async function configureZCodePluginLocked(options: ConfigureZCodePluginOptions):
     configPath: resolvePluginConfigPath(options, configResult, workingDirectory),
     options: normalizedOptions,
     plugin,
-    // workspace 配置固定写 <workingDirectory>/.zcode/config.json，它的 baseDir 就是 workingDirectory。
+    // workspace 配置固定写 <workingDirectory>/.polaris/config.json，它的 baseDir 就是 workingDirectory。
     scope:
       options.scope === "workspace"
         ? { kind: "workspace", root: workingDirectory }

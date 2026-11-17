@@ -221,7 +221,7 @@ export function HooksSection({ workspacePath, workspaceIdentity }: HooksSectionP
   const hooksService = useMemo<IHooksService>(() => {
     if (activeScope !== "user") return targetHooksService;
     // Bug 原因：User scope 需要一个路径作 RPC 锚点（本机项目或设备 home），但该路径不是 project。
-    // 强制 user-only 合同，避免把锚点误当 workspace 并覆盖其 .zcode/config.json。
+    // 强制 user-only 合同，避免把锚点误当 workspace 并覆盖其 .polaris/config.json。
     return {
       loadHooks: (params) => targetHooksService.loadHooks({ ...params, scope: "user" }),
       saveHooks: (params) => targetHooksService.saveHooks({ ...params, scope: "user" }),

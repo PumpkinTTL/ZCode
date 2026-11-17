@@ -175,8 +175,6 @@ export const ServiceChannels = {
   ClientConfig: "client-config",
   /** ZCode 客户端场景配置服务 */
   ClientScenes: "client-scenes",
-  CloudContent: "cloud-content",
-  MarketingTouch: "marketing-touch",
   /** 桌面 Host 的语音输入：连接 zcode-server ASR（docs/chat/composer-voice-input.md，仅本机 base 连接） */
   VoiceInput: "voice-input",
   /** Skills 管理服务 */

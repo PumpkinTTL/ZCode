@@ -98,6 +98,7 @@ export default defineConfig(({ mode }) => {
             REPO_ROOT,
             "packages/shared/src/workspace-hook-review-monotonicity.ts",
           ),
+        },
         // 分享管理页复用的基础控件；只依赖 radix-ui / cva / lucide，均在 share-ui 依赖闭包内。
         {
           find: "@zcode/ui/button",

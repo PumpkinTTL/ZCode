@@ -14,7 +14,7 @@ A person inspects commands from the **`/` menu** (the Commands group) in the inp
 ## 1. Discovery order (earlier locations take precedence)
 
 1. Explicitly configured roots
-2. User `~/.zcode/commands`
+2. User `~/.polaris/commands`
 3. User `~/.agents/commands`
 4. Workspace `.zcode/commands` (from the current directory up to the repository root; every level counts)
 5. Workspace `.agents/commands`
@@ -43,7 +43,7 @@ There is also an **interactive-surface-only** filter: a command whose name match
 
 ## 5. Common pitfalls (symptom → cause → fix)
 
-1. **Missing — wrong directory** — the `.md` is not under a scanned root (for example a singular `.zcode/command/`, or above the repository root). → Move it into `~/.zcode/commands/` or `<repo>/.zcode/commands/`.
+1. **Missing — wrong directory** — the `.md` is not under a scanned root (for example a singular `.zcode/command/`, or above the repository root). → Move it into `~/.polaris/commands/` or `<repo>/.zcode/commands/`.
 2. **Missing — invalid name** — the file exists but no command appears. The file name violates the pattern (uppercase, spaces, dots, leading `-`/`_`, or over 64 characters). → Rename to a valid lowercase name; namespace with subdirectories (which become `:`), not dots.
 3. **Overridden by a higher-precedence duplicate** — a different command runs, or your edits have no effect. First match wins. → Find the higher-precedence copy in discovery order and rename or remove it. Local files always beat plugins.
 4. **Frontmatter parse error** — a key is silently missing. The flat parser reads only single-line top-level keys; indented lines and multi-line arrays are dropped. → Keep every value on one line; write lists inline, e.g. `allowed-tools: Read, Bash`.

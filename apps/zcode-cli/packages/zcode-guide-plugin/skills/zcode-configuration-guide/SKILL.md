@@ -18,21 +18,21 @@ There are two ways to work with configuration in the ZCode client, and this plug
 
 - **User scope** — lives under your home directory and applies to every workspace.
 - **Workspace scope** — lives inside a repository and applies only to that project; can be shared with a team through version control.
-- **User configuration file**: `~/.zcode/cli/config.json`. Holds MCP servers, hooks, plugin enable/disable state, and skill/command disable overrides.
-- **Workspace configuration file**: `<repo>/.zcode/config.json` (or `<repo>/zcode.json`).
-- **User instruction file**: `~/.zcode/AGENTS.md`. Applies as default instructions for every workspace.
+- **User configuration file**: `~/.polaris/cli/config.json`. Holds MCP servers, hooks, plugin enable/disable state, and skill/command disable overrides.
+- **Workspace configuration file**: `<repo>/.polaris/config.json` (or `<repo>/polaris.json`).
+- **User instruction file**: `~/.polaris/AGENTS.md`. Applies as default instructions for every workspace.
 - **Workspace instruction file**: `<repo>/AGENTS.md`. Applies only to that project; the current workspace path is searched upward until the project root.
 
 ## The five resources at a glance
 
 | Resource | Form | User scope | Workspace scope | Conflict rule |
 |---|---|---|---|---|
-| **Skills** | Directory + `SKILL.md` | `~/.zcode/skills/`, `~/.agents/skills/` | `<repo>/.zcode/skills/`, `<repo>/.agents/skills/` | Identity is the file path; on load the **first same-named skill wins** (user scope has priority) |
-| **Commands** | `.md` file | `~/.zcode/commands/`, `~/.agents/commands/` | `<repo>/.zcode/commands/`, `<repo>/.agents/commands/` | Deduplicated by normalized command name; **first match wins** (user scope overrides workspace), the loser is ignored |
-| **MCP** | JSON object | `~/.zcode/cli/config.json` → `mcp.servers` (fallback `~/.agents/mcp.json` → `mcpServers`) | `<repo>/.zcode/config.json` → `mcp.servers` (fallback `<repo>/.agents/mcp.json` → `mcpServers`) | **User overrides workspace** for a same-named server; workspace-scoped servers are **trusted and auto-connected** by default, same as user-scoped |
-| **Hooks** | `hooks.json` / config object | `~/.zcode/cli/config.json` → `hooks` | `<repo>/.zcode/config.json` → `hooks` | Configuration-file hooks require `hooks.enabled: true`; plugin hooks are appended |
-| **Plugins** | Directory + `plugin.json` | Installed from a marketplace; enable/disable state stored in `~/.zcode/cli/config.json` | — | A plugin contributes skills, commands, hooks, MCP servers, and agents |
-| **Instructions** | `AGENTS.md` file | `~/.zcode/AGENTS.md` | `<repo>/AGENTS.md` | User default instructions load first, then workspace instructions load later so the workspace can narrow or override broad defaults |
+| **Skills** | Directory + `SKILL.md` | `~/.polaris/skills/`, `~/.agents/skills/` | `<repo>/.zcode/skills/`, `<repo>/.agents/skills/` | Identity is the file path; on load the **first same-named skill wins** (user scope has priority) |
+| **Commands** | `.md` file | `~/.polaris/commands/`, `~/.agents/commands/` | `<repo>/.zcode/commands/`, `<repo>/.agents/commands/` | Deduplicated by normalized command name; **first match wins** (user scope overrides workspace), the loser is ignored |
+| **MCP** | JSON object | `~/.polaris/cli/config.json` → `mcp.servers` (fallback `~/.agents/mcp.json` → `mcpServers`) | `<repo>/.polaris/config.json` → `mcp.servers` (fallback `<repo>/.agents/mcp.json` → `mcpServers`) | **User overrides workspace** for a same-named server; workspace-scoped servers are **trusted and auto-connected** by default, same as user-scoped |
+| **Hooks** | `hooks.json` / config object | `~/.polaris/cli/config.json` → `hooks` | `<repo>/.polaris/config.json` → `hooks` | Configuration-file hooks require `hooks.enabled: true`; plugin hooks are appended |
+| **Plugins** | Directory + `plugin.json` | Installed from a marketplace; enable/disable state stored in `~/.polaris/cli/config.json` | — | A plugin contributes skills, commands, hooks, MCP servers, and agents |
+| **Instructions** | `AGENTS.md` file | `~/.polaris/AGENTS.md` | `<repo>/AGENTS.md` | User default instructions load first, then workspace instructions load later so the workspace can narrow or override broad defaults |
 
 > Note: `.agents/mcp.json` is a **compatibility fallback** for MCP. Within each scope the client reads `.zcode` first; only if that scope has no MCP servers does it fall back to `.agents/mcp.json` (which uses a top-level `mcpServers` key, whereas `.zcode` uses nested `mcp.servers`).
 
@@ -40,18 +40,18 @@ There are two ways to work with configuration in the ZCode client, and this plug
 
 `AGENTS.md` is not a skill, command, hook, MCP server, or plugin. It is the instruction file ZCode loads into the model context for broad behavior rules.
 
-- **User scope**: `~/.zcode/AGENTS.md`. Use this for personal defaults that should apply in every workspace, such as preferred language, review style, or local workflow conventions.
+- **User scope**: `~/.polaris/AGENTS.md`. Use this for personal defaults that should apply in every workspace, such as preferred language, review style, or local workflow conventions.
 - **Workspace scope**: `<repo>/AGENTS.md`. Use this for repository-specific rules that should be shared with the project, such as architecture boundaries, logging rules, testing requirements, and commit/MR policy.
 - **Resolution**: ZCode searches for the workspace `AGENTS.md` from the current working directory upward until the detected project root. The user default file is resolved from the user's home directory.
-- **Merge order**: when both files exist, ZCode injects `~/.zcode/AGENTS.md` first, then the resolved workspace `AGENTS.md`. Workspace instructions appear later, so they can narrow or override broad user defaults for that repository.
-- **Migration and creation**: onboarding can copy existing user memory from `~/.claude/CLAUDE.md` into `~/.zcode/AGENTS.md`. The built-in `/init` command targets the current workspace `AGENTS.md`, creating or updating repository instructions instead of editing the user default file.
+- **Merge order**: when both files exist, ZCode injects `~/.polaris/AGENTS.md` first, then the resolved workspace `AGENTS.md`. Workspace instructions appear later, so they can narrow or override broad user defaults for that repository.
+- **Migration and creation**: onboarding can copy existing user memory from `~/.claude/CLAUDE.md` into `~/.polaris/AGENTS.md`. The built-in `/init` command targets the current workspace `AGENTS.md`, creating or updating repository instructions instead of editing the user default file.
 
 ## Skills and commands: discovery order (identical)
 
 Locations are scanned in this order (earlier locations take precedence):
 
 1. Explicitly configured roots
-2. User `~/.zcode/skills` (or `commands`)
+2. User `~/.polaris/skills` (or `commands`)
 3. User `~/.agents/skills`
 4. Workspace `.zcode/skills` (from the current directory up to the repository root; every level counts)
 5. Workspace `.agents/skills`
@@ -76,15 +76,15 @@ Within a level, `.zcode` is scanned before `.agents`. A deeper working-directory
 
 - Managed in **Settings → Plugin Management** (the **Installed** and **Discover** tabs). A plugin directory carries a manifest at `.zcode-plugin/plugin.json` (the compatibility names `.claude-plugin/` and `.codex-plugin/` are also recognized). The minimal manifest requires only `name` (matching `^[a-z0-9][a-z0-9._-]{0,127}$`).
 - Component fields: `commands`, `skills`, `hooks`, `mcpServers`, `agents` (each may be a directory name, an array, or inline). The fields `channels`, `lspServers`, `outputStyles`, and `settings` are recorded but not executed.
-- Enable/disable state is stored under `plugins` in `~/.zcode/cli/config.json`. A built-in plugin can be disabled but not uninstalled.
+- Enable/disable state is stored under `plugins` in `~/.polaris/cli/config.json`. A built-in plugin can be disabled but not uninstalled.
 - Marketplaces can be added (via the **`+`** button on the Discover tab) from a GitHub repository, a Git URL, a local directory, or a file.
 
 ## Choosing where to configure
 
-- Personal, used across projects → user scope (`~/.zcode/...` or `~/.agents/...`).
+- Personal, used across projects → user scope (`~/.polaris/...` or `~/.agents/...`).
 - Team- or project-shared, versioned with the repository → workspace scope (`<repo>/.zcode/...` or `.agents/...`).
 - Shared with other coding agents that read `~/.agents/skills/` → put skills there; to override a same-named skill only inside ZCode, use `.zcode/skills/`.
-- Personal default instructions → `~/.zcode/AGENTS.md`; repository-specific instructions → `<repo>/AGENTS.md`. If both exist, keep broad preferences in the user file and project rules in the workspace file.
+- Personal default instructions → `~/.polaris/AGENTS.md`; repository-specific instructions → `<repo>/AGENTS.md`. If both exist, keep broad preferences in the user file and project rules in the workspace file.
 - MCP servers → user configuration for personal servers, or workspace configuration to share with a team; both scopes connect automatically. Because opening a project now auto-connects the MCP servers declared in its configuration, only open workspaces you trust.
 - Secrets → never commit them to version control; use environment variables or local settings.
 

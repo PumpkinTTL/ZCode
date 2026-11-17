@@ -484,16 +484,6 @@ const ruRU: Record<string, string> = {
   "remote.phase.channel.ssh": "Подключение к хосту SSH",
   "remote.phase.channel.wsl": "Запуск дистрибутива и подключение",
   "remote.phase.channel.docker": "Подключение к контейнеру",
-  "startPlan.recommendation.subagentDescription":
-    "В вашем Start Plan есть квота для {model}. Переключить модель этого субагента на Start Plan?",
-  "startPlan.recommendation.preferenceSaveFailed":
-    "Не удалось сохранить «Больше не спрашивать». Для этой операции будет использован ваш выбор.",
-  "startPlan.recommendation.title": "Доступна квота Start Plan",
-  "startPlan.recommendation.description":
-    "В вашем Start Plan ещё есть квота для {model}. Использовать её?",
-  "startPlan.recommendation.switch": "Сменить план",
-  "startPlan.recommendation.decline": "Не сейчас",
-  "startPlan.recommendation.dismiss": "Больше не показывать",
   "occupationOnboarding.stepMode": "Режим интерфейса",
   "occupationOnboarding.modeTitle": "Выберите режим интерфейса",
   "occupationOnboarding.modeDescription": "Как ZCode показывать свою работу?",
@@ -617,11 +607,6 @@ const ruRU: Record<string, string> = {
   "startup.database.elapsed": "Прошло: {minutes} мин {seconds} с",
   "startup.database.longRunning":
     "При большой истории это может занять больше времени. Приложение всё ещё ждёт завершения работы базы данных.",
-  "rewards.title": "Награды",
-  "rewards.menuTitle": "Пригласить друга",
-  "rewards.menuBadge": "Награды",
-  "rewards.loadFailed": "Не удалось загрузить страницу. Повторите попытку.",
-  "rewards.openWebsite": "Открыть сайт",
   "bashOutput.open": "Посмотреть вывод: {title}",
   "bashOutput.fullFile": "Полный файл вывода",
   "bashOutput.retry": "Повторить",
@@ -644,7 +629,6 @@ const ruRU: Record<string, string> = {
   "chat.selections.file": "{name} · Выделение",
   "chat.selections.mixedCount": "Выделений: {count}",
   "chat.previewCards.openExternalFailed": "Не удалось открыть файл в браузере",
-  "settings.modelProvider.connectionMode.switchToStartPlan": "Перейти на Start Plan",
   "chat.composer.contextSearchHint": "Начните ввод для поиска плагинов, файлов и чатов",
   "chat.composer.contextShortcut": "Добавить контекст",
   "chat.composer.capabilityShortcut": "Выбрать возможности",
@@ -670,14 +654,6 @@ const ruRU: Record<string, string> = {
     "Выбранное подключение недоступно. Выберите другое.",
   "settings.modelProvider.navigationUnavailable":
     "Запрошенный провайдер недоступен. Выберите другого.",
-  "marketingTouch.idle": "Готово",
-  "marketingTouch.verifying": "Проверка…",
-  "marketingTouch.submitting": "Обработка…",
-  "marketingTouch.preparing": "Успешно. Подготовка результата…",
-  "marketingTouch.failed": "Не удалось выполнить действие. Повторите позже.",
-  "marketingTouch.uncertain":
-    "Не удалось подтвердить результат. Проверьте свои бонусы позже. Чтобы избежать повторной отправки, в этом сеансе действие повторяться не будет.",
-  "marketingTouch.succeeded": "Действие выполнено",
   "workspace.context.lastActivity": "Последняя активность {time}",
   "bots.privateDelivery.retry": "Отправить ответ повторно",
   "bots.privateDelivery.retryHint":
@@ -718,66 +694,6 @@ const ruRU: Record<string, string> = {
   "bots.group.resend": "Отправить результат повторно",
 
   "bots.group.provider.feishu": "Feishu",
-  "manualClaimPlan.banner.aria": "Пробный план, доступный для получения",
-  "manualClaimPlan.banner.tag": "Ограниченное предложение",
-  "manualClaimPlan.banner.unit.tokens": "ТОКЕНОВ",
-  "manualClaimPlan.banner.subtitle.daily": "Ежедневный бонус {model}",
-  "manualClaimPlan.banner.subtitle.oneTime": "Разовый бонус {model}",
-  "manualClaimPlan.claim.ticket.benefit": "{model} {amount} {unit}",
-  "manualClaimPlan.claim.ticket.benefit.daily": "{model} ежедневно {amount} {unit}",
-  "manualClaimPlan.banner.period.daily": "Ежедневно",
-  "manualClaimPlan.banner.period.oneTime": "Разово",
-  "manualClaimPlan.banner.bonus": "бонус",
-  "manualClaimPlan.banner.close": "Закрыть предложение",
-  "manualClaimPlan.banner.claim": "Получить",
-  "manualClaimPlan.banner.dismissConfirm.title": "Вы упустите возможность получить бонус",
-  "manualClaimPlan.banner.dismissConfirm.description":
-    "Возможностей получить это предложение немного. Если закрыть его, можно упустить шанс. Получить сейчас?",
-  "manualClaimPlan.banner.dismissConfirm.claim": "Получить сейчас",
-  "manualClaimPlan.banner.dismissConfirm.close": "Всё равно закрыть",
-  "manualClaimPlan.claim.success.title": "Теперь вам доступен {plan}",
-  "manualClaimPlan.claim.success.description": "Start Plan готов к использованию.",
-  "manualClaimPlan.claim.success.description.prefix": "",
-  "manualClaimPlan.claim.success.description.suffix": " готов к использованию.",
-  "manualClaimPlan.claim.success.pending.description.prefix": "",
-  "manualClaimPlan.claim.success.pending.description.beforeTime": " станет доступен ",
-  "manualClaimPlan.claim.success.pending.description.afterTime": ".",
-  "manualClaimPlan.claim.failure.title": "Не удалось получить",
-  "manualClaimPlan.claim.failure.notFound": "Такого плана не существует.",
-  "manualClaimPlan.claim.failure.unavailable": "Предложение завершено или недоступно.",
-  "manualClaimPlan.claim.failure.alreadyClaimed": "Вы уже получили этот план.",
-  "manualClaimPlan.claim.failure.ineligible":
-    "Ваш аккаунт или версия приложения не подходят для этого предложения.",
-  "manualClaimPlan.claim.failure.quotaExhausted": "Квота на сегодня исчерпана.",
-  "manualClaimPlan.claim.failure.quotaExhausted.nextTime":
-    "Квота на сегодня исчерпана. Загляните в следующий раз.",
-  "manualClaimPlan.claim.failure.quotaExhausted.tomorrow":
-    "Квота на сегодня исчерпана. Попробуйте завтра.",
-  "manualClaimPlan.claim.failure.invalidRequest":
-    "Недопустимый запрос. Обновите страницу и повторите попытку.",
-  "manualClaimPlan.claim.failure.loginRequired": "Войдите, чтобы получить этот план.",
-  "manualClaimPlan.claim.failure.generic": "Не удалось получить. Повторите позже.",
-  "manualClaimPlan.claim.startUsingUnavailable":
-    "Start Plan ещё не готов. Настройки модели не изменены; обновите и повторите позже.",
-  "manualClaimPlan.claim.dialog.confirm": "Начать использовать",
-  "manualClaimPlan.claim.dialog.modelSettings": "Посмотреть план",
-  "manualClaimPlan.claim.dialog.acknowledge": "Понятно",
-  "manualClaimPlan.claim.dialog.startsAt": "Начало",
-  "manualClaimPlan.claim.dialog.endsAt": "Действует до",
-  "manualClaimPlan.claim.dialog.replay": "Повторить анимацию билета",
-  "manualClaimPlan.claim.share.label": "Копировать и поделиться",
-  "manualClaimPlan.claim.share.close": "Закрыть",
-  "manualClaimPlan.claim.share.getImage": "Получить изображение",
-  "manualClaimPlan.claim.share.saveImage": "Сохранить изображение",
-  "manualClaimPlan.claim.share.copyImage": "Копировать изображение",
-  "manualClaimPlan.claim.share.copyText": "Копировать текст",
-  "manualClaimPlan.claim.share.copyTextSucceeded": "Текст скопирован",
-  "manualClaimPlan.claim.share.copyImageSucceeded": "Изображение скопировано",
-  "manualClaimPlan.claim.share.actionFailed": "Не удалось поделиться. Повторите попытку.",
-  "manualClaimPlan.claim.share.twitterText":
-    "Я получил {subtitle} в ZCode. Скачайте и установите ZCode, чтобы получить свой. https://zcode.z.ai",
-  "manualClaimPlan.claim.share.twitterTextLabel": "Текст поста для Twitter/X",
-  // Common
   "common.loading": "Загрузка...",
   "common.listSeparator": ", ",
   "common.generating": "Генерация...",
@@ -4248,10 +4164,6 @@ const ruRU: Record<string, string> = {
   "settings.modelProvider.or": "или",
   "settings.modelProvider.connectionMode": "Режим подключения",
   "settings.modelProvider.connectionMode.oauth": "OAuth",
-  "settings.modelProvider.connectionMode.codingPlan": "Личный тариф",
-  "settings.modelProvider.connectionMode.startPlan": "Start Plan",
-  "settings.modelProvider.connectionMode.startPlanCount": "Start Plan × {count}",
-  "settings.modelProvider.connectionMode.switchToStartPlanPrefix": "Перейти на",
   "settings.modelProvider.connectionMode.teamPlan": "Командный тариф",
   "settings.modelProvider.connectionMode.apiKeyBadge": "API",
   "settings.modelProvider.connectionMode.usageBasedApi": "API с оплатой по использованию",
@@ -4262,556 +4174,11 @@ const ruRU: Record<string, string> = {
   "settings.modelProvider.connectionMode.noAvailablePlan": "Нет доступного плана",
   "settings.modelProvider.accountProviderConfigMissing":
     "Конфигурация провайдера аккаунта недоступна. Обновите и повторите.",
-  "settings.modelProvider.startPlan.login": "Войти",
-  "settings.modelProvider.startPlan.status.loginRequired":
-    "Войдите, чтобы посмотреть и использовать Start Plan",
-  "settings.modelProvider.startPlan.status.expired": "Срок Start Plan истёк",
-  "settings.modelProvider.startPlan.status.noPlan": "Нет доступного Start Plan",
-  "settings.modelProvider.startPlan.status.loginExpired": "Срок входа истёк. Войдите снова.",
-  "settings.modelProvider.startPlan.title": "{provider} - Coding Plan",
-  "settings.modelProvider.startPlan.meta.today": "Сегодня",
-  "settings.modelProvider.startPlan.meta.tomorrow": "Завтра",
-  "settings.modelProvider.startPlan.quotaSectionTitle": "Пробный план",
-  "settings.modelProvider.startPlan.eligibleNewUser": "Новый пользователь",
-  "settings.modelProvider.startPlan.preview.unit.tokens": "токенов",
-  "settings.modelProvider.startPlan.preview.period.daily": "{unit} в день",
-  "settings.modelProvider.startPlan.preview.entitlementSummary.daily": "Дневная квота · {details}",
-  "settings.modelProvider.startPlan.preview.entitlementSummary.generic": "Квота · {details}",
-  "settings.modelProvider.startPlan.preview.entitlementGroup.single": "{model} {quota}",
-  "settings.modelProvider.startPlan.preview.entitlementGroup.each": "{models} по {quota}",
-  "settings.modelProvider.startPlan.balance.title": "Баланс на сегодня",
-  "settings.modelProvider.startPlan.balance.remaining": "Осталось токенов: {value}",
-  "settings.modelProvider.startPlan.balance.used": "Использовано: {value}",
-  "settings.modelProvider.startPlan.highlight.trial.label": "Пробный период",
-  "settings.modelProvider.startPlan.highlight.trial.value": "5 календарных дней",
-  "settings.modelProvider.startPlan.highlight.trial.description":
-    "Отсчёт начинается после входа в ZCode 3.x.",
-  "settings.modelProvider.startPlan.highlight.quota.label": "Дневная квота",
-  "settings.modelProvider.startPlan.highlight.quota.value": "3M токенов в день",
-  "settings.modelProvider.startPlan.highlight.quota.description":
-    "Флагманские модели GLM платформы делят общую пробную квоту 3M токенов в день.",
-  "settings.modelProvider.startPlan.highlight.metering.label": "Учёт",
-  "settings.modelProvider.startPlan.highlight.metering.value":
-    "После использования моделей платформы",
-  "settings.modelProvider.startPlan.highlight.metering.description":
-    "Учитывается только после использования флагманских моделей GLM платформы.",
-  "settings.modelProvider.startPlan.compatibility":
-    "Поддерживает BYOK и BYOA. Base URL, формат API и API Key ZCode поддерживает автоматически.",
-  "settings.modelProvider.codingPlan.title": "{provider} - Coding Plan",
-  "settings.modelProvider.codingPlan.webview.title": "Улучшить план",
-  "settings.modelProvider.codingPlan.webview.authInjectFailed":
-    "Не удалось выполнить вход на странице плана. Повторите попытку.",
-  "settings.modelProvider.codingPlan.webview.retry": "Повторить",
-  "settings.modelProvider.codingPlan.webview.loadFailed": "Не удалось загрузить страницу плана.",
-  "settings.modelProvider.codingPlan.webview.openWebsite": "Купить на официальном сайте",
-  "settings.modelProvider.codingPlan.status.loginRequired": "Вход не выполнен",
-  "settings.modelProvider.codingPlan.status.disconnected": "Не подключено",
-  "settings.modelProvider.codingPlan.status.checking": "Проверка",
-  "settings.modelProvider.codingPlan.status.notPurchased":
-    "Нет подписки, включится после оформления",
-  "settings.modelProvider.codingPlan.status.purchased": "Подписка оформлена",
-  "settings.modelProvider.codingPlan.status.unavailable": "Не удалось получить",
   "settings.modelProvider.remoteOAuthNotReady":
     "Вход через OAuth нельзя начать прямо на удалённом Source. Настройте API Key или синхронизируйте аккаунт, вошедший на локальном Source.",
-  "settings.modelProvider.codingPlan.status.teamExpired":
-    "Срок командного плана истёк. Обратитесь к администратору команды.",
-  "settings.modelProvider.codingPlan.status.teamUnavailable":
-    "Командный план не назначен. Обратитесь к администратору команды.",
-  "settings.modelProvider.codingPlan.status.unsupported": "Пока не поддерживается",
-  "settings.modelProvider.codingPlan.bigmodel.unregisteredHint":
-    "Этот аккаунт BigModel ещё не зарегистрирован. Сначала зарегистрируйтесь.",
-  "settings.modelProvider.codingPlan.bigmodel.registerAction": "Зарегистрироваться",
-  "settings.modelProvider.codingPlan.description.disconnected":
-    "Подключитесь, чтобы увидеть права Coding Plan.",
-  "settings.modelProvider.codingPlan.description.checking":
-    "Проверка прав Coding Plan с API Key текущего провайдера.",
-  "settings.modelProvider.codingPlan.description.notPurchased":
-    "Для текущего API Key или аккаунта активный Coding Plan не найден.",
-  "settings.modelProvider.codingPlan.description.purchased":
-    "Coding Plan активен и может использоваться этим провайдером.",
-  "settings.modelProvider.codingPlan.description.credentialFailed":
-    "Не удалось получить ваш план. Войдите снова и повторите.",
-  "settings.modelProvider.codingPlan.description.unavailable":
-    "Не удалось проверить права Coding Plan. Подключитесь снова и повторите.",
-  "settings.modelProvider.codingPlan.description.unsupported":
-    "Этот провайдер пока не поддерживает проверку статуса Coding Plan.",
-  "settings.modelProvider.codingPlan.login": "Войти в {provider}",
-  "settings.modelProvider.codingPlan.connect": "Подключиться к {provider}",
-  "settings.modelProvider.codingPlan.purchaseLoginRequiredShort": "Войдите для покупки",
-  "settings.modelProvider.codingPlan.purchaseConnectRequiredShort": "Подключитесь для покупки",
-  "settings.modelProvider.codingPlan.disconnect": "Отвязать",
-  "settings.modelProvider.codingPlan.subscribe": "Подписаться",
-  "settings.modelProvider.codingPlan.upgrade": "Улучшить",
-  "settings.modelProvider.codingPlan.renew": "Продлить",
-  "settings.modelProvider.codingPlan.currentPlan": "Текущий",
-  "settings.modelProvider.codingPlan.purchased": "Куплен",
-  "settings.modelProvider.codingPlan.startPlan.expiredBadge": "Истёк",
-  "settings.modelProvider.codingPlan.startPlan.expiredAction": "Завершён",
-  "settings.modelProvider.codingPlan.cancelUpgrade": "Назад",
-  "settings.modelProvider.codingPlan.purchase.title": "Улучшить Coding Plan",
-  "settings.modelProvider.codingPlan.purchase.pricingTitle": "Цены",
-  "settings.modelProvider.codingPlan.purchase.pricingDescription":
-    "Подберите подходящий план и начните программировать с AI.",
-  "settings.modelProvider.codingPlan.purchase.moreInfo": "Подробнее",
-  "settings.modelProvider.codingPlan.purchase.billingCycleTitle": "Выберите период оплаты",
-  "settings.modelProvider.codingPlan.purchase.paymentConfirmTitle": "Подтверждение оплаты",
-  "settings.modelProvider.codingPlan.purchase.paymentTitle": "Оплата",
-  "settings.modelProvider.codingPlan.purchase.personal": "Для себя",
-  "settings.modelProvider.codingPlan.purchase.team": "Для команд",
-  "settings.modelProvider.codingPlan.purchase.individualsSectionTitle": "Для частных пользователей",
-  "settings.modelProvider.codingPlan.purchase.teamsSectionTitle": "Для команд",
-  "settings.modelProvider.codingPlan.purchaseBanner.startPlanTitle": "Start Plan",
-  "settings.modelProvider.codingPlan.purchaseBanner.startPlanDescription":
-    "Бесплатно попробуйте квоту флагманских моделей GLM платформы.",
-  "settings.modelProvider.codingPlan.purchaseBanner.personalTitle": "Для частных пользователей",
-  "settings.modelProvider.codingPlan.purchaseBanner.personalDescription":
-    "Для индивидуальных разработчиков с отдельной квотой Coding Plan.",
-  "settings.modelProvider.codingPlan.purchaseBanner.temporarilySoldOut": "Временно распродано",
-  "settings.modelProvider.codingPlan.purchaseBanner.teamTitle": "Для команд",
-  "settings.modelProvider.codingPlan.purchaseBanner.teamDescription":
-    "Для совместной работы команды с местами и централизованной оплатой.",
-  "settings.modelProvider.codingPlan.purchaseBanner.teamStandardDescription":
-    "Для небольших команд, которым нужны общая квота и управление местами.",
-  "settings.modelProvider.codingPlan.purchaseBanner.teamAdvancedDescription":
-    "Для высоконагруженных команд разработчиков, которым нужны большая квота и гибкие места.",
-  "settings.modelProvider.codingPlan.purchase.choosePlan": "Выберите план",
-  "settings.modelProvider.codingPlan.purchase.choosePlanDescription":
-    "Сначала сравните объём планов. Период оплаты и итоговый платёж подтверждаются далее.",
-  "settings.modelProvider.codingPlan.purchase.selectPlan": "Выбрать",
-  "settings.modelProvider.codingPlan.purchase.select": "Выбрать",
-  "settings.modelProvider.codingPlan.purchase.selected": "Выбран",
-  "settings.modelProvider.codingPlan.purchase.fromPrice": "от {price}",
-  "settings.modelProvider.codingPlan.purchase.fromPriceSuffix": "",
-  "settings.modelProvider.codingPlan.purchase.previewLoading": "Расчёт суммы платежа",
-  "settings.modelProvider.codingPlan.purchase.previewLoadingDescription":
-    "Подождите. Для подтверждения и оплаты используются одни и те же платёжные данные.",
-  "settings.modelProvider.codingPlan.purchase.previewUnavailableDescription":
-    "Сумма платежа недоступна. Вернитесь и снова выберите период оплаты.",
-  "settings.modelProvider.codingPlan.purchase.teamTitle": "Командные планы",
-  "settings.modelProvider.codingPlan.purchase.teamDescription":
-    "Места, общая квота и централизованная оплата появятся позже.",
-  "settings.modelProvider.codingPlan.purchase.teamCardDescription":
-    "Общая квота, управление местами и централизованная оплата.",
-  "settings.modelProvider.codingPlan.purchase.comingSoon": "Скоро",
-  "settings.modelProvider.codingPlan.purchase.chooseBillingCycle": "Период оплаты для {plan}",
-  "settings.modelProvider.codingPlan.purchase.billingCycleDescription":
-    "Цены и скидки обновляются перед оплатой. Итоговая сумма подтверждается на шаге оплаты.",
-  "settings.modelProvider.codingPlan.purchase.continueToPayment": "Перейти к оплате",
-  "settings.modelProvider.codingPlan.purchase.summaryPlan": "План",
-  "settings.modelProvider.codingPlan.purchase.summaryBillingCycle": "Период оплаты",
-  "settings.modelProvider.codingPlan.purchase.summaryDueToday": "К оплате сегодня",
-  "settings.modelProvider.codingPlan.purchase.summaryStatus": "Статус",
-  "settings.modelProvider.codingPlan.purchase.servicePeriod": "Срок обслуживания",
-  "settings.modelProvider.codingPlan.purchase.durationValue": "{duration} {unit}",
-  "settings.modelProvider.codingPlan.purchase.autoRenewPeriod": "Автопродление каждые {period}",
-  "settings.modelProvider.codingPlan.purchase.renewalPolicyTitle": "Правила продления",
-  "settings.modelProvider.codingPlan.purchase.renewalPolicyCharge":
-    "Подписка продлевается автоматически по цене {price}{unit}, если её не отменить.",
-  "settings.modelProvider.codingPlan.purchase.renewalPolicyPreview":
-    "Итоговые скидки, бонусы и сумма платежа подтверждаются на следующем шаге предпросмотра оплаты.",
-  "settings.modelProvider.codingPlan.purchase.renewalPolicyCancel":
-    "Автопродление можно отключить в управлении планом до следующего продления.",
-  "settings.modelProvider.codingPlan.purchase.termsAccepted":
-    "Я понимаю и принимаю правила продления и условия подписки.",
-  "settings.modelProvider.codingPlan.purchase.paymentPreparing": "Подготовка оплаты",
-  "settings.modelProvider.codingPlan.purchase.securityChecking": "Ожидание проверки безопасности",
-  "settings.modelProvider.codingPlan.purchase.paymentPolling": "Ожидание подтверждения оплаты",
-  "settings.modelProvider.codingPlan.purchase.paymentStarted": "Завершите оплату на этой странице",
-  "settings.modelProvider.codingPlan.purchase.paymentStartedDescription":
-    "Не закрывайте эту панель, пока платёжный канал не завершит операцию. До успешной оплаты можно вернуться на страницу подтверждения.",
-  "settings.modelProvider.codingPlan.purchase.paymentInProgress": "Идёт оплата",
-  "settings.modelProvider.codingPlan.purchase.successTitle": "Оплата прошла успешно",
-  "settings.modelProvider.codingPlan.purchase.successDescription":
-    "Оплата Coding Plan прошла успешно. Статус провайдера обновится после закрытия этой панели.",
-  "settings.modelProvider.codingPlan.purchase.successRefreshingDescription":
-    "Оплата прошла успешно. Статус плана обновляется; панель можно закрыть — страница провайдера продолжит обновление.",
-  "settings.modelProvider.codingPlan.purchase.statusSyncing": "Синхронизация",
-  "settings.modelProvider.codingPlan.purchase.statusActive": "Активен",
-  "settings.modelProvider.codingPlan.purchase.refreshNow": "Обновить сейчас",
-  "settings.modelProvider.codingPlan.purchase.done": "Готово",
-  "settings.modelProvider.codingPlan.purchase.teamMemberNoticeTitle":
-    "Назначьте участников командного плана",
-  "settings.modelProvider.codingPlan.purchase.teamMemberNoticeDescription":
-    "Добавьте себя или других участников на странице управления командным планом BigModel. После назначения командная квота станет доступна в ZCode.",
-  "settings.modelProvider.codingPlan.purchase.manageTeamPlan": "Управление командным планом",
-  "settings.modelProvider.codingPlan.manage": "Управление",
-  "settings.modelProvider.planCard.codingPlan": "Coding Plan",
-  "settings.modelProvider.planCard.startPlan": "Start Plan",
   "settings.modelProvider.planCard.usage.fiveHour": "Использование за 5 ч",
   "settings.modelProvider.planCard.usage.week": "Использование за 1 нед.",
   "settings.modelProvider.planCard.usage.totalTokens": "Всего токенов",
-  "settings.modelProvider.codingPlan.recheck": "Проверить снова",
-  "settings.modelProvider.codingPlan.checkingPlans": "Проверка...",
-  "settings.modelProvider.codingPlan.switchAccount": "Сменить аккаунт",
-  "settings.modelProvider.codingPlan.useApiKeyProvider": "Использовать API Key",
-  "settings.modelProvider.codingPlan.nextResetAt": "Сброс квоты: {date}",
-  "settings.modelProvider.codingPlan.renewsAt": "Продление: {date}",
-  "settings.modelProvider.codingPlan.expiresAt": "Истекает: {date}",
-  "settings.modelProvider.startPlan.pendingUntil": "Ожидание до {date}",
-  "settings.modelProvider.startPlan.refreshEntitlement": "Обновить доступ",
-  "settings.modelProvider.startPlan.expiresAt": "Истекает: {date}",
-  "settings.modelProvider.codingPlan.openApiKeyProvider": "Открыть BigModel - API Key",
-  "settings.modelProvider.codingPlan.plansTitle": "Coding Plan",
-  "settings.modelProvider.codingPlan.billingDiscountInfo.open": "Подробнее об акции «квота 150%»",
-  "settings.modelProvider.codingPlan.audience.personal": "Для частных лиц",
-  "settings.modelProvider.codingPlan.audience.enterprise": "Для компаний",
-  "settings.modelProvider.codingPlan.period.monthly": "Ежемесячно",
-  "settings.modelProvider.codingPlan.period.quarterly": "Ежеквартально",
-  "settings.modelProvider.codingPlan.period.yearly": "Ежегодно",
-  "settings.modelProvider.codingPlan.unit.usd.month": "/мес.",
-  "settings.modelProvider.codingPlan.unit.usd.quarter": "/квартал",
-  "settings.modelProvider.codingPlan.unit.usd.year": "/год",
-  "settings.modelProvider.codingPlan.unit.cny.month": "/мес.",
-  "settings.modelProvider.codingPlan.unit.cny.quarter": "/квартал",
-  "settings.modelProvider.codingPlan.unit.cny.year": "/год",
-  "settings.modelProvider.codingPlan.monthlyEquivalent": "Эквивалентно {price}/мес.",
-  "settings.modelProvider.codingPlan.monthlyFlexibleBilling": "Гибкая помесячная оплата",
-  "settings.modelProvider.codingPlan.providerFormDescription":
-    "Эти настройки управляются Coding Plan. Для ручного ввода ключей используйте раздел API Key.",
-  "settings.modelProvider.codingPlan.retry": "Повторить",
-  "settings.modelProvider.codingPlan.viewPrices": "Посмотреть цены",
-  "settings.modelProvider.codingPlan.productsLoading": "Загрузка Coding Plan",
-  "settings.modelProvider.codingPlan.productsLoadingDescription":
-    "Получаем актуальные тарифы и цены от {provider}.",
-  "settings.modelProvider.codingPlan.purchase.authStateError":
-    "Не удалось получить статус входа. Повторите попытку.",
-  "settings.modelProvider.codingPlan.purchase.authStateRetry": "Повторить проверку входа",
-  "settings.modelProvider.codingPlan.productsError": "Не удалось загрузить тарифы",
-  "settings.modelProvider.codingPlan.productsReconnectTitle": "Подключитесь, чтобы увидеть тарифы",
-  "settings.modelProvider.codingPlan.reconnectToViewPlans": "Переподключить",
-  "settings.modelProvider.codingPlan.productsLoginRequired":
-    "Переподключите аккаунт {provider}, чтобы обновить цены и доступные тарифы Coding Plan.",
-  "settings.modelProvider.codingPlan.purchaseLoginRequired":
-    "Переподключите аккаунт и повторите попытку.",
-  "settings.modelProvider.codingPlan.productsEmpty": "Нет доступных тарифов",
-  "settings.modelProvider.codingPlan.productsEmptyDescription":
-    "{provider} не вернул доступных для покупки тарифов Coding Plan для этого аккаунта.",
-  "settings.modelProvider.codingPlan.dynamicUnsupportedTitle": "Динамические тарифы недоступны",
-  "settings.modelProvider.codingPlan.dynamicUnsupportedDescription":
-    "Подписка в приложении пока доступна только для Z.ai / BigModel Coding Plan.",
-  "settings.modelProvider.codingPlan.priceUnavailable": "Цена недоступна",
-  "settings.modelProvider.codingPlan.systemBusy": "Система занята. Повторите попытку позже.",
-  "settings.modelProvider.codingPlan.subscriptionBusy": "Сервис подписки занят",
-  "settings.modelProvider.codingPlan.subscriptionBusyButton": "Система занята",
-  "settings.modelProvider.codingPlan.pendingOrder":
-    "Есть незавершённый заказ. Завершите или отмените его, прежде чем оформлять новую покупку.",
-  "settings.modelProvider.codingPlan.paymentTimeout":
-    "Оплата ещё обрабатывается. Проверьте статус Coding Plan после завершения на странице оплаты.",
-  "settings.modelProvider.codingPlan.zaiOverseasPaymentRequired":
-    "Глобальные тарифы Z.ai оплачиваются через PayPal или официальную страницу оплаты Z.ai, а не через подписание в Alipay.",
-  "settings.modelProvider.codingPlan.paypalSetupRequired":
-    "Авторизуйте PayPal, чтобы продолжить оплату.",
-  "settings.modelProvider.codingPlan.paypalApproveUrlMissing":
-    "PayPal не вернул ссылку для подтверждения. Повторите попытку позже.",
-  "settings.modelProvider.codingPlan.paypalUnsupported":
-    "PayPal не поддерживается для этого аккаунта или региона.",
-  "settings.modelProvider.codingPlan.paypalCancelled":
-    "Авторизация PayPal отменена. Чтобы повторить, снова выберите PayPal.",
-  "settings.modelProvider.codingPlan.paypalSubscribeFailed":
-    "Не удалось оформить подписку через PayPal. Убедитесь, что авторизация PayPal завершена, и повторите попытку или оплатите картой.",
-  "settings.modelProvider.codingPlan.securityVerificationRequired":
-    "Пройдите проверку безопасности, чтобы продолжить покупку.",
-  "settings.modelProvider.codingPlan.securityVerificationCancelled":
-    "Проверка безопасности отменена.",
-  "settings.modelProvider.codingPlan.securityVerificationFailed":
-    "Проверка безопасности не пройдена. Повторите попытку чуть позже.",
-  "settings.modelProvider.codingPlan.start.loginEnable": "Подключить и включить",
-  "settings.modelProvider.codingPlan.start.loginTrial": "Подключить Z.ai",
-  "settings.modelProvider.codingPlan.start.enabled": "Включено",
-  "settings.modelProvider.codingPlan.start.freeBadge": "Бесплатно",
-  "settings.modelProvider.codingPlan.start.freeEquityTitle": "Начать бесплатный тариф",
-  "settings.modelProvider.codingPlan.start.freeEquityDetails":
-    "Базовые возможности для программирования доступны после входа.",
-  "settings.modelProvider.codingPlan.paymentDialog.title": "{product}: тариф с автопродлением",
-  "settings.modelProvider.codingPlan.paymentDialog.close": "Закрыть окно оплаты",
-  "settings.modelProvider.codingPlan.paymentDialog.originalAmount": "Цена тарифа",
-  "settings.modelProvider.codingPlan.paymentDialog.discountActivity": "Скидка",
-  "settings.modelProvider.codingPlan.paymentDialog.currentPlanCredit":
-    "Остаток стоимости текущего тарифа",
-  "settings.modelProvider.codingPlan.paymentDialog.payAmount": "К оплате",
-  "settings.modelProvider.codingPlan.paymentDialog.deductions": "Списания",
-  "settings.modelProvider.codingPlan.paymentDialog.alipayScan": "Отсканируйте в Alipay для оплаты",
-  "settings.modelProvider.codingPlan.paymentDialog.polling": "Ожидание подтверждения оплаты",
-  "settings.modelProvider.codingPlan.paymentDialog.qrAlt": "QR-код для оплаты",
-  "settings.modelProvider.codingPlan.paymentDialog.qrLoading": "Создание QR-кода",
-  "settings.modelProvider.codingPlan.paymentDialog.qrError":
-    "Не удалось создать QR-код. Повторите попытку.",
-  "settings.modelProvider.codingPlan.paymentDialog.qrExpired": "Срок действия QR-кода истёк",
-  "settings.modelProvider.codingPlan.paymentDialog.refreshQr": "Обновить QR-код",
-  "settings.modelProvider.codingPlan.paymentDialog.tipAutoRenew":
-    "Подписка будет автоматически продлеваться по цене {price}/мес.",
-  "settings.modelProvider.codingPlan.paymentDialog.tipDeduction":
-    "Порядок списания: сначала бонусы, затем баланс, затем Alipay.",
-  "settings.modelProvider.codingPlan.paymentDialog.tipPeriodic":
-    "Тариф продлевается ежемесячно, пока вы не отмените его в соответствии с условиями обслуживания.",
-  "settings.modelProvider.codingPlan.paymentDialog.tipCancel":
-    "Отключить автопродление можно не позднее чем за 3 дня до даты продления в обзоре тарифа.",
-  "settings.modelProvider.codingPlan.paymentDialog.tipCancelPrefix":
-    "Отключить автопродление можно не позднее чем за 3 дня до даты продления в разделе ",
-  "settings.modelProvider.codingPlan.paymentDialog.planOverviewLink": "обзор тарифа",
-  "settings.modelProvider.codingPlan.paymentDialog.tipCancelSuffix": ".",
-  "settings.modelProvider.codingPlan.paymentDialog.ruleTitle": "Правила использования аккаунта",
-  "settings.modelProvider.codingPlan.paymentDialog.ruleDescription":
-    "Используйте аккаунт с подпиской только в рамках официально разрешённых продуктов. Не передавайте, не одалживайте и не предоставляйте его третьим лицам и не используйте для недобросовестных действий или нарушения правил. При выявлении нарушений платформа может ограничить или заблокировать аккаунт без возврата средств.",
-  "settings.modelProvider.codingPlan.paymentDialog.agreement":
-    "Оплачивая, вы принимаете условия обслуживания и автопродления подписки. Виртуальные товары после оплаты возврату не подлежат.",
-  "settings.modelProvider.codingPlan.enterprise.purchaseMethod": "Способ обслуживания",
-  "settings.modelProvider.codingPlan.enterprise.purchaseMethodTooltipTitle":
-    "Подробнее о способах обслуживания",
-  "settings.modelProvider.codingPlan.enterprise.purchaseMethodTooltipDescription":
-    "1. Разовая помесячная покупка доступна только на 1, 3, 6 или 12 месяцев. За 12 месяцев — скидка 10%.\n2. Непрерывная подписка: при автопродлении списание идёт в порядке: бонусный баланс > баланс > Alipay.",
-  "settings.modelProvider.codingPlan.enterprise.tier.lite": "Lite",
-  "settings.modelProvider.codingPlan.enterprise.tier.pro": "Pro",
-  "settings.modelProvider.codingPlan.enterprise.tier.max": "Max",
-  "settings.modelProvider.codingPlan.enterprise.configTitle": "Настройка командного тарифа",
-  "settings.modelProvider.codingPlan.enterprise.packageType": "Тип тарифа",
-  "settings.modelProvider.codingPlan.enterprise.packageSeats": "Места в тарифе",
-  "settings.modelProvider.codingPlan.enterprise.autoRenewAuthorization":
-    "Вы разрешаете нам включить для вас автопродление",
-  "settings.modelProvider.codingPlan.enterprise.seatMonthlyPrice": "{price} / место / мес.",
-  "settings.modelProvider.codingPlan.enterprise.refresh": "Обновить",
-  "settings.modelProvider.codingPlan.enterprise.singleSeatPrice": "цена за одно место",
-  "settings.modelProvider.codingPlan.enterprise.singleSeatFrom": "Цена за одно место",
-  "settings.modelProvider.codingPlan.enterprise.unitPrice": "Цена за одно место",
-  "settings.modelProvider.codingPlan.enterprise.seats": "Места",
-  "settings.modelProvider.codingPlan.enterprise.seatInputUnit": "мест",
-  "settings.modelProvider.codingPlan.enterprise.seatsUnit": "мест",
-  "settings.modelProvider.codingPlan.enterprise.duration": "Срок",
-  "settings.modelProvider.codingPlan.enterprise.durationUnit.month": "мес.",
-  "settings.modelProvider.codingPlan.enterprise.durationUnit.quarter": "кв.",
-  "settings.modelProvider.codingPlan.enterprise.durationUnit.year": "г.",
-  "settings.modelProvider.codingPlan.enterprise.durationInputUnit.month": "мес.",
-  "settings.modelProvider.codingPlan.enterprise.durationInputUnit.year": "лет",
-  "settings.modelProvider.codingPlan.enterprise.durationDiscountOption": "Скидка 10%",
-  "settings.modelProvider.codingPlan.enterprise.calculating": "Расчёт",
-  "settings.modelProvider.codingPlan.enterprise.productsLoadingDescription":
-    "Загрузка цен командного тарифа из BigModel.",
-  "settings.modelProvider.codingPlan.enterprise.productsEmptyDescription":
-    "Сейчас нет доступных командных тарифов.",
-  "settings.modelProvider.codingPlan.enterprise.productsError":
-    "Не удалось загрузить командные тарифы",
-  "settings.modelProvider.codingPlan.enterprise.choosePurchaseMethod": "Способ обслуживания",
-  "settings.modelProvider.codingPlan.enterprise.purchaseMethodDescription":
-    "Вы разрешаете нам включить для вас автопродление. Перед подтверждением оплаты выберите способ обслуживания, число мест и срок разовой покупки.",
-  "settings.modelProvider.codingPlan.enterprise.continuousDescription":
-    "Автоматически продлевается на выбранный расчётный период.",
-  "settings.modelProvider.codingPlan.enterprise.oneTimeDescription":
-    "Разовая покупка на выбранный срок.",
-  "settings.modelProvider.codingPlan.enterprise.unit.monthly": "/ место / мес.",
-  "settings.modelProvider.codingPlan.enterprise.unit.quarterly": "/ место / квартал",
-  "settings.modelProvider.codingPlan.enterprise.unit.yearly": "/ место / год",
-  "settings.modelProvider.codingPlan.enterprise.benefitSeats": "Доступ для команды по местам",
-  "settings.modelProvider.codingPlan.enterprise.benefitBilling": "Централизованные счета и оплата",
-  "settings.modelProvider.codingPlan.enterprise.benefitQuota":
-    "Командная квота на программирование",
-  "settings.modelProvider.codingPlan.enterprise.balanceTitle": "Списание с баланса",
-  "settings.modelProvider.codingPlan.enterprise.useGiftBalance": "Использовать бонусный баланс",
-  "settings.modelProvider.codingPlan.enterprise.useCashBalance": "Использовать баланс",
-  "settings.modelProvider.codingPlan.enterprise.currentGiftBalance":
-    "Текущий бонусный баланс: {amount}",
-  "settings.modelProvider.codingPlan.enterprise.currentCashBalance":
-    "Текущий баланс аккаунта: {amount}",
-  "settings.modelProvider.codingPlan.enterprise.recharge": "Пополнить",
-  "settings.modelProvider.codingPlan.enterprise.giftBalance": "Бонусный баланс",
-  "settings.modelProvider.codingPlan.enterprise.cashBalance": "Денежный баланс",
-  "settings.modelProvider.codingPlan.enterprise.balanceAvailable": "Доступно: {amount}",
-  "settings.modelProvider.codingPlan.enterprise.giftBalanceDeduction":
-    "Списание с бонусного баланса",
-  "settings.modelProvider.codingPlan.enterprise.cashBalanceDeduction":
-    "Списание с денежного баланса",
-  "settings.modelProvider.codingPlan.enterprise.calculateDescription":
-    "Сумма к оплате обновится после расчёта заказа.",
-  "settings.modelProvider.codingPlan.enterprise.paymentNotesTitle": "Примечания к оплате",
-  "settings.modelProvider.codingPlan.enterprise.paymentNotesDescription":
-    "Списания с баланса и бонусов рассчитываются BigModel. Для непрерывной подписки требуется минимальная сумма оплаты через сторонний сервис.",
-  "settings.modelProvider.codingPlan.enterprise.amountDetails": "Детали суммы",
-  "settings.modelProvider.codingPlan.enterprise.seatQuantity": "Места",
-  "settings.modelProvider.codingPlan.enterprise.seatCountValue": "Мест: {count}",
-  "settings.modelProvider.codingPlan.enterprise.orderOriginalAmount": "Исходная сумма заказа",
-  "settings.modelProvider.codingPlan.enterprise.orderDiscount": "Скидка: {discount}",
-  "settings.modelProvider.codingPlan.enterprise.teamAgreementPrefix": "Я принимаю ",
-  "settings.modelProvider.codingPlan.enterprise.teamAgreementLink":
-    "Соглашение о покупке командного тарифа",
-  "settings.modelProvider.codingPlan.enterprise.cancel": "Отмена",
-  "settings.modelProvider.codingPlan.enterprise.confirmPay": "Подтвердить и оплатить",
-  "settings.modelProvider.codingPlan.enterprise.confirmTitle":
-    "Покупка корпоративного тарифа {product}",
-  "settings.modelProvider.codingPlan.enterprise.paymentDialog.title":
-    "Оплата корпоративного тарифа {product}",
-  "settings.modelProvider.codingPlan.enterprise.paymentDialog.tipTotal":
-    "Сумма в QR-коде — итоговая стоимость за выбранные места и срок.",
-  "settings.modelProvider.codingPlan.enterprise.paymentDialog.tipDeduction":
-    "Списания с баланса и бонусов выполняются согласно подтверждённому расчёту на странице подтверждения оплаты.",
-  "settings.modelProvider.codingPlan.enterprise.paymentDialog.tipComplete":
-    "После успешной оплаты корпоративные цены и доступ к Coding Plan обновятся автоматически.",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderTitle": "У вас есть неоплаченный заказ",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderDescription":
-    "Продолжить с ним? Можно отменить заказ и выбрать новый тариф или продолжить оплату исходного заказа.",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderCancel": "Отменить заказ",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderContinue": "Продолжить оплату",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderProductMissing":
-    "Тариф для этого неоплаченного заказа не найден. Обновите список тарифов и повторите попытку.",
-  "settings.modelProvider.codingPlan.overseasPayment.title": "{product}: глобальная оплата",
-  "settings.modelProvider.codingPlan.overseasPayment.description":
-    "К оплате: {price}. Выберите PayPal или продолжите на официальной странице оплаты Z.ai.",
-  "settings.modelProvider.codingPlan.overseasPayment.paypal": "PayPal",
-  "settings.modelProvider.codingPlan.overseasPayment.paypalDescription":
-    "Откройте авторизацию PayPal, затем вернитесь сюда, чтобы продолжить.",
-  "settings.modelProvider.codingPlan.overseasPayment.paypalAuthorize": "Перейти в PayPal",
-  "settings.modelProvider.codingPlan.overseasPayment.paypalContinue":
-    "Я авторизовал PayPal, продолжить оплату",
-  "settings.modelProvider.codingPlan.overseasPayment.selectPaymentMethod": "Способ оплаты",
-  "settings.modelProvider.codingPlan.overseasPayment.cardPayment": "Кредитная / дебетовая карта",
-  "settings.modelProvider.codingPlan.overseasPayment.savedCards": "Сохранённые карты",
-  "settings.modelProvider.codingPlan.overseasPayment.refreshCards": "Обновить список карт",
-  "settings.modelProvider.codingPlan.overseasPayment.deleteCard": "Удалить карту",
-  "settings.modelProvider.codingPlan.overseasPayment.cardsLoading": "Загрузка сохранённых карт...",
-  "settings.modelProvider.codingPlan.overseasPayment.noSavedCards": "Сохранённых карт пока нет.",
-  "settings.modelProvider.codingPlan.overseasPayment.addCard": "Добавить карту",
-  "settings.modelProvider.codingPlan.overseasPayment.changeCard": "Сменить карту",
-  "settings.modelProvider.codingPlan.overseasPayment.cardExpires": "Срок действия {month}/{year}",
-  "settings.modelProvider.codingPlan.overseasPayment.cardInformation": "Данные карты",
-  "settings.modelProvider.codingPlan.overseasPayment.nameOnCard": "Имя на карте",
-  "settings.modelProvider.codingPlan.overseasPayment.billingAddress": "Платёжный адрес",
-  "settings.modelProvider.codingPlan.overseasPayment.country": "Страна",
-  "settings.modelProvider.codingPlan.overseasPayment.countryRequired":
-    "Выберите страну или регион для платёжного адреса.",
-  "settings.modelProvider.codingPlan.overseasPayment.addressLine1": "Адрес, строка 1",
-  "settings.modelProvider.codingPlan.overseasPayment.city": "Город",
-  "settings.modelProvider.codingPlan.overseasPayment.postalCode": "Почтовый индекс",
-  "settings.modelProvider.codingPlan.overseasPayment.payWithCard": "Оплатить картой",
-  "settings.modelProvider.codingPlan.overseasPayment.saveCard": "Сохранить карту",
-  "settings.modelProvider.codingPlan.overseasPayment.confirm": "Подтвердить",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.originalAmount": "Исходная цена",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.discountActivity": "Скидка",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.currentPlanCredit":
-    "Зачёт текущего тарифа",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.payAmount": "К оплате",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.deductions": "Списания",
-  "settings.modelProvider.codingPlan.overseasPayment.addCardBeforeConfirm":
-    "Добавьте карту перед подтверждением.",
-  "settings.modelProvider.codingPlan.overseasPayment.stripeNotReady":
-    "Stripe ещё загружается. Повторите попытку чуть позже.",
-  "settings.modelProvider.codingPlan.overseasPayment.cardElementMissing":
-    "Поле ввода карты не готово. Обновите страницу и повторите попытку.",
-  "settings.modelProvider.codingPlan.overseasPayment.stripe3dsFailed":
-    "Проверка Stripe 3DS не пройдена.",
-  "settings.modelProvider.codingPlan.overseasPayment.stripePaymentMethodFailed":
-    "Ошибка способа оплаты Stripe.",
-  "settings.modelProvider.codingPlan.overseasPayment.stripePublishableKeyMissing":
-    "Ввод карты через Stripe не настроен в этой сборке.",
-  "settings.modelProvider.codingPlan.overseasPayment.close": "Позже",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalPolicyTitle": "Правила продления",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicyTitle":
-    "Правила использования аккаунта",
-  "settings.modelProvider.codingPlan.overseasPayment.period.month": "месяц",
-  "settings.modelProvider.codingPlan.overseasPayment.period.quarter": "квартал",
-  "settings.modelProvider.codingPlan.overseasPayment.period.year": "год",
-  "settings.modelProvider.codingPlan.overseasPayment.recurringPeriod.month": "Ежемесячно",
-  "settings.modelProvider.codingPlan.overseasPayment.recurringPeriod.quarter": "Ежеквартально",
-  "settings.modelProvider.codingPlan.overseasPayment.recurringPeriod.year": "Ежегодно",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalCharge":
-    "Сумма {price} будет списываться автоматически за каждый период ({period}).",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalChargeFallback":
-    "Последующие продления будут проходить по выбранному циклу подписки. Фактическая сумма продления указывается в счёте на продление.",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalDeduction":
-    "Оплата списывается сначала с бонусных кредитов, затем с баланса аккаунта и в последнюю очередь с кредитной карты.",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalMinimum":
-    "Обратите внимание: при списании с кредитной карты действует небольшая минимальная сумма. Если остаток меньше, списание будет округлено до этого минимума.",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalRecurring":
-    "Списания ({period}) будут продолжаться регулярно, пока вы не отмените подписку в соответствии с Условиями обслуживания.",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalCancelPrefix":
-    "Отключить автопродление можно не позднее чем за 1 день до даты продления в разделе ",
-  "settings.modelProvider.codingPlan.overseasPayment.subscriptionSettingLink": "настройки подписки",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalCancelSuffix": ".",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicyPrefix":
-    "GLM Coding Plan предназначен исключительно для использования подписчиком в рамках ",
-  "settings.modelProvider.codingPlan.overseasPayment.supportedProductsLink":
-    "официально поддерживаемых продуктов",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicyAfterSupportedProducts":
-    ". Любая совместная передача, перепродажа, передача прав или доступ третьих лиц строго запрещены. Любое недобросовестное, несанкционированное или нарушающее правила использование может привести к немедленному ограничению или блокировке аккаунта без возврата средств. Соблюдайте наши ",
-  "settings.modelProvider.codingPlan.overseasPayment.termsLink": "Условия",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicyBetween": " и ",
-  "settings.modelProvider.codingPlan.overseasPayment.policyLink": "Политику",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicySuffix": ".",
-  "settings.modelProvider.codingPlan.overseasPayment.authorizationPrefix":
-    "Вы соглашаетесь, что Z.ai спишет с вашей карты указанную сумму сейчас и будет списывать её регулярно согласно вашему тарифу, пока вы не отмените подписку в соответствии с нашими ",
-  "settings.modelProvider.codingPlan.overseasPayment.authorizationTermsLink": "условиями",
-  "settings.modelProvider.codingPlan.overseasPayment.authorizationSuffix": ".",
-  "settings.modelProvider.codingPlan.paymentDialog.agreementPrefix": "Оплачивая, вы принимаете ",
-  "settings.modelProvider.codingPlan.paymentDialog.serviceAgreementLink":
-    "Соглашение об обслуживании",
-  "settings.modelProvider.codingPlan.paymentDialog.agreementBetween": " и ",
-  "settings.modelProvider.codingPlan.paymentDialog.subscriptionAgreementLink":
-    "Соглашение о подписке и автопродлении",
-  "settings.modelProvider.codingPlan.paymentDialog.agreementSuffix":
-    ". Виртуальные товары после оплаты возврату не подлежат.",
-  "settings.modelProvider.codingPlan.product.soldOut": "Распродано",
-  "settings.modelProvider.codingPlan.product.forbidden": "Недоступно для этого аккаунта",
-  "settings.modelProvider.codingPlan.product.unavailable": "Недоступно",
-  "settings.modelProvider.codingPlan.product.subscribeNow": "Подписаться",
-  "settings.modelProvider.codingPlan.product.unavailableTooltipPrefix":
-    "Этот тариф недоступен для покупки. ",
-  "settings.modelProvider.codingPlan.product.unavailableTooltipLink": "подробнее",
-  "settings.modelProvider.codingPlan.product.included": "Включено",
-  "settings.modelProvider.codingPlan.product.firstPromo": "Скидка на первую подписку",
-  "settings.modelProvider.codingPlan.product.delay": "Вступает в силу: {time}",
-  "settings.modelProvider.codingPlan.zai.plan.lite.name": "Lite",
-  "settings.modelProvider.codingPlan.zai.plan.lite.summary": "Базовые лимиты использования",
-  "settings.modelProvider.codingPlan.zai.plan.pro.name": "Pro",
-  "settings.modelProvider.codingPlan.zai.plan.pro.summary":
-    "Всё из Lite плюс в 5 раз больше лимитов Lite",
-  "settings.modelProvider.codingPlan.zai.plan.max.name": "Max",
-  "settings.modelProvider.codingPlan.zai.plan.max.summary":
-    "Всё из Pro плюс в 20 раз больше лимитов Lite",
-  "settings.modelProvider.codingPlan.bigmodel.plan.lite.name": "Lite",
-  "settings.modelProvider.codingPlan.bigmodel.plan.lite.summary": "Базовая квота использования",
-  "settings.modelProvider.codingPlan.bigmodel.plan.pro.name": "Pro",
-  "settings.modelProvider.codingPlan.bigmodel.plan.pro.summary":
-    "Квота ×5 от Lite + все преимущества Lite",
-  "settings.modelProvider.codingPlan.bigmodel.plan.max.name": "Max",
-  "settings.modelProvider.codingPlan.bigmodel.plan.max.summary":
-    "Квота ×20 от Lite + все преимущества Pro",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.lite.detail0":
-    "Базовый объём использования",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.lite.detail1":
-    "Лёгкие итерации для небольших репозиториев",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.lite.detail2":
-    "Новейшие модели — по мере выхода",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.lite.detail3":
-    "20+ инструментов для программирования",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.pro.detail0": "Объём ×5 от Lite",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.pro.detail1":
-    "Ежедневная разработка в репозиториях среднего размера",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.pro.detail2":
-    "Приоритетный доступ к новейшим моделям",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.pro.detail3":
-    "Подборка инструментов MCP",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.max.detail0": "Объём ×20 от Lite",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.max.detail1":
-    "Глубокая работа с крупными и средними репозиториями",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.max.detail2":
-    "Первым — доступ к новейшим моделям",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.max.detail3":
-    "Приоритет ресурсов в часы пик",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.lite.detail0": "Базовый объём использования",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.lite.detail1":
-    "Итерации в небольших репозиториях",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.lite.detail2":
-    "Новейшие модели — по мере выхода",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.lite.detail3":
-    "20+ инструментов для программирования",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.pro.detail0": "Объём ×5 от Lite",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.pro.detail1":
-    "Разработка в репозиториях среднего размера",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.pro.detail2":
-    "Приоритетный доступ к моделям",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.pro.detail3": "Подборка инструментов MCP",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.max.detail0": "Объём ×20 от Lite",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.max.detail1":
-    "Работа со средними и крупными репозиториями",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.max.detail2": "Первым — доступ к моделям",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.max.detail3": "Приоритет в часы пик",
   "settings.modelProvider.enabledStatus": "Включено",
   "settings.modelProvider.enableModel": "Включить",
   "settings.modelProvider.disabledStatus": "Отключено",
@@ -4911,7 +4278,6 @@ const ruRU: Record<string, string> = {
   "settings.usage.sectionTitle": "Статистика использования",
   "settings.usage.sectionDescription": "На основе локальной истории сеансов приложения.",
   "settings.usage.tab.appUsage": "Использование приложения",
-  "settings.usage.tab.codingPlan": "Личный тариф",
   "settings.usage.sectionDescriptionRemote":
     "Синхронизируется из API мониторинга выбранного провайдера: реальное использование токенов и инструментов.",
   "settings.usage.remoteTokenHint": "Из API использования моделей выбранного провайдера",
@@ -4950,44 +4316,6 @@ const ruRU: Record<string, string> = {
   "settings.usage.entitlementResetTime": "Следующий сброс",
   "settings.usage.entitlementTokenUsage": "Использовано из 5-часового пула запросов: {percent}",
   "settings.usage.quotaTitle": "Остаток квоты",
-  "codingPlan.quotaReset.openDialog": "Получить сбросы квоты ({count})",
-  "codingPlan.quotaReset.countdown.daysHours": "{days} д {hours} ч",
-  "codingPlan.quotaReset.countdown.daysOnly": "{days} д",
-  "codingPlan.quotaReset.countdown.hoursMinutes": "{hours} ч {minutes} мин",
-  "codingPlan.quotaReset.countdown.hoursOnly": "{hours} ч",
-  "codingPlan.quotaReset.countdown.minutesSeconds": "{minutes} мин {seconds} с",
-  "codingPlan.quotaReset.dialog.title": "Сбрасываемая квота",
-  "codingPlan.quotaReset.dialog.remaining": "Остаток квоты",
-  "codingPlan.quotaReset.dialog.resettable": "Доступные сбросы",
-  "codingPlan.quotaReset.dialog.fiveHour": "Сброс 5-часовой квоты",
-  "codingPlan.quotaReset.dialog.week": "Сброс недельной квоты",
-  "codingPlan.quotaReset.dialog.expiresIn": "Истекает через {time}",
-  "codingPlan.quotaReset.dialog.expiresInSoonest": "Ближайший истекает через {time}",
-  "codingPlan.quotaReset.dialog.itemCount": "×{count}",
-  "codingPlan.quotaReset.dialog.back": "Назад",
-  "codingPlan.quotaReset.dialog.confirmHint":
-    "Будет использован 1 сброс (истекает {date}). Отменить это нельзя.",
-  "codingPlan.quotaReset.opportunity": "Доступно сбросов: {count}",
-  "codingPlan.quotaReset.expiresIn": "Истекает через {time}",
-  "codingPlan.quotaReset.contextReminder.available": "Доступно сбросов: {count}",
-  "codingPlan.quotaReset.contextReminder.expiresIn": "Сброс истекает через",
-  "codingPlan.quotaReset.contextReminder.dismiss": "Скрыть напоминание",
-  "codingPlan.quotaReset.reset": "Сбросить",
-  "codingPlan.quotaReset.resetAria": "Сбросить 5-часовую квоту",
-  "codingPlan.quotaReset.resetAriaWeek": "Сбросить недельную квоту",
-  "codingPlan.quotaReset.confirm": "Сбросить",
-  "codingPlan.quotaReset.confirmTitle": "Сбросить 5-часовую квоту?",
-  "codingPlan.quotaReset.confirmTitleWeek": "Сбросить квоту этой недели?",
-  "codingPlan.quotaReset.confirmAria": "Подтвердить сброс 5-часовой квоты",
-  "codingPlan.quotaReset.confirmAriaWeek": "Подтвердить сброс недельной квоты",
-  "codingPlan.quotaReset.success": "Сброс выполнен",
-  "codingPlan.quotaReset.failed": "Не удалось выполнить сброс. Повторите попытку.",
-  "codingPlan.quotaReset.processing": "Сброс 5-часовой квоты…",
-  "codingPlan.quotaReset.processingWeek": "Сброс недельной квоты…",
-  "codingPlan.quotaReset.done": "5-часовая квота сброшена",
-  "codingPlan.quotaReset.doneWeek": "Недельная квота сброшена",
-  "codingPlan.quotaReset.completed": "Сброшено",
-  "codingPlan.quotaReset.completedAt": "Сброшено в {time}",
   "settings.usage.trendsTitle": "Динамика использования",
   "settings.usage.entitlementFiveHourUsage": "Остаток за 5 часов",
   "settings.usage.entitlementWeeklyUsage": "Остаток за неделю",
@@ -5016,7 +4344,6 @@ const ruRU: Record<string, string> = {
   "sidebar.usage.plan.title": "Остаток использования",
   "sidebar.usage.plan.upgrade": "Повысить",
   "sidebar.usage.plan.renew": "Продлить",
-  "sidebar.usage.plan.codingPlanTitle": "Coding Plan",
   "sidebar.usage.plan.audienceIndividual": "Личный",
   "sidebar.usage.plan.audienceTeam": "Командный",
   "sidebar.usage.plan.open": "Ещё",
@@ -5078,15 +4405,6 @@ const ruRU: Record<string, string> = {
   "settings.usage.range.7d": "Последние 7 дней",
   "settings.usage.range.30d": "Последние 30 дней",
   "settings.usage.appUsageRangeTitle": "Период",
-  "settings.usage.codingPlanRange.today": "Сегодня",
-  "settings.usage.codingPlanRange.7d": "7 дней",
-  "settings.usage.codingPlanRange.30d": "30 дней",
-  "settings.usage.codingPlanRange.custom": "Свой период",
-  "settings.usage.codingPlanMetric.credits": "Кредиты",
-  "settings.usage.codingPlanMetric.usage": "Использование",
-  "settings.usage.codingPlanSubject.model": "Модели",
-  "settings.usage.codingPlanSubject.tool": "Инструменты",
-  "settings.usage.codingPlanLegendTotal": "Всего",
   "settings.usage.healthTitle": "Состояние системы",
   "settings.usage.healthRange.7d": "Последние 7 дней",
   "settings.usage.healthProMaxDecode": "Средняя скорость декодирования Max&Pro в пик",
@@ -5095,8 +4413,6 @@ const ruRU: Record<string, string> = {
   "settings.usage.loadingTitle": "Подсчёт использования",
   "settings.usage.appUsageLoadingDescription":
     "Читаем локальную историю сеансов приложения — это может занять немного времени.",
-  "settings.usage.codingPlanLoadingDescription":
-    "Читаем API мониторинга выбранного провайдера — это может занять немного времени.",
   "settings.usage.lastRefreshTime": "Последнее обновление: {time}",
   "settings.usage.error":
     "Не удалось загрузить статистику использования. Повторите попытку позже или проверьте сеть и настройки провайдера.",
@@ -5155,13 +4471,6 @@ const ruRU: Record<string, string> = {
   "settings.usage.toolUsageTitle": "Использование инструментов",
   "settings.usage.tokenTotal": "Общее использование токенов",
   "settings.usage.timesUnit": " раз",
-  "settings.usage.codingPlanNotConfiguredTitle": "Coding Plan не подключён",
-  "settings.usage.codingPlanNotConfiguredDescription":
-    "Подключите провайдера Z.ai или BigModel Coding Plan в настройках моделей, чтобы видеть квоту тарифа, использование моделей и инструментов.",
-  "settings.usage.codingPlanCurrentConnectionTitle":
-    "Текущее подключение не использует Coding Plan",
-  "settings.usage.codingPlanCurrentConnectionDescription":
-    "Переключите подключение модели в рабочем пространстве на индивидуальный или командный тариф, чтобы видеть здесь его квоту и использование.",
   "settings.usage.modelChartDescription": "Сейчас наибольшая доля у {model}: около {share}.",
   "settings.usage.modelChart.other": "Другие модели",
   "settings.usage.modelChart.input": "Вход",
@@ -7475,26 +6784,8 @@ const ruRU: Record<string, string> = {
   "chat.error.modelSettings": "Настройки моделей",
   "chat.error.setModels": "Настроить",
   // Start Plan per-bucket quota reminders
-  "chat.quota.startPlan.bucketDailyLow":
-    "У {model} осталось {percent} дневной квоты ({remaining} токенов).",
-  "chat.quota.startPlan.bucketActivityLow":
-    "У {model} осталось {percent} промоквоты ({remaining} токенов).",
-  "chat.quota.startPlan.modelVeryLow":
-    "У {model} осталось {percent} квоты тарифа ({remaining} токенов).",
-  "chat.quota.startPlan.modelExhausted":
-    "Вся доступная квота {model} израсходована. Переключитесь на другую модель или на подписку Coding Plan.",
-  "chat.quota.startPlan.dailyExhausted":
-    "Квота Start Plan израсходована. Перейдите на подписку Coding Plan или дождитесь сброса квоты.",
-  "chat.quota.startPlan.concurrentLimit":
-    "Система занята. Смените модель, перейдите на подписку Coding Plan или повторите попытку позже.",
-  "chat.quota.startPlan.concurrentLimit.retryExhausted":
-    "Система занята, а автоматические повторы достигли максимума. Повторите попытку позже или перейдите на подписку Coding Plan.",
-  "chat.quota.startPlan.concurrentLimit.switchModel":
-    "Достигнут лимит параллельных запросов к текущей модели. Смените модель, чтобы продолжить текущую задачу.",
   "chat.quota.mcp.quotaExhausted":
     "ZCode MCP «{server}» израсходовал квоту на сегодня. Сброс — завтра.",
-  "chat.quota.mcp.codingPlanRequired":
-    "Нет квоты ZCode MCP «{server}». Войдите или оформите Coding Plan, чтобы пользоваться им.",
   "chat.quota.providerLimited":
     "Достигнут лимит квоты или тарифа текущего аккаунта. Повысьте или измените тариф, чтобы продолжить.",
   "chat.quota.action.upgrade": "Повысить",
@@ -8254,7 +7545,6 @@ const ruRU: Record<string, string> = {
   "offPeak.discard.title": "Отменить черновик задачи на время простоя?",
   "offPeak.discard.description": "Изменения текущей задачи на время простоя будут потеряны.",
   "offPeak.discard.confirm": "Отменить",
-  "offPeak.create.codingPlanOnly": "Только для пользователей Coding Plan",
   "offPeak.create.availabilityUnavailable":
     "Не удалось проверить доступность. Обновите и повторите попытку.",
   "offPeak.create.limitReachedAt":
@@ -8263,8 +7553,6 @@ const ruRU: Record<string, string> = {
   "offPeak.create.remaining.hours": "{hours} ч",
   "offPeak.create.remaining.minutes": "{minutes} мин",
   "offPeak.create.remaining.lessThanMinute": "меньше 1 мин",
-  "offPeak.create.codingPlanToast":
-    "Задачи на время простоя доступны только подписчикам Coding Plan.",
   "automations.moreIdeas": "Шаблоны запланированных задач",
   "automations.templates.unavailable": "Нет доступных шаблонов",
   "automations.runNow": "Запустить сейчас",
@@ -8611,44 +7899,6 @@ const ruRU: Record<string, string> = {
   "scheduledPreview.toast.running": "Выполняется «{title}»…",
   "scheduledPreview.toast.view": "Открыть",
   "scheduledPreview.addSchedule": "Добавить расписание",
-  "chat.highspeed.label": "Highspeed",
-  "chat.highspeed.expiresAt": "Карта Highspeed истекает {time}",
-  "chat.highspeed.modelLocked": "Пока активен Highspeed, модель заблокирована",
-  "chat.highspeed.originalModel": "Исходная модель: {model}",
-  "chat.highspeed.remainingTime": "Осталось времени: {time}",
-  "chat.highspeed.generatedBy": "Сгенерировано с Highspeed",
-  "chat.highspeed.shareAction": "Поделиться",
-  "chat.highspeed.viewAction": "Открыть",
-  "chat.highspeed.share": "Поделиться этим ускоренным запуском",
-  "chat.highspeed.shareFailed": "Не удалось поделиться. Повторите попытку позже.",
-  "chat.highspeed.savedDuration": "Сэкономлено около {duration}",
-  "chat.highspeed.statusTag": "HighSpeed",
-  "chat.highspeed.cardExpiredFallback":
-    "Срок действия карты Highspeed истёк. Оставшаяся часть хода продолжится на исходной модели.",
-  "chat.highspeed.requestFailedFallback":
-    "Highspeed временно недоступен. Оставшаяся часть хода продолжится на исходной модели.",
-  "globalNotice.highspeed.title": "Запуск Highspeed завершён",
-  "globalNotice.highspeed.summary": "Токенов вывода: {tokens} · {duration} с",
-  "globalNotice.highspeed.tagline": "Поделитесь моментом Highspeed",
-  "globalNotice.highspeed.sidebarTagline": "Поделитесь ускорением",
-  "globalNotice.highspeed.share": "Поделиться",
-  "globalNotice.highspeed.view": "Открыть",
-  "globalNotice.highspeed.imageCopied": "Статистика ускорения скопирована",
-  "globalNotice.highspeed.imageCopyFailed":
-    "Не удалось скопировать изображение. Повторите попытку.",
-  "globalNotice.highspeed.textCopied": "Текст для публикации скопирован",
-  "globalNotice.highspeed.textCopyFailed":
-    "Не удалось скопировать текст для публикации. Повторите попытку.",
-  "globalNotice.highspeed.copyImage": "Копировать изображение",
-  "globalNotice.highspeed.badge": "Эксклюзивные преимущества ZCode & Coding Plan",
-  "globalNotice.highspeed.standardTaskSpeed": "Стандартная скорость генерации",
-  "globalNotice.highspeed.relativeTaskDuration": "Относительное время генерации",
-  "globalNotice.highspeed.speedSummary": "HighSpeed · {duration}",
-  "globalNotice.highspeed.lessWaiting": "На {percent}% меньше ожидания",
-  "globalNotice.highspeed.copySummary":
-    "Я воспользовался картой ZCode Highspeed и сэкономил {duration} с. Попробуйте и вы. Скачать ZCode: https://zcode.z.ai",
-  "globalNotice.highspeed.imageSummary": "Токенов: {tokens} · сэкономлено {duration} с",
-  "globalNotice.highspeed.close": "Закрыть карточку Highspeed",
   "remoteSync.title": "Синхронизация данных",
   "remoteSync.description": "Синхронизация локальной конфигурации с удалёнными устройствами.",
   "remoteSync.rules.title": "Правила синхронизации",

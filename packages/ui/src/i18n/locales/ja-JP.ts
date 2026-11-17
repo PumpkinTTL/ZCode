@@ -491,16 +491,6 @@ const jaJP: Record<string, string> = {
   "remote.phase.channel.ssh": "SSH ホストに接続中",
   "remote.phase.channel.wsl": "ディストリビューションを起動して接続中",
   "remote.phase.channel.docker": "コンテナーに接続中",
-  "startPlan.recommendation.subagentDescription":
-    "Start Plan に {model}のクォータがあります。このサブエージェントのモデルを Start Plan に切り替えますか？",
-  "startPlan.recommendation.preferenceSaveFailed":
-    "「今後表示しない」を保存できませんでした。今回の操作は選択内容で続行します。",
-  "startPlan.recommendation.title": "Start Plan のクォータがあります",
-  "startPlan.recommendation.description":
-    "Start Plan に {model}のクォータがまだあります。使用しますか？",
-  "startPlan.recommendation.switch": "プランを切り替え",
-  "startPlan.recommendation.decline": "今はしない",
-  "startPlan.recommendation.dismiss": "今後表示しない",
   "occupationOnboarding.stepMode": "UI モード",
   "occupationOnboarding.modeTitle": "UI モードを選択",
   "occupationOnboarding.modeDescription": "ZCode の作業内容をどのように表示しますか？",
@@ -624,11 +614,6 @@ const jaJP: Record<string, string> = {
   "startup.database.elapsed": "経過時間: {minutes} 分 {seconds} 秒",
   "startup.database.longRunning":
     "履歴が多い場合は時間がかかることがあります。アプリはデータベースの処理完了を待っています。",
-  "rewards.title": "特典",
-  "rewards.menuTitle": "友達を紹介",
-  "rewards.menuBadge": "特典",
-  "rewards.loadFailed": "このページを読み込めません。再試行してください。",
-  "rewards.openWebsite": "Web サイトを開く",
   "bashOutput.open": "{title}の出力を表示",
   "bashOutput.fullFile": "出力ファイル全体",
   "bashOutput.retry": "再試行",
@@ -651,7 +636,6 @@ const jaJP: Record<string, string> = {
   "chat.selections.file": "{name} · 選択範囲",
   "chat.selections.mixedCount": "{count} 件の選択範囲",
   "chat.previewCards.openExternalFailed": "このファイルをブラウザで開けませんでした",
-  "settings.modelProvider.connectionMode.switchToStartPlan": "Start Plan に切り替え",
   "chat.composer.contextSearchHint": "入力してプラグイン、ファイル、チャットを検索",
   "chat.composer.contextShortcut": "コンテキストを追加",
   "chat.composer.capabilityShortcut": "機能を選択",
@@ -677,14 +661,6 @@ const jaJP: Record<string, string> = {
     "選択した接続は利用できません。別の接続を選択してください。",
   "settings.modelProvider.navigationUnavailable":
     "指定されたプロバイダーは利用できません。別のプロバイダーを選択してください。",
-  "marketingTouch.idle": "準備完了",
-  "marketingTouch.verifying": "確認中…",
-  "marketingTouch.submitting": "処理中…",
-  "marketingTouch.preparing": "成功しました。結果を準備中…",
-  "marketingTouch.failed": "操作に失敗しました。しばらくしてからもう一度お試しください。",
-  "marketingTouch.uncertain":
-    "結果を確認できませんでした。後で特典をご確認ください。重複送信を避けるため、このセッションではこの操作を再試行しません。",
-  "marketingTouch.succeeded": "操作に成功しました",
   "workspace.context.lastActivity": "最終アクティブ {time}",
   "bots.privateDelivery.retry": "返信を再送",
   "bots.privateDelivery.retryHint":
@@ -728,67 +704,6 @@ const jaJP: Record<string, string> = {
   "bots.group.resend": "結果を再送",
 
   "bots.group.provider.feishu": "Feishu",
-  "manualClaimPlan.banner.aria": "受け取り可能なトライアルプラン",
-  "manualClaimPlan.banner.tag": "期間限定",
-  "manualClaimPlan.banner.unit.tokens": "TOKENS",
-  "manualClaimPlan.banner.subtitle.daily": "{model} 毎日のボーナス",
-  "manualClaimPlan.banner.subtitle.oneTime": "{model} 1 回限りのボーナス",
-  "manualClaimPlan.claim.ticket.benefit": "{model} {amount} {unit}",
-  "manualClaimPlan.claim.ticket.benefit.daily": "{model} 毎日 {amount} {unit}",
-  "manualClaimPlan.banner.period.daily": "毎日",
-  "manualClaimPlan.banner.period.oneTime": "1 回限り",
-  "manualClaimPlan.banner.bonus": "ボーナス",
-  "manualClaimPlan.banner.close": "オファーを閉じる",
-  "manualClaimPlan.banner.claim": "受け取る",
-  "manualClaimPlan.banner.dismissConfirm.title": "受け取りのチャンスを逃してしまいます",
-  "manualClaimPlan.banner.dismissConfirm.description":
-    "このオファーの受け取り枠には限りがあります。閉じると、今回のチャンスを逃す可能性があります。今すぐ受け取りますか？",
-  "manualClaimPlan.banner.dismissConfirm.claim": "今すぐ受け取る",
-  "manualClaimPlan.banner.dismissConfirm.close": "それでも閉じる",
-  "manualClaimPlan.claim.success.title": "{plan}を利用できるようになりました",
-  "manualClaimPlan.claim.success.description": "Start Plan を利用できます。",
-  "manualClaimPlan.claim.success.description.prefix": "",
-  "manualClaimPlan.claim.success.description.suffix": " を利用できます。",
-  "manualClaimPlan.claim.success.pending.description.prefix": "",
-  "manualClaimPlan.claim.success.pending.description.beforeTime": " は ",
-  "manualClaimPlan.claim.success.pending.description.afterTime": " から利用できます。",
-  "manualClaimPlan.claim.failure.title": "受け取りに失敗しました",
-  "manualClaimPlan.claim.failure.notFound": "このプランは存在しません。",
-  "manualClaimPlan.claim.failure.unavailable": "このオファーは終了したか、利用できません。",
-  "manualClaimPlan.claim.failure.alreadyClaimed": "このプランは既に受け取り済みです。",
-  "manualClaimPlan.claim.failure.ineligible":
-    "お使いのアカウントまたはアプリのバージョンは、このオファーの対象外です。",
-  "manualClaimPlan.claim.failure.quotaExhausted": "本日の受け取り枠は終了しました。",
-  "manualClaimPlan.claim.failure.quotaExhausted.nextTime":
-    "本日の受け取り枠は終了しました。次回またお試しください。",
-  "manualClaimPlan.claim.failure.quotaExhausted.tomorrow":
-    "本日の受け取り枠は終了しました。明日もう一度お試しください。",
-  "manualClaimPlan.claim.failure.invalidRequest":
-    "受け取りリクエストが無効です。更新してもう一度お試しください。",
-  "manualClaimPlan.claim.failure.loginRequired": "このプランを受け取るにはサインインしてください。",
-  "manualClaimPlan.claim.failure.generic":
-    "受け取りに失敗しました。しばらくしてからもう一度お試しください。",
-  "manualClaimPlan.claim.startUsingUnavailable":
-    "Start Plan はまだ準備できていません。モデル設定は変更されていません。後で更新してもう一度お試しください。",
-  "manualClaimPlan.claim.dialog.confirm": "使い始める",
-  "manualClaimPlan.claim.dialog.modelSettings": "プランを表示",
-  "manualClaimPlan.claim.dialog.acknowledge": "了解",
-  "manualClaimPlan.claim.dialog.startsAt": "開始",
-  "manualClaimPlan.claim.dialog.endsAt": "有効期限",
-  "manualClaimPlan.claim.dialog.replay": "チケットのアニメーションを再生",
-  "manualClaimPlan.claim.share.label": "コピーして共有",
-  "manualClaimPlan.claim.share.close": "共有を閉じる",
-  "manualClaimPlan.claim.share.getImage": "画像を取得",
-  "manualClaimPlan.claim.share.saveImage": "画像を保存",
-  "manualClaimPlan.claim.share.copyImage": "画像をコピー",
-  "manualClaimPlan.claim.share.copyText": "テキストをコピー",
-  "manualClaimPlan.claim.share.copyTextSucceeded": "テキストをコピーしました",
-  "manualClaimPlan.claim.share.copyImageSucceeded": "画像をコピーしました",
-  "manualClaimPlan.claim.share.actionFailed": "共有操作に失敗しました。もう一度お試しください。",
-  "manualClaimPlan.claim.share.twitterText":
-    "ZCode で {subtitle}を受け取りました。ZCode をダウンロード・インストールして、あなたも受け取りましょう。https://zcode.z.ai",
-  "manualClaimPlan.claim.share.twitterTextLabel": "Twitter/X 投稿テキスト",
-  // Common
   "common.loading": "読み込み中...",
   "common.listSeparator": "、",
   "common.generating": "生成中...",
@@ -4275,10 +4190,6 @@ const jaJP: Record<string, string> = {
   "settings.modelProvider.or": "または",
   "settings.modelProvider.connectionMode": "接続モード",
   "settings.modelProvider.connectionMode.oauth": "OAuth",
-  "settings.modelProvider.connectionMode.codingPlan": "個人プラン",
-  "settings.modelProvider.connectionMode.startPlan": "Start Plan",
-  "settings.modelProvider.connectionMode.startPlanCount": "Start Plan × {count}",
-  "settings.modelProvider.connectionMode.switchToStartPlanPrefix": "切り替え先:",
   "settings.modelProvider.connectionMode.teamPlan": "チームプラン",
   "settings.modelProvider.connectionMode.apiKeyBadge": "API",
   "settings.modelProvider.connectionMode.usageBasedApi": "従量課金 API",
@@ -4289,544 +4200,11 @@ const jaJP: Record<string, string> = {
   "settings.modelProvider.connectionMode.noAvailablePlan": "利用可能なプランはありません",
   "settings.modelProvider.accountProviderConfigMissing":
     "アカウントプロバイダーの構成を利用できません。更新してもう一度お試しください。",
-  "settings.modelProvider.startPlan.login": "サインイン",
-  "settings.modelProvider.startPlan.status.loginRequired":
-    "Start Plan を表示・使用するにはサインインしてください",
-  "settings.modelProvider.startPlan.status.expired": "Start Plan の有効期限が切れました",
-  "settings.modelProvider.startPlan.status.noPlan": "利用可能な Start Plan はありません",
-  "settings.modelProvider.startPlan.status.loginExpired":
-    "サインインの有効期限が切れました。もう一度サインインしてください。",
-  "settings.modelProvider.startPlan.title": "{provider} - Coding Plan",
-  "settings.modelProvider.startPlan.meta.today": "今日",
-  "settings.modelProvider.startPlan.meta.tomorrow": "明日",
-  "settings.modelProvider.startPlan.quotaSectionTitle": "トライアルプラン",
-  "settings.modelProvider.startPlan.eligibleNewUser": "新規ユーザー",
-  "settings.modelProvider.startPlan.preview.unit.tokens": "トークン",
-  "settings.modelProvider.startPlan.preview.period.daily": "1 日あたり {unit}",
-  "settings.modelProvider.startPlan.preview.entitlementSummary.daily": "毎日のクォータ · {details}",
-  "settings.modelProvider.startPlan.preview.entitlementSummary.generic": "クォータ · {details}",
-  "settings.modelProvider.startPlan.preview.entitlementGroup.single": "{model} {quota}",
-  "settings.modelProvider.startPlan.preview.entitlementGroup.each": "{models} 各 {quota}",
-  "settings.modelProvider.startPlan.balance.title": "本日の残高",
-  "settings.modelProvider.startPlan.balance.remaining": "残り {value} トークン",
-  "settings.modelProvider.startPlan.balance.used": "{value} 使用済み",
-  "settings.modelProvider.startPlan.highlight.trial.label": "トライアル期間",
-  "settings.modelProvider.startPlan.highlight.trial.value": "5 日間（暦日）",
-  "settings.modelProvider.startPlan.highlight.trial.description":
-    "ZCode 3.x にサインインした時点から計算されます。",
-  "settings.modelProvider.startPlan.highlight.quota.label": "毎日のクォータ",
-  "settings.modelProvider.startPlan.highlight.quota.value": "毎日 3M トークン",
-  "settings.modelProvider.startPlan.highlight.quota.description":
-    "プラットフォームの GLM フラッグシップモデルで、毎日 3M トークンのトライアルクォータを共有します。",
-  "settings.modelProvider.startPlan.highlight.metering.label": "計測",
-  "settings.modelProvider.startPlan.highlight.metering.value": "プラットフォームのモデル使用後",
-  "settings.modelProvider.startPlan.highlight.metering.description":
-    "プラットフォームの GLM フラッグシップモデルを使用した場合にのみ計測されます。",
-  "settings.modelProvider.startPlan.compatibility":
-    "BYOK と BYOA に対応しています。Base URL、API 形式、API Key は ZCode が自動で管理します。",
-  "settings.modelProvider.codingPlan.title": "{provider} - Coding Plan",
-  "settings.modelProvider.codingPlan.webview.title": "プランをアップグレード",
-  "settings.modelProvider.codingPlan.webview.authInjectFailed":
-    "プランページにサインインできませんでした。再試行してください。",
-  "settings.modelProvider.codingPlan.webview.retry": "再試行",
-  "settings.modelProvider.codingPlan.webview.loadFailed": "プランページを読み込めませんでした。",
-  "settings.modelProvider.codingPlan.webview.openWebsite": "公式サイトで購入",
-  "settings.modelProvider.codingPlan.status.loginRequired": "未サインイン",
-  "settings.modelProvider.codingPlan.status.disconnected": "未接続",
-  "settings.modelProvider.codingPlan.status.checking": "確認中",
-  "settings.modelProvider.codingPlan.status.notPurchased": "未購読。購読後に有効になります",
-  "settings.modelProvider.codingPlan.status.purchased": "購読済み",
-  "settings.modelProvider.codingPlan.status.unavailable": "取得に失敗しました",
   "settings.modelProvider.remoteOAuthNotReady":
     "リモートの Source では OAuth サインインを直接開始できません。API Key を設定するか、ローカルの Source からサインイン済みのアカウントを同期してください。",
-  "settings.modelProvider.codingPlan.status.teamExpired":
-    "チームプランの有効期限が切れました。チームの管理者にお問い合わせください。",
-  "settings.modelProvider.codingPlan.status.teamUnavailable":
-    "チームプランが割り当てられていません。チームの管理者にお問い合わせください。",
-  "settings.modelProvider.codingPlan.status.unsupported": "まだ対応していません",
-  "settings.modelProvider.codingPlan.bigmodel.unregisteredHint":
-    "この BigModel アカウントはまだ登録されていません。先に登録してください。",
-  "settings.modelProvider.codingPlan.bigmodel.registerAction": "登録",
-  "settings.modelProvider.codingPlan.description.disconnected":
-    "Coding Plan の利用権を表示するには接続してください。",
-  "settings.modelProvider.codingPlan.description.checking":
-    "現在のプロバイダーの API Key で Coding Plan の利用権を確認しています。",
-  "settings.modelProvider.codingPlan.description.notPurchased":
-    "現在の API Key またはアカウントに有効な Coding Plan が見つかりませんでした。",
-  "settings.modelProvider.codingPlan.description.purchased":
-    "Coding Plan は有効で、このプロバイダーで使用できます。",
-  "settings.modelProvider.codingPlan.description.credentialFailed":
-    "プランを取得できませんでした。もう一度サインインして再試行してください。",
-  "settings.modelProvider.codingPlan.description.unavailable":
-    "Coding Plan の利用権を確認できませんでした。再度接続して再試行してください。",
-  "settings.modelProvider.codingPlan.description.unsupported":
-    "このプロバイダーは Coding Plan の状態確認にまだ対応していません。",
-  "settings.modelProvider.codingPlan.login": "{provider}にサインイン",
-  "settings.modelProvider.codingPlan.connect": "{provider}に接続",
-  "settings.modelProvider.codingPlan.purchaseLoginRequiredShort": "サインインして購入",
-  "settings.modelProvider.codingPlan.purchaseConnectRequiredShort": "接続して購入",
-  "settings.modelProvider.codingPlan.disconnect": "連携を解除",
-  "settings.modelProvider.codingPlan.subscribe": "購読",
-  "settings.modelProvider.codingPlan.upgrade": "アップグレード",
-  "settings.modelProvider.codingPlan.renew": "更新",
-  "settings.modelProvider.codingPlan.currentPlan": "現在",
-  "settings.modelProvider.codingPlan.purchased": "購入済み",
-  "settings.modelProvider.codingPlan.startPlan.expiredBadge": "期限切れ",
-  "settings.modelProvider.codingPlan.startPlan.expiredAction": "終了",
-  "settings.modelProvider.codingPlan.cancelUpgrade": "戻る",
-  "settings.modelProvider.codingPlan.purchase.title": "Coding Plan をアップグレード",
-  "settings.modelProvider.codingPlan.purchase.pricingTitle": "料金",
-  "settings.modelProvider.codingPlan.purchase.pricingDescription":
-    "最適なプランを見つけて、AI コーディングを始めましょう。",
-  "settings.modelProvider.codingPlan.purchase.moreInfo": "詳細",
-  "settings.modelProvider.codingPlan.purchase.billingCycleTitle": "請求サイクルを選択",
-  "settings.modelProvider.codingPlan.purchase.paymentConfirmTitle": "支払いを確認",
-  "settings.modelProvider.codingPlan.purchase.paymentTitle": "支払い",
-  "settings.modelProvider.codingPlan.purchase.personal": "個人",
-  "settings.modelProvider.codingPlan.purchase.team": "チーム",
-  "settings.modelProvider.codingPlan.purchase.individualsSectionTitle": "個人向け",
-  "settings.modelProvider.codingPlan.purchase.teamsSectionTitle": "チーム向け",
-  "settings.modelProvider.codingPlan.purchaseBanner.startPlanTitle": "Start Plan",
-  "settings.modelProvider.codingPlan.purchaseBanner.startPlanDescription":
-    "プラットフォームの GLM フラッグシップモデルのクォータを無料で試せます。",
-  "settings.modelProvider.codingPlan.purchaseBanner.personalTitle": "個人向け",
-  "settings.modelProvider.codingPlan.purchaseBanner.personalDescription":
-    "専用の Coding Plan クォータを持つ個人開発者向け。",
-  "settings.modelProvider.codingPlan.purchaseBanner.temporarilySoldOut": "一時的に売り切れ",
-  "settings.modelProvider.codingPlan.purchaseBanner.teamTitle": "チーム向け",
-  "settings.modelProvider.codingPlan.purchaseBanner.teamDescription":
-    "シートと一括請求でチームでの共同作業に。",
-  "settings.modelProvider.codingPlan.purchaseBanner.teamStandardDescription":
-    "共有のクォータとシート管理が必要な小規模チーム向け。",
-  "settings.modelProvider.codingPlan.purchaseBanner.teamAdvancedDescription":
-    "より多くのクォータと柔軟なシートが必要な、高スループットのエンジニアリングチーム向け。",
-  "settings.modelProvider.codingPlan.purchase.choosePlan": "プランを選択",
-  "settings.modelProvider.codingPlan.purchase.choosePlanDescription":
-    "まずプランの容量を比較してください。請求サイクルと最終的な支払いは次のステップで確認します。",
-  "settings.modelProvider.codingPlan.purchase.selectPlan": "選択",
-  "settings.modelProvider.codingPlan.purchase.select": "選択",
-  "settings.modelProvider.codingPlan.purchase.selected": "選択済み",
-  "settings.modelProvider.codingPlan.purchase.fromPrice": "{price}〜",
-  "settings.modelProvider.codingPlan.purchase.fromPriceSuffix": "",
-  "settings.modelProvider.codingPlan.purchase.previewLoading": "支払い金額を計算中",
-  "settings.modelProvider.codingPlan.purchase.previewLoadingDescription":
-    "しばらくお待ちください。確認と支払いには同じ支払い情報が使用されます。",
-  "settings.modelProvider.codingPlan.purchase.previewUnavailableDescription":
-    "支払い金額を取得できません。戻って請求サイクルを選び直してください。",
-  "settings.modelProvider.codingPlan.purchase.teamTitle": "チームプラン",
-  "settings.modelProvider.codingPlan.purchase.teamDescription":
-    "シート、共有のクォータ、一括請求は今後提供予定です。",
-  "settings.modelProvider.codingPlan.purchase.teamCardDescription":
-    "共有のクォータ、シート管理、一括請求。",
-  "settings.modelProvider.codingPlan.purchase.comingSoon": "近日公開",
-  "settings.modelProvider.codingPlan.purchase.chooseBillingCycle": "{plan}の請求サイクルを選択",
-  "settings.modelProvider.codingPlan.purchase.billingCycleDescription":
-    "価格と割引は支払い前に更新されます。最終金額は支払いのステップで確認します。",
-  "settings.modelProvider.codingPlan.purchase.continueToPayment": "支払いに進む",
-  "settings.modelProvider.codingPlan.purchase.summaryPlan": "プラン",
-  "settings.modelProvider.codingPlan.purchase.summaryBillingCycle": "請求サイクル",
-  "settings.modelProvider.codingPlan.purchase.summaryDueToday": "本日のお支払い",
-  "settings.modelProvider.codingPlan.purchase.summaryStatus": "ステータス",
-  "settings.modelProvider.codingPlan.purchase.servicePeriod": "サービス期間",
-  "settings.modelProvider.codingPlan.purchase.durationValue": "{duration} {unit}",
-  "settings.modelProvider.codingPlan.purchase.autoRenewPeriod": "{period}ごとに自動更新",
-  "settings.modelProvider.codingPlan.purchase.renewalPolicyTitle": "更新ポリシー",
-  "settings.modelProvider.codingPlan.purchase.renewalPolicyCharge":
-    "キャンセルしない限り、サブスクリプションは {price}{unit}で自動更新されます。",
-  "settings.modelProvider.codingPlan.purchase.renewalPolicyPreview":
-    "最終的な割引、クレジット、支払い金額は次の支払いプレビューで確認します。",
-  "settings.modelProvider.codingPlan.purchase.renewalPolicyCancel":
-    "次回の更新前に、プラン管理から自動更新をオフにできます。",
-  "settings.modelProvider.codingPlan.purchase.termsAccepted":
-    "更新ポリシーとサブスクリプション規約を理解し、同意します。",
-  "settings.modelProvider.codingPlan.purchase.paymentPreparing": "支払いを準備中",
-  "settings.modelProvider.codingPlan.purchase.securityChecking": "セキュリティ認証を待っています",
-  "settings.modelProvider.codingPlan.purchase.paymentPolling": "支払いの確認を待っています",
-  "settings.modelProvider.codingPlan.purchase.paymentStarted":
-    "この支払いページで支払いを完了してください",
-  "settings.modelProvider.codingPlan.purchase.paymentStartedDescription":
-    "支払いチャネルの処理が終わるまで、このパネルを開いたままにしてください。支払いが成功する前であれば、支払い確認ページに戻れます。",
-  "settings.modelProvider.codingPlan.purchase.paymentInProgress": "支払い処理中",
-  "settings.modelProvider.codingPlan.purchase.successTitle": "支払いが完了しました",
-  "settings.modelProvider.codingPlan.purchase.successDescription":
-    "Coding Plan の支払いが完了しました。このパネルを閉じると、プロバイダーの状態が更新されます。",
-  "settings.modelProvider.codingPlan.purchase.successRefreshingDescription":
-    "支払いが完了しました。プランの状態を更新中です。このパネルを閉じても、プロバイダーのページで更新が続きます。",
-  "settings.modelProvider.codingPlan.purchase.statusSyncing": "同期中",
-  "settings.modelProvider.codingPlan.purchase.statusActive": "有効",
-  "settings.modelProvider.codingPlan.purchase.refreshNow": "今すぐ更新",
-  "settings.modelProvider.codingPlan.purchase.done": "完了",
-  "settings.modelProvider.codingPlan.purchase.teamMemberNoticeTitle":
-    "チームプランにメンバーを割り当てる",
-  "settings.modelProvider.codingPlan.purchase.teamMemberNoticeDescription":
-    "BigModel のチームプラン管理ページで、自分または他のメンバーを追加してください。割り当てが完了すると、ZCode でチームのクォータを使用できるようになります。",
-  "settings.modelProvider.codingPlan.purchase.manageTeamPlan": "チームプランを管理",
-  "settings.modelProvider.codingPlan.manage": "管理",
-  "settings.modelProvider.planCard.codingPlan": "Coding Plan",
-  "settings.modelProvider.planCard.startPlan": "Start Plan",
   "settings.modelProvider.planCard.usage.fiveHour": "5 時間の使用量",
   "settings.modelProvider.planCard.usage.week": "1 週間の使用量",
   "settings.modelProvider.planCard.usage.totalTokens": "合計トークン数",
-  "settings.modelProvider.codingPlan.recheck": "再確認",
-  "settings.modelProvider.codingPlan.checkingPlans": "確認中...",
-  "settings.modelProvider.codingPlan.switchAccount": "アカウントを切り替え",
-  "settings.modelProvider.codingPlan.useApiKeyProvider": "API Key を使用",
-  "settings.modelProvider.codingPlan.nextResetAt": "クォータのリセット: {date}",
-  "settings.modelProvider.codingPlan.renewsAt": "更新日: {date}",
-  "settings.modelProvider.codingPlan.expiresAt": "有効期限: {date}",
-  "settings.modelProvider.startPlan.pendingUntil": "保留中: {date}",
-  "settings.modelProvider.startPlan.refreshEntitlement": "アクセス権を更新",
-  "settings.modelProvider.startPlan.expiresAt": "有効期限: {date}",
-  "settings.modelProvider.codingPlan.openApiKeyProvider": "BigModel - API Key を開く",
-  "settings.modelProvider.codingPlan.plansTitle": "Coding Plan",
-  "settings.modelProvider.codingPlan.billingDiscountInfo.open":
-    "150% クォータキャンペーンの詳細を表示",
-  "settings.modelProvider.codingPlan.audience.personal": "個人",
-  "settings.modelProvider.codingPlan.audience.enterprise": "法人",
-  "settings.modelProvider.codingPlan.period.monthly": "月額",
-  "settings.modelProvider.codingPlan.period.quarterly": "四半期",
-  "settings.modelProvider.codingPlan.period.yearly": "年額",
-  "settings.modelProvider.codingPlan.unit.usd.month": "/月",
-  "settings.modelProvider.codingPlan.unit.usd.quarter": "/四半期",
-  "settings.modelProvider.codingPlan.unit.usd.year": "/年",
-  "settings.modelProvider.codingPlan.unit.cny.month": "/月",
-  "settings.modelProvider.codingPlan.unit.cny.quarter": "/四半期",
-  "settings.modelProvider.codingPlan.unit.cny.year": "/年",
-  "settings.modelProvider.codingPlan.monthlyEquivalent": "月額 {price} 相当",
-  "settings.modelProvider.codingPlan.monthlyFlexibleBilling": "柔軟な月額課金",
-  "settings.modelProvider.codingPlan.providerFormDescription":
-    "これらの設定は Coding Plan によって管理されています。キーを手動で設定する場合は API Key の項目を使用してください。",
-  "settings.modelProvider.codingPlan.retry": "再試行",
-  "settings.modelProvider.codingPlan.viewPrices": "料金を表示",
-  "settings.modelProvider.codingPlan.productsLoading": "Coding Plan を読み込み中",
-  "settings.modelProvider.codingPlan.productsLoadingDescription":
-    "{provider}から最新のプランと料金を取得しています。",
-  "settings.modelProvider.codingPlan.purchase.authStateError":
-    "サインイン状態を取得できませんでした。もう一度お試しください。",
-  "settings.modelProvider.codingPlan.purchase.authStateRetry": "サインイン状態を再取得",
-  "settings.modelProvider.codingPlan.productsError": "プランを読み込めませんでした",
-  "settings.modelProvider.codingPlan.productsReconnectTitle": "接続してプランを表示",
-  "settings.modelProvider.codingPlan.reconnectToViewPlans": "再接続",
-  "settings.modelProvider.codingPlan.productsLoginRequired":
-    "{provider} アカウントを再接続すると、料金と利用可能な Coding Plan 製品が更新されます。",
-  "settings.modelProvider.codingPlan.purchaseLoginRequired":
-    "アカウントを再接続してから、もう一度お試しください。",
-  "settings.modelProvider.codingPlan.productsEmpty": "利用可能なプランはありません",
-  "settings.modelProvider.codingPlan.productsEmptyDescription":
-    "{provider}から、このアカウントで購入可能な Coding Plan 製品が返されませんでした。",
-  "settings.modelProvider.codingPlan.dynamicUnsupportedTitle": "動的プランは利用できません",
-  "settings.modelProvider.codingPlan.dynamicUnsupportedDescription":
-    "アプリ内サブスクリプションは現在、Z.ai / BigModel の Coding Plan のみに対応しています。",
-  "settings.modelProvider.codingPlan.priceUnavailable": "料金を取得できません",
-  "settings.modelProvider.codingPlan.systemBusy":
-    "システムが混雑しています。しばらくしてからもう一度お試しください。",
-  "settings.modelProvider.codingPlan.subscriptionBusy": "サブスクリプションが混雑しています",
-  "settings.modelProvider.codingPlan.subscriptionBusyButton": "システム混雑中",
-  "settings.modelProvider.codingPlan.pendingOrder":
-    "未完了の注文があります。新たに購入する前に、その注文を完了またはキャンセルしてください。",
-  "settings.modelProvider.codingPlan.paymentTimeout":
-    "お支払いはまだ保留中です。支払いページでの手続きが完了したら、Coding Plan のステータスを再確認してください。",
-  "settings.modelProvider.codingPlan.zaiOverseasPaymentRequired":
-    "Z.ai のグローバルプランは、Alipay の契約フローではなく、PayPal または Z.ai 公式の支払いページでお支払いいただく必要があります。",
-  "settings.modelProvider.codingPlan.paypalSetupRequired":
-    "お支払いを続ける前に PayPal を承認してください。",
-  "settings.modelProvider.codingPlan.paypalApproveUrlMissing":
-    "PayPal から承認リンクが返されませんでした。しばらくしてからもう一度お試しください。",
-  "settings.modelProvider.codingPlan.paypalUnsupported":
-    "このアカウントまたは地域では PayPal はサポートされていません。",
-  "settings.modelProvider.codingPlan.paypalCancelled":
-    "PayPal の承認がキャンセルされました。再試行するには、もう一度 PayPal を選択してください。",
-  "settings.modelProvider.codingPlan.paypalSubscribeFailed":
-    "PayPal サブスクリプションを作成できませんでした。PayPal の承認が完了していることを確認してから再試行するか、カードでお支払いください。",
-  "settings.modelProvider.codingPlan.securityVerificationRequired":
-    "購入を続けるには、セキュリティ認証を完了してください。",
-  "settings.modelProvider.codingPlan.securityVerificationCancelled":
-    "セキュリティ認証がキャンセルされました。",
-  "settings.modelProvider.codingPlan.securityVerificationFailed":
-    "セキュリティ認証に失敗しました。しばらくしてからもう一度お試しください。",
-  "settings.modelProvider.codingPlan.start.loginEnable": "接続して有効化",
-  "settings.modelProvider.codingPlan.start.loginTrial": "Z.ai に接続",
-  "settings.modelProvider.codingPlan.start.enabled": "有効",
-  "settings.modelProvider.codingPlan.start.freeBadge": "無料",
-  "settings.modelProvider.codingPlan.start.freeEquityTitle": "無料プランを開始",
-  "settings.modelProvider.codingPlan.start.freeEquityDetails":
-    "サインインすると基本的なコーディング機能を利用できます。",
-  "settings.modelProvider.codingPlan.paymentDialog.title": "{product} 自動更新プラン",
-  "settings.modelProvider.codingPlan.paymentDialog.close": "支払いダイアログを閉じる",
-  "settings.modelProvider.codingPlan.paymentDialog.originalAmount": "プラン料金",
-  "settings.modelProvider.codingPlan.paymentDialog.discountActivity": "割引",
-  "settings.modelProvider.codingPlan.paymentDialog.currentPlanCredit": "現在のプランの残存価値",
-  "settings.modelProvider.codingPlan.paymentDialog.payAmount": "お支払い金額",
-  "settings.modelProvider.codingPlan.paymentDialog.deductions": "差し引き",
-  "settings.modelProvider.codingPlan.paymentDialog.alipayScan": "Alipay でスキャンして支払う",
-  "settings.modelProvider.codingPlan.paymentDialog.polling": "支払いの確認を待っています",
-  "settings.modelProvider.codingPlan.paymentDialog.qrAlt": "支払い用 QR コード",
-  "settings.modelProvider.codingPlan.paymentDialog.qrLoading": "QR コードを生成中",
-  "settings.modelProvider.codingPlan.paymentDialog.qrError":
-    "QR コードを生成できませんでした。もう一度お試しください。",
-  "settings.modelProvider.codingPlan.paymentDialog.qrExpired": "QR コードの有効期限が切れました",
-  "settings.modelProvider.codingPlan.paymentDialog.refreshQr": "QR コードを更新",
-  "settings.modelProvider.codingPlan.paymentDialog.tipAutoRenew":
-    "サブスクリプションは月額 {price}で自動更新されます。",
-  "settings.modelProvider.codingPlan.paymentDialog.tipDeduction":
-    "差し引きの優先順位: クレジット、残高、Alipay の順です。",
-  "settings.modelProvider.codingPlan.paymentDialog.tipPeriodic":
-    "プランは、サービス規約に従って解約するまで毎月更新されます。",
-  "settings.modelProvider.codingPlan.paymentDialog.tipCancel":
-    "自動更新は、更新日の 3 日前までにプランの概要からオフにできます。",
-  "settings.modelProvider.codingPlan.paymentDialog.tipCancelPrefix":
-    "自動更新は、更新日の 3 日前までに次の画面からオフにできます:",
-  "settings.modelProvider.codingPlan.paymentDialog.planOverviewLink": "プランの概要",
-  "settings.modelProvider.codingPlan.paymentDialog.tipCancelSuffix": "。",
-  "settings.modelProvider.codingPlan.paymentDialog.ruleTitle": "アカウント利用ポリシー",
-  "settings.modelProvider.codingPlan.paymentDialog.ruleDescription":
-    "サブスクリプションを契約したアカウントは、公式に許可された製品の範囲内でのみご利用ください。第三者への貸与、譲渡、提供は禁止されており、不正または規約違反の行為に使用することもできません。違反が確認された場合、プラットフォームは返金なしでアカウントを制限または停止することがあります。",
-  "settings.modelProvider.codingPlan.paymentDialog.agreement":
-    "お支払いをもって、サービス規約およびサブスクリプション自動更新規約に同意したものとみなされます。デジタル商品はお支払い後の返金はできません。",
-  "settings.modelProvider.codingPlan.enterprise.purchaseMethod": "サービス方式",
-  "settings.modelProvider.codingPlan.enterprise.purchaseMethodTooltipTitle": "サービス方式の詳細",
-  "settings.modelProvider.codingPlan.enterprise.purchaseMethodTooltipDescription":
-    "1. 月単位の一括購入は 1、3、6、12 か月のみ対応しています。12 か月の場合は 10% 割引になります。\n2. 継続サブスクリプション: 自動更新時は、ギフト残高 > 残高 > Alipay の順に差し引かれます。",
-  "settings.modelProvider.codingPlan.enterprise.tier.lite": "Lite",
-  "settings.modelProvider.codingPlan.enterprise.tier.pro": "Pro",
-  "settings.modelProvider.codingPlan.enterprise.tier.max": "Max",
-  "settings.modelProvider.codingPlan.enterprise.configTitle": "チームプランの構成",
-  "settings.modelProvider.codingPlan.enterprise.packageType": "プランの種類",
-  "settings.modelProvider.codingPlan.enterprise.packageSeats": "プランのシート数",
-  "settings.modelProvider.codingPlan.enterprise.autoRenewAuthorization":
-    "自動更新の有効化を当社に許可します",
-  "settings.modelProvider.codingPlan.enterprise.seatMonthlyPrice": "{price} / シート / 月",
-  "settings.modelProvider.codingPlan.enterprise.refresh": "更新",
-  "settings.modelProvider.codingPlan.enterprise.singleSeatPrice": "1 シートあたりの料金",
-  "settings.modelProvider.codingPlan.enterprise.singleSeatFrom": "1 シートあたりの料金",
-  "settings.modelProvider.codingPlan.enterprise.unitPrice": "1 シートあたりの料金",
-  "settings.modelProvider.codingPlan.enterprise.seats": "シート数",
-  "settings.modelProvider.codingPlan.enterprise.seatInputUnit": "シート",
-  "settings.modelProvider.codingPlan.enterprise.seatsUnit": "シート",
-  "settings.modelProvider.codingPlan.enterprise.duration": "期間",
-  "settings.modelProvider.codingPlan.enterprise.durationUnit.month": "か月",
-  "settings.modelProvider.codingPlan.enterprise.durationUnit.quarter": "四半期",
-  "settings.modelProvider.codingPlan.enterprise.durationUnit.year": "年",
-  "settings.modelProvider.codingPlan.enterprise.durationInputUnit.month": "か月",
-  "settings.modelProvider.codingPlan.enterprise.durationInputUnit.year": "年",
-  "settings.modelProvider.codingPlan.enterprise.durationDiscountOption": "10% オフ",
-  "settings.modelProvider.codingPlan.enterprise.calculating": "計算中",
-  "settings.modelProvider.codingPlan.enterprise.productsLoadingDescription":
-    "BigModel からチームプランの料金を読み込んでいます。",
-  "settings.modelProvider.codingPlan.enterprise.productsEmptyDescription":
-    "現在利用可能なチームプラン製品はありません。",
-  "settings.modelProvider.codingPlan.enterprise.productsError":
-    "チームプランを読み込めませんでした",
-  "settings.modelProvider.codingPlan.enterprise.choosePurchaseMethod": "サービス方式",
-  "settings.modelProvider.codingPlan.enterprise.purchaseMethodDescription":
-    "自動更新の有効化を当社に許可します。お支払いを確定する前に、サービス方式、シート数、一括購入の期間を選択してください。",
-  "settings.modelProvider.codingPlan.enterprise.continuousDescription":
-    "選択した請求期間で自動更新されます。",
-  "settings.modelProvider.codingPlan.enterprise.oneTimeDescription":
-    "選択した期間分を一括で購入します。",
-  "settings.modelProvider.codingPlan.enterprise.unit.monthly": "/ シート / 月",
-  "settings.modelProvider.codingPlan.enterprise.unit.quarterly": "/ シート / 四半期",
-  "settings.modelProvider.codingPlan.enterprise.unit.yearly": "/ シート / 年",
-  "settings.modelProvider.codingPlan.enterprise.benefitSeats": "シート単位のチームアクセス",
-  "settings.modelProvider.codingPlan.enterprise.benefitBilling": "請求と支払いの一元管理",
-  "settings.modelProvider.codingPlan.enterprise.benefitQuota": "チームのコーディングクォータ",
-  "settings.modelProvider.codingPlan.enterprise.balanceTitle": "残高からの差し引き",
-  "settings.modelProvider.codingPlan.enterprise.useGiftBalance": "ギフト残高を使用",
-  "settings.modelProvider.codingPlan.enterprise.useCashBalance": "残高を使用",
-  "settings.modelProvider.codingPlan.enterprise.currentGiftBalance": "現在のギフト残高 {amount}",
-  "settings.modelProvider.codingPlan.enterprise.currentCashBalance":
-    "現在のアカウント残高 {amount}",
-  "settings.modelProvider.codingPlan.enterprise.recharge": "チャージ",
-  "settings.modelProvider.codingPlan.enterprise.giftBalance": "ギフト残高",
-  "settings.modelProvider.codingPlan.enterprise.cashBalance": "現金残高",
-  "settings.modelProvider.codingPlan.enterprise.balanceAvailable": "利用可能 {amount}",
-  "settings.modelProvider.codingPlan.enterprise.giftBalanceDeduction": "ギフト残高からの差し引き",
-  "settings.modelProvider.codingPlan.enterprise.cashBalanceDeduction": "現金残高からの差し引き",
-  "settings.modelProvider.codingPlan.enterprise.calculateDescription":
-    "注文の見積もりが完了すると、お支払い金額が更新されます。",
-  "settings.modelProvider.codingPlan.enterprise.paymentNotesTitle": "お支払いに関する注意事項",
-  "settings.modelProvider.codingPlan.enterprise.paymentNotesDescription":
-    "残高およびギフトからの差し引き額は BigModel による見積もりです。継続サブスクリプションでは、必要な最低額を第三者決済で支払う必要があります。",
-  "settings.modelProvider.codingPlan.enterprise.amountDetails": "金額の内訳",
-  "settings.modelProvider.codingPlan.enterprise.seatQuantity": "シート数",
-  "settings.modelProvider.codingPlan.enterprise.seatCountValue": "{count} シート",
-  "settings.modelProvider.codingPlan.enterprise.orderOriginalAmount": "注文の元の金額",
-  "settings.modelProvider.codingPlan.enterprise.orderDiscount": "{discount} 割引",
-  "settings.modelProvider.codingPlan.enterprise.teamAgreementPrefix": "次の内容に同意します:",
-  "settings.modelProvider.codingPlan.enterprise.teamAgreementLink": "チームプラン購入契約",
-  "settings.modelProvider.codingPlan.enterprise.cancel": "キャンセル",
-  "settings.modelProvider.codingPlan.enterprise.confirmPay": "確認して支払う",
-  "settings.modelProvider.codingPlan.enterprise.confirmTitle": "{product} 法人プランを購入",
-  "settings.modelProvider.codingPlan.enterprise.paymentDialog.title":
-    "{product} 法人プランのお支払い",
-  "settings.modelProvider.codingPlan.enterprise.paymentDialog.tipTotal":
-    "QR コードの金額は、シート数と購入期間から算出された合計額です。",
-  "settings.modelProvider.codingPlan.enterprise.paymentDialog.tipDeduction":
-    "残高およびギフトからの差し引きは、支払い確認ページで確定した見積もりに従います。",
-  "settings.modelProvider.codingPlan.enterprise.paymentDialog.tipComplete":
-    "お支払いが完了すると、法人向け料金と Coding Plan の利用権が自動的に更新されます。",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderTitle": "未払いの注文があります",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderDescription":
-    "この注文を続行しますか？この注文をキャンセルして新しいプランを選ぶか、元の注文の支払いを続けることができます。",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderCancel": "注文をキャンセル",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderContinue": "支払いを続ける",
-  "settings.modelProvider.codingPlan.enterprise.pendingOrderProductMissing":
-    "この未払い注文のプランが見つかりませんでした。プランを更新してから、もう一度お試しください。",
-  "settings.modelProvider.codingPlan.overseasPayment.title": "{product} グローバルお支払い",
-  "settings.modelProvider.codingPlan.overseasPayment.description":
-    "お支払い金額: {price}。PayPal を選択するか、Z.ai 公式の支払いページで続行してください。",
-  "settings.modelProvider.codingPlan.overseasPayment.paypal": "PayPal",
-  "settings.modelProvider.codingPlan.overseasPayment.paypalDescription":
-    "PayPal の承認画面を開き、完了したらここに戻って続行してください。",
-  "settings.modelProvider.codingPlan.overseasPayment.paypalAuthorize": "PayPal へ進む",
-  "settings.modelProvider.codingPlan.overseasPayment.paypalContinue":
-    "PayPal を承認しました。支払いを続ける",
-  "settings.modelProvider.codingPlan.overseasPayment.selectPaymentMethod": "支払い方法",
-  "settings.modelProvider.codingPlan.overseasPayment.cardPayment":
-    "クレジットカード / デビットカード",
-  "settings.modelProvider.codingPlan.overseasPayment.savedCards": "保存済みのカード",
-  "settings.modelProvider.codingPlan.overseasPayment.refreshCards": "カードを更新",
-  "settings.modelProvider.codingPlan.overseasPayment.deleteCard": "カードを削除",
-  "settings.modelProvider.codingPlan.overseasPayment.cardsLoading":
-    "保存済みのカードを読み込み中...",
-  "settings.modelProvider.codingPlan.overseasPayment.noSavedCards":
-    "保存済みのカードはまだありません。",
-  "settings.modelProvider.codingPlan.overseasPayment.addCard": "カードを追加",
-  "settings.modelProvider.codingPlan.overseasPayment.changeCard": "カードを変更",
-  "settings.modelProvider.codingPlan.overseasPayment.cardExpires": "有効期限 {month}/{year}",
-  "settings.modelProvider.codingPlan.overseasPayment.cardInformation": "カード情報",
-  "settings.modelProvider.codingPlan.overseasPayment.nameOnCard": "カード名義",
-  "settings.modelProvider.codingPlan.overseasPayment.billingAddress": "請求先住所",
-  "settings.modelProvider.codingPlan.overseasPayment.country": "国",
-  "settings.modelProvider.codingPlan.overseasPayment.countryRequired":
-    "請求先の国または地域を選択してください。",
-  "settings.modelProvider.codingPlan.overseasPayment.addressLine1": "住所 1 行目",
-  "settings.modelProvider.codingPlan.overseasPayment.city": "市区町村",
-  "settings.modelProvider.codingPlan.overseasPayment.postalCode": "郵便番号",
-  "settings.modelProvider.codingPlan.overseasPayment.payWithCard": "カードで支払う",
-  "settings.modelProvider.codingPlan.overseasPayment.saveCard": "カードを保存",
-  "settings.modelProvider.codingPlan.overseasPayment.confirm": "確認",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.originalAmount": "元の価格",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.discountActivity": "割引",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.currentPlanCredit":
-    "現在のプランのクレジット",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.payAmount": "お支払い金額",
-  "settings.modelProvider.codingPlan.overseasPayment.amount.deductions": "差し引き",
-  "settings.modelProvider.codingPlan.overseasPayment.addCardBeforeConfirm":
-    "確認する前にカードを追加してください。",
-  "settings.modelProvider.codingPlan.overseasPayment.stripeNotReady":
-    "Stripe を読み込み中です。しばらくしてからもう一度お試しください。",
-  "settings.modelProvider.codingPlan.overseasPayment.cardElementMissing":
-    "カード入力の準備ができていません。更新してからもう一度お試しください。",
-  "settings.modelProvider.codingPlan.overseasPayment.stripe3dsFailed":
-    "Stripe 3DS 認証に失敗しました。",
-  "settings.modelProvider.codingPlan.overseasPayment.stripePaymentMethodFailed":
-    "Stripe の支払い方法でエラーが発生しました。",
-  "settings.modelProvider.codingPlan.overseasPayment.stripePublishableKeyMissing":
-    "このビルドでは Stripe のカード入力が構成されていません。",
-  "settings.modelProvider.codingPlan.overseasPayment.close": "あとで",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalPolicyTitle": "更新ポリシー",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicyTitle": "アカウント利用ポリシー",
-  "settings.modelProvider.codingPlan.overseasPayment.period.month": "月",
-  "settings.modelProvider.codingPlan.overseasPayment.period.quarter": "四半期",
-  "settings.modelProvider.codingPlan.overseasPayment.period.year": "年",
-  "settings.modelProvider.codingPlan.overseasPayment.recurringPeriod.month": "毎月",
-  "settings.modelProvider.codingPlan.overseasPayment.recurringPeriod.quarter": "四半期ごと",
-  "settings.modelProvider.codingPlan.overseasPayment.recurringPeriod.year": "毎年",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalCharge":
-    "{period}ごとに {price}が自動的に請求されます。",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalChargeFallback":
-    "今後の更新は、選択したサブスクリプションの周期に従います。実際の更新金額は更新時の請求書に基づきます。",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalDeduction":
-    "お支払いは、ボーナスクレジット、アカウント残高、クレジットカードの順に差し引かれます。",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalMinimum":
-    "クレジットカードへの請求には少額の最低金額が適用されます。残りの金額がこれを下回る場合は、最低金額まで切り上げて請求されます。",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalRecurring":
-    "{period}の請求は、利用規約に従って解約するまで継続的に行われます。",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalCancelPrefix":
-    "自動更新は、更新日の 1 日前までに次の画面から無効にできます:",
-  "settings.modelProvider.codingPlan.overseasPayment.subscriptionSettingLink":
-    "サブスクリプション設定",
-  "settings.modelProvider.codingPlan.overseasPayment.renewalCancelSuffix": "。",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicyPrefix":
-    "GLM Coding Plan は、契約者本人による次の範囲内での利用に厳しく限定されています:",
-  "settings.modelProvider.codingPlan.overseasPayment.supportedProductsLink":
-    "公式にサポートされている製品",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicyAfterSupportedProducts":
-    "。共有、転売、譲渡、第三者によるアクセスは固く禁止されています。不適切、無許可、またはポリシーに違反する利用が確認された場合、返金なしで直ちにアカウントが制限または停止されることがあります。次の内容を遵守してください:",
-  "settings.modelProvider.codingPlan.overseasPayment.termsLink": "利用規約",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicyBetween": " および",
-  "settings.modelProvider.codingPlan.overseasPayment.policyLink": "ポリシー",
-  "settings.modelProvider.codingPlan.overseasPayment.accountPolicySuffix": "。",
-  "settings.modelProvider.codingPlan.overseasPayment.authorizationPrefix":
-    "お客様は、Z.ai が上記金額を現在およびサブスクリプションプランに従って継続的にカードへ請求することに同意します。この請求は、次の規定に従って解約するまで続きます:",
-  "settings.modelProvider.codingPlan.overseasPayment.authorizationTermsLink": "規約",
-  "settings.modelProvider.codingPlan.overseasPayment.authorizationSuffix": "。",
-  "settings.modelProvider.codingPlan.paymentDialog.agreementPrefix":
-    "お支払いをもって、次の内容に同意したものとみなされます:",
-  "settings.modelProvider.codingPlan.paymentDialog.serviceAgreementLink": "サービス契約",
-  "settings.modelProvider.codingPlan.paymentDialog.agreementBetween": " および",
-  "settings.modelProvider.codingPlan.paymentDialog.subscriptionAgreementLink":
-    "サブスクリプションおよび自動更新契約",
-  "settings.modelProvider.codingPlan.paymentDialog.agreementSuffix":
-    "。デジタル商品はお支払い後の返金はできません。",
-  "settings.modelProvider.codingPlan.product.soldOut": "売り切れ",
-  "settings.modelProvider.codingPlan.product.forbidden": "このアカウントでは利用できません",
-  "settings.modelProvider.codingPlan.product.unavailable": "利用不可",
-  "settings.modelProvider.codingPlan.product.subscribeNow": "今すぐ購読",
-  "settings.modelProvider.codingPlan.product.unavailableTooltipPrefix":
-    "このプランは購入できません。",
-  "settings.modelProvider.codingPlan.product.unavailableTooltipLink": "詳細を表示",
-  "settings.modelProvider.codingPlan.product.included": "含まれています",
-  "settings.modelProvider.codingPlan.product.firstPromo": "初回購読割引",
-  "settings.modelProvider.codingPlan.product.delay": "{time}から有効",
-  "settings.modelProvider.codingPlan.zai.plan.lite.name": "Lite",
-  "settings.modelProvider.codingPlan.zai.plan.lite.summary": "基本の使用量の上限",
-  "settings.modelProvider.codingPlan.zai.plan.pro.name": "Pro",
-  "settings.modelProvider.codingPlan.zai.plan.pro.summary":
-    "Lite のすべての機能に加え、Lite の 5 倍の利用量",
-  "settings.modelProvider.codingPlan.zai.plan.max.name": "Max",
-  "settings.modelProvider.codingPlan.zai.plan.max.summary":
-    "Pro のすべての機能に加え、Lite の 20 倍の利用量",
-  "settings.modelProvider.codingPlan.bigmodel.plan.lite.name": "Lite",
-  "settings.modelProvider.codingPlan.bigmodel.plan.lite.summary": "基本の利用クォータ",
-  "settings.modelProvider.codingPlan.bigmodel.plan.pro.name": "Pro",
-  "settings.modelProvider.codingPlan.bigmodel.plan.pro.summary":
-    "Lite の 5 倍の利用クォータ + Lite のすべての特典",
-  "settings.modelProvider.codingPlan.bigmodel.plan.max.name": "Max",
-  "settings.modelProvider.codingPlan.bigmodel.plan.max.summary":
-    "Lite の 20 倍の利用クォータ + Pro のすべての特典",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.lite.detail0": "基本の利用枠",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.lite.detail1":
-    "小規模リポジトリでの軽めの反復作業",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.lite.detail2": "最新モデルを順次提供",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.lite.detail3":
-    "20 以上のコーディングツール",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.pro.detail0": "Lite の 5 倍の利用枠",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.pro.detail1":
-    "中規模リポジトリでの日常的な開発",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.pro.detail2":
-    "最新モデルへの優先アクセス",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.pro.detail3": "厳選された MCP ツール",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.max.detail0": "Lite の 20 倍の利用枠",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.max.detail1":
-    "中〜大規模リポジトリでの本格的な作業",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.max.detail2":
-    "最新モデルへの先行アクセス",
-  "settings.modelProvider.codingPlan.bigmodel.purchase.plan.max.detail3": "ピーク時のリソース優先",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.lite.detail0": "基本の利用量を含む",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.lite.detail1":
-    "小規模リポジトリでの反復作業",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.lite.detail2": "最新モデルを順次提供",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.lite.detail3": "20 以上のコーディングツール",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.pro.detail0": "Lite の 5 倍の利用量",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.pro.detail1": "中規模リポジトリの開発",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.pro.detail2": "モデルへの優先アクセス",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.pro.detail3": "厳選された MCP ツール",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.max.detail0": "Lite の 20 倍の利用量",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.max.detail1": "中〜大規模リポジトリでの作業",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.max.detail2": "モデルへの先行アクセス",
-  "settings.modelProvider.codingPlan.zai.purchase.plan.max.detail3": "ピーク時の優先",
   "settings.modelProvider.enabledStatus": "有効",
   "settings.modelProvider.enableModel": "有効にする",
   "settings.modelProvider.disabledStatus": "無効",
@@ -4925,7 +4303,6 @@ const jaJP: Record<string, string> = {
   "settings.usage.sectionTitle": "使用状況の統計",
   "settings.usage.sectionDescription": "ローカルのアプリセッション履歴から集計しています。",
   "settings.usage.tab.appUsage": "アプリの使用状況",
-  "settings.usage.tab.codingPlan": "個人プラン",
   "settings.usage.sectionDescriptionRemote":
     "選択したプロバイダーのモニター API から同期した、実際のトークンとツールの使用状況です。",
   "settings.usage.remoteTokenHint": "選択したプロバイダーのモデル使用量 API より",
@@ -4964,44 +4341,6 @@ const jaJP: Record<string, string> = {
   "settings.usage.entitlementResetTime": "次回リセット",
   "settings.usage.entitlementTokenUsage": "5 時間のプロンプトプール使用率 {percent}",
   "settings.usage.quotaTitle": "残りのクォータ",
-  "codingPlan.quotaReset.openDialog": "リセット可能なクォータを {count} 回分取得",
-  "codingPlan.quotaReset.countdown.daysHours": "{days}日 {hours}時間",
-  "codingPlan.quotaReset.countdown.daysOnly": "{days}日",
-  "codingPlan.quotaReset.countdown.hoursMinutes": "{hours}時間 {minutes}分",
-  "codingPlan.quotaReset.countdown.hoursOnly": "{hours}時間",
-  "codingPlan.quotaReset.countdown.minutesSeconds": "{minutes}分 {seconds}秒",
-  "codingPlan.quotaReset.dialog.title": "リセット可能なクォータ",
-  "codingPlan.quotaReset.dialog.remaining": "残りのクォータ",
-  "codingPlan.quotaReset.dialog.resettable": "利用可能なリセット",
-  "codingPlan.quotaReset.dialog.fiveHour": "5 時間クォータのリセット",
-  "codingPlan.quotaReset.dialog.week": "週間クォータのリセット",
-  "codingPlan.quotaReset.dialog.expiresIn": "あと {time}で期限切れ",
-  "codingPlan.quotaReset.dialog.expiresInSoonest": "最短の期限切れまで {time}",
-  "codingPlan.quotaReset.dialog.itemCount": "×{count}",
-  "codingPlan.quotaReset.dialog.back": "戻る",
-  "codingPlan.quotaReset.dialog.confirmHint":
-    "リセットを 1 回分使用します（有効期限 {date}）。この操作は元に戻せません。",
-  "codingPlan.quotaReset.opportunity": "リセット {count} 回分が利用可能",
-  "codingPlan.quotaReset.expiresIn": "あと {time}で期限切れ",
-  "codingPlan.quotaReset.contextReminder.available": "リセット {count} 回分が利用可能",
-  "codingPlan.quotaReset.contextReminder.expiresIn": "リセットの期限まで",
-  "codingPlan.quotaReset.contextReminder.dismiss": "リマインダーを閉じる",
-  "codingPlan.quotaReset.reset": "リセット",
-  "codingPlan.quotaReset.resetAria": "5 時間クォータをリセット",
-  "codingPlan.quotaReset.resetAriaWeek": "週間クォータをリセット",
-  "codingPlan.quotaReset.confirm": "リセット",
-  "codingPlan.quotaReset.confirmTitle": "5 時間クォータをリセットしますか？",
-  "codingPlan.quotaReset.confirmTitleWeek": "今週のクォータをリセットしますか？",
-  "codingPlan.quotaReset.confirmAria": "5 時間クォータのリセットを確認",
-  "codingPlan.quotaReset.confirmAriaWeek": "週間クォータのリセットを確認",
-  "codingPlan.quotaReset.success": "リセットしました",
-  "codingPlan.quotaReset.failed": "リセットに失敗しました。もう一度お試しください。",
-  "codingPlan.quotaReset.processing": "5 時間クォータをリセット中…",
-  "codingPlan.quotaReset.processingWeek": "週間クォータをリセット中…",
-  "codingPlan.quotaReset.done": "5 時間クォータをリセットしました",
-  "codingPlan.quotaReset.doneWeek": "週間クォータをリセットしました",
-  "codingPlan.quotaReset.completed": "リセット済み",
-  "codingPlan.quotaReset.completedAt": "{time}にリセット",
   "settings.usage.trendsTitle": "使用状況の推移",
   "settings.usage.entitlementFiveHourUsage": "5 時間の残り",
   "settings.usage.entitlementWeeklyUsage": "週間の残り",
@@ -5030,7 +4369,6 @@ const jaJP: Record<string, string> = {
   "sidebar.usage.plan.title": "残りの使用量",
   "sidebar.usage.plan.upgrade": "アップグレード",
   "sidebar.usage.plan.renew": "更新",
-  "sidebar.usage.plan.codingPlanTitle": "Coding Plan",
   "sidebar.usage.plan.audienceIndividual": "個人",
   "sidebar.usage.plan.audienceTeam": "チーム",
   "sidebar.usage.plan.open": "詳細",
@@ -5093,15 +4431,6 @@ const jaJP: Record<string, string> = {
   "settings.usage.range.7d": "過去 7 日間",
   "settings.usage.range.30d": "過去 30 日間",
   "settings.usage.appUsageRangeTitle": "期間",
-  "settings.usage.codingPlanRange.today": "今日",
-  "settings.usage.codingPlanRange.7d": "7 日間",
-  "settings.usage.codingPlanRange.30d": "30 日間",
-  "settings.usage.codingPlanRange.custom": "カスタム",
-  "settings.usage.codingPlanMetric.credits": "クレジット",
-  "settings.usage.codingPlanMetric.usage": "使用量",
-  "settings.usage.codingPlanSubject.model": "モデル",
-  "settings.usage.codingPlanSubject.tool": "ツール",
-  "settings.usage.codingPlanLegendTotal": "合計",
   "settings.usage.healthTitle": "システムの稼働状況",
   "settings.usage.healthRange.7d": "過去 7 日間",
   "settings.usage.healthProMaxDecode": "Max&Pro ピーク時の平均デコード速度",
@@ -5110,8 +4439,6 @@ const jaJP: Record<string, string> = {
   "settings.usage.loadingTitle": "使用状況を計算中",
   "settings.usage.appUsageLoadingDescription":
     "ローカルのアプリセッション履歴を読み込んでいるため、しばらく時間がかかる場合があります。",
-  "settings.usage.codingPlanLoadingDescription":
-    "選択したプロバイダーのモニター API を読み込んでいるため、しばらく時間がかかる場合があります。",
   "settings.usage.lastRefreshTime": "最終更新: {time}",
   "settings.usage.error":
     "使用状況の統計を読み込めません。しばらくしてからもう一度お試しいただくか、ネットワークとプロバイダーの構成を確認してください。",
@@ -5170,12 +4497,6 @@ const jaJP: Record<string, string> = {
   "settings.usage.toolUsageTitle": "ツールの使用状況",
   "settings.usage.tokenTotal": "合計トークン使用量",
   "settings.usage.timesUnit": " 回",
-  "settings.usage.codingPlanNotConfiguredTitle": "Coding Plan が接続されていません",
-  "settings.usage.codingPlanNotConfiguredDescription":
-    "モデル設定で Z.ai または BigModel の Coding Plan プロバイダーを接続すると、プランのクォータ、モデルの使用状況、ツールの使用状況を表示できます。",
-  "settings.usage.codingPlanCurrentConnectionTitle": "現在の接続は Coding Plan を使用していません",
-  "settings.usage.codingPlanCurrentConnectionDescription":
-    "ワークスペースのモデル接続を個人プランまたはチームプランに切り替えると、ここにクォータと使用状況が表示されます。",
   "settings.usage.modelChartDescription": "現在最も割合が高いのは {model}で、約 {share}です。",
   "settings.usage.modelChart.other": "その他のモデル",
   "settings.usage.modelChart.input": "入力",
@@ -7504,26 +6825,8 @@ const jaJP: Record<string, string> = {
   "chat.error.setModels": "設定",
 
   // Start Plan per-bucket quota reminders
-  "chat.quota.startPlan.bucketDailyLow":
-    "{model}の 1 日のクォータの残りは {percent}です（{remaining} トークン）。",
-  "chat.quota.startPlan.bucketActivityLow":
-    "{model}のプロモーションクォータの残りは {percent}です（{remaining} トークン）。",
-  "chat.quota.startPlan.modelVeryLow":
-    "{model}のプランクォータの残りは {percent}です（{remaining} トークン）。",
-  "chat.quota.startPlan.modelExhausted":
-    "{model}の利用可能なクォータをすべて使い切りました。別のモデルまたは Coding Plan サブスクリプションに切り替えてください。",
-  "chat.quota.startPlan.dailyExhausted":
-    "Start Plan のクォータを使い切りました。Coding Plan サブスクリプションに切り替えるか、クォータのリセットをお待ちください。",
-  "chat.quota.startPlan.concurrentLimit":
-    "システムが混雑しています。モデルを切り替えるか、Coding Plan サブスクリプションに切り替えるか、しばらくしてからもう一度お試しください。",
-  "chat.quota.startPlan.concurrentLimit.retryExhausted":
-    "システムが混雑しており、自動再試行が上限回数に達しました。しばらくしてからもう一度お試しいただくか、Coding Plan サブスクリプションに切り替えてください。",
-  "chat.quota.startPlan.concurrentLimit.switchModel":
-    "現在のモデルのリクエスト同時実行数の上限に達しました。モデルを切り替えて現在のタスクを続行してください。",
   "chat.quota.mcp.quotaExhausted":
     "ZCode MCP「{server}」の本日のクォータを使い切りました。明日リセットされます。",
-  "chat.quota.mcp.codingPlanRequired":
-    "ZCode MCP「{server}」のクォータがありません。使用するにはサインインするか、Coding Plan を入手してください。",
   "chat.quota.providerLimited":
     "現在のアカウントのクォータまたはプランの上限に達しました。続行するにはアップグレードするか、プランを調整してください。",
   "chat.quota.action.upgrade": "アップグレード",
@@ -8299,7 +7602,6 @@ const jaJP: Record<string, string> = {
   "offPeak.discard.title": "アイドル時間タスクの下書きを破棄しますか？",
   "offPeak.discard.description": "現在のアイドル時間タスクへの変更は失われます。",
   "offPeak.discard.confirm": "破棄",
-  "offPeak.create.codingPlanOnly": "Coding Plan ユーザー限定",
   "offPeak.create.availabilityUnavailable":
     "利用可否を確認できませんでした。更新してもう一度お試しください。",
   "offPeak.create.limitReachedAt":
@@ -8308,8 +7610,6 @@ const jaJP: Record<string, string> = {
   "offPeak.create.remaining.hours": "{hours} 時間",
   "offPeak.create.remaining.minutes": "{minutes} 分",
   "offPeak.create.remaining.lessThanMinute": "1 分未満",
-  "offPeak.create.codingPlanToast":
-    "アイドル時間タスクは Coding Plan のサブスクリプション会員のみご利用いただけます。",
   "automations.moreIdeas": "スケジュールタスクのテンプレート",
   "automations.templates.unavailable": "利用可能なテンプレートはありません",
   "automations.runNow": "今すぐ実行",
@@ -8656,44 +7956,6 @@ const jaJP: Record<string, string> = {
   "scheduledPreview.toast.running": "「{title}」を実行中…",
   "scheduledPreview.toast.view": "表示",
   "scheduledPreview.addSchedule": "スケジュールを追加",
-  "chat.highspeed.label": "Highspeed",
-  "chat.highspeed.expiresAt": "Highspeed カードの有効期限: {time}",
-  "chat.highspeed.modelLocked": "Highspeed が有効な間はモデルが固定されます",
-  "chat.highspeed.originalModel": "元のモデル: {model}",
-  "chat.highspeed.remainingTime": "残り時間: {time}",
-  "chat.highspeed.generatedBy": "Highspeed で生成",
-  "chat.highspeed.shareAction": "共有",
-  "chat.highspeed.viewAction": "表示",
-  "chat.highspeed.share": "この高速化された実行を共有",
-  "chat.highspeed.shareFailed": "共有できませんでした。しばらくしてからもう一度お試しください。",
-  "chat.highspeed.savedDuration": "約 {duration} 短縮",
-  "chat.highspeed.statusTag": "HighSpeed",
-  "chat.highspeed.cardExpiredFallback":
-    "Highspeed カードの有効期限が切れました。このターンの残りは元のモデルで続行します。",
-  "chat.highspeed.requestFailedFallback":
-    "Highspeed は一時的に利用できません。このターンの残りは元のモデルで続行します。",
-  "globalNotice.highspeed.title": "Highspeed の実行が完了しました",
-  "globalNotice.highspeed.summary": "出力 {tokens} トークン · {duration}秒",
-  "globalNotice.highspeed.tagline": "Highspeed の瞬間を共有",
-  "globalNotice.highspeed.sidebarTagline": "高速化の成果を共有",
-  "globalNotice.highspeed.share": "共有",
-  "globalNotice.highspeed.view": "表示",
-  "globalNotice.highspeed.imageCopied": "高速化の統計をコピーしました",
-  "globalNotice.highspeed.imageCopyFailed":
-    "画像をコピーできませんでした。もう一度お試しください。",
-  "globalNotice.highspeed.textCopied": "共有テキストをコピーしました",
-  "globalNotice.highspeed.textCopyFailed":
-    "共有テキストをコピーできませんでした。もう一度お試しください。",
-  "globalNotice.highspeed.copyImage": "画像をコピー",
-  "globalNotice.highspeed.badge": "ZCode & Coding Plan 限定特典",
-  "globalNotice.highspeed.standardTaskSpeed": "標準の生成速度",
-  "globalNotice.highspeed.relativeTaskDuration": "相対的な生成時間",
-  "globalNotice.highspeed.speedSummary": "HighSpeed · {duration}",
-  "globalNotice.highspeed.lessWaiting": "待ち時間を {percent}% 短縮",
-  "globalNotice.highspeed.copySummary":
-    "ZCode の Highspeed カードを使って {duration} 秒短縮しました。ぜひ試してみてください。ZCode のダウンロード: https://zcode.z.ai",
-  "globalNotice.highspeed.imageSummary": "{tokens} トークン · {duration}秒 短縮",
-  "globalNotice.highspeed.close": "Highspeed の共有カードを閉じる",
   "remoteSync.title": "データ同期",
   "remoteSync.description": "ローカルの構成をリモートデバイスに同期します。",
   "remoteSync.rules.title": "同期ルール",
