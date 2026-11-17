@@ -6,8 +6,7 @@
 import { ConversationProjectionStore } from "@/v4/conversationProjectionStore.js";
 import { ConversationRowPool } from "@/v4/conversationRowSharing.js";
 import { shouldExposeE2EStoreBridge } from "@/lib/e2eStoreBridge.js";
-/** 租约建立时命中的缓存层级，仅用于 lifecycle 日志（telemetry 已移除，保留诊断语义）。 */
-type SessionOpenKind = "cold" | "warm" | "keep_warm";
+import type { SessionOpenKind } from "@/lib/sessionOpenArmsTelemetry.js";
 import { conversationTopic, type ConversationTransport } from "@/v4/transport.js";
 import { logger } from "@/logger.js";
 import type { CommandsQueryParams, CommandsQueryResult } from "@zcode/shared/zcode-protocol-v4";
@@ -166,6 +165,15 @@ export class SessionDataLayer {
       status: "keep_warm",
       topic,
     });
+  }
+
+  /** 永久删除完成后立即丢弃投影，迟到帧不能重新落入此 entry。 */
+  forget(sessionId: string): void {
+    const topic = conversationTopic(sessionId);
+    const entry = this.entries.get(topic);
+    if (entry?.keepWarmTimer) clearTimeout(entry.keepWarmTimer);
+    this.entries.delete(topic);
+    if (entry) void entry.store.close({ forget: true });
   }
 
   /** 连接销毁时清场（window/workspace 卸载）。 */

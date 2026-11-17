@@ -15,7 +15,7 @@ import { usePlatform } from "@/hooks/usePlatform.js";
 import { useWorkspaceProviderConfigFile } from "@/hooks/useWorkspaceProviderConfigFile.js";
 import { useWorkspaceActiveTaskState } from "@/hooks/useWorkspaceActiveTaskState.js";
 import { useEnsureWorkspaceMcpLoaded } from "@/hooks/useEnsureWorkspaceMcpLoaded.js";
-import { useTabStore } from "@/store/TabStoreProvider.js";
+import { useTabStore, useTabStoreApi } from "@/store/TabStoreProvider.js";
 import { isWorkspaceReadOnly, isWorkspaceTab } from "@/store/tabStore.js";
 import type { TaskChatMessage as TestChatMessage } from "@/lib/taskChatMessageTypes.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -36,6 +36,11 @@ import {
   navigateTaskFindSelection,
 } from "@/quickpick/taskFindNavigationState.js";
 import { createQuickPickCommands } from "@/quickpick/quickPickCommands.js";
+import {
+  ExtensionViewsProvider,
+  useReloadExtensions,
+  type StartExtensionDraft,
+} from "@/extension-slots/index.js";
 import { CommandCenterDialog } from "@/command-center/CommandCenterDialog.js";
 import { FeedbackHost } from "@/feedback/FeedbackHost.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
@@ -50,8 +55,7 @@ import {
 } from "@/lib/settingsNavigation.js";
 import { runWorkspaceVisibleCommand } from "@/lib/workspaceVisibleCommand.js";
 import { ZCODE_PRODUCT_DOCS_URL } from "@/lib/productDocs.js";
-import { COMMUNITY_ENTRY_ENABLED } from "@/lib/communityEntry.js";
-import appLogoUrl from "@/assets/provider-icons/logo-polaris.svg";
+import appLogoUrl from "@/assets/provider-icons/logo-zai.svg";
 import { resolveTheme } from "@/useTheme.js";
 import { WorkspaceShellLayout } from "@/app-shell/WorkspaceShellLayout.js";
 import { useAppChromeState } from "@/app-shell/useAppChromeState.js";
@@ -67,6 +71,7 @@ import { useTaskSidePaneMemoryBridge } from "@/app-shell/useTaskSidePaneMemoryBr
 import { resolveAppWorkspaceRpcTarget } from "@/app-shell/workspaceRpcTarget.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import { useWorkspaceTerminalTaskNotifications } from "@/hooks/useTaskNotifications.js";
+import { useMarketingTaskCompletionRefresh } from "@/components/marketing-touch/useMarketingTaskCompletionRefresh.js";
 import { useOffPeakTaskNotifications } from "@/hooks/useOffPeakTaskNotifications.js";
 import type { AppProps, WorkspaceMainView } from "@/app-shell/types.js";
 import type {
@@ -87,6 +92,10 @@ import type { SavedWorkflowHubTarget } from "@/v4/savedWorkflowHubContext.js";
 import type { SavedWorkflowsOpenTarget } from "@/settings/saved-workflows/SavedWorkflowsSection.js";
 import type { AssistantPreviewCardsAutoOpenRequest } from "@/lib/assistantPreviewCards.js";
 import { startMemoryDiagnosticsLogger } from "@/lib/memoryDiagnostics.js";
+import {
+  adoptDraftTaskSidePaneFullView,
+  buildTaskSidePaneMemoryKey,
+} from "@/lib/taskSidePaneMemory.js";
 
 const EMPTY_REMOTE_WORKSPACE_RECOVERY_BY_WORKSPACE_KEY: NonNullable<
   AppProps["remoteWorkspaceRecoveryByWorkspaceKey"]
@@ -100,6 +109,7 @@ export function App({
   onSelectRemoteProject,
   onCancelRemoteProject,
   onReconnectRemoteWorkspace,
+  onLogout,
   onLogin,
   user,
   reconnectingRemoteWorkspaceKeys,
@@ -145,11 +155,18 @@ export function App({
   const { intl, locale, setLocale } = useZCodeIntl();
   const isOfficeMode = useIsOfficeMode();
   const platform = usePlatform();
-  // 进程内存本地诊断日志：每窗口一个 60s 采样器，写桌面主日志；Web 端无日志桥时为 no-op。
+  // 命令中心「重新加载扩展」：只有桌面本机 Host 提供扩展门面时才出现。
+  const reloadExtensions = useReloadExtensions();
+  // 进程内存本地诊断日志：每窗口一个 60s 采样器，
+  // 经门控后写桌面主日志；Web 端无日志桥时为 no-op。同一次读数还经 preload 桥把 heap 送 main 的
+  // renderer_main 资源事件，无桥时同样 no-op。
+  const reportRendererHeapSample = platform.reportRendererHeapSample;
   useEffect(() => {
-    const memoryDiagnosticsLogger = startMemoryDiagnosticsLogger();
+    const memoryDiagnosticsLogger = startMemoryDiagnosticsLogger({
+      reportHeapSample: reportRendererHeapSample,
+    });
     return () => memoryDiagnosticsLogger.stop();
-  }, []);
+  }, [reportRendererHeapSample]);
   const activeWorkspaceRpcTarget = useTabStore(
     useShallow((state) => {
       if (!state.activeTabId) {
@@ -229,6 +246,8 @@ export function App({
     handleOpenGit,
     handleOpenWhiteboard,
     handleOpenDeveloperTools,
+    handleOpenExtensionView,
+    handleOpenExtensionLogs,
     handleOpenFileManager,
     handleNavigateFileManager,
     handleOpenPluginMarket,
@@ -259,6 +278,7 @@ export function App({
     handleReopenClosedSidePaneTab,
     handleBrowserNavigationRequestHandled,
     handleBrowserPageMetadataChange,
+    markSidePaneDraftPromotion,
   } = useAppPanels({
     workspaceAbsPath,
     workspaceIdentity,
@@ -275,6 +295,12 @@ export function App({
   });
   const workspaceKey = workspaceIdentity?.trim() || workspaceAbsPath;
   const notificationEnabled = useZCodeStore((s) => s.notificationEnabled);
+  useMarketingTaskCompletionRefresh({
+    workspacePath: workspaceAbsPath,
+    ...(workspaceIdentity ? { workspaceIdentity } : {}),
+    ...(workspaceRemoteSessionId ? { endpointKey: workspaceRemoteSessionId } : {}),
+    rpcReady: workspaceRpcReady,
+  });
   useWorkspaceTerminalTaskNotifications({
     workspacePath: workspaceAbsPath,
     ...(workspaceIdentity ? { workspaceIdentity } : {}),
@@ -374,6 +400,7 @@ export function App({
     platform,
     workspaceAbsPath,
   });
+  const tabStoreApi = useTabStoreApi();
   const tabs = useTabStore((s) => s.tabs);
   const addTab = useTabStore((s) => s.addTab);
   const activateTabByPath = useTabStore((s) => s.activateTabByPath);
@@ -425,8 +452,12 @@ export function App({
     setGitRefreshVersion((value) => value + 1);
   }, []);
   const openSettingsTab = useTabStore((state) => state.openSettingsTab);
+  // worktree 任务的 cwd 不是 workspace 目录；Git 状态必须读任务自己的 cwd（docs/git/worktree.md §3.7）。
+  const activeTaskCwd =
+    (resolvedActiveTaskMeta?.taskId === activeTaskId ? resolvedActiveTaskMeta?.cwd : undefined) ??
+    workspaceAbsPath;
   const gitState = useGitRepository({
-    workspacePath: workspaceAbsPath,
+    workspacePath: activeTaskCwd,
     activeTaskId,
     includeExtendedData: hasGitTab,
     // 关键逻辑：真实 Git 只在 workspace 变化、Git pane 打开、或用户显式点刷新时重拉。
@@ -437,7 +468,7 @@ export function App({
     workspaceIdentity,
   });
   useGitAutoRefresh({
-    workspacePath: workspaceAbsPath,
+    workspacePath: activeTaskCwd,
     workspaceIdentity,
     remoteSessionId: workspaceRpcTarget.remoteSessionId ?? null,
     gitSummary: gitState.summary,
@@ -554,6 +585,21 @@ export function App({
     isSidePaneOpen,
     enabled: supportsSidePaneFullView,
   });
+  // 草稿首发：草稿里打开的面板 tab 与完整视图形态一起交给新任务，发完仍停在原来的浮窗 / 完整视图里
+  const handleSidePaneDraftPromotion = useCallback(
+    (sessionId: string) => {
+      markSidePaneDraftPromotion(sessionId);
+      adoptDraftTaskSidePaneFullView(
+        buildTaskSidePaneMemoryKey({
+          workspacePath: workspaceAbsPath,
+          workspaceIdentity,
+          taskId: null,
+        }),
+        sessionId,
+      );
+    },
+    [markSidePaneDraftPromotion, workspaceAbsPath, workspaceIdentity],
+  );
   const handleToggleSidePaneFullView = useCallback(() => {
     // 面板关闭时快捷键先打开面板再进入完整视图；记录先写入，面板展开后即生效。
     if (!sidePaneFullView.fullView && !isSidePaneOpen) {
@@ -647,9 +693,13 @@ export function App({
     (state: ConversationFindMatchState) => {
       setConversationFindMatchCount(state.matchCount);
       if (state.activeIndex !== undefined) {
-        setConversationFindState((current) =>
-          changeTaskFindSelection(current, current.query, state.activeIndex ?? -1),
-        );
+        setConversationFindState((current) => {
+          const activeIndex = state.activeIndex ?? -1;
+          // 消息索引随流式帧反复回报相同命中；被动回报没有导航意图，不能让整个 App 跟着更新。
+          return current.activeIndex === activeIndex
+            ? current
+            : changeTaskFindSelection(current, current.query, activeIndex);
+        });
       }
     },
     [],
@@ -729,11 +779,19 @@ export function App({
       createSource?: import("@zcode/shared").SessionCreateSource,
     ) => {
       const store = useZCodeSessionStore.getState();
+      // 首次新建补全 tab 分类曾重建侧栏回调；点击时读取唯一 tab owner，避免依赖整份列表。
+      const { tabs: currentTabs } = tabStoreApi.getState();
       const resolvedTargetWorkspaceIdentity =
         targetWorkspaceIdentity ??
-        tabs.filter(isWorkspaceTab).find((tab) => tab.workspacePath === targetWorkspacePath)
+        currentTabs.filter(isWorkspaceTab).find((tab) => tab.workspacePath === targetWorkspacePath)
           ?.workspaceIdentity;
-      if (isWorkspaceReadOnly({ tabs }, targetWorkspacePath, resolvedTargetWorkspaceIdentity)) {
+      if (
+        isWorkspaceReadOnly(
+          { tabs: currentTabs },
+          targetWorkspacePath,
+          resolvedTargetWorkspaceIdentity,
+        )
+      ) {
         return;
       }
       const targetSelectedProvider = resolveWorkspaceSwitchDraftProvider({
@@ -789,9 +847,7 @@ export function App({
     [
       activateTabByPath,
       addTab,
-      tabs,
-      workspaceAbsPath,
-      workspaceIdentity,
+      tabStoreApi,
       workspaceShellZCodeState.selectedProvider,
       webRemoteControlWorkspaceSwitcher,
     ],
@@ -854,6 +910,20 @@ export function App({
   const handleNavigateToTaskMain = useCallback(() => {
     setWorkspaceMainView("chat");
   }, []);
+  // 能力 workbench.startDraft（docs/plugins/extension-host.md §18.1 H2）：与插件市场「试用」同一条新建任务路径，
+  // 只预填不发送。先回到工作区与对话主视图（与 Shell 的 handleCreateTaskInChat 相同），新草稿才可见。
+  // 只读判断同 handleCreateTaskInChat：没有指定工作区时看当前工作区；指定时由 Root 按目标判断。
+  const handleStartExtensionDraft = useCallback<StartExtensionDraft>(
+    ({ text, workspace }) => {
+      if (!workspace && workspaceReadOnlyReason) return false;
+      runVisibleWorkspaceCommand(() => {
+        handleNavigateToTaskMain();
+        onCreateTask({ initialPrompt: text, ...(workspace ? { targetWorkspace: workspace } : {}) });
+      });
+      return true;
+    },
+    [handleNavigateToTaskMain, onCreateTask, runVisibleWorkspaceCommand, workspaceReadOnlyReason],
+  );
   const { preserveNextSettingsExit } = useWorkspaceMainViewSettingsExit({
     isWorkspaceVisible,
     workspaceMainView,
@@ -890,6 +960,7 @@ export function App({
     intl,
     workspaceAbsPath,
     workspaceIdentity,
+    isWebRemoteControl: Boolean(webRemoteControlWorkspaceSwitcher),
     activateTabByPath,
     onNavigateToTask: handleNavigateToTaskMain,
     onNavigateToAutomations: handleNavigateToAutomationsMain,
@@ -985,7 +1056,7 @@ export function App({
   useAppKeyboard({
     openCommandCenter: handleOpenQuickPick,
     // 打开设置页：与设置入口按钮共用 tabStore.openSettingsTab；默认 ⌘,/Ctrl+,（系统惯例）
-    openSettings: () => openSettingsTab(),
+    openSettings: openSettingsTab,
     findInTask: handleOpenTaskFind,
     toggleSidebar: () => runVisibleWorkspaceCommand(handleToggleSidebar),
     switchTheme: handleSwitchTheme,
@@ -1007,12 +1078,6 @@ export function App({
   });
 
   useEffect(() => {
-    // Polaris：社群入口总开关关闭时不做探测，canOpenCommunity 恒为 false（入口整体消失）。
-    // 探测逻辑与 command 结构都保留，接入自有社群后打开 COMMUNITY_ENTRY_ENABLED 即恢复。
-    if (!COMMUNITY_ENTRY_ENABLED) {
-      setCanOpenCommunityFromQuickPick(false);
-      return;
-    }
     let disposed = false;
 
     void platform.canOpenCommunity(locale).then(
@@ -1055,7 +1120,7 @@ export function App({
         handlers: {
           createTask: () => runVisibleWorkspaceCommand(() => handleCreateTaskIfWritable()),
           openWorkspace: () => runVisibleWorkspaceCommand(onOpenWorkspace),
-          openSettings: () => openSettingsTab(),
+          openSettings: openSettingsTab,
           openSkillsSettings: () => {
             setPendingSettingsPluginIntent("skills");
             openSettingsTab();
@@ -1069,15 +1134,25 @@ export function App({
           openCommunity: handleOpenCommunity,
           openProductDocs: handleOpenProductDocs,
           login: onLogin,
+          logout: onLogout,
           toggleSidebar: () => runVisibleWorkspaceCommand(handleToggleSidebar),
           toggleTerminal: () => runVisibleWorkspaceCommand(handleToggleTerminalIfWritable),
           togglePreview: () => runVisibleWorkspaceCommand(handleToggleBrowser),
           openTerminalTab: () => runVisibleWorkspaceCommand(handleOpenTerminalTabIfWritable),
           openBrowserTab: () => runVisibleWorkspaceCommand(handleOpenBrowserTab),
           openReviewTab: () => runVisibleWorkspaceCommand(handleOpenGitIfWritable),
+          // 「打开扩展日志」与「重新加载扩展」同一条件：有扩展门面（docs/plugins/extension-host.md §16.8）。
+          ...(reloadExtensions
+            ? {
+                reloadExtensions,
+                openExtensionLogs: () => runVisibleWorkspaceCommand(handleOpenExtensionLogs),
+              }
+            : {}),
         },
       }),
     [
+      reloadExtensions,
+      handleOpenExtensionLogs,
       allowOpenWorkspace,
       isOfficeMode,
       canOpenCommunityFromQuickPick,
@@ -1097,6 +1172,7 @@ export function App({
       newTaskShortcutLabel,
       handleCreateTaskIfWritable,
       onLogin,
+      onLogout,
       onOpenWorkspace,
       runVisibleWorkspaceCommand,
       openSettingsTab,
@@ -1163,169 +1239,178 @@ export function App({
           workspace-scoped services 会切成断连代理，不能让反馈提交跟随远程 session 失效。 */}
       <FeedbackHost feedbackService={baseFeedbackService} platform={platform} />
       <PluginUiWorkspaceProvider onOpenSidePane={handleOpenPluginUi}>
-        <WorkspaceShellLayout
-          services={services}
-          workspaceReadOnlyReason={workspaceReadOnlyReason}
-          windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
-          workspaceMainView={workspaceMainView}
-          pluginStoreOpenVersion={pluginStoreOpenVersion}
-          openAutomationId={openAutomationId}
-          openAutomationTab={openAutomationTab}
-          openWorkflow={openWorkflow}
-          onOpenWorkflowConsumed={handleOpenWorkflowConsumed}
-          onOpenSavedWorkflowInHub={handleOpenSavedWorkflowInHub}
-          onWorkspaceMainViewChange={setWorkspaceMainView}
-          onOpenAutomationConsumed={handleOpenAutomationConsumed}
-          handleOpenAutomations={handleOpenAutomations}
-          handleOpenPluginStore={handleOpenPluginStoreForScope}
-          onConnectRemote={onConnectRemote}
-          onSelectRemoteProject={onSelectRemoteProject}
-          onCancelRemoteProject={onCancelRemoteProject}
-          onReconnectRemoteWorkspace={onReconnectRemoteWorkspace}
-          onLogin={onLogin}
-          user={user}
-          reconnectingRemoteWorkspaceKeys={reconnectingRemoteWorkspaceKeys}
-          remoteWorkspaceErrorByWorkspaceKey={remoteWorkspaceErrorByWorkspaceKey}
-          remoteWorkspaceRecoveryByWorkspaceKey={remoteWorkspaceRecoveryByWorkspaceKey}
-          remoteConnectionLogs={remoteConnectionLogs}
-          onCreateTask={handleCreateTaskIfWritable}
-          onCreateConversationTask={onCreateConversationTask}
-          onCreateConversationTaskOnSource={onCreateConversationTaskOnSource}
-          onResolveConversationWorkspace={onResolveConversationWorkspace}
-          onOpenWorkspace={onOpenWorkspace}
-          onOpenFolderFromWorkspaceMenu={onOpenFolderFromWorkspaceMenu}
-          onOpenRemoteWorkspace={onOpenRemoteWorkspace}
-          remoteConnectionInProgress={remoteConnectionInProgress}
-          allowOpenWorkspace={allowOpenWorkspace}
-          webRemoteControlWorkspaceSwitcher={webRemoteControlWorkspaceSwitcher}
-          initialSidebarFileTreeOpen={initialSidebarFileTreeOpen}
-          initialWebRemoteControlMobileNavigationIntent={
-            initialWebRemoteControlMobileNavigationIntent
-          }
-          webRemoteControlTerminalTransportState={webRemoteControlTerminalTransportState}
-          allowRemoteWorkspace={allowRemoteWorkspace}
-          workspaceAbsPath={workspaceAbsPath}
-          workspaceRemoteSessionId={workspaceRemoteSessionId}
-          workspaceIdentity={workspaceIdentity}
-          isWorkspaceVisible={isWorkspaceVisible}
-          isDesktop={isDesktop}
-          isMacDesktop={isMacDesktop}
-          isWindowsDesktop={isWindowsDesktop}
-          workspaceShellZCodeState={workspaceShellZCodeState}
-          theme={theme}
-          isMacFullscreen={isMacFullscreen}
-          desktopWindowChromeState={desktopWindowChromeState}
-          macWindowControlsLeftPaddingPx={macWindowControlsLeftPaddingPx}
-          updateReadyVersion={updateReadyVersion}
-          updateState={updateState}
-          sidebarContainerRef={sidebarContainerRef}
-          toggleSidebarShortcutLabel={toggleSidebarShortcutLabel}
-          newTaskShortcutLabel={newTaskShortcutLabel}
-          goBackShortcutLabel={goBackShortcutLabel}
-          goForwardShortcutLabel={goForwardShortcutLabel}
-          toggleSidePaneShortcutLabel={toggleSidePaneShortcutLabel}
-          toggleSidePaneFullViewShortcutLabel={toggleSidePaneFullViewShortcutLabel}
-          canGoBack={canGoBack}
-          canGoForward={canGoForward}
-          canTaskNavBack={canTaskNavBack}
-          canTaskNavForward={canTaskNavForward}
-          isTerminalOpen={isTerminalOpen}
-          isSidebarVisible={isSidebarVisible}
-          isBrowserOpen={isBrowserOpen}
-          supportsEmbeddedBrowser={supportsEmbeddedBrowser}
-          isGitOpen={isGitOpen}
-          isSidePaneOpen={isSidePaneOpen}
-          sidePaneFullView={supportsSidePaneFullView ? sidePaneFullView : undefined}
-          summaryPanelVariantOverride={summaryPanelVariantOverride}
-          onSummaryPanelVariantOverrideChange={setSummaryPanelVariantOverride}
-          sidePaneState={sidePaneState}
-          recentClosedSidePaneTabs={recentClosedSidePaneTabs}
-          shellPanelIds={shellPanelIds}
-          projectName={projectName}
-          workspaceTabs={workspaceTabs}
-          activeTaskId={activeTaskId}
-          sidePaneOwnerId={sidePaneOwnerId}
-          activeTraceId={activeTraceId}
-          activeSessionId={activeSessionId}
-          activeTaskProvider={activeTaskProvider}
-          resolvedActiveTaskMeta={resolvedActiveTaskMeta}
-          activeTaskTitle={activeTaskTitle}
-          activeTaskChangeSummary={activeTaskChangeSummary}
-          gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
-          gitWorktreeChangeSummary={gitWorktreeChangeSummary}
-          activeGitSourceId={activeGitSourceId}
-          gitState={gitState}
-          browserNavigationRequest={browserNavigationRequest}
-          browserRestoreUrls={browserRestoreUrls}
-          providerConfigFile={providerConfigFile}
-          taskNativeSessionLogFile={taskNativeSessionLogFile}
-          taskSessionFile={taskSessionFile}
-          conversationFindActiveIndex={conversationFindState.activeIndex}
-          conversationFindNavigationRequestId={conversationFindState.navigationRequestId}
-          conversationFindQuery={conversationFindState.query}
-          onConversationFindMatchStateChange={handleConversationFindMatchStateChange}
-          searchResultHighlightRequest={searchResultHighlightRequest}
-          onSearchResultHighlightDone={handleSearchResultHighlightDone}
-          fileChangeFindActiveIndex={fileChangeFindState.activeIndex}
-          fileChangeFindNavigationRequestId={fileChangeFindState.navigationRequestId}
-          fileChangeFindQuery={fileChangeFindState.query}
-          onFileChangeFindMatchCountChange={setFileChangeFindMatchCount}
-          appLogoUrl={appLogoUrl}
-          platform={platform}
-          reloadSessionDisabled={reloadSessionDisabled}
-          reloadSessionPending={reloadSessionPending}
-          handleReloadSession={handleReloadSession}
-          handleSelectTask={handleSelectTask}
-          handleTaskNavBack={handleTaskNavBack}
-          handleTaskNavForward={handleTaskNavForward}
-          handleStartDraftInWorkspace={handleStartDraftInWorkspace}
-          handleOpenCommandCenter={handleOpenQuickPick}
-          handleRefreshGit={handleRefreshGit}
-          handleOpenGitReview={handleOpenGitReview}
-          handleBrowserUrlChange={handleBrowserUrlChange}
-          handleBrowserPageMetadataChange={handleBrowserPageMetadataChange}
-          handleToggleSidebar={handleToggleSidebar}
-          handleToggleTerminal={handleToggleTerminalIfWritable}
-          handleToggleBrowser={handleToggleBrowser}
-          handleOpenBrowserTab={handleOpenBrowserTab}
-          handleOpenBrowserPermissionSettings={handleOpenBrowserPermissionSettings}
-          handleOpenWhiteboard={handleOpenWhiteboard}
-          handleOpenDeveloperTools={handleOpenDeveloperTools}
-          handleOpenFileManager={handleOpenFileManager}
-          handleNavigateFileManager={handleNavigateFileManager}
-          handleOpenPluginMarket={handleOpenPluginMarket}
-          handleOpenTerminalTab={handleOpenTerminalTabIfWritable}
-          handleToggleGit={handleToggleGitIfWritable}
-          handleToggleSidePane={handleToggleSidePane}
-          handleOpenBrowserUrl={handleOpenBrowserUrl}
-          handleOpenCodeViewer={handleOpenCodeViewerIfWritable}
-          handleAutoOpenAssistantPptx={handleAutoOpenAssistantPptx}
-          handleOpenSubagentSession={handleOpenSubagentSession}
-          handleOpenBackgroundBash={handleOpenBackgroundBash}
-          handleOpenSubagentDirectory={handleOpenSubagentDirectory}
-          handleSyncSubagentSessionTabs={handleSyncSubagentSessionTabs}
-          handleOpenSelectionSideChat={handleOpenSelectionSideChat}
-          handleOpenPlanDetail={handleOpenPlanDetail}
-          handleOpenWorkflowRun={handleOpenWorkflowRun}
-          handleOpenWorkflowRunDirectory={handleOpenWorkflowRunDirectory}
-          handleOpenWorkflowActorSession={handleOpenWorkflowActorSession}
-          handleOpenWorkflowWorkspace={handleOpenWorkflowWorkspace}
-          handleOpenWorkflowArtifact={handleOpenWorkflowArtifact}
-          handleCloseCodeViewer={handleCloseCodeViewer}
-          handleCloseGit={handleCloseGit}
-          handleActivateSidePaneTab={handleActivateSidePaneTab}
-          handleOpenNewSidePaneTab={handleOpenNewSidePaneTab}
-          handleReorderSidePaneTab={handleReorderSidePaneTab}
-          handleCloseSidePaneTab={handleCloseSidePaneTab}
-          handleCloseOtherSidePaneTabs={handleCloseOtherSidePaneTabs}
-          handleCloseAllSidePaneTabs={handleCloseAllSidePaneTabs}
-          handleReopenClosedSidePaneTab={handleReopenClosedSidePaneTab}
-          handleBrowserNavigationRequestHandled={handleBrowserNavigationRequestHandled}
-          setIsTerminalOpen={setIsTerminalOpen}
-          setGitSelectedSourceId={setGitSelectedSourceId}
-          // taskFindDialogProps 是对象 prop，内联创建会让 shell 在流式刷新中每轮都看到新引用。
-          taskFindDialogProps={taskFindDialogProps}
-        />
+        {/* 扩展视图标签的打开入口：启动页条目与能力 views.open（docs/plugins/extension-host.md §8）。 */}
+        <ExtensionViewsProvider
+          onOpenTab={handleOpenExtensionView}
+          onOpenLogs={handleOpenExtensionLogs}
+          onStartDraft={handleStartExtensionDraft}
+        >
+          <WorkspaceShellLayout
+            services={services}
+            workspaceReadOnlyReason={workspaceReadOnlyReason}
+            workspaceMainView={workspaceMainView}
+            pluginStoreOpenVersion={pluginStoreOpenVersion}
+            openAutomationId={openAutomationId}
+            openAutomationTab={openAutomationTab}
+            openWorkflow={openWorkflow}
+            onOpenWorkflowConsumed={handleOpenWorkflowConsumed}
+            onOpenSavedWorkflowInHub={handleOpenSavedWorkflowInHub}
+            onWorkspaceMainViewChange={setWorkspaceMainView}
+            onOpenAutomationConsumed={handleOpenAutomationConsumed}
+            handleOpenAutomations={handleOpenAutomations}
+            handleOpenPluginStore={handleOpenPluginStoreForScope}
+            onConnectRemote={onConnectRemote}
+            onSelectRemoteProject={onSelectRemoteProject}
+            onCancelRemoteProject={onCancelRemoteProject}
+            onReconnectRemoteWorkspace={onReconnectRemoteWorkspace}
+            onLogout={onLogout}
+            onLogin={onLogin}
+            user={user}
+            reconnectingRemoteWorkspaceKeys={reconnectingRemoteWorkspaceKeys}
+            remoteWorkspaceErrorByWorkspaceKey={remoteWorkspaceErrorByWorkspaceKey}
+            remoteWorkspaceRecoveryByWorkspaceKey={remoteWorkspaceRecoveryByWorkspaceKey}
+            remoteConnectionLogs={remoteConnectionLogs}
+            onCreateTask={handleCreateTaskIfWritable}
+            onCreateConversationTask={onCreateConversationTask}
+            onCreateConversationTaskOnSource={onCreateConversationTaskOnSource}
+            onResolveConversationWorkspace={onResolveConversationWorkspace}
+            onOpenWorkspace={onOpenWorkspace}
+            onOpenFolderFromWorkspaceMenu={onOpenFolderFromWorkspaceMenu}
+            onOpenRemoteWorkspace={onOpenRemoteWorkspace}
+            remoteConnectionInProgress={remoteConnectionInProgress}
+            allowOpenWorkspace={allowOpenWorkspace}
+            webRemoteControlWorkspaceSwitcher={webRemoteControlWorkspaceSwitcher}
+            initialSidebarFileTreeOpen={initialSidebarFileTreeOpen}
+            initialWebRemoteControlMobileNavigationIntent={
+              initialWebRemoteControlMobileNavigationIntent
+            }
+            webRemoteControlTerminalTransportState={webRemoteControlTerminalTransportState}
+            allowRemoteWorkspace={allowRemoteWorkspace}
+            workspaceAbsPath={workspaceAbsPath}
+            workspaceRemoteSessionId={workspaceRemoteSessionId}
+            workspaceIdentity={workspaceIdentity}
+            isWorkspaceVisible={isWorkspaceVisible}
+            isDesktop={isDesktop}
+            isMacDesktop={isMacDesktop}
+            isWindowsDesktop={isWindowsDesktop}
+            workspaceShellZCodeState={workspaceShellZCodeState}
+            theme={theme}
+            isMacFullscreen={isMacFullscreen}
+            desktopWindowChromeState={desktopWindowChromeState}
+            macWindowControlsLeftPaddingPx={macWindowControlsLeftPaddingPx}
+            windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
+            updateReadyVersion={updateReadyVersion}
+            updateState={updateState}
+            sidebarContainerRef={sidebarContainerRef}
+            toggleSidebarShortcutLabel={toggleSidebarShortcutLabel}
+            newTaskShortcutLabel={newTaskShortcutLabel}
+            goBackShortcutLabel={goBackShortcutLabel}
+            goForwardShortcutLabel={goForwardShortcutLabel}
+            toggleSidePaneShortcutLabel={toggleSidePaneShortcutLabel}
+            toggleSidePaneFullViewShortcutLabel={toggleSidePaneFullViewShortcutLabel}
+            canGoBack={canGoBack}
+            canGoForward={canGoForward}
+            canTaskNavBack={canTaskNavBack}
+            canTaskNavForward={canTaskNavForward}
+            isTerminalOpen={isTerminalOpen}
+            isSidebarVisible={isSidebarVisible}
+            isBrowserOpen={isBrowserOpen}
+            supportsEmbeddedBrowser={supportsEmbeddedBrowser}
+            isGitOpen={isGitOpen}
+            isSidePaneOpen={isSidePaneOpen}
+            sidePaneFullView={supportsSidePaneFullView ? sidePaneFullView : undefined}
+            summaryPanelVariantOverride={summaryPanelVariantOverride}
+            onSummaryPanelVariantOverrideChange={setSummaryPanelVariantOverride}
+            sidePaneState={sidePaneState}
+            recentClosedSidePaneTabs={recentClosedSidePaneTabs}
+            shellPanelIds={shellPanelIds}
+            projectName={projectName}
+            workspaceTabs={workspaceTabs}
+            activeTaskId={activeTaskId}
+            sidePaneOwnerId={sidePaneOwnerId}
+            handleSidePaneDraftPromotion={handleSidePaneDraftPromotion}
+            activeTraceId={activeTraceId}
+            activeSessionId={activeSessionId}
+            activeTaskProvider={activeTaskProvider}
+            resolvedActiveTaskMeta={resolvedActiveTaskMeta}
+            activeTaskTitle={activeTaskTitle}
+            activeTaskChangeSummary={activeTaskChangeSummary}
+            gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+            gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+            activeGitSourceId={activeGitSourceId}
+            gitState={gitState}
+            browserNavigationRequest={browserNavigationRequest}
+            browserRestoreUrls={browserRestoreUrls}
+            providerConfigFile={providerConfigFile}
+            taskNativeSessionLogFile={taskNativeSessionLogFile}
+            taskSessionFile={taskSessionFile}
+            conversationFindActiveIndex={conversationFindState.activeIndex}
+            conversationFindNavigationRequestId={conversationFindState.navigationRequestId}
+            conversationFindQuery={conversationFindState.query}
+            onConversationFindMatchStateChange={handleConversationFindMatchStateChange}
+            searchResultHighlightRequest={searchResultHighlightRequest}
+            onSearchResultHighlightDone={handleSearchResultHighlightDone}
+            fileChangeFindActiveIndex={fileChangeFindState.activeIndex}
+            fileChangeFindNavigationRequestId={fileChangeFindState.navigationRequestId}
+            fileChangeFindQuery={fileChangeFindState.query}
+            onFileChangeFindMatchCountChange={setFileChangeFindMatchCount}
+            appLogoUrl={appLogoUrl}
+            platform={platform}
+            reloadSessionDisabled={reloadSessionDisabled}
+            reloadSessionPending={reloadSessionPending}
+            handleReloadSession={handleReloadSession}
+            handleSelectTask={handleSelectTask}
+            handleTaskNavBack={handleTaskNavBack}
+            handleTaskNavForward={handleTaskNavForward}
+            handleStartDraftInWorkspace={handleStartDraftInWorkspace}
+            handleOpenCommandCenter={handleOpenQuickPick}
+            handleRefreshGit={handleRefreshGit}
+            handleOpenGitReview={handleOpenGitReview}
+            handleBrowserUrlChange={handleBrowserUrlChange}
+            handleBrowserPageMetadataChange={handleBrowserPageMetadataChange}
+            handleToggleSidebar={handleToggleSidebar}
+            handleToggleTerminal={handleToggleTerminalIfWritable}
+            handleToggleBrowser={handleToggleBrowser}
+            handleOpenBrowserTab={handleOpenBrowserTab}
+            handleOpenBrowserPermissionSettings={handleOpenBrowserPermissionSettings}
+            handleOpenWhiteboard={handleOpenWhiteboard}
+            handleOpenDeveloperTools={handleOpenDeveloperTools}
+            handleOpenFileManager={handleOpenFileManager}
+            handleNavigateFileManager={handleNavigateFileManager}
+            handleOpenPluginMarket={handleOpenPluginMarket}
+            handleOpenTerminalTab={handleOpenTerminalTabIfWritable}
+            handleToggleGit={handleToggleGitIfWritable}
+            handleToggleSidePane={handleToggleSidePane}
+            handleOpenBrowserUrl={handleOpenBrowserUrl}
+            handleOpenCodeViewer={handleOpenCodeViewerIfWritable}
+            handleAutoOpenAssistantPptx={handleAutoOpenAssistantPptx}
+            handleOpenSubagentSession={handleOpenSubagentSession}
+            handleOpenBackgroundBash={handleOpenBackgroundBash}
+            handleOpenSubagentDirectory={handleOpenSubagentDirectory}
+            handleSyncSubagentSessionTabs={handleSyncSubagentSessionTabs}
+            handleOpenSelectionSideChat={handleOpenSelectionSideChat}
+            handleOpenPlanDetail={handleOpenPlanDetail}
+            handleOpenWorkflowRun={handleOpenWorkflowRun}
+            handleOpenWorkflowRunDirectory={handleOpenWorkflowRunDirectory}
+            handleOpenWorkflowActorSession={handleOpenWorkflowActorSession}
+            handleOpenWorkflowWorkspace={handleOpenWorkflowWorkspace}
+            handleOpenWorkflowArtifact={handleOpenWorkflowArtifact}
+            handleCloseCodeViewer={handleCloseCodeViewer}
+            handleCloseGit={handleCloseGit}
+            handleActivateSidePaneTab={handleActivateSidePaneTab}
+            handleOpenNewSidePaneTab={handleOpenNewSidePaneTab}
+            handleReorderSidePaneTab={handleReorderSidePaneTab}
+            handleCloseSidePaneTab={handleCloseSidePaneTab}
+            handleCloseOtherSidePaneTabs={handleCloseOtherSidePaneTabs}
+            handleCloseAllSidePaneTabs={handleCloseAllSidePaneTabs}
+            handleReopenClosedSidePaneTab={handleReopenClosedSidePaneTab}
+            handleBrowserNavigationRequestHandled={handleBrowserNavigationRequestHandled}
+            setIsTerminalOpen={setIsTerminalOpen}
+            setGitSelectedSourceId={setGitSelectedSourceId}
+            // taskFindDialogProps 是对象 prop，内联创建会让 shell 在流式刷新中每轮都看到新引用。
+            taskFindDialogProps={taskFindDialogProps}
+          />
+        </ExtensionViewsProvider>
       </PluginUiWorkspaceProvider>
     </>
   );

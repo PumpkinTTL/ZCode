@@ -1,16 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 import type { ProviderSettingsFormModel } from "@/lib/providerSettingsFormTypes.js";
 import type { ModelConnectivityResult } from "@zcode/shared";
-import { Loader2Icon, Trash2, Unplug } from "lucide-react";
+import { LoaderCircle, Trash2, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
-import { ModelBrandIcon } from "@/components/ModelBrandIcon.js";
 import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadge.js";
-import { NimbusModelDisplayBadges } from "@/components/NimbusModelDisplayBadges.js";
-import {
-  getNimbusModelDisplayMeta,
-  isNimbusModelDisplayProvider,
-  useNimbusModelDisplayMetaVersion,
-} from "@/lib/nimbusModelDisplayMeta.js";
 import { Switch } from "@/components/ui/switch.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useProviderModelDraft } from "@/settings/model-provider-section/useProviderModelDraft.js";
@@ -53,9 +46,6 @@ export function ModelRowInput({
   onTest?: (model: string) => Promise<ModelConnectivityResult>;
 }) {
   const { intl, locale } = useZCodeIntl();
-  // 官方模型展示元数据发布后重渲染（仅官方供应商行会命中快照，其余供应商行零变化）。
-  useNimbusModelDisplayMetaVersion();
-  const nimbusDisplayMeta = getNimbusModelDisplayMeta(providerId, model.modelId);
   const { showFeedback } = useProviderDetailFeedback();
   const [isTesting, setIsTesting] = useState(false);
   const [metadataDialogOpen, setMetadataDialogOpen] = useState(false);
@@ -230,7 +220,7 @@ export function ModelRowInput({
   ]);
 
   const testIcon = isTesting ? (
-    <Loader2Icon className="size-3.5 text-foreground-subtle animate-spin" />
+    <LoaderCircle className="size-3.5 text-foreground-subtle animate-spin" />
   ) : (
     <Unplug className="size-3.5 text-foreground-subtle" />
   );
@@ -256,27 +246,12 @@ export function ModelRowInput({
     <div className="space-y-2 px-3 py-2">
       <div className="flex items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          {/* 官方供应商的模型行不贴品牌标（删除模型列表里「官方」语义已足够），
-              其他供应商照旧。 */}
-          {!isNimbusModelDisplayProvider(providerId) ? (
-            <ModelBrandIcon
-              modelId={model.modelId}
-              providerId={providerId}
-              className="pointer-events-none size-4 text-foreground-subtle"
-            />
-          ) : null}
           <span
             data-testid={inputTestId}
             className="min-w-0 truncate font-mono text-ui-base text-foreground"
           >
             {model.modelId}
           </span>
-          {/* 配置行以模型 ID 为主（它就是请求身份），昵称只作补充，避免认不出改的是哪个模型。 */}
-          {model.config.displayName?.trim() ? (
-            <span className="min-w-0 shrink-0 truncate text-ui-sm text-foreground-subtlest">
-              {model.config.displayName.trim()}
-            </span>
-          ) : null}
           <span
             className="inline-flex h-5 max-w-20 shrink-0 items-center truncate rounded-md border border-border bg-surface px-1.5 font-mono text-ui-sm text-foreground-subtle"
             aria-label={contextWindowAccessibleLabel}
@@ -291,7 +266,6 @@ export function ModelRowInput({
           ) ? (
             <ModelInputCapabilityBadge />
           ) : null}
-          {nimbusDisplayMeta ? <NimbusModelDisplayBadges meta={nimbusDisplayMeta} /> : null}
         </div>
         {shouldShowTestButton ? (
           <Button

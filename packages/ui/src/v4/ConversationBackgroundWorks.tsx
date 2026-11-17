@@ -6,6 +6,7 @@ import {
   testId,
 } from "@zcode/shared/test-ids";
 import type { BackgroundWorkSummary } from "@zcode/shared/zcode-protocol-v4";
+import { runUserAction } from "@/lib/userActionTelemetry.js";
 
 export interface ConversationBackgroundWorksProps {
   works: readonly BackgroundWorkSummary[];
@@ -75,7 +76,16 @@ const CancelButton = memo(function CancelButton({
   workId: string;
   onCancel: (workId: string) => void;
 }) {
-  const handleClick = useCallback(() => onCancel(workId), [onCancel, workId]);
+  const handleClick = useCallback(
+    () =>
+      runUserAction({
+        input: { featureId: "conversation.background_work", action: "cancel", trigger: "button" },
+        operation: () => onCancel(workId),
+        completed: { resultSource: "optimistic_projection" },
+        failureStage: "background_work_cancel",
+      }),
+    [onCancel, workId],
+  );
   return (
     <button
       type="button"

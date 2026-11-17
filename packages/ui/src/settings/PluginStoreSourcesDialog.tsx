@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { AlertTriangle, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 import type { ZCodePluginMarketplaceSummary } from "@zcode/shared";
 import { CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
@@ -18,38 +18,12 @@ function isRemovableMarketplace(marketplace: ZCodePluginMarketplaceSummary): boo
   return true;
 }
 
-/**
- * 降级提示：刷新失败但本地仍保有上次成功目录。用中性的提示色（而非报错色），
- * 因为此时商店照常可浏览/安装，不是故障。
- */
-function PluginStoreSourceDegradedNotice({
-  failure,
-}: {
-  failure: NonNullable<ZCodePluginMarketplaceSummary["refreshFailure"]>;
-}) {
-  const { intl } = useZCodeIntl();
-  return (
-    <div
-      className="mt-1 flex min-w-0 items-start gap-1 text-ui-base text-foreground-subtle"
-      data-testid="plugin-store-source-degraded"
-    >
-      <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-      <span className="min-w-0 break-words">
-        {intl.formatMessage(
-          { id: "settings.plugins.store.sources.degraded" },
-          { time: formatSourceTime(failure.failedAt) },
-        )}
-      </span>
-    </div>
-  );
-}
-
 export function PluginStoreSourceRefreshFailure({
   failure,
 }: {
   failure: NonNullable<ZCodePluginMarketplaceSummary["refreshFailure"]>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl, locale } = useZCodeIntl();
   return (
     <div
       className="mt-1 flex min-w-0 items-start gap-1 text-ui-base text-destructive"
@@ -59,7 +33,7 @@ export function PluginStoreSourceRefreshFailure({
       <span className="min-w-0 break-words">
         {intl.formatMessage(
           { id: "settings.plugins.store.sources.refreshFailed" },
-          { time: formatSourceTime(failure.failedAt) },
+          { time: formatSourceTime(failure.failedAt, locale) },
         )}
         {`: ${failure.message}`}
       </span>
@@ -135,18 +109,14 @@ export function PluginStoreSourcesDialog({
                       {marketplace.lastUpdated
                         ? ` · ${intl.formatMessage(
                             { id: "settings.plugins.store.sources.lastUpdated" },
-                            { time: formatSourceTime(marketplace.lastUpdated) },
+                            { time: formatSourceTime(marketplace.lastUpdated, locale) },
                           )}`
                         : ""}
                     </div>
                     {marketplace.refreshFailure &&
                     // claude-plugins-official 的刷新失败不提示（同 pluginManagementStore.updateMarketplace）。
                     marketplace.id !== CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID ? (
-                      marketplace.degraded ? (
-                        <PluginStoreSourceDegradedNotice failure={marketplace.refreshFailure} />
-                      ) : (
-                        <PluginStoreSourceRefreshFailure failure={marketplace.refreshFailure} />
-                      )
+                      <PluginStoreSourceRefreshFailure failure={marketplace.refreshFailure} />
                     ) : null}
                   </div>
                   <Button
@@ -181,7 +151,7 @@ export function PluginStoreSourcesDialog({
                       onClick={() => onRemoveMarketplace(marketplace.id)}
                     >
                       {removing ? (
-                        <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                        <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
                       ) : (
                         <Trash2 className="size-3.5" aria-hidden="true" />
                       )}
@@ -197,8 +167,9 @@ export function PluginStoreSourcesDialog({
   );
 }
 
-function formatSourceTime(value: string): string {
+// 按界面语言格式化时间（不跟系统语言）
+function formatSourceTime(value: string, locale: string): string {
   const time = new Date(value);
   if (Number.isNaN(time.getTime())) return value;
-  return time.toLocaleString();
+  return time.toLocaleString(locale);
 }

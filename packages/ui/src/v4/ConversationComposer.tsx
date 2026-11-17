@@ -1,9 +1,17 @@
+import type { SessionLifecycleSnapshot } from "@zcode/shared";
+import {
+  WorkspaceHookPendingIndicator,
+  WorkspaceMcpPendingIndicator,
+} from "@/v4/WorkspaceHookPendingBanner.js";
+import { StoreContext } from "@/store/StoreProvider.js";
+import { toTelemetryUiMode } from "@/lib/appTelemetry.js";
 import { ComposerSubmissionPendingContext } from "@/project-sidebar/index.js";
 /* oxlint-disable eslint(max-lines) -- composer 集中收口输入区 wiring（附件/草稿/历史/mention），拆分会打散收口粒度。 */
 import { useRemoteProjectReconnect } from "@/hooks/RemoteProjectPresentationContext.js";
 import { useOptionalRemoteWorkspaceController } from "@/remote/useRemoteWorkspaceController.js";
 import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
 import { useRemoteConversationAvailable } from "@/v4/RemoteConversationAvailability.js";
+import { getLocalTtftObserver } from "@/v4/telemetry/local-ttft/contract.js";
 import { formatConversationWorkDuration } from "@/v4/conversationWorkDuration.js";
 /**
  * v4 会话 composer（composer parity）。
@@ -23,7 +31,9 @@ import { formatConversationWorkDuration } from "@/v4/conversationWorkDuration.js
 import {
   memo,
   useCallback,
+  useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -31,8 +41,15 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import { cn } from "@/components/lib/utils.js";
-import { type ZCodeProvider } from "@zcode/shared";
+import { HighspeedComposerBackground } from "@/highspeed/HighspeedActivationVisual.js";
+import { useHighspeedComposerEntrance } from "@/highspeed/useHighspeedComposerEntrance.js";
+import {
+  type HighspeedCardSnapshot,
+  type PlanIdentitySnapshot,
+  type ZCodeProvider,
+} from "@zcode/shared";
 import {
   TID_CHAT_ATTACHMENT_BUTTON,
   TID_CHAT_ATTACHMENT_MENU_ITEM,
@@ -64,6 +81,7 @@ import {
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import {
   ChatErrorBanner,
+  resolveChatErrorBannerDisplayMessage,
   shouldSuppressChatErrorBanner,
   type ChatErrorBannerModelConfigTarget,
 } from "@/ChatErrorBanner.js";
@@ -84,7 +102,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { Spinner } from "@/components/ui/spinner.js";
-import { toast } from "@/components/ui/toast.js";
+import { useComposerVoiceInput, VoiceInputButton } from "@/voice-input/index.js";
 import { ImagePreviewDialog } from "@/components/ai-elements/image-preview-dialog.js";
 import {
   ChatMediaAttachmentPreviewDialog,
@@ -98,6 +116,7 @@ import { advanceComposerDraftRevision } from "@/v4/composer/composerDraftRevisio
 import type { AppSlashCommand } from "@/slashCommandHelpers.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
+import { runUserAction, startUserAction } from "@/lib/userActionTelemetry.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import type { ComposerMentionPrefill } from "@/store/zcodeSessionStoreTypes.js";
 import { FileDisplayIcon, resolveFileDisplayDescriptor } from "@/lib/fileDisplay.js";
@@ -126,6 +145,7 @@ import {
   isWorkspaceFileAddToChatEvent,
 } from "@/lib/workspaceFileDrag.js";
 import { appendWorkspaceFileMentionToComposer } from "@/lib/workspaceFileComposer.js";
+import { resolveProviderBaseURL } from "@/lib/registryProviderView.js";
 import type { ModelSelectionView } from "@zcode/services";
 import type {
   ModelSelectionState,
@@ -136,6 +156,10 @@ import {
   resolveComposerAutoFocus,
   type ComposerAutoFocusOptions,
 } from "@/v4/composer/composerAutoFocus.js";
+import type {
+  ComposerDraftContent,
+  ComposerSubmissionDraftTransaction,
+} from "@/v4/composer/useDraftConfigControl.js";
 import { V4_DRAFT_SCOPE_ROOT, type V4ComposerDraft } from "@/v4/composer/composerDraftStore.js";
 import {
   resolveOppositeFollowupDelivery,
@@ -150,8 +174,15 @@ import {
   registerV4ComposerDraftReader,
   consumeV4ComposerDraftWorkspaceTransferRequest,
 } from "@/v4/composer/composerDraftWorkspaceTransfer.js";
-import { useComposerAttachments } from "@/v4/composer/useComposerAttachments.js";
-import type { ConversationDropTargetController } from "@/v4/composer/conversationDropTarget.js";
+import {
+  buildScopeKey as buildComposerAttachmentScopeKey,
+  useComposerAttachments,
+} from "@/v4/composer/useComposerAttachments.js";
+import { isComposerEditScopeId } from "@/composer-edit-mode/contract.js";
+import {
+  type RegisterConversationDropTarget,
+  type ConversationDropTargetController,
+} from "@/v4/composer/conversationDropTarget.js";
 import { CodeCommentAttachmentChip } from "@/v4/composer/CodeCommentAttachmentChip.js";
 import { removeCodeCommentPreview } from "@/v4/composer/codeCommentPreviewSync.js";
 import {
@@ -161,7 +192,13 @@ import {
 import { useCodeCommentContexts } from "@/v4/composer/useCodeCommentContexts.js";
 import { useWebElementContexts } from "@/v4/composer/useWebElementContexts.js";
 import {
+  webElementScreenshotFiles,
+  type WebElementContextComposerAttachment,
+} from "@/lib/webElementContext.js";
+import {
   PluginUiModelContextChip,
+  type ContextImageAttachmentsOptions,
+  useContextImageAttachments,
   usePluginUiContextImages,
   usePluginUiModelContexts,
 } from "@/plugin-ui/index.js";
@@ -170,6 +207,11 @@ import { PptxElementReferenceChip } from "@/v4/composer/PptxElementReferenceChip
 import { useOpenPptxElementReference } from "@/v4/composer/useOpenPptxElementReference.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import { useConversationSelectionReferences } from "@/v4/composer/useConversationSelectionReferences.js";
+import {
+  dispatchConversationSelectionEdit,
+  recordSentConversationSelections,
+} from "@/lib/conversationSelectionReference.js";
+import { deleteConversationAnnotationWithUndo } from "@/selection-comment/index.js";
 import { ConversationBackgroundWorkTrigger } from "@/v4/composer/ConversationBackgroundWorkTrigger.js";
 import { V4ComposerCuaEntry } from "@/v4/composer/V4ComposerCuaEntry.js";
 import {
@@ -177,14 +219,19 @@ import {
   V4ComposerModelControls,
   type ModelSelectionSource,
 } from "@/v4/composer/V4ComposerToolbar.js";
+import { ComposerStatusSlot } from "@/extension-slots/index.js";
 import {
   resolveV4ComposerConfigPickerState,
   type V4ComposerConfigPicker,
 } from "@/v4/composer/configPickerState.js";
 import { WebElementContextAttachmentChip } from "@/v4/composer/WebElementContextAttachmentChip.js";
+import { ElementMentionSyncPlugin } from "@/v4/composer/ElementMentionSyncPlugin.js";
 import { ConversationSelectionReferenceChip } from "@/v4/composer/ConversationSelectionReferenceChip.js";
 import type { AttachmentPutFn } from "@/v4/composer/attachmentUpload.js";
+import { useScopedConversationTelemetrySupervisor } from "@/v4/telemetry/ConversationTelemetryAttachment.js";
+import type { ConversationPromptTelemetrySeed } from "@/v4/telemetry/conversationTelemetrySupervisor.js";
 import type { ComposerSubmissionConfig } from "@/v4/composer/composerSubmissionConfig.js";
+import { buildV4ConversationPromptTelemetryExtraDetail } from "@/v4/telemetry/conversationPromptTelemetry.js";
 import { pendingCommandRegistry } from "@/v4/pendingCommandRegistry.js";
 import {
   subscribeComposerSubmissionSettled,
@@ -207,6 +254,8 @@ export interface ConversationComposerSendOptions {
   /** Prompt 文本内携带的上下文附件数量；用于阻止 /goal 等本地命令误消费。 */
   contextAttachmentCount?: number;
   conversationQuotes?: import("@zcode/shared").ConversationSelectionText[];
+  /** renderer-only：ACK accepted 后由 SessionPane 绑定真实 commandId/sessionId。 */
+  telemetrySeed?: ConversationPromptTelemetrySeed;
   /** 本次 busy input 的一次性投递覆盖，不改 session 偏好。 */
   requestedDelivery?: "startNow" | "queue" | "guide";
   /** 提交命令创建后由 Composer 订阅权威 projection，覆盖 ACK 丢失后的收口。 */
@@ -217,6 +266,13 @@ export interface ConversationComposerSendOptions {
 }
 
 export type ConversationComposerSendResult = "sent" | "blocked" | "confirmationRequired";
+
+type ComposerSubmit = (
+  heldQueueDisposition?: "clearQueueAndSend" | "keepQueueAndSend",
+  expectedHeldQueueItemIds?: readonly string[],
+  existingTelemetrySeed?: ConversationPromptTelemetrySeed,
+  requestedDelivery?: "startNow" | "queue" | "guide",
+) => Promise<void>;
 function getComposerAttachmentTypeLabel(filename: string, mimeType: string): string {
   const leaf = filename.split(/[\\/]/u).at(-1) ?? filename;
   const dotIndex = leaf.lastIndexOf(".");
@@ -318,73 +374,20 @@ export function applyExternalTextInsertRequestToComposer({
   return request.requestId;
 }
 
-export interface ComposerRestoreRequest {
-  requestId: number;
-  sessionId: string;
-  workspaceKey: string;
-  inputKind: "sendText" | "sendGoalCommand";
-  text: string;
-  attachments: readonly AttachmentRef[];
-  config?: Pick<V4ComposerDraft, "mode" | "planEnabled" | "modelSelection">;
-}
-
-export function applyComposerRestoreRequestToComposer({
-  appliedRequestId,
-  currentSessionId,
-  currentWorkspaceKey,
-  hasDraftContent,
-  inputApi,
-  request,
-  requestFocus,
-  restoreSessionOwnedAttachments,
-  restoreDraftConfig,
-  scheduleDraftPersist,
-  updateText,
-}: {
-  appliedRequestId: number | null;
-  currentSessionId: string | null;
-  currentWorkspaceKey: string;
-  hasDraftContent: boolean;
-  inputApi: Pick<LexicalChatInputHandle, "setText"> | null;
-  request: ComposerRestoreRequest | null | undefined;
-  requestFocus: () => void;
-  restoreSessionOwnedAttachments: (attachments: readonly AttachmentRef[]) => boolean;
-  restoreDraftConfig?: (config: NonNullable<ComposerRestoreRequest["config"]>) => void;
-  scheduleDraftPersist: () => void;
-  updateText: (text: string) => void;
-}): number | null {
-  if (!request || request.requestId === appliedRequestId) {
-    return appliedRequestId;
-  }
-  if (
-    request.sessionId !== currentSessionId ||
-    request.workspaceKey !== currentWorkspaceKey ||
-    hasDraftContent ||
-    !inputApi
-  ) {
-    return appliedRequestId;
-  }
-  if (!restoreSessionOwnedAttachments(request.attachments)) {
-    return appliedRequestId;
-  }
-  inputApi.setText(request.text);
-  updateText(request.text);
-  if (request.config) restoreDraftConfig?.(request.config);
-  scheduleDraftPersist();
-  requestFocus();
-  return request.requestId;
-}
-
 function arePromptHistoryEntriesEqual(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((entry, index) => entry === right[index]);
 }
 
 export interface ConversationComposerProps {
   snapshot: ConversationSnapshot | null;
+  /** 真实命令已发出、权威输入投影尚未接管；直接消费 projection store，不另存展示状态。 */
+  inputPending?: boolean;
   /** 草稿 scope（sessionId；draft 态 null → "__draft__" scope）。 */
+  lifecycle?: SessionLifecycleSnapshot;
   sessionId?: string | null;
   /** Skill catalog authority；草稿预热完成后为 prewarmSessionId，不改变 task/draft 身份。 */
   skillCatalogSessionId?: string | null;
+  pluginUiSessionId?: string | null;
   /** draft 态无 snapshot，但仍可 createSession 首发。 */
   draftMode?: boolean;
   /** renderer 当前草稿配置意图；只在 draftMode 下覆盖迟到的 prewarm projection。 */
@@ -392,13 +395,23 @@ export interface ConversationComposerProps {
   /** SessionPane 注入的完整 Draft owner；生产路径不再由编辑器直接覆盖持久记录。 */
   composerDraft: V4ComposerDraft;
   rootDraftScopeKey?: string;
-  updateComposerContent: (
-    content: Pick<V4ComposerDraft, "text" | "editorStateJson" | "mention">,
-  ) => void;
+  /** 当前草稿 scope incarnation；A₁→B→A₂ 时 token 不复用。 */
+  composerDraftScopeToken: symbol;
+  /** 输入热路径只暂存当前 scope 正文，不触发父级 render 或同步写盘。 */
+  stageComposerContent: (content: ComposerDraftContent) => void;
+  /** effect setup 捕获一次性生命周期收口；切换后仍只写回对应旧 scope。 */
+  captureComposerContentLifecycleCommit: () => (content: ComposerDraftContent) => void;
+  captureComposerSubmissionDraftTransaction: (
+    content: ComposerDraftContent,
+  ) => ComposerSubmissionDraftTransaction;
+  persistComposerContent: (content: ComposerDraftContent) => void;
+  updateComposerContent: (content: ComposerDraftContent) => void;
   replaceComposerDraft: (draft: Omit<V4ComposerDraft, "updatedAt">) => void;
   /** 当前 Composer 是否能构造完整 Submission；空模型或空 Reasoning 时为 false。 */
   submissionReady?: boolean;
   createSubmissionFromComposer?: () => ComposerSubmissionConfig | null;
+  /** 仅供发送埋点冻结模型维度；包含草稿初始化 config 与显式 intent 的合并值。 */
+  telemetryDraftConfig?: Partial<SessionConfigState>;
   /**
    * 空态 contextHeader（m5-composer-parity）：workspace 切换菜单 + Git 分支
    * 切换器，渲染在编辑器上方（旧 ChatViewComposer contextHeaderContent 同位）。
@@ -419,7 +432,17 @@ export interface ConversationComposerProps {
    */
   blockingRequestId?: string | null;
   disabled?: boolean;
+  modelSelectionPending?: boolean;
   onRetryInitialization?: () => void;
+  onRetryError?: () => void;
+  /** 当前 Task 可用的 Highspeed 卡；只影响静态标识和模型锁定。 */
+  highspeedCard?: HighspeedCardSnapshot | null;
+  /**
+   * 发送路径 draw 新命中登记的一次性激活请求（值为 cardId）。
+   * 命中当前卡时才播放激活动效，composer 锁定入场方式后经回调消费；切回、恢复与重挂载不重播。
+   */
+  highspeedActivationCardId?: string | null;
+  onHighspeedActivationApplied?: (cardId: string) => void;
   /**
    * 是否在新建任务 / 切换会话 / 挂载后自动把光标聚焦到输入框（默认开）。
    * 竖切多 pane 时由宿主传入 SessionPane.focused，仅焦点 pane 聚焦、后台 pane 不抢焦点。
@@ -443,6 +466,10 @@ export interface ConversationComposerProps {
   /** 承载 transport 暴露 runtime 存活态时优先用它，替代 onRuntimeRestart。 */
   onRuntimeLifecycle?: (listener: (state: "available" | "unavailable") => void) => () => void;
   provider?: ZCodeProvider;
+  /** 宿主 pane 与 workspace 遮罩共同裁决的真实可见性，仅用于 visible-only telemetry。 */
+  telemetryVisible?: boolean;
+  /** 点击发送时读取套餐身份；二次确认会继续复用同一份冻结 seed。 */
+  readPlanIdentitySnapshot?: () => PlanIdentitySnapshot;
   onSendText: (
     text: string,
     options?: ConversationComposerSendOptions,
@@ -458,7 +485,7 @@ export interface ConversationComposerProps {
     model: string,
     sourceModel: ModelSelectionSource | null,
     reasoningLevel?: string,
-  ) => void;
+  ) => void | Promise<void>;
   /** 选中思考深度；同时带上用户操作时看到的模型，避免异步回流后把 thought 归到另一模型。 */
   onSelectThought: (thought: string, modelContext: { provider: string; model: string }) => void;
   onSwitchMode: (mode: string) => void;
@@ -482,7 +509,7 @@ export interface ConversationComposerProps {
   onDismissError?: () => void;
   /** 无可用模型横幅的恢复动作；由 SessionPane 注入壳层导航，组件不直接操作 tab。 */
   onOpenModelSettings?: () => void;
-  /** 缺模型横幅措辞目标（remote=远端 Registry 目录）；升级动作已随业务砍除，不接。 */
+  onOpenModelUpgrade?: () => void;
   modelConfigTarget?: ChatErrorBannerModelConfigTarget;
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
   /**
@@ -497,17 +524,29 @@ export interface ConversationComposerProps {
   externalTextInsertRequest?: ExternalTextInsertRequest | null;
   onExternalTextInsertApplied?: (requestId: number) => void;
   /**
-   * 队列“编辑”在 delete ACK 后把完整未来意图取回输入框。
-   * requestId + session/workspace binding 保证幂等且不会串写其他 task。
+   * composer 编辑态（docs/ui/composer-edit-mode.md）：草稿切到 edit scope，原草稿留在原 scope；
+   * 退出编辑态只需切回，即可完整恢复原草稿。缺省 = sessionId 对应的普通 scope。
    */
-  composerRestoreRequest?: ComposerRestoreRequest | null;
-  onComposerRestoreApplied?: (requestId: number) => void;
+  draftScopeId?: string;
+  /** 当前会话 CLI 支持注释评论时，注释列表提供“编辑/添加评论”入口（在正文编号处打开编辑浮层）。 */
+  selectionCommentEnabled?: boolean;
+  /** 编辑态状态条，渲染在输入框卡片内顶部。 */
+  editBar?: ReactNode;
+  /** 点击原消息位置的「正在下方编辑」占位时递增：只聚焦输入框，不滚动。 */
+  editFocusRequest?: number;
+  /** 状态条的「对话 + 文件重置」等编辑态动作递增：按当前内容走同一提交流程。 */
+  editSubmitRequest?: number;
+  /**
+   * 一次提交已被接纳且附件已移交、草稿已结算后回调（scopeId = 提交时的草稿 scope）。
+   * composer 编辑态据此退出：必须晚于附件 adopt，否则切回原 scope 会把新附件当未发送清理。
+   */
+  onSubmissionSettled?: (scopeId: string) => void;
   /** 副屏会话不提供 goal 能力；协议层仍会拒绝直接调用。 */
   suppressGoalCommands?: boolean;
   /** App 层本地斜杠命令（如 `/side`），由 SessionPane 按门禁组装后透传。 */
   appSlashCommands?: readonly AppSlashCommand[];
   /** 把 composer 的 drop 路由暴露给整个对话 pane / 桌面草稿标题栏。 */
-  onDropTargetControllerChange?: (controller: ConversationDropTargetController | null) => void;
+  onDropTargetControllerChange?: RegisterConversationDropTarget;
 }
 
 function formatAttachmentLineCount(attachment: ChatComposerAttachment, locale: string): string {
@@ -515,25 +554,42 @@ function formatAttachmentLineCount(attachment: ChatComposerAttachment, locale: s
   return formatter.format(typeof attachment.lineCount === "number" ? attachment.lineCount : 0);
 }
 
+const WEB_ELEMENT_CONTEXT_IMAGE_OPTIONS: ContextImageAttachmentsOptions<WebElementContextComposerAttachment> =
+  { toFiles: webElementScreenshotFiles, removeStrategy: "attached" };
+
 function ConversationComposerImpl({
   snapshot,
+  inputPending = false,
+  lifecycle,
   sessionId = null,
   skillCatalogSessionId = sessionId,
+  pluginUiSessionId = sessionId,
   draftMode = false,
   draftConfig,
   composerDraft,
+  composerDraftScopeToken,
   rootDraftScopeKey,
+  stageComposerContent,
+  captureComposerContentLifecycleCommit,
+  captureComposerSubmissionDraftTransaction,
   updateComposerContent,
+  persistComposerContent,
   replaceComposerDraft,
   submissionReady = true,
   createSubmissionFromComposer,
+  telemetryDraftConfig,
   contextHeader,
   centered = false,
   layout = "stacked",
   workingDurationMs,
   blockingRequestId = null,
   disabled: disabledProp = false,
+  modelSelectionPending = false,
   onRetryInitialization,
+  onRetryError,
+  highspeedCard = null,
+  highspeedActivationCardId = null,
+  onHighspeedActivationApplied,
   autoFocusEnabled = true,
   isWebRemoteControl = false,
   workspacePath,
@@ -548,6 +604,8 @@ function ConversationComposerImpl({
   onRuntimeRestart,
   onRuntimeLifecycle,
   provider,
+  telemetryVisible = true,
+  readPlanIdentitySnapshot,
   onSendText,
   onTextChange,
   onDraftStateChange,
@@ -563,13 +621,18 @@ function ConversationComposerImpl({
   error,
   onDismissError,
   onOpenModelSettings,
+  onOpenModelUpgrade,
   modelConfigTarget = "local",
   onOpenCodeViewer,
   listenAddToChatEvents = true,
   externalTextInsertRequest = null,
   onExternalTextInsertApplied,
-  composerRestoreRequest = null,
-  onComposerRestoreApplied,
+  draftScopeId: draftScopeIdProp,
+  selectionCommentEnabled = false,
+  editBar,
+  editFocusRequest = 0,
+  editSubmitRequest = 0,
+  onSubmissionSettled,
   suppressGoalCommands = false,
   appSlashCommands,
   onDropTargetControllerChange,
@@ -594,13 +657,49 @@ function ConversationComposerImpl({
   const disabled = disabledProp || !remoteAvailable || targetSelectionPending;
   const { intl, locale } = useZCodeIntl();
   const services = useOptionalServices();
+  const conversationTelemetry = useScopedConversationTelemetrySupervisor({
+    workspacePath,
+    ...(workspaceIdentity ? { workspaceIdentity } : {}),
+    ...(remoteSessionId ? { remoteSessionId } : {}),
+  });
   const draftScopeId =
+    draftScopeIdProp ??
     sessionId ??
     (rootDraftScopeKey ? `${V4_DRAFT_SCOPE_ROOT}:${rootDraftScopeKey}` : V4_DRAFT_SCOPE_ROOT);
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const configPickerScopeKey = `${workspaceKey}\0${draftScopeId}`;
-  const [text, setText] = useState("");
+  const [reloadText, setReloadText] = useState(false);
+  const reloadTextRef = useRef(false);
+  const [textPresence, setTextPresence] = useState({ raw: false, trimmed: false });
+  const textPresenceRef = useRef(textPresence);
+  textPresenceRef.current = textPresence;
   const [pending, setPending] = useState(false);
+  const [presentedHighspeedCardId, setPresentedHighspeedCardId] = useState<string | null>(null);
+  const [highspeedSweepActive, setHighspeedSweepActive] = useState(false);
+  const highspeedCardId = highspeedCard?.cardId ?? null;
+  const highspeedEntrance = useHighspeedComposerEntrance({
+    cardId: highspeedCardId,
+    activationCardId: highspeedActivationCardId,
+    onActivationApplied: onHighspeedActivationApplied,
+  });
+  const highspeedEntranceAnimated = highspeedEntrance === "activation";
+  // 恢复入场（切回 Task、快照恢复、重挂载）不经扩散交接，卡片出现即呈现模型与倒计时。
+  const highspeedPresented =
+    highspeedCardId !== null &&
+    (!highspeedEntranceAnimated || presentedHighspeedCardId === highspeedCardId);
+  const handleHighspeedModelTransitionStart = useCallback(() => {
+    // 只记录已完成视觉交接的卡片身份，不改变卡片有效性或发送状态。
+    setPresentedHighspeedCardId(highspeedCardId);
+  }, [highspeedCardId]);
+  useEffect(() => {
+    // 扫光属于激活动效，只在 draw 新命中的交接后播放一次。
+    if (!highspeedPresented || !highspeedEntranceAnimated) {
+      setHighspeedSweepActive(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setHighspeedSweepActive(true), 1_900);
+    return () => window.clearTimeout(timer);
+  }, [highspeedEntranceAnimated, highspeedPresented]);
   const [configPickerState, setConfigPickerState] = useState<{
     scopeKey: string;
     activePicker: V4ComposerConfigPicker | null;
@@ -638,6 +737,7 @@ function ConversationComposerImpl({
   );
   const [heldQueueConfirmation, setHeldQueueConfirmation] = useState<{
     queueItemIds: readonly string[];
+    telemetrySeed: ConversationPromptTelemetrySeed;
     requestedDelivery?: "startNow" | "queue" | "guide";
   } | null>(null);
   const [sendTooltipOpen, setSendTooltipOpen] = useState(false);
@@ -645,15 +745,33 @@ function ConversationComposerImpl({
   const textRef = useRef("");
   const contentRevisionRef = useRef(0);
   const pendingRef = useRef(false);
+  const uiStore = useContext(StoreContext);
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
+  // 指向最新渲染的 submit：等待语音识别后由它重新读取最新的附件、引用和可发送状态。
+  const latestSubmitRef = useRef<ComposerSubmit | null>(null);
   // 这条线断过一次：composer 原本读一个平行的 sharedContextImport prop，而 SessionPane 从没
   // 传过它（全仓 `sharedContextImport=` 零命中），于是首条消息永远不带 sharedContextRefs。
   // 现在从必然拿到的 snapshot 推导，理由与边界见 resolveAttachableShareContext。
   const activeShareContext = resolveAttachableShareContext(snapshot?.sharedContextImport);
   const pendingShareContext = activeShareContext?.status === "pending" ? activeShareContext : null;
   const inputApiRef = useRef<LexicalChatInputHandle | null>(null);
+  // 语音输入只在桌面本机可用（docs/chat/composer-voice-input.md）；手机远控不显示。
+  const voiceInput = useComposerVoiceInput({
+    inputApiRef,
+    sessionId,
+    enabled: !isWebRemoteControl,
+  });
+  const settleVoiceInput = voiceInput.settle;
+  const composerMountedRef = useRef(true);
+  useEffect(() => {
+    composerMountedRef.current = true;
+    return () => {
+      composerMountedRef.current = false;
+    };
+  }, []);
   const commandResolutionCleanupsRef = useRef(new Set<() => void>());
+  const reportedErrorKeysRef = useRef(new Set<string>());
   const isMobileTextInputViewport = useIsMobileTextInputViewport();
   const primaryModifierPressed = usePrimaryFollowupModifier();
   const appleKeyboardPlatform = isAppleKeyboardPlatform();
@@ -677,16 +795,31 @@ function ConversationComposerImpl({
   const updateText = useCallback(
     (next: string) => {
       textRef.current = next;
+      const reload = next.trim() === "/reload";
+      if (reloadTextRef.current !== reload) {
+        reloadTextRef.current = reload;
+        setReloadText(reload);
+      }
       contentRevisionRef.current += 1;
       advanceComposerDraftRevision(workspacePath, workspaceIdentity);
-      setText(next);
+      const nextPresence = { raw: next.length > 0, trimmed: next.trim().length > 0 };
+      const currentPresence = textPresenceRef.current;
+      if (
+        currentPresence.raw !== nextPresence.raw ||
+        currentPresence.trimmed !== nextPresence.trimmed
+      ) {
+        textPresenceRef.current = nextPresence;
+        setTextPresence(nextPresence);
+      }
       onTextChange?.(next);
     },
     [onTextChange, workspaceIdentity, workspacePath],
   );
 
   const initialization = snapshot?.runtimeInitialization;
-  const runtimeBlocked = initialization !== undefined && initialization.status !== "ready";
+  const runtimeBlocked =
+    (initialization !== undefined && initialization.status !== "ready") ||
+    (lifecycle !== undefined && lifecycle.state !== "ready");
 
   // ── 附件全链路（选择/粘贴/拖拽/画板/预传/门禁）──
   const attachmentsApi = useComposerAttachments({
@@ -761,10 +894,10 @@ function ConversationComposerImpl({
       handleConversationDrop,
     ],
   );
-  useEffect(() => {
-    onDropTargetControllerChange?.(dropTargetController);
-    return () => onDropTargetControllerChange?.(null);
-  }, [dropTargetController, onDropTargetControllerChange]);
+  useLayoutEffect(
+    () => onDropTargetControllerChange?.(dropTargetController),
+    [dropTargetController, onDropTargetControllerChange],
+  );
   const [attachmentPreviewIndex, setAttachmentPreviewIndex] = useState(0);
   const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
   const [pdfAttachmentPreview, setPdfAttachmentPreview] =
@@ -780,8 +913,9 @@ function ConversationComposerImpl({
   const {
     contexts: webElementContexts,
     hasContexts: hasWebElementContexts,
-    removeContext: removeWebElementContext,
-    clearContexts: clearWebElementContexts,
+    removeContextByUser: removeWebElementContextByUser,
+    clearContextsByUser: clearWebElementContextsByUser,
+    removeSentContexts: removeSentWebElementContexts,
   } = useWebElementContexts({
     workspacePath,
     workspaceIdentity,
@@ -790,13 +924,50 @@ function ConversationComposerImpl({
     listenAddToChatEvents: listenAddToChatEvents && !disabled,
     scopeId: draftScopeId,
   });
+  // 设计模式点选的元素（inline）在正文里是元素 token；普通网页「选择元素」的仍是输入框上方的元素标签
+  const [inlineWebElementContexts, pillWebElementContexts] = useMemo(() => {
+    const inline: WebElementContextComposerAttachment[] = [];
+    const pill: WebElementContextComposerAttachment[] = [];
+    for (const context of webElementContexts) (context.inline ? inline : pill).push(context);
+    return [inline, pill];
+  }, [webElementContexts]);
+  const elementMentions = useMemo(
+    () =>
+      inlineWebElementContexts.map((context) => ({
+        id: context.id,
+        label: context.accessibleName || context.text || context.tagName.toLowerCase(),
+      })),
+    [inlineWebElementContexts],
+  );
+  const elementMentionPlugin = useMemo(
+    () => (
+      <ElementMentionSyncPlugin
+        mentions={elementMentions}
+        onRemovedByUser={(ids) => ids.forEach(removeWebElementContextByUser)}
+      />
+    ),
+    [elementMentions, removeWebElementContextByUser],
+  );
+  // 设计模式元素 token 的截图 → 本 composer 的图片附件（预上传、随消息发出），但不在附件行出缩略图：正文里已经有 token。
+  // token 覆盖 / 删除 / 切会话时撤掉（切会话撤旧 scope 的）。普通网页的元素卡片不带截图（11-05 反馈）。
+  const webElementScreenshotIds = useContextImageAttachments(
+    inlineWebElementContexts,
+    attachmentsApi,
+    WEB_ELEMENT_CONTEXT_IMAGE_OPTIONS,
+  );
+  // 上传失败的截图照常显示（!3450 SG-03）：失败会挡住发送，藏起来用户就看不到原因和重试入口
+  const isHiddenWebElementScreenshot = useCallback(
+    (attachment: { id: string; uploadStatus?: string }) =>
+      webElementScreenshotIds.has(attachment.id) && attachment.uploadStatus !== "failed",
+    [webElementScreenshotIds],
+  );
   // 插件 UI 经 ui/update-model-context 附加的上下文；按 sessionId 接收，随发送清空。
   const {
     contexts: pluginUiContexts,
     hasContexts: hasPluginUiContexts,
     removeContext: removePluginUiContext,
     clearContexts: clearPluginUiContexts,
-  } = usePluginUiModelContexts({ sessionId, workspacePath, workspaceIdentity });
+  } = usePluginUiModelContexts({ sessionId: pluginUiSessionId, workspacePath, workspaceIdentity });
   // 上下文里的 image 块 → 本 composer 的图片附件，随下一回合发送。
   usePluginUiContextImages(pluginUiContexts, attachmentsApi);
   const {
@@ -823,18 +994,22 @@ function ConversationComposerImpl({
     removeReference: removeConversationSelectionReference,
     clearReferences: clearConversationSelectionReferences,
   } = useConversationSelectionReferences({
-    sessionId,
+    // 编辑态的会话引用属于 edit scope，不能与原草稿共用同一份。
+    sessionId: draftScopeIdProp ?? sessionId,
     workspaceKey,
     draftScopeKey: rootDraftScopeKey,
+    liveSourceRows: draftScopeIdProp ? null : snapshot?.rows,
   });
   const hasConversationSelectionReferences = conversationSelectionReferences.length > 0;
 
   // ── 草稿 per-session 持久化（切会话/刷新不丢；mention pill 经 editorStateJson 保真）──
   const draftScopeRef = useRef(draftScopeId);
+  const editorDraftScopeTokenRef = useRef(composerDraftScopeToken);
   const draftTargetRef = useRef({
     workspacePath,
     workspaceIdentity,
     scopeId: draftScopeId,
+    scopeToken: composerDraftScopeToken,
   });
   const ownerDraftRef = useRef({
     draft: composerDraft,
@@ -843,17 +1018,25 @@ function ConversationComposerImpl({
     scopeId: draftScopeId,
   });
   const draftPersistTimerRef = useRef<number | null>(null);
-  const suppressDraftPersistRef = useRef(false);
+  const activeSubmissionDraftTransactionRef = useRef<ComposerSubmissionDraftTransaction | null>(
+    null,
+  );
 
   const snapshotDraftOfEditor = useCallback((): {
     text: string;
     editorStateJson?: string;
   } => {
-    const currentText = textRef.current;
+    let currentText = textRef.current;
     let editorStateJson: string | undefined;
     try {
-      const editorState = inputApiRef.current?.getEditorState();
-      editorStateJson = editorState ? JSON.stringify(editorState.toJSON()) : undefined;
+      const inputApi = inputApiRef.current;
+      const editorState = inputApi?.getEditorState();
+      if (inputApi && editorState) {
+        // Bug 根因：IME 候选阶段不向 React 发布正文，textRef 会暂时落后于 Lexical。
+        // 生命周期 flush 必须直接读取编辑器事实，否则 compositionend 前切任务或关窗会丢草稿。
+        currentText = inputApi.getMarkdown();
+        editorStateJson = JSON.stringify(editorState.toJSON());
+      }
     } catch (error) {
       logger.warn(`[v4-composer] 草稿 editorState 序列化失败: ${String(error)}`);
     }
@@ -873,18 +1056,21 @@ function ConversationComposerImpl({
 
   const persistDraftNow = useCallback(
     (scopeId: string) => {
-      if (suppressDraftPersistRef.current) return;
+      if (activeSubmissionDraftTransactionRef.current?.matchesTarget(composerDraftScopeToken)) {
+        return;
+      }
       const content = snapshotDraftOfEditor();
       if (scopeId === draftScopeRef.current) {
-        updateComposerContent(content);
+        persistComposerContent(content);
         return;
       }
     },
-    [snapshotDraftOfEditor, updateComposerContent, workspaceIdentity, workspacePath],
+    [composerDraftScopeToken, snapshotDraftOfEditor, persistComposerContent],
   );
 
   const scheduleDraftPersist = useCallback(() => {
     if (typeof window === "undefined") return;
+    stageComposerContent({ text: textRef.current });
     if (draftPersistTimerRef.current !== null) {
       window.clearTimeout(draftPersistTimerRef.current);
     }
@@ -892,7 +1078,7 @@ function ConversationComposerImpl({
       draftPersistTimerRef.current = null;
       persistDraftNow(draftScopeRef.current);
     }, 350);
-  }, [persistDraftNow]);
+  }, [persistDraftNow, stageComposerContent]);
 
   // ── 自动聚焦（新建任务 / 切会话 / 挂载后把光标交还输入框）──
   // 触发源：startDraft 递增的 draftFocusVersion（覆盖 Cmd/Ctrl+N 与所有「新建任务」入口）、
@@ -909,9 +1095,11 @@ function ConversationComposerImpl({
   const pendingFocusRef = useRef(false);
   // 本次 focus 是否由程序触发（见 flushPendingFocus），供 send_input_focus 过滤非用户动作。
   const programmaticFocusRef = useRef(false);
+  // 发送键与 Enter 共用同一个 form submit；按钮 onClick 早于 submit 触发，
+  // 借此区分 send_click 的 send_trigger，读取后立刻复位回默认的 shortcut。
+  const sendTriggerRef = useRef<"button" | "shortcut">("shortcut");
   // 修饰键点击先于 form submit；这里只保存这一拍的 delivery 反转意图，submit 消费后清零。
   const reversePointerDeliveryRef = useRef(false);
-  const appliedComposerRestoreRequestRef = useRef<number | null>(null);
   const appliedExternalTextInsertRequestRef = useRef<number | null>(null);
   // 决策入参经 ref 读取，避免把 autoFocusEnabled/disabled/viewport 灌进 scope effect 依赖，
   // 触发多余的草稿重恢复（disabled 变化本不应重放草稿）。
@@ -966,66 +1154,29 @@ function ConversationComposerImpl({
     scopeKey: `${workspaceKey}\0${draftScopeId}`,
   });
 
+  // 离开 composer 编辑态的 edit scope 时（取消、切换目标）丢弃其中未提交的附件；
+  // 已提交的附件在结算时已 adopt 并移除，这里只剩需要按未发送规则清理的部分。
+  const previousDraftScopeIdRef = useRef(draftScopeId);
   useEffect(() => {
-    if (!composerRestoreRequest) return;
-    const applyRequest = () => {
-      const nextAppliedRequestId = applyComposerRestoreRequestToComposer({
-        appliedRequestId: appliedComposerRestoreRequestRef.current,
-        currentSessionId: sessionId,
-        currentWorkspaceKey: workspaceKey,
-        hasDraftContent:
-          textRef.current.length > 0 ||
-          attachmentsApi.attachments.length > 0 ||
-          codeCommentContexts.length > 0 ||
-          webElementContexts.length > 0 ||
-          pptxElementReferences.length > 0 ||
-          conversationSelectionReferences.length > 0 ||
-          pluginUiContexts.length > 0,
-        inputApi: inputApiRef.current,
-        request: composerRestoreRequest,
-        requestFocus: requestComposerFocus,
-        restoreSessionOwnedAttachments: attachmentsApi.restoreSessionOwnedAttachments,
-        // 撤回项携带独立 Submission 配置；沿用草稿 owner，一次恢复且保留已处理授权标记。
-        restoreDraftConfig: (config) =>
-          replaceComposerDraft({
-            ...ownerDraftRef.current.draft,
-            ...config,
-            text: composerRestoreRequest.text,
-            editorStateJson: undefined,
-            mention: undefined,
-          }),
-        scheduleDraftPersist,
-        updateText,
-      });
-      const appliedNow =
-        nextAppliedRequestId === composerRestoreRequest.requestId &&
-        appliedComposerRestoreRequestRef.current !== composerRestoreRequest.requestId;
-      appliedComposerRestoreRequestRef.current = nextAppliedRequestId;
-      if (appliedNow) onComposerRestoreApplied?.(composerRestoreRequest.requestId);
-      return nextAppliedRequestId === composerRestoreRequest.requestId;
-    };
-    if (applyRequest()) return;
-    if (typeof requestAnimationFrame !== "function") return;
-    const frame = requestAnimationFrame(applyRequest);
-    return () => cancelAnimationFrame(frame);
-  }, [
-    attachmentsApi.attachments.length,
-    attachmentsApi.restoreSessionOwnedAttachments,
-    codeCommentContexts.length,
-    composerRestoreRequest,
-    conversationSelectionReferences.length,
-    onComposerRestoreApplied,
-    replaceComposerDraft,
-    requestComposerFocus,
-    scheduleDraftPersist,
-    sessionId,
-    updateText,
-    webElementContexts.length,
-    pptxElementReferences.length,
-    pluginUiContexts.length,
-    workspaceKey,
-  ]);
+    const previousScopeId = previousDraftScopeIdRef.current;
+    previousDraftScopeIdRef.current = draftScopeId;
+    if (previousScopeId === draftScopeId || !isComposerEditScopeId(previousScopeId)) return;
+    attachmentsApi.clearAttachments(
+      undefined,
+      buildComposerAttachmentScopeKey(workspacePath, workspaceIdentity, previousScopeId),
+    );
+  }, [attachmentsApi, draftScopeId, workspaceIdentity, workspacePath]);
 
+  const lastEditFocusRequestRef = useRef(editFocusRequest);
+  useEffect(() => {
+    if (lastEditFocusRequestRef.current === editFocusRequest) return;
+    lastEditFocusRequestRef.current = editFocusRequest;
+    // 占位点击是用户显式意图：直接聚焦，不受自动聚焦策略限制，也不滚动时间线。
+    inputApiRef.current?.focus();
+  }, [editFocusRequest]);
+
+  // 最近一次已把草稿载入 Lexical 的 edit scope；只用于编辑态顶部内容的显示时机。
+  const [appliedDraftScopeId, setAppliedDraftScopeId] = useState<string | null>(null);
   // scope 切换：先落旧 scope 草稿，再恢复新 scope（editorStateJson 优先，退纯文本）。
   useEffect(() => {
     const previousTarget = draftTargetRef.current;
@@ -1034,7 +1185,10 @@ function ConversationComposerImpl({
       previousTarget.workspacePath !== workspacePath ||
       previousTarget.workspaceIdentity !== workspaceIdentity;
     let transferredDraft: ReturnType<typeof snapshotDraftOfEditor> | null = null;
-    if (targetChanged && !suppressDraftPersistRef.current) {
+    if (
+      targetChanged &&
+      !activeSubmissionDraftTransactionRef.current?.matchesTarget(previousTarget.scopeToken)
+    ) {
       if (draftPersistTimerRef.current !== null) {
         window.clearTimeout(draftPersistTimerRef.current);
         draftPersistTimerRef.current = null;
@@ -1060,10 +1214,17 @@ function ConversationComposerImpl({
       workspacePath,
       workspaceIdentity,
       scopeId: draftScopeId,
+      scopeToken: composerDraftScopeToken,
     };
 
     const draft = transferredDraft ?? composerDraft;
     const restoreDraftInto = (api: LexicalChatInputHandle) => {
+      // Composer 跨会话复用时，恢复正文也曾推入同一 undo 栈，留下旧会话内容。
+      // 在新 scope 回填前断开旧历史；晋升沿用 token，项目解绑沿用正文，都不结束编辑周期。
+      if (editorDraftScopeTokenRef.current !== composerDraftScopeToken && !transferredDraft) {
+        api.clearHistory();
+      }
+      editorDraftScopeTokenRef.current = composerDraftScopeToken;
       if (!draft) {
         if (textRef.current) {
           api.clear();
@@ -1084,8 +1245,13 @@ function ConversationComposerImpl({
     let unsubscribeSettled: (() => void) | null = null;
     const applyDraft = () => {
       const api = inputApiRef.current;
+      if (api) restoreDraftInto(api);
+      // 与草稿正文同一帧显示编辑态顶部内容（见 editPresentationReady）；输入框未就绪时
+      // 没有正文可等，也必须放行，否则编辑态状态条（含「取消」）不会出现。
+      if (isComposerEditScopeId(draftScopeId)) {
+        flushSync(() => setAppliedDraftScopeId(draftScopeId));
+      }
       if (!api) return;
-      restoreDraftInto(api);
       // Bug 根因（R3A-B-07）：ACK 丢失时传输先 reject，提交正文被恢复回草稿；随即断连让
       // SessionPane 连同本组件卸载，闭包里的结算订阅一起消失。重连重挂后正文从草稿回填，
       // 权威 projection 到达却无人清空，用户再点发送就重复归属。这里在回填后向模块级账本
@@ -1125,6 +1291,7 @@ function ConversationComposerImpl({
     // 依赖收敛到 scope/workspace：draft 恢复只应发生在 scope 切换或 workspace 切换。
   }, [
     draftScopeId,
+    composerDraftScopeToken,
     persistDraftNow,
     requestComposerFocus,
     snapshotDraftOfEditor,
@@ -1192,11 +1359,14 @@ function ConversationComposerImpl({
   // 刷新/关窗前落盘当前草稿。
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const commitLifecycleContent = captureComposerContentLifecycleCommit();
     const flush = () => persistDraftNow(draftScopeRef.current);
     window.addEventListener("pagehide", flush);
     window.addEventListener("blur", flush);
     return () => {
-      flush();
+      if (!activeSubmissionDraftTransactionRef.current?.matchesTarget(composerDraftScopeToken)) {
+        commitLifecycleContent(snapshotDraftOfEditor());
+      }
       window.removeEventListener("pagehide", flush);
       window.removeEventListener("blur", flush);
       if (draftPersistTimerRef.current !== null) {
@@ -1206,7 +1376,12 @@ function ConversationComposerImpl({
       for (const cleanup of commandResolutionCleanupsRef.current) cleanup();
       commandResolutionCleanupsRef.current.clear();
     };
-  }, [persistDraftNow]);
+  }, [
+    captureComposerContentLifecycleCommit,
+    composerDraftScopeToken,
+    persistDraftNow,
+    snapshotDraftOfEditor,
+  ]);
 
   // ── prompt history（per-workspace localStorage，↑/↓ 导航由 PromptHistoryPlugin 消费）──
   const [promptHistory, setPromptHistory] = useState<readonly string[]>(() =>
@@ -1224,7 +1399,7 @@ function ConversationComposerImpl({
   });
   const canStop = Boolean(snapshot?.control.canStop);
   const modifiedEnterReversesDelivery = modifiedEnterSubmits && canStop;
-  const hasText = text.trim().length > 0;
+  const hasText = textPresence.trimmed;
   const hasDraftToSubmit =
     hasText ||
     hasAttachments ||
@@ -1235,7 +1410,7 @@ function ConversationComposerImpl({
     hasPluginUiContexts ||
     Boolean(pendingShareContext);
   const hasComposerDraftContent =
-    text.length > 0 ||
+    textPresence.raw ||
     hasAttachments ||
     hasCodeCommentContexts ||
     hasWebElementContexts ||
@@ -1254,14 +1429,33 @@ function ConversationComposerImpl({
   // guide 是 CLI 已授权的 busy 输入路由，是否最终 steer 或回退 queue 由命令层裁决。
   const routingAllowsSend = draftMode || (snapshot !== null && mode !== "reject");
   const attachmentsReady = !attachmentsApi.hasUnreadyAttachments;
+  const recoveryCommand = appSlashCommands?.find(
+    (command) => command.recovery && command.value === "reload",
+  );
+  // 面板选择是 AppSlashCommand 操作，草稿不是参数；只有文本提交才要求独立命令。
+  const recoveryAvailable = Boolean(recoveryCommand) && remoteAvailable;
+  const recoveryAllowed =
+    recoveryAvailable &&
+    !hasAttachments &&
+    !hasCodeCommentContexts &&
+    !hasWebElementContexts &&
+    !hasPptxElementReferences &&
+    !hasConversationSelectionReferences &&
+    !hasPluginUiContexts &&
+    !pendingShareContext;
+  const connectionPendingRef = useRef(false);
+  const [connectionPending, setConnectionPending] = useState(false);
+  const handleConnectionPendingChange = useCallback((pending: boolean) => {
+    connectionPendingRef.current = pending;
+    setConnectionPending(pending);
+  }, []);
+  const canReload = recoveryAllowed && reloadText && remoteAvailable;
   const canSend =
+    !connectionPending &&
     !disabled &&
     !pending &&
     hasDraftToSubmit &&
-    routingAllowsSend &&
-    attachmentsReady &&
-    submissionReady &&
-    !runtimeBlocked;
+    (canReload || (routingAllowsSend && attachmentsReady && submissionReady && !runtimeBlocked));
   // 旧 UI 状态机：streaming + 空草稿 → Stop；有草稿 → 发送键（入队）。
   const showStopControl = canStop && !hasDraftToSubmit;
 
@@ -1269,13 +1463,52 @@ function ConversationComposerImpl({
     if (!canSend) setSendTooltipOpen(false);
   }, [canSend]);
 
-  const submit = useCallback(
+  const submit: ComposerSubmit = useCallback(
     async (
       heldQueueDisposition?: "clearQueueAndSend" | "keepQueueAndSend",
       expectedHeldQueueItemIds?: readonly string[],
+      existingTelemetrySeed?: ConversationPromptTelemetrySeed,
       requestedDelivery?: "startNow" | "queue" | "guide",
     ) => {
-      const trimmed = textRef.current.trim();
+      // 连接 pending 同步进入 ref，覆盖菜单点击后 React 尚未提交的一帧及快捷键提交。
+      // 只阻止新输入，不取消正在执行或已排队消息，也不清空草稿。
+      if (connectionPendingRef.current) return;
+      // 发送时与点击停止一致：先等语音识别的最终结果写入编辑器，再读取草稿发送。
+      // 等待期间重复发送会在下面的 pendingRef 检查处被拦下（后续读取到 pending 前没有 await）。
+      // 没有进行中的语音输入时不等待，普通发送的同步路径不变。
+      const voiceSettled = settleVoiceInput("submit");
+      if (voiceSettled) {
+        // 修复原因：Composer 跨会话复用，等待期间切换会话后，旧提交闭包仍持有 A 的发送函数，
+        // 而 draftScopeRef 已指向 B、编辑器正被恢复成 B 的草稿（运行时日志：scope=B、sessionId=A）。
+        // 继续执行可能串发或清错草稿，所以等待前冻结目标，目标变化或已卸载就中止本次发送。
+        const target = draftTargetRef.current;
+        await voiceSettled;
+        const current = draftTargetRef.current;
+        if (
+          !composerMountedRef.current ||
+          current.scopeId !== target.scopeId ||
+          current.scopeToken !== target.scopeToken ||
+          current.workspacePath !== target.workspacePath ||
+          current.workspaceIdentity !== target.workspaceIdentity
+        ) {
+          logger.lifecycle.info("[voice-input] submit aborted", { reason: "target-changed" });
+          return;
+        }
+        // 修复原因：本闭包里的附件、网页元素等引用以及 remoteAvailable / runtimeBlocked 都是点击那次
+        // 渲染的值；等待期间用户新增的附件会随消息发出（prepareForSend 读最新存储），却因旧 id 列表
+        // 没被交接和清理（运行时日志：closureIds=0、preparedRefs=1）。交给最新渲染的 submit 重新读取；
+        // 此时 attempt 已结束，settle 返回 undefined，不会再次等待。
+        return latestSubmitRef.current?.(
+          heldQueueDisposition,
+          expectedHeldQueueItemIds,
+          existingTelemetrySeed,
+          requestedDelivery,
+        );
+      }
+      const submittedAt = performance.timeOrigin + performance.now();
+      // IME 候选期间 textRef 尚未接收最终 onChange；提交必须与 claim/恢复共用 Lexical 快照。
+      const submittedDraft = snapshotDraftOfEditor();
+      const trimmed = submittedDraft.text.trim();
       const submittedQueueItemIds =
         snapshotRef.current?.queue.items.map((item) => item.queueItemId) ?? [];
       const hasPendingAttachments = attachmentsApi.attachments.length > 0;
@@ -1290,36 +1523,47 @@ function ConversationComposerImpl({
       const currentConversationSelections = conversationSelectionReferences;
       const hasPendingConversationSelections = currentConversationSelections.length > 0;
       const submittedShareContext = pendingShareContext;
+      // /reload 是本地操作，在模型配置、队列和消息历史处理之前截获；参数和附件不发给模型。
+      if (/^\/reload(?:\s|$)/.test(trimmed)) {
+        if (
+          trimmed !== "/reload" ||
+          !recoveryCommand ||
+          !recoveryAllowed ||
+          !remoteAvailable ||
+          pendingRef.current
+        )
+          return;
+        const revision = contentRevisionRef.current;
+        const scope = draftScopeRef.current;
+        pendingRef.current = true;
+        setPending(true);
+        try {
+          const completed = await recoveryCommand.run();
+          if (
+            completed !== false &&
+            scope === draftScopeRef.current &&
+            revision === contentRevisionRef.current
+          ) {
+            inputApiRef.current?.clear();
+            updateText("");
+            persistDraftNow(scope);
+          }
+        } finally {
+          pendingRef.current = false;
+          setPending(false);
+        }
+        return;
+      }
       // 草稿首发 accepted 后同一 composer 会原地从 __draft__ promotion 到
       // session scope；若成功清理时再读可变 ref，会误清新 scope，并把首条输入残留在
       // __draft__，下次新建任务又恢复。发送开始时冻结真正提交的 scope。
-      const submittedDraft = snapshotDraftOfEditor();
-      const submittedScopeKey = `${workspaceKey}\0${draftScopeRef.current}`;
+      const submissionDraftTransaction = captureComposerSubmissionDraftTransaction(submittedDraft);
+      const submittedScopeId = draftScopeRef.current;
+      const submittedScopeKey = `${workspaceKey}\0${submittedScopeId}`;
       let cleanupRevision = contentRevisionRef.current;
       const submission = createSubmissionFromComposer?.() ?? null;
       const submittedAttachmentIds = attachmentsApi.attachments.map((item) => item.id);
-      // 有内容但模型闸门未过（未选择模型/选择已失效）时底下是静默 return，
-      // 表现为快捷键发送“毫无反应”；补一条提示，不改变拦截本身。
-      // dedupeKey 与首发门禁（SessionPane）共用：连点/多路拦截只保留最新一条。
-      const hasSubmittableContent =
-        Boolean(trimmed) ||
-        hasPendingAttachments ||
-        hasPendingCodeCommentContexts ||
-        hasPendingWebElementContexts ||
-        hasPendingPptxElementReferences ||
-        hasPendingConversationSelections ||
-        hasPendingPluginUiContexts ||
-        Boolean(submittedShareContext);
-      if (
-        hasSubmittableContent &&
-        (!submissionReady ||
-          (createSubmissionFromComposer !== undefined && submission === null))
-      ) {
-        toast(intl.formatMessage({ id: "chat.toolbar.model.selectModelRequired" }), {
-          variant: "warning",
-          dedupeKey: "chat.toolbar.model.selectModelRequired",
-        });
-      }
+      const submittedAttachmentScopeKey = attachmentsApi.scopeKey;
       if (
         (!trimmed &&
           !hasPendingAttachments &&
@@ -1339,15 +1583,64 @@ function ConversationComposerImpl({
       ) {
         return;
       }
+      const sendAction = startUserAction({
+        featureId: "conversation.composer.message",
+        action: "send",
+        trigger: sendTriggerRef.current === "button" ? "button" : "shortcut",
+        workspaceKind: workspaceIdentity?.trim() ? "remote" : "local",
+      });
       pendingRef.current = true;
       setPending(true);
+      // Bug 根因：草稿 intent 只保存用户显式改动，正常继承模型位于冻结初始化 config。
+      // prewarm snapshot 尚未到达时若只读 draftConfig，send_btn 会错误落成空模型/glm。
+      const telemetryConfig = telemetryDraftConfig ?? snapshotRef.current?.config ?? draftConfig;
+      let telemetrySeed: ConversationPromptTelemetrySeed;
+      if (existingTelemetrySeed) {
+        // 队列二次确认复用首次点击的 seed：不重报 send_click，也不重置发送触发来源，
+        // 保证 send_click 与 send_result 严格 1:1。
+        telemetrySeed = existingTelemetrySeed;
+        if (telemetrySeed.localTtft)
+          getLocalTtftObserver()?.confirmation(telemetrySeed.localTtft, false);
+      } else {
+        const freshSeed: ConversationPromptTelemetrySeed = {
+          sendTime: Date.now(),
+          localTtft: !workspaceIdentity?.trim()
+            ? getLocalTtftObserver()?.start(
+                workspacePath,
+                (snapshotRef.current !== null &&
+                  snapshotRef.current.inputRouting.mode !== "startNow") ||
+                  false,
+                trimmed.startsWith("/"),
+                submittedAt,
+              )
+            : undefined,
+          extraDetail: buildV4ConversationPromptTelemetryExtraDetail({
+            // 与首次发送 seed 一起冻结，排队确认和执行中切换界面都不能改写本轮归属。
+            uiMode: toTelemetryUiMode(uiStore?.getState().interfaceMode),
+            askMode: telemetryConfig?.mode,
+            modelName: telemetryConfig?.model,
+            configProvider: telemetryConfig?.provider,
+            agentProvider: provider,
+            providerBaseURL: resolveProviderBaseURL(telemetryConfig?.provider, modelSelectionView),
+            planIdentitySnapshot: readPlanIdentitySnapshot?.(),
+          }),
+        };
+        const sendTrigger = sendTriggerRef.current;
+        sendTriggerRef.current = "shortcut";
+        // recordSendClick 回填 sendClickId，必须用它的返回值作为后续 seed，
+        // 否则落定时拿不到关联键，send_result 会被当成后台任务跳过。
+        telemetrySeed =
+          conversationTelemetry?.recordSendClick({
+            sessionId: sessionId ?? null,
+            seed: freshSeed,
+            trigger: sendTrigger,
+          }) ?? freshSeed;
+      }
       let promptHistoryBeforeSend: readonly string[] | null = null;
       let promptHistoryAfterAppend: readonly string[] | null = null;
       let promptHistoryWasPersisted = false;
-      let draftSubmissionClaimed = false;
       let editorClearedOptimistically = false;
       let submittedCommandId: string | null = null;
-      let submittedCommandResolved = false;
       const claimSubmittedDraft = () => {
         if (draftPersistTimerRef.current !== null) {
           window.clearTimeout(draftPersistTimerRef.current);
@@ -1356,63 +1649,77 @@ function ConversationComposerImpl({
         // 首发 promotion 会在 onSendText 返回前切换 scope 或重建 Composer。
         // 若仍允许旧 scope effect 落盘，新 Composer 会把已经发送的正文当草稿恢复。
         // 提交前先占用并隐藏该草稿；失败路径再恢复，避免用等待时间掩盖竞态。
-        suppressDraftPersistRef.current = true;
-        updateComposerContent({ text: "" });
-        draftSubmissionClaimed = true;
+        activeSubmissionDraftTransactionRef.current = submissionDraftTransaction.claim()
+          ? submissionDraftTransaction
+          : null;
       };
-      const restoreSubmittedDraft = () => {
-        if (!draftSubmissionClaimed) return;
-        // 用户在等待期间已经产生更新时，当前完整正文是更新后的事实；旧失败回包不能覆盖。
-        if (contentRevisionRef.current === cleanupRevision) {
-          updateComposerContent(submittedDraft);
-          if (submittedCommandId && !submittedCommandResolved) {
-            // 传输层失败不等于 CLI 未 admission（ACK 丢失即如此）。正文虽已恢复回草稿，
-            // 该 command 仍待权威结论；登记到模块级账本，让卸载重挂后的 composer 也能收口。
-            trackUnsettledComposerSubmission(submittedScopeKey, {
-              commandId: submittedCommandId,
-              text: submittedDraft.text,
-            });
-          }
+      const restoreSubmittedDraft = (awaitsAuthority = false) => {
+        const result = submissionDraftTransaction.restore();
+        const shouldRestoreEditor =
+          result.applied && result.current && draftScopeRef.current === submittedScopeId;
+        if (result.applied && submittedCommandId && awaitsAuthority) {
+          // 传输层失败不等于 CLI 未 admission（ACK 丢失即如此）。正文虽已恢复回草稿，
+          // 该 command 仍待权威结论；登记到模块级账本，让卸载重挂后的 composer 也能收口。
+          trackUnsettledComposerSubmission(submittedScopeKey, {
+            commandId: submittedCommandId,
+            text: submittedDraft.text,
+          });
         }
-        suppressDraftPersistRef.current = false;
-        draftSubmissionClaimed = false;
-        if (editorClearedOptimistically && contentRevisionRef.current === cleanupRevision) {
+        // 正文已恢复给用户后，写盘抑制立即结束；事务闭包仍等待迟到的权威结算。
+        activeSubmissionDraftTransactionRef.current = null;
+        if (editorClearedOptimistically && shouldRestoreEditor) {
           if (submittedDraft.editorStateJson) {
             inputApiRef.current?.setEditorStateJson(submittedDraft.editorStateJson);
           } else {
             inputApiRef.current?.setText(submittedDraft.text);
           }
           updateText(submittedDraft.text);
+          // 程序化恢复不是用户新编辑；迟到 authoritative 仍应能清除这份原文。
+          cleanupRevision = contentRevisionRef.current;
           editorClearedOptimistically = false;
+        } else if (
+          !result.applied &&
+          result.current &&
+          draftScopeRef.current === submittedScopeId
+        ) {
+          // 原 scope 在等待期间已产生新正文；claim 解除后只补当前 A₂ 的 owner flush。
+          persistDraftNow(submittedScopeId);
         }
       };
-      const finalizeSubmittedDraft = () => {
-        if (!draftSubmissionClaimed) return;
-        suppressDraftPersistRef.current = false;
-        draftSubmissionClaimed = false;
-      };
-      let submittedContentSettled = false;
       const settleSubmittedContent = async () => {
-        if (submittedContentSettled) return;
-        submittedContentSettled = true;
-        await attachmentsApi.adoptSentAttachments(submittedAttachmentIds);
-        // 权威 projection 已确认原 command 被接管；等待期间的新正文属于下一次提交。
-        if (contentRevisionRef.current === cleanupRevision) {
+        const result = submissionDraftTransaction.finalize();
+        if (!result) return;
+        activeSubmissionDraftTransactionRef.current = null;
+        if (
+          result.applied &&
+          result.current &&
+          draftScopeRef.current === submittedScopeId &&
+          contentRevisionRef.current === cleanupRevision
+        ) {
           inputApiRef.current?.clear();
           updateText("");
-          updateComposerContent({ text: "" });
         }
-        attachmentsApi.clearAttachments(submittedAttachmentIds);
+        // 正文先按事务结算；附件交接失败或发送 Promise 迟到异常，都不能复活已接纳的正文。
+        // 按提交时的附件 scope 结算：等待期间 scope 可能已切走（composer 编辑态结束）。
+        await attachmentsApi.adoptSentAttachments(
+          submittedAttachmentIds,
+          submittedAttachmentScopeKey,
+        );
+        attachmentsApi.clearAttachments(submittedAttachmentIds, submittedAttachmentScopeKey);
         currentCodeCommentContexts.forEach(removeCodeCommentContext);
-        currentWebElementContexts.forEach((context) => removeWebElementContext(context.id));
+        removeSentWebElementContexts(currentWebElementContexts.map((context) => context.id));
         currentPluginUiContexts.forEach((context) => removePluginUiContext(context.id));
         currentPptxElementReferences.forEach((reference) =>
           removePptxElementReference(reference.id),
         );
+        // 已发出的注释在正文里改画灰色“已发送”标记；编辑态（edit scope）的引用不属于主时间线。
+        if (sessionId && !draftScopeIdProp) {
+          recordSentConversationSelections(sessionId, workspaceKey, currentConversationSelections);
+        }
         currentConversationSelections.forEach((reference) =>
           removeConversationSelectionReference(reference.id),
         );
-        finalizeSubmittedDraft();
+        onSubmissionSettled?.(submittedScopeId);
       };
       const subscribeToCommandResolution = (commandId: string) => {
         let active = true;
@@ -1420,16 +1727,21 @@ function ConversationComposerImpl({
         submittedCommandId = commandId;
         const unsubscribe = pendingCommandRegistry.subscribeResolution(commandId, (resolution) => {
           if (!active) return;
-          submittedCommandResolved = true;
           cleanup();
           if (
             resolution !== "accepted" &&
             resolution !== "duplicate" &&
             resolution !== "authoritative"
           ) {
+            // 直接 rejected/failed 时 claim 仍持有空草稿；先恢复正文，再释放事务。
+            restoreSubmittedDraft();
+            submissionDraftTransaction.release();
+            activeSubmissionDraftTransactionRef.current = null;
             return;
           }
-          void settleSubmittedContent();
+          void settleSubmittedContent().catch((error) => {
+            logger.warn("[v4-composer] 已接纳输入的附件交接失败", error);
+          });
         });
         cleanup = () => {
           if (!active) return;
@@ -1455,6 +1767,16 @@ function ConversationComposerImpl({
         // 二次门禁：只消费预传完成的 ref，不在点击发送时回落上传。
         const readyAttachmentRefs = await attachmentsApi.prepareForSend();
         if (readyAttachmentRefs === null) {
+          if (telemetrySeed.localTtft)
+            getLocalTtftObserver()?.exclude(telemetrySeed.localTtft, "rejected");
+          // send_click 已上报，此处不落定会留下无配对的悬空样本，污染成功率分母。
+          conversationTelemetry?.settleSendResult({
+            seed: telemetrySeed,
+            sessionId: sessionId ?? null,
+            status: "fail",
+            reasonCode: "attachment_not_ready",
+          });
+          sendAction.fail({ failureStage: "attachment_not_ready" });
           return;
         }
         // 外部上下文不走协议附件；按 selection -> code comment -> web -> PPTX 的固定尾块顺序
@@ -1508,17 +1830,20 @@ function ConversationComposerImpl({
           ...(currentConversationSelections.length
             ? {
                 conversationQuotes: currentConversationSelections.map(
-                  ({ text, path, senderName, senderId, messageId, sentAt }) => ({
+                  ({ text, path, senderName, senderId, messageId, sentAt, comment, agent }) => ({
                     text,
                     path,
                     senderName,
                     senderId,
                     messageId,
                     sentAt,
+                    comment,
+                    agent,
                   }),
                 ),
               }
             : {}),
+          telemetrySeed,
           onCommandCreated: subscribeToCommandResolution,
           ...(requestedDelivery ? { requestedDelivery } : {}),
           ...(heldQueueDisposition ? { heldQueueDisposition } : {}),
@@ -1537,57 +1862,92 @@ function ConversationComposerImpl({
             : {}),
         });
         if (sendResult === "blocked") {
+          if (telemetrySeed.localTtft)
+            getLocalTtftObserver()?.exclude(telemetrySeed.localTtft, "rejected");
           // 产品 guard 是一次正常拒绝，不应借异常路径表达；回滚发送前暂记的 history，
           // 同时不 clear editor/draft/附件，让用户切换模式后可以直接重试。
           rollbackPromptHistory();
           restoreSubmittedDraft();
+          conversationTelemetry?.settleSendResult({
+            seed: telemetrySeed,
+            sessionId: sessionId ?? null,
+            status: "fail",
+            reasonCode: "blocked",
+          });
+          sendAction.reject({ resultSource: "authority_ack", admissionResult: "rejected" });
           return;
         }
         if (sendResult === "confirmationRequired") {
+          if (telemetrySeed.localTtft)
+            getLocalTtftObserver()?.confirmation(telemetrySeed.localTtft, true);
           rollbackPromptHistory();
           restoreSubmittedDraft();
           const latestQueueItemIds =
             snapshotRef.current?.queue.items.map((item) => item.queueItemId) ?? [];
           // 首次提交冻结当前队列；跨端 stale 后用最新投影替换，要求用户重新确认。
           setHeldQueueConfirmation({
+            // 标记 queueConfirmed：确认后复用该 seed 落定，send_cost_ms 含用户在弹窗上的停留。
+            telemetrySeed: { ...telemetrySeed, queueConfirmed: true },
             ...(requestedDelivery ? { requestedDelivery } : {}),
             queueItemIds:
               latestQueueItemIds.length > 0 ? latestQueueItemIds : submittedQueueItemIds,
           });
+          sendAction.noop();
           return;
         }
         setHeldQueueConfirmation(null);
         // 发送成功或 ACK 丢失后由权威 projection 结算：清本次提交捕获的内容，
         // prompt history 已在真实发送前同步写盘，避免首发 promote 丢失或误清新 scope。
         await settleSubmittedContent();
+        sendAction.complete({ resultSource: "authority_ack", admissionResult: "accepted" });
       } catch (error) {
         rollbackPromptHistory();
-        // 权威 ACK/投影可能在 Promise 失败回调前先到达；清理已开始时不能再把旧草稿恢复回来。
-        if (!submittedContentSettled) restoreSubmittedDraft();
+        // 已结算事务不会恢复；只有未确定命令结果的传输失败才保留迟到权威结算订阅。
+        restoreSubmittedDraft(true);
+        if (telemetrySeed.localTtft)
+          getLocalTtftObserver()?.exclude(telemetrySeed.localTtft, "failed");
         // 发送失败草稿保留在输入框（不清空），仅记录原因。
         logger.warn(`[v4-composer] 发送失败: ${String(error)}`);
+        // ACK 侧失败已由 SessionPane 落定；能走到这里的是 composer 自身链路异常。
+        conversationTelemetry?.settleSendResult({
+          seed: telemetrySeed,
+          sessionId: sessionId ?? null,
+          status: "fail",
+          reasonCode: "composer_error",
+        });
+        sendAction.fail({ failureStage: "composer_send" });
       } finally {
         pendingRef.current = false;
         setPending(false);
       }
     },
     [
+      settleVoiceInput,
+      recoveryCommand,
+      recoveryAllowed,
+      uiStore,
       attachmentsApi,
+      captureComposerSubmissionDraftTransaction,
       conversationSelectionReferences,
+      conversationTelemetry,
       draftConfig,
+      draftScopeIdProp,
       createSubmissionFromComposer,
       submissionReady,
       remoteAvailable,
       runtimeBlocked,
       getCodeCommentContexts,
-      intl,
+      telemetryDraftConfig,
       modelSelectionView,
       onSendText,
       pendingShareContext,
+      persistDraftNow,
+      provider,
+      readPlanIdentitySnapshot,
       removeCodeCommentContext,
       removeConversationSelectionReference,
       removePptxElementReference,
-      removeWebElementContext,
+      removeSentWebElementContexts,
       removePluginUiContext,
       pluginUiContexts,
       sessionId,
@@ -1597,27 +1957,63 @@ function ConversationComposerImpl({
       webElementContexts,
       pptxElementReferences,
       workspaceIdentity,
+      workspaceKey,
       workspacePath,
+      onSubmissionSettled,
     ],
   );
+  latestSubmitRef.current = submit;
+
+  const lastEditSubmitRequestRef = useRef(editSubmitRequest);
+  useEffect(() => {
+    if (lastEditSubmitRequestRef.current === editSubmitRequest) return;
+    lastEditSubmitRequestRef.current = editSubmitRequest;
+    // 与发送按钮共用提交事务：草稿冻结、附件门禁、失败恢复与成功结算保持一致。
+    void submit();
+  }, [editSubmitRequest, submit]);
+
+  const handleUserInputClear = useCallback(() => {
+    conversationTelemetry?.resetComposerInputStart();
+  }, [conversationTelemetry]);
+
+  const handleUserInputPresenceChange = useCallback(
+    (presence: { raw: boolean; trimmed: boolean }) => {
+      const currentPresence = textPresenceRef.current;
+      if (currentPresence.raw === presence.raw && currentPresence.trimmed === presence.trimmed) {
+        return;
+      }
+      textPresenceRef.current = presence;
+      setTextPresence(presence);
+    },
+    [],
+  );
+
+  const handleUserInputStart = useCallback(() => {
+    conversationTelemetry?.recordComposerInputStart();
+    // 用户一修改输入框就结束录音（与点击停止一致），不再写临时结果，最终结果写入时不移动光标。
+    void settleVoiceInput("user-input");
+  }, [conversationTelemetry, settleVoiceInput]);
 
   // Lexical onChange（首字符也稳定回传，见 LexicalChatInput.TextContentPlugin）。
   const handleEditorChange = useCallback(
     (value: string) => {
       updateText(value);
-      // 正文先进入与 mode/model 相同的内存 Draft；防抖只负责补充最新 Lexical JSON。
-      updateComposerContent({ text: value });
       scheduleDraftPersist();
     },
-    [scheduleDraftPersist, updateComposerContent, updateText],
+    [scheduleDraftPersist, updateText],
   );
 
   const handleEditorFocus = useCallback(() => {
-    // 程序性聚焦不算「点击输入框」，只消费一次性标记。
+    conversationTelemetry?.recordComposerFocus();
+    // 程序性聚焦不算「点击输入框」；标记一次性消费，之后的手动 focus 照常上报。
     if (programmaticFocusRef.current) {
       programmaticFocusRef.current = false;
+      return;
     }
-  }, []);
+    conversationTelemetry?.recordComposerFocusClick({
+      sessionId: sessionId ?? null,
+    });
+  }, [conversationTelemetry, sessionId]);
 
   // 编辑器提交（Enter / 发送键 form submit 同路径）。返回 false：编辑器不自行 reset，
   // 由 submit 成功后经 inputApiRef.clear() 清空——失败时草稿留在输入框。
@@ -1628,6 +2024,7 @@ function ConversationComposerImpl({
       reversePointerDeliveryRef.current = false;
       const followupMode = snapshotRef.current?.config.followupMode;
       void submit(
+        undefined,
         undefined,
         undefined,
         reverseDelivery && followupMode ? resolveOppositeFollowupDelivery(followupMode) : undefined,
@@ -1646,6 +2043,7 @@ function ConversationComposerImpl({
       void submit(
         undefined,
         undefined,
+        undefined,
         followupMode ? resolveOppositeFollowupDelivery(followupMode) : undefined,
       );
       return false;
@@ -1658,6 +2056,7 @@ function ConversationComposerImpl({
     void submit(
       "clearQueueAndSend",
       heldQueueConfirmation.queueItemIds,
+      heldQueueConfirmation.telemetrySeed,
       heldQueueConfirmation.requestedDelivery,
     );
   }, [heldQueueConfirmation, submit]);
@@ -1667,18 +2066,25 @@ function ConversationComposerImpl({
     void submit(
       "keepQueueAndSend",
       heldQueueConfirmation.queueItemIds,
+      heldQueueConfirmation.telemetrySeed,
       heldQueueConfirmation.requestedDelivery,
     );
   }, [heldQueueConfirmation, submit]);
 
   const handleStopClick = useCallback(() => {
-    onStop();
+    runUserAction({
+      input: { featureId: "conversation.composer.message", action: "stop", trigger: "button" },
+      operation: onStop,
+      completed: { resultSource: "optimistic_projection" },
+      failureStage: "stop_generation",
+    });
   }, [onStop]);
 
   // 发送键是 type="submit"，与 Enter 共用 handleEditorSubmit；DOM 事件顺序保证 click 早于
   // submit，故这里只置标记，由 submit() 读取并复位。
   const handleSendButtonClick = useCallback(
     (event: ReactMouseEvent<HTMLButtonElement>) => {
+      sendTriggerRef.current = "button";
       reversePointerDeliveryRef.current = shouldReverseFollowupDeliveryForPointer({
         enabled: modifiedEnterReversesDelivery,
         metaKey: event.metaKey,
@@ -1714,23 +2120,27 @@ function ConversationComposerImpl({
     };
   }, [listenAddToChatEvents, updateText, workspaceIdentity, workspacePath]);
 
-  // 动态 placeholder（旧 chatViewPlaceholder 语义）：无历史 → newTask；
-  // 有历史空闲 → followUpAsk；有历史处理中 → followUpQueue；
-  // 完整视图浮窗（单行）运行中 → 「工作中 {时长}」，与流式消息同值同格式。
+  // ACK 清空正文与消息投影不是同一时刻；提交及待投影命令共同覆盖首发交接窗口。
+  // 完整视图浮窗（单行）运行中使用整秒摘要；消息流底部独立显示十分之一秒。
   const workingDurationLabel =
     layout === "inline" && canStop
       ? formatConversationWorkDuration(workingDurationMs, intl, locale)
       : null;
-  const normalPlaceholder = workingDurationLabel
-    ? intl.formatMessage({ id: "chat.history.workingFor" }, { duration: workingDurationLabel })
-    : intl.formatMessage({
-        id: resolveChatPlaceholderKey({
-          hasHistoryMessages: (snapshot?.rows.totalCount ?? 0) > 0,
-          isTaskProcessing: canStop,
-          // 单行输入框放不下完整的新任务提示，沿用手机远控的短文案。
-          compactNewTask: compactMobilePlaceholder || layout === "inline",
-        }),
-      });
+  // 切回已有会话时 lease 先切换、快照后到；未知历史不能当作新草稿，
+  // 否则运行中的输入框会闪出新任务提示。只等待当前快照，不复用上一会话状态。
+  const normalPlaceholder =
+    sessionId !== null && snapshot === null
+      ? ""
+      : workingDurationLabel
+        ? intl.formatMessage({ id: "chat.history.workingFor" }, { duration: workingDurationLabel })
+        : intl.formatMessage({
+            id: resolveChatPlaceholderKey({
+              hasHistoryMessages: (snapshot?.rows.totalCount ?? 0) > 0,
+              isTaskProcessing: pending || inputPending || canStop,
+              // 单行输入框放不下完整的新任务提示，沿用手机远控的短文案。
+              compactNewTask: compactMobilePlaceholder || layout === "inline",
+            }),
+          });
   const sendTooltipTitle = intl.formatMessage({
     id: mode === "enqueue" ? "chat.queue.enqueue" : "chat.send",
   });
@@ -1748,11 +2158,39 @@ function ConversationComposerImpl({
   const stopTooltipTitle = intl.formatMessage({ id: "chat.stop" });
   const visibleError = error && !shouldSuppressChatErrorBanner(error) ? error : null;
 
+  useEffect(() => {
+    if (!visibleError || !conversationTelemetry || !telemetryVisible) return;
+    const telemetryKey = [
+      visibleError.taskId ?? sessionId ?? "",
+      visibleError.code ?? "",
+      visibleError.traceId ?? "",
+      visibleError.message,
+    ].join(":");
+    if (reportedErrorKeysRef.current.has(telemetryKey)) return;
+    reportedErrorKeysRef.current.add(telemetryKey);
+    // 错误只有经过 suppression 后真实进入 render 才曝光；同一 composer mount 相同 key 一次。
+    conversationTelemetry.reportVisibleChatError({
+      errorKey: telemetryKey,
+      displayMessage: resolveChatErrorBannerDisplayMessage(visibleError, intl),
+      error: visibleError,
+    });
+  }, [conversationTelemetry, intl, sessionId, telemetryVisible, visibleError]);
+
   const attachmentAction = useMemo(
     () => ({
       label: intl.formatMessage({ id: "chat.composer.attachment" }),
       menuItemTestId: TID_CHAT_ATTACHMENT_MENU_ITEM,
-      onSelect: () => attachmentsApi.openAttachmentPicker(),
+      onSelect: () =>
+        runUserAction({
+          input: {
+            featureId: "conversation.composer.attachment",
+            action: "add",
+            trigger: "button",
+          },
+          operation: attachmentsApi.openAttachmentPicker,
+          completed: { resultSource: "local_commit" },
+          failureStage: "attachment_picker",
+        }),
       testId: TID_CHAT_ATTACHMENT_BUTTON,
     }),
     [intl, attachmentsApi.openAttachmentPicker],
@@ -1785,11 +2223,24 @@ function ConversationComposerImpl({
       ),
     [composerAttachments],
   );
-  const topContentNode = useMemo(() => {
+  // 隐藏的元素截图不进 DOM 附件行；在输入框根节点上留「文件名:上传状态」，E2E 据此判断截图是否就绪
+  const hiddenElementScreenshotsMarker = useMemo(
+    () =>
+      composerAttachments
+        .filter((item) => isHiddenWebElementScreenshot(item))
+        .map((item) => `${item.filename}:${item.uploadStatus ?? "ready"}`)
+        .join(" "),
+    [composerAttachments, isHiddenWebElementScreenshot],
+  );
+  const attachmentsTopContentNode = useMemo(() => {
+    // 元素 token 的截图是隐藏附件：只剩它们时整行不渲染，否则卡片的 gap 会在截图晚到时把输入框撑高一截
+    const hasVisibleComposerAttachments = composerAttachments.some(
+      (item) => !isHiddenWebElementScreenshot(item),
+    );
     if (
-      composerAttachments.length === 0 &&
+      !hasVisibleComposerAttachments &&
       codeCommentContexts.length === 0 &&
-      webElementContexts.length === 0 &&
+      pillWebElementContexts.length === 0 &&
       pptxElementReferences.length === 0 &&
       conversationSelectionReferences.length === 0 &&
       pluginUiContexts.length === 0
@@ -1798,7 +2249,7 @@ function ConversationComposerImpl({
     }
     return (
       <div className="flex max-w-full flex-col items-start gap-2">
-        {composerAttachments.length > 0 ? (
+        {hasVisibleComposerAttachments ? (
           <Attachments
             variant="inline"
             className="flex max-w-full flex-wrap gap-2"
@@ -1853,11 +2304,12 @@ function ConversationComposerImpl({
                   }
                   data-testid={testId(TID_V4_ATTACHMENT, attachment.id)}
                   data-upload-status={attachment.uploadStatus}
-                  className={
+                  className={cn(
                     isMediaAttachment
                       ? "relative size-12 overflow-hidden rounded-lg bg-surface after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:border after:border-border after:content-['']"
-                      : "h-12 w-fit max-w-full min-w-0 gap-2 rounded-lg border border-border bg-surface p-1.5 pr-6 [--attachment-bg:var(--color-surface)] hover:bg-surface-hover"
-                  }
+                      : "h-12 w-fit max-w-full min-w-0 gap-2 rounded-lg border border-border bg-surface p-1.5 pr-6 [--attachment-bg:var(--color-surface)] hover:bg-surface-hover",
+                    isHiddenWebElementScreenshot(attachment) && "hidden",
+                  )}
                   data={{
                     id: attachment.id,
                     type: "file",
@@ -2063,7 +2515,7 @@ function ConversationComposerImpl({
           </Attachments>
         ) : null}
         {codeCommentContexts.length > 0 ||
-        webElementContexts.length > 0 ||
+        pillWebElementContexts.length > 0 ||
         pptxElementReferences.length > 0 ||
         conversationSelectionReferences.length > 0 ||
         pluginUiContexts.length > 0 ? (
@@ -2077,9 +2529,9 @@ function ConversationComposerImpl({
               onRemoveAll={clearCodeCommentContexts}
             />
             <WebElementContextAttachmentChip
-              contexts={webElementContexts}
-              onRemove={removeWebElementContext}
-              onRemoveAll={clearWebElementContexts}
+              contexts={pillWebElementContexts}
+              onRemove={removeWebElementContextByUser}
+              onRemoveAll={clearWebElementContextsByUser}
             />
             <PluginUiModelContextChip
               contexts={pluginUiContexts}
@@ -2094,7 +2546,26 @@ function ConversationComposerImpl({
             />
             <ConversationSelectionReferenceChip
               references={conversationSelectionReferences}
-              onRemove={removeConversationSelectionReference}
+              // 正文编号对应主 composer scope；编辑态（edit scope）的列表不编号，避免与正文错位。
+              numbered={!draftScopeIdProp}
+              onRemove={(id) => {
+                deleteConversationAnnotationWithUndo({
+                  sessionId: draftScopeIdProp ?? sessionId,
+                  workspaceKey,
+                  draftScopeKey: rootDraftScopeKey,
+                  id,
+                  formatMessage: (messageId) => intl.formatMessage({ id: messageId }),
+                });
+                // 存储里已删除；这里只同步清掉 hook 内的超限提示。
+                removeConversationSelectionReference(id);
+              }}
+              onEdit={
+                // 编号对应主时间线正文；编辑态（edit scope）的引用不在主时间线上画标记。
+                selectionCommentEnabled && sessionId && !draftScopeIdProp
+                  ? (id, fallback) =>
+                      dispatchConversationSelectionEdit({ sessionId, workspaceKey, id, fallback })
+                  : undefined
+              }
               onRemoveAll={clearConversationSelectionReferences}
             />
           </div>
@@ -2106,28 +2577,47 @@ function ConversationComposerImpl({
     attachmentsApi,
     clearCodeCommentContexts,
     clearConversationSelectionReferences,
-    clearWebElementContexts,
+    clearWebElementContextsByUser,
     clearPluginUiContexts,
     clearPptxElementReferences,
     codeCommentContexts,
     composerAttachments,
     composerMediaPreviewItems,
     orderedComposerAttachments,
+    isHiddenWebElementScreenshot,
     intl,
     locale,
     removeCodeCommentContext,
     removeConversationSelectionReference,
-    removeWebElementContext,
+    removeWebElementContextByUser,
     removePluginUiContext,
     removePptxElementReference,
     conversationSelectionReferences,
     pendingShareContext,
-    webElementContexts,
+    pillWebElementContexts,
     pluginUiContexts,
     pptxElementReferences,
     onOpenCodeViewer,
     openPptxElementReference,
+    draftScopeIdProp,
+    rootDraftScopeKey,
+    selectionCommentEnabled,
+    sessionId,
+    workspaceKey,
   ]);
+  // Bug 根因：草稿正文晚一帧（rAF）才载入 Lexical，状态条与附件行却随 scope 切换立即渲染；
+  // 多行编辑时队列面板会先因状态条上移、下一帧再因正文上移（两次跳位，B09g 逐帧采样复现）。
+  // 进入 edit scope 时等正文载入后再显示顶部内容，使高度变化只发生一次。
+  const editPresentationReady =
+    !isComposerEditScopeId(draftScopeId) || appliedDraftScopeId === draftScopeId;
+  const topContentNode = !editPresentationReady ? null : editBar && attachmentsTopContentNode ? (
+    <div className="flex w-full max-w-full flex-col gap-2">
+      {editBar}
+      {attachmentsTopContentNode}
+    </div>
+  ) : (
+    (editBar ?? attachmentsTopContentNode)
+  );
 
   // 发送/停止控制簇（对齐旧 ChatViewComposer.submitControlNode 结构：
   // 左侧 model/thought/usage 簇 + 右侧 stop 或 send）。
@@ -2141,7 +2631,20 @@ function ConversationComposerImpl({
       nextModel: string,
       sourceModel: ModelSelectionSource | null,
       reasoningLevel?: string,
-    ) => onSelectModel(nextProvider, nextModel, sourceModel, reasoningLevel),
+    ) =>
+      runUserAction({
+        input: {
+          featureId: "conversation.composer.config",
+          action: "change_model",
+          trigger: "select",
+        },
+        operation: () =>
+          reasoningLevel === undefined
+            ? onSelectModel(nextProvider, nextModel, sourceModel)
+            : onSelectModel(nextProvider, nextModel, sourceModel, reasoningLevel),
+        completed: { resultSource: "optimistic_projection" },
+        failureStage: "model_change",
+      }),
     [onSelectModel],
   );
   const submitControlNode = useMemo(
@@ -2157,6 +2660,13 @@ function ConversationComposerImpl({
         ) : null}
         {remoteAvailable ? (
           <span className="flex min-w-0 shrink items-center gap-1 overflow-hidden empty:hidden">
+            {/* 扩展插槽 composer.status：紧挨用量圆环左边（docs/plugins/extension-host.md §6）。
+                作用域用有效会话：草稿取预热会话，与插件 UI 同一来源。 */}
+            <ComposerStatusSlot
+              workspacePath={workspacePath}
+              workspaceIdentity={workspaceIdentity}
+              sessionId={pluginUiSessionId ?? null}
+            />
             <V4ComposerModelControls
               workspacePath={workspacePath}
               workspaceIdentity={workspaceIdentity}
@@ -2173,6 +2683,14 @@ function ConversationComposerImpl({
               draftConfig={draftConfig}
               usage={composerUsage}
               disabled={disabled || runtimeBlocked}
+              modelSelectionPending={modelSelectionPending}
+              onConnectionPendingChange={handleConnectionPendingChange}
+              modelLocked={highspeedCard !== null}
+              highspeedPresented={highspeedPresented}
+              highspeedEntranceAnimated={highspeedEntranceAnimated}
+              highspeedSweepActive={highspeedSweepActive}
+              highspeedExpiresAt={highspeedCard?.expiresAt}
+              highspeedModel={highspeedCard?.model}
               activeConfigPicker={activeConfigPicker}
               onConfigPickerOpenChange={handleConfigPickerOpenChange}
               onSelectModel={handleSelectModelTrace}
@@ -2183,6 +2701,14 @@ function ConversationComposerImpl({
             />
           </span>
         ) : null}
+        {voiceInput.available && remoteAvailable ? (
+          <VoiceInputButton
+            state={voiceInput.state}
+            onToggle={voiceInput.toggle}
+            subscribeLevel={voiceInput.subscribeLevel}
+            permissionGuide={voiceInput.permissionGuide}
+          />
+        ) : null}
         {showStopControl ? (
           <ControlHintTooltip title={stopTooltipTitle} shortcut="Esc">
             <Button
@@ -2191,6 +2717,7 @@ function ConversationComposerImpl({
               size="icon-md"
               onClick={handleStopClick}
               data-testid={TID_V4_STOP}
+              className="rounded-full"
               aria-label={stopTooltipTitle}
             >
               <SquareIcon className="size-4 fill-current" />
@@ -2211,7 +2738,7 @@ function ConversationComposerImpl({
               onClick={handleSendButtonClick}
               data-testid={TID_V4_COMPOSER_SEND}
               aria-label={resolvedSendTooltipTitle}
-              className="cursor-pointer gap-1 rounded-lg bg-brand text-ui-base text-foreground-inverse hover:bg-brand/80"
+              className="cursor-pointer gap-1 rounded-full bg-brand text-ui-base text-foreground-inverse hover:bg-brand/80"
             >
               {pending ? <Spinner className="size-4" /> : <ArrowUpIcon className="size-4" />}
               <span className="sr-only">{resolvedSendTooltipTitle}</span>
@@ -2224,14 +2751,25 @@ function ConversationComposerImpl({
       canSend,
       activeConfigPicker,
       composerPhase,
+      voiceInput.available,
+      voiceInput.state,
+      voiceInput.toggle,
+      voiceInput.subscribeLevel,
+      voiceInput.permissionGuide,
       composerUsage,
       disabled,
+      modelSelectionPending,
+      handleConnectionPendingChange,
       runtimeBlocked,
       draftConfig,
       draftMode,
       handleStopClick,
       handleSendButtonClick,
       handleConfigPickerOpenChange,
+      highspeedCard,
+      highspeedEntranceAnimated,
+      highspeedPresented,
+      highspeedSweepActive,
       isWebRemoteControl,
       mode,
       handleSelectModelTrace,
@@ -2253,6 +2791,7 @@ function ConversationComposerImpl({
       sendShortcut,
       sendTooltipTitle,
       sessionId,
+      pluginUiSessionId,
       showStopControl,
       stopTooltipTitle,
       workspaceIdentity,
@@ -2262,6 +2801,10 @@ function ConversationComposerImpl({
 
   // 左下：模式选择 + CUA 入口 + 当前 session 后台任务入口。followupMode 由 app 设置页同步到 CLI，
   // 不在 composer 暴露局部开关；后台入口只消费同一 snapshot，不维护第二份任务状态。
+  // memo 捕获整个 snapshot 会让共享词法环境中的稳定发送回调也持有旧历史；只捕获展示字段。
+  const workspaceHookAdmission = snapshot?.workspaceHookAdmission;
+  const workspaceMcpAdmission = snapshot?.workspaceMcpAdmission;
+  const backgroundWorks = snapshot?.backgroundWorks;
   const leadingActionsNode = useMemo(
     () => (
       <>
@@ -2275,6 +2818,29 @@ function ConversationComposerImpl({
           onConfigPickerOpenChange={handleConfigPickerOpenChange}
           onSwitchMode={onSwitchMode}
         />
+        {sessionId && workspaceHookAdmission ? (
+          <WorkspaceHookPendingIndicator
+            key={JSON.stringify([sessionId, workspaceHookAdmission.bundleDigest])}
+            sessionId={sessionId}
+            workspacePath={workspacePath}
+            workspaceIdentity={workspaceIdentity}
+            admission={workspaceHookAdmission}
+          />
+        ) : null}
+        {sessionId && workspaceMcpAdmission ? (
+          <WorkspaceMcpPendingIndicator
+            key={JSON.stringify([
+              workspaceIdentity,
+              workspacePath,
+              sessionId,
+              workspaceMcpAdmission.bundleDigest,
+            ])}
+            sessionId={sessionId}
+            workspacePath={workspacePath}
+            workspaceIdentity={workspaceIdentity}
+            admission={workspaceMcpAdmission}
+          />
+        ) : null}
         {/* Bug 原因：附件画廊 rebase 曾整段覆盖 leadingActions，误删 staging 的 CUA 常驻入口。
             入口自身继续负责平台、远程与设置可见性，不在 composer 重复判定。 */}
         <V4ComposerCuaEntry
@@ -2285,7 +2851,7 @@ function ConversationComposerImpl({
           currentSessionBusy={canStop}
         />
         <ConversationBackgroundWorkTrigger
-          backgroundWorks={snapshot?.backgroundWorks ?? []}
+          backgroundWorks={backgroundWorks ?? []}
           runningSubagentCount={runningSubagentCount}
           onOpen={onOpenRunningBackgroundWorks}
           openTarget={backgroundWorkOpenTarget}
@@ -2306,7 +2872,10 @@ function ConversationComposerImpl({
       provider,
       remoteSessionId,
       runningSubagentCount,
-      snapshot?.backgroundWorks,
+      sessionId,
+      workspaceHookAdmission,
+      workspaceMcpAdmission,
+      backgroundWorks,
       workspaceIdentity,
       workspacePath,
     ],
@@ -2364,8 +2933,10 @@ function ConversationComposerImpl({
                   }
                 : undefined
             }
+            onRetry={onRetryError}
             onDismiss={onDismissError}
             onOpenModelSettings={onOpenModelSettings}
+            onOpenUpgrade={onOpenModelUpgrade}
             modelConfigTarget={modelConfigTarget}
           />
         </div>
@@ -2395,11 +2966,23 @@ function ConversationComposerImpl({
         </div>
       ) : null}
       <div
+        data-composer-element-screenshots={hiddenElementScreenshotsMarker || undefined}
+        data-highspeed-composer={highspeedCard ? "true" : undefined}
+        data-highspeed-entrance={highspeedCard ? highspeedEntrance : undefined}
         className={cn(
           "chat-composer-input-surface relative w-full",
           contextHeader && "rounded-2xl bg-surface shadow-xl/5",
+          highspeedCard && "highspeed-composer-surface",
+          highspeedPresented && "highspeed-placeholder-presented",
         )}
       >
+        {highspeedCard ? (
+          <HighspeedComposerBackground
+            key={highspeedCard.cardId}
+            animated={highspeedEntranceAnimated}
+            onModelTransitionStart={handleHighspeedModelTransitionStart}
+          />
+        ) : null}
         {contextHeader ? (
           // 旧 ChatViewComposer contextHeaderContent 同款包装（workspace 菜单 + Git 分支）。
           <div className="relative z-10 p-1.5 flex min-w-0 flex-wrap items-center gap-0">
@@ -2419,6 +3002,7 @@ function ConversationComposerImpl({
           </div>
         ) : null}
         <ChatPromptEditor
+          extraPlugins={elementMentionPlugin}
           workspacePath={workspacePath}
           workspaceIdentity={workspaceIdentity}
           taskId={sessionId}
@@ -2428,10 +3012,13 @@ function ConversationComposerImpl({
               ? normalPlaceholder
               : intl.formatMessage({ id: "remote.conversation.sendUnavailable" })
           }
-          disabled={disabled || mode === "reject"}
+          disabled={disabled || (mode === "reject" && !recoveryAvailable)}
           submitting={pending}
           submitDisabled={
-            runtimeBlocked || pending || !routingAllowsSend || !attachmentsReady || !submissionReady
+            pending ||
+            connectionPending ||
+            (!canReload &&
+              (runtimeBlocked || !routingAllowsSend || !attachmentsReady || !submissionReady))
           }
           allowSubmitWhenEmpty={
             // 发送按钮已把代码评论视为可发送上下文，但这里曾漏掉同一状态，
@@ -2460,13 +3047,23 @@ function ConversationComposerImpl({
           // Bugfix 原因：命令目录必须完整来自 CLI workspace slash catalog；UI 只在
           // secondary pane 按产品能力隐藏 goal，不再追加任何内建命令或别名。
           excludedSlashCommandNames={suppressGoalCommands ? ["goal"] : undefined}
-          appSlashCommands={runtimeBlocked ? [] : appSlashCommands}
+          appSlashCommands={appSlashCommands?.filter((command) =>
+            command.recovery ? recoveryAvailable : !runtimeBlocked,
+          )}
           enableMentionPanel
           leadingActions={leadingActionsNode}
           submitControl={submitControlNode}
           layout={layout}
           className="p-0"
+          shellClassName={
+            highspeedCard
+              ? "relative z-10 !rounded-none !border-0 !bg-transparent !transition-none hover:!border-transparent focus-within:!border-transparent focus-within:!bg-transparent"
+              : undefined
+          }
           onChange={handleEditorChange}
+          onUserInputClear={handleUserInputClear}
+          onUserInputPresenceChange={handleUserInputPresenceChange}
+          onUserInputStart={handleUserInputStart}
           onFocus={handleEditorFocus}
           onSubmit={handleEditorSubmit}
           onWhiteboardMentionSelected={attachmentsApi.handleWhiteboardMentionSelected}
@@ -2497,6 +3094,11 @@ function ConversationComposerImpl({
         open={heldQueueConfirmation !== null}
         onOpenChange={(open) => {
           if (!open && !pendingRef.current) {
+            if (heldQueueConfirmation?.telemetrySeed.localTtft)
+              getLocalTtftObserver()?.exclude(
+                heldQueueConfirmation.telemetrySeed.localTtft,
+                "cancelled",
+              );
             setHeldQueueConfirmation(null);
           }
         }}

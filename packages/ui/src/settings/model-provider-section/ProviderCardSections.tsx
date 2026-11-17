@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
-  type RefObject,
   type ReactNode,
 } from "react";
 import type {
@@ -34,7 +33,6 @@ import {
 } from "@/components/ui/dropdown-menu.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useServices } from "@/hooks/useServices.js";
-import { useNimbusModelCatalogRefresh } from "@/business/quota/nimbusModelCatalogRefresh.js";
 import { TECHNICAL_INPUT_ATTRIBUTES } from "@/lib/technicalInputAttributes.js";
 import { ApiKeyInput } from "./ApiKeyInput.js";
 import { ModelRowInput } from "./ProviderFormControls.js";
@@ -74,7 +72,6 @@ export function ProviderCardHeader({
   logo,
   editingName,
   nameValue,
-  nameInputRef,
   nameEditable = true,
   onNameChange,
   onNameBlur,
@@ -90,7 +87,6 @@ export function ProviderCardHeader({
   logo?: ProviderConfigObject["logo"];
   editingName: boolean;
   nameValue: string;
-  nameInputRef: RefObject<HTMLInputElement | null>;
   nameEditable?: boolean;
   onNameChange: (value: string) => void;
   onNameBlur: () => void;
@@ -113,7 +109,7 @@ export function ProviderCardHeader({
         {editingName ? (
           <Input
             {...TECHNICAL_INPUT_ATTRIBUTES}
-            ref={nameInputRef}
+            autoFocus
             data-testid={TID_MODEL_PROVIDER_NAME_INPUT}
             type="text"
             size="lg"
@@ -151,10 +147,11 @@ export function ProviderCardHeader({
             <DropdownMenuContent
               align="end"
               onCloseAutoFocus={(event) => {
-                // 重命名后的焦点交给输入框，不能被菜单关闭时重新抢回触发按钮。
+                // 退场动画中的菜单仍会因鼠标移动抢焦点，必须关闭后再挂载并聚焦输入框。
                 if (renameRequestedRef.current) {
                   event.preventDefault();
                   renameRequestedRef.current = false;
+                  onStartEditName();
                 }
               }}
             >
@@ -163,7 +160,6 @@ export function ProviderCardHeader({
                   data-testid={TID_MODEL_PROVIDER_NAME_EDIT_BUTTON}
                   onSelect={() => {
                     renameRequestedRef.current = true;
-                    onStartEditName();
                   }}
                 >
                   <Pencil className="size-3.5" />
@@ -382,8 +378,6 @@ export function ProviderModelsSection({
   onReorderModelIds?: (modelIds: string[]) => void;
   settingsRevision?: number;
 }) {
-  // 官方模型展示元数据（倍率/标签/折扣）挂载时按需刷新（模块级节流，非官方供应商也安全）。
-  useNimbusModelCatalogRefresh();
   const { intl } = useZCodeIntl();
   const { providerSettingsService } = useServices();
   const [addDialogOpen, setAddDialogOpen] = useState(false);

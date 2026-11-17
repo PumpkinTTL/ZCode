@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- 定时任务编辑整页集中维护 Settings/History 两个 tab、cron builder、项目/模型选择器与运行历史，集中更利于交互一致。 */
+import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { completeNewModelSelection } from "@zcode/provider";
 import {
@@ -124,13 +125,14 @@ import {
   type AutomationEditRequiredField,
 } from "@/settings/automationEditValidation.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
+import { useConfirmDialog, useYoloModeConfirmation } from "@/hooks/useConfirmDialog.js";
 import { useAutomationProjectOptions } from "@/hooks/useAutomationProjectOptions.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import { useModelSelectionServiceView } from "@/hooks/useModelSelectionView.js";
 import { resolveModelThoughtOption } from "@/lib/modelThoughtOption.js";
 import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
 import { parseModelPickerValue } from "@/lib/zcodeSessionProjection.js";
+import { startUserAction } from "@/lib/userActionTelemetry.js";
 import { logger } from "@/logger.js";
 import {
   findAutomationWorkspaceOptionByKey,
@@ -1475,6 +1477,24 @@ export function AutomationEditView({
         apiKeyBadgeLabel: intl.formatMessage({
           id: "settings.modelProvider.connectionMode.apiKeyBadge",
         }),
+        codingPlanLabel: intl.formatMessage({
+          id: "settings.modelProvider.connectionMode.codingPlan",
+        }),
+        codingPlanBadgeLabel: intl.formatMessage({
+          id: "settings.modelProvider.connectionMode.codingPlanBadge",
+        }),
+        startPlanLabel: intl.formatMessage({
+          id: "settings.modelProvider.connectionMode.startPlan",
+        }),
+        startPlanBadgeLabel: intl.formatMessage({
+          id: "settings.modelProvider.connectionMode.startPlanBadge",
+        }),
+        teamPlanBadgeLabel: intl.formatMessage({
+          id: "settings.modelProvider.connectionMode.teamPlanBadge",
+        }),
+        teamPlanFallbackLabel: intl.formatMessage({
+          id: "settings.modelProvider.connectionMode.teamPlan",
+        }),
       },
       registrySelectionView: modelSelectionView,
     });
@@ -1521,6 +1541,10 @@ export function AutomationEditView({
   );
   // 定时任务编辑页只维护表单草稿，不能为了读取选项调用 workspace 默认配置接口；
   // 否则用户仅打开后取消，也会改掉当前项目或 draft session 的模型、模式和思考强度。
+  const confirmMode = useYoloModeConfirmation(
+    JSON.stringify([editing?.automationId, workspaceKey, saving, tab]),
+    mode,
+  );
   const modeOption = useMemo(() => buildAutomationModeOption(mode), [mode]);
   const selectedModelItem = useMemo(
     () => resolveAutomationModelItem(modelSelectGroups, effectiveModelValue),
@@ -1719,6 +1743,7 @@ export function AutomationEditView({
   // 字段才能触发未保存提示，否则仅打开已有任务再返回也会被误判为修改。
   const hasUnsavedChanges = Boolean(editing) && changedFields.length > 0;
 
+  const recommendStartPlan = useStartPlanRecommendation(modelSelectionView);
   const submitAutomation = useCallback(
     async (options: { validationSource: "save" | "run-now"; returnToList?: boolean }) => {
       if (saving) return false;
@@ -1753,15 +1778,36 @@ export function AutomationEditView({
           : null;
       // 只禁用按钮无法覆盖快捷键或异步回调；提交边界也必须拒绝无有效项目的新建。
       if (!target) return false;
-      const ok = await onSubmit({ input, ...target });
-      if (ok && options?.returnToList !== false) {
-        onBack();
+      if (input.modelSelection && (!editing || changedFields.includes("model"))) {
+        const chosen = await recommendStartPlan(input.modelSelection);
+        if (!chosen) return false;
+        input.modelSelection = chosen;
       }
-      return ok;
+      const trace = startUserAction({
+        featureId: "automation.lifecycle",
+        action: editing ? "update" : "create",
+        trigger: "button",
+        workspaceKind: editing?.workspaceIdentity?.trim() ? "remote" : "local",
+        automationKind: "scheduled",
+      });
+      try {
+        const ok = await onSubmit({ input, ...target });
+        if (ok) {
+          trace.complete({ resultSource: "platform_result" });
+          if (options?.returnToList !== false) onBack();
+        } else {
+          trace.reject({ resultSource: "platform_result" });
+        }
+        return ok;
+      } catch (error) {
+        trace.fail({ failureStage: "automation_save" });
+        throw error;
+      }
     },
     [
       buildSubmitInput,
       changedFields,
+      recommendStartPlan,
       canSubmit,
       editing,
       onBack,
@@ -2576,11 +2622,13 @@ export function AutomationEditView({
                         直接复用首页 ConfigSelect，只覆盖紧凑 trigger 布局。 */}
                     <ConfigSelect
                       option={modeOption}
-                      onValueChange={(value) => {
-                        markFieldTouched("mode");
-                        modeRef.current = value;
-                        setMode(value);
-                      }}
+                      onValueChange={(value) =>
+                        confirmMode(value, () => {
+                          markFieldTouched("mode");
+                          modeRef.current = value;
+                          setMode(value);
+                        })
+                      }
                       tooltipTitle={intl.formatMessage({
                         id: "chat.toolbar.mode.label",
                       })}

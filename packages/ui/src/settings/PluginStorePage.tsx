@@ -1,7 +1,14 @@
+import type { DraftPluginUiOpenRequest } from "@/plugin-ui/contract.js";
 import { withPluginTelemetry } from "@zcode/services";
+import { usePlatform } from "@/hooks/usePlatform.js";
+import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
 /* eslint-disable max-lines -- 插件商店容器统一编排列表/详情、市场源对话框、卸载确认、试用跳转与技能刷新收尾，集中维护保证交互一致。 */
 import { PluginAddMenu } from "@/conversation-workspace-target/PluginAddMenu.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useStore } from "zustand";
+import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
+import { isWorkspaceTab } from "@/store/tabStore.js";
+import { marketingNavigation, finishMarketingNavigation } from "@/lib/marketingNavigation.js";
 import { ArrowLeft, RefreshCw, Store } from "lucide-react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { Button } from "@/components/ui/button.js";
@@ -33,15 +40,13 @@ import type { PluginStoreActions } from "@/settings/PluginStoreCard.js";
 import {
   buildStoreItems,
   canUpdatePluginItem,
-  isPluginUpdatePending,
+  hasInstallableUpdate,
+  isStoreItemInstallBlocked,
   resolveItemDisplayName,
   resolvePluginDisplayName,
   type StorePluginItem,
 } from "@/settings/pluginStoreListing.js";
-import {
-  ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
-  resolvePresetPluginMarketplaces,
-} from "@zcode/shared";
+import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
 import { PluginUninstallConfirmDialog } from "@/settings/PluginUninstallConfirmDialog.js";
 import { usePluginUninstall } from "@/settings/usePluginUninstall.js";
 import { claimMarketplaceAutoRefresh } from "@/settings/officialMarketplaceAutoRefresh.js";
@@ -63,6 +68,8 @@ interface PluginStorePageProps {
   sessionId?: string | null;
   remoteSessionId?: string | null;
   embedded?: boolean;
+  paneId?: string;
+  onOpenDraftUi?: (request: DraftPluginUiOpenRequest) => void;
   onBack?: () => void;
 }
 
@@ -79,13 +86,18 @@ export function PluginStorePage({
   sessionId,
   remoteSessionId,
   embedded = false,
+  paneId,
+  onOpenDraftUi,
   onBack,
 }: PluginStorePageProps) {
+  const platform = usePlatform();
   const { intl, locale } = useZCodeIntl();
   const { order: storeOrder, refresh: refreshStoreOrder } = usePluginStoreOrder();
   const { pluginManagementService, skillsService } = useServices();
   const usePluginManagementStore = useScopedPluginManagementStore(pluginManagementService);
   const pluginUi = useMarketPluginUi({
+    paneId,
+    onOpenDraftUi,
     workspacePath,
     workspaceIdentity,
     sessionId,
@@ -117,10 +129,6 @@ export function PluginStorePage({
   const restoreBuiltin = usePluginManagementStore((state) => state.restoreBuiltin);
   const setEnabled = usePluginManagementStore((state) => state.setEnabled);
   const togglingPluginId = usePluginManagementStore((state) => state.togglingPluginId);
-
-  // 预置公开市场源（含外部工具经 POLARIS_PLUGIN_MARKETPLACE_SOURCES 注入的源）：静态清单，
-  // 随 app 版本走，不参与联网，只在「添加市场源」里作为可一键添加的建议出现。
-  const presetMarketplaces = useMemo(() => resolvePresetPluginMarketplaces(), []);
 
   const [view, setView] = useState<PluginStoreView>("store");
   const operationService = useMemo(() => {
@@ -207,6 +215,86 @@ export function PluginStorePage({
   );
   const itemById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
   const detailItem = detailPluginId ? (itemById.get(detailPluginId) ?? null) : null;
+  const marketingRequest = useStore(marketingNavigation, (state) => state.request);
+  const isMarketingDestinationVisible = useOptionalTabStore((state) => {
+    const tab = state.tabs.find((tab) => tab.id === state.activeTabId);
+    return Boolean(
+      tab &&
+      isWorkspaceTab(tab) &&
+      (tab.workspaceIdentity?.trim() || tab.workspacePath) ===
+        (workspaceIdentity?.trim() || workspacePath),
+    );
+  });
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || view === "manage" || typeof IntersectionObserver === "undefined") return;
+    let visible = false;
+    const observer = new IntersectionObserver(([entry]) => {
+      const next = Boolean(entry?.isIntersecting);
+      if (next && !visible) {
+        void reportAppTelemetryEvent(
+          platform,
+          {
+            elementName: "plugin_discovery",
+            eventRegion: "app",
+            eventType: "view",
+            eventExtraDetail: {
+              schema_version: "1",
+              action: view === "detail" ? "detail_view" : "store_view",
+              entry: embedded
+                ? "side_pane_market"
+                : view === "detail"
+                  ? "store_detail"
+                  : "store_list",
+              client_kind: isWebRemoteControl ? "mobile" : "desktop",
+              ...(view === "detail" && detailPluginId ? { plugin_id: detailPluginId } : {}),
+            },
+          },
+          "plugin-discovery",
+        );
+      }
+      visible = next;
+    });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [platform, view, detailPluginId, embedded, isWebRemoteControl]);
+  useEffect(() => {
+    if (embedded || marketingRequest?.target.page !== "plugin_marketplace") return;
+    if (!isMarketingDestinationVisible) return;
+    const pluginId = marketingRequest.target.plugin_id;
+    if (!workspacePath) {
+      finishMarketingNavigation(marketingRequest.id, new Error("marketing_navigation_unavailable"));
+      return;
+    }
+    if (
+      loading ||
+      loadedWorkspacePath !== workspacePath ||
+      loadedWorkspaceIdentity !== normalizedWorkspaceIdentity
+    )
+      return;
+    if (error || (pluginId && !itemById.has(pluginId))) {
+      finishMarketingNavigation(marketingRequest.id, new Error("marketing_plugin_unavailable"));
+    } else if (pluginId ? view === "detail" && detailPluginId === pluginId : view === "store") {
+      finishMarketingNavigation(marketingRequest.id);
+    } else {
+      setDetailPluginId(pluginId ?? null);
+      setView(pluginId ? "detail" : "store");
+      setQuery("");
+    }
+  }, [
+    embedded,
+    marketingRequest,
+    isMarketingDestinationVisible,
+    workspacePath,
+    loading,
+    loadedWorkspacePath,
+    loadedWorkspaceIdentity,
+    normalizedWorkspaceIdentity,
+    error,
+    itemById,
+    view,
+    detailPluginId,
+  ]);
   // 插件自身 warning 诊断（如声明的技能路径扫描为空）：详情高级区展示，避免静默失败。
   const detailPluginInfo = detailItem?.info;
   const detailPluginWarnings = detailPluginInfo
@@ -326,6 +414,8 @@ export function PluginStorePage({
 
   const handleInstall = useCallback(
     async (item: StorePluginItem) => {
+      // 示例提示词对未安装条目也走这里：不兼容的版本不能装（§4.3），按钮之外的入口同样挡住。
+      if (isStoreItemInstallBlocked(item)) return;
       const succeeded = item.restorable
         ? await restoreBuiltin(item.id, operationService)
         : await installPlugin(item.name, item.marketplace, operationService, "user");
@@ -360,7 +450,7 @@ export function PluginStorePage({
     }
     const pendingCount = usePluginManagementStore
       .getState()
-      .installedPlugins.filter((item) => isPluginUpdatePending(item.updateStatus)).length;
+      .installedPlugins.filter(hasInstallableUpdate).length;
     if (pendingCount > 0) {
       toast(
         intl.formatMessage(
@@ -411,16 +501,17 @@ export function PluginStorePage({
   const actions: PluginStoreActions = useMemo(
     () => ({
       onOpenDetail: openDetail,
-      // 打开 UI 只在会话右侧市场（embedded）提供；主导航市场整行进入详情。
-      onOpenUi: embedded
-        ? (item) =>
-            void pluginUi.open(
-              item.id,
-              item.info?.enabled
-                ? undefined
-                : () => setEnabled(item.id, true, operationService, "workspace"),
-            )
-        : undefined,
+      // 主导航交给根草稿，侧栏保留所属 pane 的绑定。
+      onOpenUi:
+        embedded || onOpenDraftUi
+          ? (item) =>
+              void pluginUi.open(
+                item.id,
+                item.info?.enabled
+                  ? undefined
+                  : () => setEnabled(item.id, true, operationService, "workspace"),
+              )
+          : undefined,
       onSetEnabled: (pluginId, enabled) => {
         void setEnabled(pluginId, enabled, operationService, "workspace");
       },
@@ -441,6 +532,7 @@ export function PluginStorePage({
       setEnabled,
       togglingPluginId,
       embedded,
+      onOpenDraftUi,
     ],
   );
 
@@ -473,7 +565,8 @@ export function PluginStorePage({
       ) : null}
       {view === "detail" ? (
         <Button variant="ghost" data-testid="plugin-store-detail-back" onClick={backToStore}>
-          {intl.formatMessage({ id: "settings.plugins.store.browseAll" })}
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          {intl.formatMessage({ id: "settings.plugins.store.back" })}
         </Button>
       ) : null}
       {view === "store" ? (
@@ -553,9 +646,9 @@ export function PluginStorePage({
             />
             <Button
               type="button"
-              variant="secondary"
+              variant="default"
               size="lg"
-              className="font-medium"
+              className="font-normal"
               data-testid="plugin-store-manage-open"
               onClick={() => setView("manage")}
             >
@@ -565,9 +658,10 @@ export function PluginStorePage({
         </div>
       ) : null}
 
+      {/* 来源错误可能带连续长路径；允许断行，避免窄屏内容被错误文本撑宽。 */}
       {error && !addSourceOpen ? (
         <div
-          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-ui-base text-destructive"
+          className="break-words rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-ui-base text-destructive"
           data-testid="plugin-store-error"
         >
           {error}
@@ -576,13 +670,20 @@ export function PluginStorePage({
 
       {view === "manage" ? (
         <div data-testid="plugin-store-manage" className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              data-testid="plugin-store-manage-back"
+              aria-label={intl.formatMessage({ id: "project.back" })}
+              onClick={backToStore}
+            >
+              <ArrowLeft className="size-4" aria-hidden="true" />
+            </Button>
             <h1 className="text-ui-xl font-semibold">
               {intl.formatMessage({ id: "settings.plugins.store.manageInstalled" })}
             </h1>
-            <Button variant="outline" data-testid="plugin-store-browse-all" onClick={backToStore}>
-              {intl.formatMessage({ id: "settings.plugins.store.browseAll" })}
-            </Button>
           </div>
           <PluginsSection
             mode="market"
@@ -600,7 +701,7 @@ export function PluginStorePage({
               if (intent === "add-marketplace") setAddSourceOpen(true);
             }}
             onOpenUi={
-              embedded
+              embedded || onOpenDraftUi
                 ? (item, target, enable) => {
                     if (
                       (target?.workspaceIdentity?.trim() || target?.workspacePath) !==
@@ -698,6 +799,24 @@ export function PluginStorePage({
           }
           query={query}
           onQueryChange={setQuery}
+          onSearchSubmit={() => {
+            if (!query.trim()) return;
+            void reportAppTelemetryEvent(
+              platform,
+              {
+                elementName: "plugin_discovery",
+                eventRegion: "app",
+                eventType: "view",
+                eventExtraDetail: {
+                  schema_version: "1",
+                  action: "search",
+                  entry: embedded ? "side_pane_market" : "store_list",
+                  client_kind: isWebRemoteControl ? "mobile" : "desktop",
+                },
+              },
+              "plugin-discovery",
+            );
+          }}
           segment={segment}
           onSegmentChange={setSegment}
         />
@@ -755,8 +874,6 @@ export function PluginStorePage({
         onAddMarketplace={handleAddMarketplace}
         activeOperations={activeOperations}
         error={addMarketplaceError}
-        presets={presetMarketplaces}
-        marketplaces={marketplaces}
       />
     </div>
   );

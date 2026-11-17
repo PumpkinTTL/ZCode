@@ -1,0 +1,189 @@
+{
+ "@/components/marketing-touch/useMarketingTaskCompletionRefresh.js": [
+  "useMarketingTaskCompletionRefresh"
+ ],
+ "@/CodingPlanUsageRemainingPanel.js": [
+  "hasActiveCodingPlanSnapshot"
+ ],
+ "@/components/coding-plan-quota-reset/CodingPlanQuotaResetDialog.js": [
+  "formatCodingPlanQuotaResetCountdown"
+ ],
+ "@/highspeed/HighspeedShareNoticeCard.js": [
+  "HighspeedShareDialog",
+  "HighspeedShareNoticeCard"
+ ],
+ "@/request-security-edition/errors.js": [
+  "isRequestVerificationConfigNetworkError",
+  "requestVerificationErrorAttribution"
+ ],
+ "@/lib/providerBusinessError.js": [
+  "getProviderBusinessErrorUiAction",
+  "isProviderBusinessErrorCode",
+  "resolveGlmQuotaBannerBusinessCode",
+  "resolveRequestVerificationBusinessCode",
+  "resolveStartPlanConcurrentLimitBannerReason",
+  "resolveStartPlanConcurrentLimitBusinessCode",
+  "resolveStartPlanQuotaExhaustedBusinessCode",
+  "type ProviderBusinessErrorUiAction"
+ ],
+ "@/request-security-edition/messages.js": [
+  "requestSecurityMessagesEnUS"
+ ],
+ "@/lib/codingPlanProvider.js": [
+  "hasActiveUsageEntitlementSnapshot",
+  "pickCodingPlanEntitlementProvider",
+  "resolveUsageEntitlementOutcome"
+ ],
+ "@/hooks/useStartPlanRecommendation.js": [
+  "useStartPlanRecommendation"
+ ],
+ "@/lib/codingPlanFunnelTelemetry.js": [
+  "createCodingPlanFunnelContext",
+  "createIdleTimeCodingPlanFunnelContext",
+  "reportCodingPlanUpgradeClick",
+  "resolveCodingPlanEntryPlanState",
+  "resolveCodingPlanEntryPlanStateFromProviderSettings",
+  "type CodingPlanFunnelContext"
+ ],
+ "@/hooks/useCodingPlanEntryPlanList.js": [
+  "type CodingPlanEntryInventory",
+  "useCodingPlanEntryPlanList"
+ ],
+ "@/CodingPlanBillingDiscount.js": [
+  "CodingPlanBillingDiscountBadge",
+  "CodingPlanBillingDiscountBadgePill",
+  "CodingPlanBillingDiscountInfoDialog",
+  "useCodingPlanBillingDiscount",
+  "useCodingPlanBillingDiscountFromService"
+ ],
+ "@/lib/codingPlanQuotaPresentation.js": [
+  "findCodingPlanQuotaLimit",
+  "formatQuotaRemainingPercentage",
+  "formatQuotaResetTime",
+  "formatStartPlanBucketResetTime",
+  "getQuotaRemainingPercentage",
+  "isSameLimitCategory",
+  "resolveMcpQuotaLimit"
+ ],
+ "@/components/coding-plan-quota-reset/CodingPlanQuotaResetAction.js": [
+  "LocalizedCodingPlanQuotaResetAction"
+ ],
+ "@/components/coding-plan-quota-reset/CodingPlanQuotaResetOpportunity.js": [
+  "CodingPlanQuotaResetOpportunity"
+ ],
+ "@/components/coding-plan-quota-reset/buildCodingPlanQuotaResetDialogConfig.js": [
+  "buildCodingPlanQuotaResetDialogConfig"
+ ],
+ "@/hooks/useCodingPlanQuotaResetUi.js": [
+  "useCodingPlanQuotaResetUi"
+ ],
+ "@/lib/codingPlanQuotaResetUi.js": [
+  "mergeCodingPlanQuotaResetOpportunityBadges",
+  "resolveCodingPlanQuotaResetActionCompletedAt",
+  "resolveCodingPlanQuotaResetLimit"
+ ],
+ "@/lib/codingPlanUsageSources.js": [
+  "buildCodingPlanUsageSources",
+  "type CodingPlanUsageSource"
+ ],
+ "@/components/marketing-touch/MarketingTouchProvider.js": [
+  "MarketingBanner"
+ ],
+ "@/components/marketing-touch/useMarketingBannerVisible.js": [
+  "useMarketingBannerVisible"
+ ],
+ "@/highspeed/HighspeedActivationVisual.js": [
+  "HighspeedComposerBackground"
+ ],
+ "@/highspeed/useHighspeedComposerEntrance.js": [
+  "useHighspeedComposerEntrance"
+ ],
+ "@/highspeed/highspeedFooterExpiryClock.js": [
+  "armHighspeedFooterExpiryClock"
+ ],
+ "@/highspeed/highspeedConversationRows.js": [
+  "findTurnHeaderBySourceCommandId",
+  "findUserInputBySourceCommandId",
+  "listHighspeedInputRows",
+  "resolveNextHighspeedExpiryMsInPartition"
+ ],
+ "@/highspeed/highspeedShare.js": [
+  "buildHighspeedShareNotice",
+  "isHighspeedShareEligible"
+ ],
+ "@/highspeed/highspeedTurnStore.js": [
+  "aggregateHighspeedCardMetrics",
+  "claimHighspeedCardAutoShare",
+  "claimHighspeedHealthyAttempt",
+  "completeHighspeedTurn",
+  "discardHighspeedTurn",
+  "getHighspeedCardTps",
+  "getHighspeedSessionDependencies",
+  "getHighspeedTurnByCommandId",
+  "getHighspeedTurnDependencies",
+  "hydrateHighspeedTurnsFromTranscript",
+  "listExpiredHighspeedCardsAwaitingTps",
+  "listHighspeedCardAutoShareCandidates",
+  "listHighspeedTurnsAwaitingMetricsPersistence",
+  "listPendingHighspeedTurns",
+  "markHighspeedCardAutoShared",
+  "markHighspeedTurnMetricsPersisted",
+  "recordHighspeedTurn",
+  "releaseHighspeedHealthyAttempt",
+  "resetHighspeedHealthyAttempts",
+  "resolveNextHighspeedAutoShareAt",
+  "setHighspeedCardTps",
+  "subscribeHighspeedTurns",
+  "type HighspeedShareMetrics"
+ ],
+ "@/highspeed/highspeedOutputFooter.js": [
+  "markHighspeedOutputFooterUnits"
+ ],
+ "@/highspeed/highspeedSend.js": [
+  "HIGHSPEED_SEND_WAIT_BUDGET_MS",
+  "prepareHighspeedSendContext",
+  "readRegularTpsWithinSendBudget",
+  "resolveHighspeedPrepareSelection",
+  "type HighspeedSendContext",
+  "type HighspeedTurnPreparer"
+ ],
+ "@/highspeed/highspeedSavedTime.js": [
+  "calculateHighspeedSavedDurationFromMetrics",
+  "readHighspeedRegularTpsFromHealth"
+ ],
+ "@/highspeed/highspeedToastClaims.js": [
+  "claimHighspeedCardInvalidation",
+  "claimHighspeedFallbackToast",
+  "releaseHighspeedCardInvalidation"
+ ],
+ "@/highspeed/highspeedShareDiagnostics.js": [
+  "collectHighspeedCardShareBlockers",
+  "listHighspeedCardsAwaitingAutoShare"
+ ],
+ "@/lib/sidebarCodingPlanUpgrade.js": [
+  "isMaxCodingPlanSnapshot",
+  "isTerminalCodingPlanSnapshot"
+ ],
+ "@/highspeed/HighspeedModelIndicator.js": [
+  "HighspeedModelIndicator"
+ ],
+ "@/highspeed/highspeedTime.js": [
+  "formatHighspeedRemainingTime"
+ ],
+ "@/chat-input-toolbar/CodingPlanContextUsage.js": [
+  "hasChatCodingPlanUsageRemaining",
+  "type ChatCodingPlanUsageRemainingConfig"
+ ],
+ "@/chat-input-toolbar/StartPlanContextBalance.js": [
+  "hasChatStartPlanBalance",
+  "type ChatStartPlanBalanceConfig"
+ ],
+ "@/hooks/useComposerConnectionSwitch.js": [
+  "useComposerConnectionSwitch"
+ ],
+ "@/lib/sidebarUsageCodingPlanProviderPreference.js": [
+  "type SidebarUsageCodingPlanProviderId",
+  "type SidebarUsageCodingPlanSourceId",
+  "writeSidebarUsageCodingPlanProviderPreference"
+ ]
+}

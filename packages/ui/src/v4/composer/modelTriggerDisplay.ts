@@ -3,25 +3,39 @@ import {
   resolveModelProviderFamilyIdByProviderId,
 } from "@zcode/shared";
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
-import type { ModelSelectGroup, ModelSelectGroupItem } from "@/ModelConfigSelect.js";
+import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
 
 export interface V4ModelTriggerDisplay {
   fullLabel: string;
   modelLabel: string;
+  providerPrefix?: string;
 }
 
-/**
- * 模型切换记录的展示文案。官方套餐身份已随官方账号业务移除；
- * 历史会话里可能仍有套餐切换记录，这里退回普通 Provider/模型文案。
- */
 export function formatModelChangeLabel(
   providerId: string | undefined,
   providerName: string | undefined,
   modelName: string,
-  _intl: Pick<IntlInstance, "formatMessage">,
+  intl: Pick<IntlInstance, "formatMessage">,
 ): string {
-  void _intl;
-  return formatProviderModelLabel(providerId, providerName, modelName);
+  let planLabelId: string;
+  // 切换记录必须保留当时的套餐身份，不能从当前连接或可用模型目录反推历史套餐。
+  switch (providerId) {
+    case BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan:
+    case BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan:
+      planLabelId = "settings.modelProvider.connectionMode.codingPlan";
+      break;
+    case BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan:
+    case BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan:
+      planLabelId = "settings.modelProvider.connectionMode.startPlan";
+      break;
+    case BUILTIN_MODEL_PROVIDER_IDS.zaiTeamCodingPlan:
+    case BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan:
+      planLabelId = "settings.modelProvider.connectionMode.teamPlan";
+      break;
+    default:
+      return formatProviderModelLabel(providerId, providerName, modelName);
+  }
+  return `${modelName}(${intl.formatMessage({ id: planLabelId })})`;
 }
 
 export function formatProviderModelLabel(
@@ -29,11 +43,8 @@ export function formatProviderModelLabel(
   providerName: string | undefined,
   modelName: string,
 ): string {
-  // 【疑似合并回归】官方套餐整批移除时把这段家族判定一起删成了 `void providerId`，
-  // 但本文件与 subagent-model-label.ts 的契约（「内置家族只说模型名，自定义 provider
-  // 才显示『名字/模型』」）仍然有效，且 MODEL_PROVIDER_FAMILY_SPECS 表在 shared 里
-  // 原样保留。这里按原契约恢复：Z.ai / BigModel 的内置连接名属于产品固定入口，
-  // 拼进模型文案会重复展示「Coding Plan」等连接信息。
+  // Z.ai / BigModel 的内置连接名属于产品固定入口，拼进模型文案会重复展示
+  // “Coding Plan”等连接信息；切换提示额外通过 formatModelChangeLabel 标明套餐类型。
   if (providerId && resolveModelProviderFamilyIdByProviderId(providerId)) {
     return modelName;
   }
@@ -42,33 +53,33 @@ export function formatProviderModelLabel(
   return normalizedProviderName ? `${normalizedProviderName}/${modelName}` : modelName;
 }
 
-function findSelectedModelItem(
-  modelGroups: readonly ModelSelectGroup[],
-  normalizedValue: string,
-): ModelSelectGroupItem | undefined {
-  const selectedGroup = modelGroups.find((group) =>
-    group.items.some((item) => item.value === normalizedValue),
-  );
-  return selectedGroup?.items.find((item) => item.value === normalizedValue);
-}
-
-/**
- * 触发器**可见**文案：只有模型名。
- *
- * Provider 层已经从模型菜单里移除，品牌身份改由模型前的图标承担；把
- * `Provider/模型` 再拼进触发器，等于把刚删掉的那一层又写回界面上。
- * 需要完整身份（含 Provider）的地方走 `formatProviderModelLabel` 或下面的 `fullLabel`。
- */
 export function resolveV4ModelTriggerLabel({
   modelGroups,
   normalizedValue,
   fallbackLabel,
+  providerId,
+  providerName,
 }: {
   modelGroups: readonly ModelSelectGroup[];
   normalizedValue: string;
   fallbackLabel: string;
+  providerId: string | undefined;
+  providerName?: string;
 }): string {
-  return findSelectedModelItem(modelGroups, normalizedValue)?.name ?? fallbackLabel;
+  const selectedGroup = modelGroups.find((group) =>
+    group.items.some((item) => item.value === normalizedValue),
+  );
+  const selectedItem = selectedGroup?.items.find((item) => item.value === normalizedValue);
+  if (!selectedGroup || !selectedItem) {
+    return fallbackLabel;
+  }
+
+  // 仅当前菜单中存在的连接按 ID 兜底；历史记录的通用格式化保留原有语义。
+  return formatProviderModelLabel(
+    providerId,
+    providerName?.trim() || providerId,
+    selectedItem.name,
+  );
 }
 
 export function resolveV4ModelTriggerDisplay({
@@ -84,14 +95,35 @@ export function resolveV4ModelTriggerDisplay({
   providerId: string | undefined;
   providerName?: string;
 }): V4ModelTriggerDisplay {
-  const selectedItem = findSelectedModelItem(modelGroups, normalizedValue);
-  if (!selectedItem) {
-    return { fullLabel: fallbackLabel, modelLabel: fallbackLabel };
+  // 把 provider/model 预先拼成单一字符串后，响应式布局只能整段隐藏或依赖
+  // 平台 JS 分支裁剪；这里保留结构化前缀，让 composer 容器断点统一决定可见密度。
+  const fullLabel = resolveV4ModelTriggerLabel({
+    modelGroups,
+    normalizedValue,
+    fallbackLabel,
+    providerId,
+    providerName,
+  });
+  const selectedGroup = modelGroups.find((group) =>
+    group.items.some((item) => item.value === normalizedValue),
+  );
+  const selectedItem = selectedGroup?.items.find((item) => item.value === normalizedValue);
+  if (!selectedGroup || !selectedItem) {
+    return { fullLabel, modelLabel: fallbackLabel };
+  }
+
+  const modelLabel = selectedItem.name;
+  const normalizedProviderName = providerName?.trim() || providerId;
+  if (
+    !normalizedProviderName ||
+    (providerId && resolveModelProviderFamilyIdByProviderId(providerId))
+  ) {
+    return { fullLabel, modelLabel };
   }
 
   return {
-    // 完整身份只给 tooltip 与 aria-label，不参与可见文案。
-    fullLabel: formatProviderModelLabel(providerId, providerName, selectedItem.name),
-    modelLabel: selectedItem.name,
+    fullLabel,
+    providerPrefix: `${normalizedProviderName}/`,
+    modelLabel,
   };
 }

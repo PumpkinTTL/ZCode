@@ -1,13 +1,10 @@
-import { useRef, useState, type DragEvent } from "react";
-import { FolderOpen, Loader2, Plus } from "lucide-react";
-import {
-  isPresetMarketplaceAdded,
-  type PresetPluginMarketplace,
-  type ZCodePluginMarketplaceSummary,
-} from "@zcode/shared";
+import { useEffect, useId, useRef, useState, type DragEvent } from "react";
+import { FolderOpen, LoaderCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog.js";
+import { Checkbox } from "@/components/ui/checkbox.js";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog.js";
 import { Input } from "@/components/ui/input.js";
+import { Label } from "@/components/ui/label.js";
 import { cn } from "@/components/lib/utils.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -23,18 +20,12 @@ export function AddMarketplaceSourceDialog({
   onAddMarketplace,
   activeOperations,
   error,
-  presets = [],
-  marketplaces = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddMarketplace: (source: string) => Promise<boolean>;
   activeOperations: ReadonlyArray<{ id: string }>;
   error?: string | null;
-  /** 可一键添加的公开市场源（已添加的会被过滤掉）。 */
-  presets?: readonly PresetPluginMarketplace[];
-  /** 当前已登记市场，用于判断哪些预置源已添加。 */
-  marketplaces?: readonly ZCodePluginMarketplaceSummary[];
 }) {
   const { intl } = useZCodeIntl();
   const platform = useOptionalPlatform();
@@ -42,6 +33,8 @@ export function AddMarketplaceSourceDialog({
   const canPickPath = platform?.canSelectFilePath ?? false;
   const [source, setSource] = useState("");
   const [dragActive, setDragActive] = useState(false);
+  const [riskAcknowledged, setRiskAcknowledged] = useState(false);
+  const riskAcknowledgementId = useId();
   const trimmedSource = source.trim();
   const adding = activeOperations.some(
     (operation) => operation.id === `marketplace:add:${trimmedSource}`,
@@ -51,8 +44,14 @@ export function AddMarketplaceSourceDialog({
   // 防重复提交：Enter 与点击共用，避免 store 回写前的窗口里重复发起同一来源的添加。
   const pendingRef = useRef(false);
 
+  useEffect(() => {
+    // 风险确认仅属于本次弹框，关闭后不得沿用上次勾选。
+    if (!open) setRiskAcknowledged(false);
+  }, [open]);
+
   const handleAdd = async () => {
-    if (trimmedSource.length === 0 || pendingRef.current) return;
+    // 按钮和 Enter 共用门槛，避免键盘提交绕过风险确认。
+    if (!riskAcknowledged || trimmedSource.length === 0 || adding || pendingRef.current) return;
     pendingRef.current = true;
     try {
       const added = await onAddMarketplace(trimmedSource);
@@ -65,22 +64,6 @@ export function AddMarketplaceSourceDialog({
       pendingRef.current = false;
     }
   };
-
-  // 预置源一键添加：与手动输入共用同一防重提交闸门，成功即关闭弹层。
-  const handleAddPreset = async (preset: PresetPluginMarketplace) => {
-    if (pendingRef.current) return;
-    pendingRef.current = true;
-    try {
-      const added = await onAddMarketplace(preset.source);
-      if (added) onOpenChange(false);
-    } finally {
-      pendingRef.current = false;
-    }
-  };
-
-  const availablePresets = presets.filter(
-    (preset) => !isPresetMarketplaceAdded(preset, marketplaces),
-  );
 
   const handleChooseDirectory = async () => {
     if (!platform) return;
@@ -131,6 +114,12 @@ export function AddMarketplaceSourceDialog({
         <DialogTitle className="text-ui-lg font-medium text-foreground">
           {intl.formatMessage({ id: "settings.plugins.marketplaces.add" })}
         </DialogTitle>
+        <DialogDescription
+          data-testid="plugin-store-add-source-risk-warning"
+          className="rounded-xl bg-warning-surface p-3 text-ui-base text-warning-surface-foreground"
+        >
+          {intl.formatMessage({ id: "settings.plugins.marketplaces.riskWarning" })}
+        </DialogDescription>
         {error ? (
           <div
             className="max-h-[min(240px,40vh)] min-w-0 overflow-y-auto rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-ui-base whitespace-pre-wrap break-words text-destructive"
@@ -138,64 +127,6 @@ export function AddMarketplaceSourceDialog({
             role="alert"
           >
             {error}
-          </div>
-        ) : null}
-        {availablePresets.length > 0 ? (
-          // min-w-0 是关键：DialogContent 是 grid，列是 auto 轨道。
-          // 不加的话，本区块的最小内容宽度（truncate 的 nowrap 文案）会把整条轨道顶宽，
-          // 连输入框和页脚按钮一起溢出到面板右侧。
-          <div className="min-w-0 space-y-1">
-            <div className="px-1 text-ui-xs font-medium text-foreground-subtle">
-              {intl.formatMessage({ id: "settings.plugins.marketplaces.presets.title" })}
-            </div>
-            <div className="max-h-[min(220px,32vh)] min-w-0 space-y-1 overflow-x-hidden overflow-y-auto">
-              {availablePresets.map((preset) => {
-                const adding = activeOperations.some(
-                  (operation) => operation.id === `marketplace:add:${preset.source}`,
-                );
-                return (
-                  <div
-                    key={preset.id}
-                    data-testid="plugin-store-preset-source"
-                    data-preset-id={preset.id}
-                    className="flex min-w-0 items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-hover"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-ui-base font-medium text-foreground">
-                        {preset.name}
-                      </div>
-                      <div className="truncate text-ui-xs text-foreground-subtle">
-                        {preset.description}
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      data-testid="plugin-store-preset-add"
-                      data-preset-id={preset.id}
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0"
-                      disabled={adding}
-                      onClick={() => void handleAddPreset(preset)}
-                    >
-                      {adding ? (
-                        <Loader2
-                          data-icon="inline-start"
-                          className="animate-spin"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <Plus data-icon="inline-start" aria-hidden="true" />
-                      )}
-                      {intl.formatMessage({ id: "settings.plugins.marketplaces.presets.add" })}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="px-1 pt-1 text-ui-xs text-foreground-subtle">
-              {intl.formatMessage({ id: "settings.plugins.marketplaces.presets.customLabel" })}
-            </div>
           </div>
         ) : null}
         <Input
@@ -232,6 +163,19 @@ export function AddMarketplaceSourceDialog({
             {intl.formatMessage({ id: "settings.plugins.marketplaces.dropHint" })}
           </p>
         ) : null}
+        <div className="flex items-start gap-2">
+          <Checkbox
+            id={riskAcknowledgementId}
+            data-testid="plugin-store-add-source-risk-acknowledgement"
+            className="mt-0.5"
+            checked={riskAcknowledged}
+            onCheckedChange={(checked) => setRiskAcknowledged(checked === true)}
+            disabled={adding}
+          />
+          <Label htmlFor={riskAcknowledgementId} className="min-w-0 font-normal leading-relaxed">
+            {intl.formatMessage({ id: "settings.plugins.marketplaces.riskAcknowledgement" })}
+          </Label>
+        </div>
         <div className="flex justify-end gap-2">
           {canPickPath ? (
             <Button
@@ -249,11 +193,11 @@ export function AddMarketplaceSourceDialog({
             data-testid="plugin-store-add-source-submit"
             variant="default"
             size="lg"
-            disabled={trimmedSource.length === 0 || adding}
+            disabled={!riskAcknowledged || trimmedSource.length === 0 || adding}
             onClick={() => void handleAdd()}
           >
             {adding ? (
-              <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+              <LoaderCircle data-icon="inline-start" className="animate-spin" aria-hidden="true" />
             ) : (
               <Plus data-icon="inline-start" aria-hidden="true" />
             )}

@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
-import { Loader2Icon, Pencil } from "lucide-react";
+import { LoaderCircle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import {
   Dialog,
@@ -88,7 +88,6 @@ export function ProviderModelMetadataDialog({
   };
   const contextWindowInputId = useId();
   const maxOutputInputId = useId();
-  const displayNameInputId = useId();
   const smart = draft.useRecommendedConfigValue !== false;
   const activeOverrides = smart ? overrideFields : new Set<string>();
   const overridden = (field: string, legacy = false) =>
@@ -199,26 +198,6 @@ export function ProviderModelMetadataDialog({
                   onKeyDown={handleTechnicalInputKeyDown}
                 />
               </div>
-              {/* 展示名只影响模型菜单与触发器文案；真实请求继续用上面的模型 ID。 */}
-              <div className="min-w-0 flex-1">
-                <div className="mb-1 block text-ui-base text-foreground-subtle">
-                  <ModelConfigInputLabel field="modelDisplayName" htmlFor={displayNameInputId} />
-                </div>
-                <Input
-                  id={displayNameInputId}
-                  type="text"
-                  size="lg"
-                  value={draft.displayNameValue}
-                  placeholder={draft.idValue.trim()}
-                  className={modelEditorControlStyle(false)}
-                  onChange={(event) => {
-                    onDraftChange({ displayNameValue: event.target.value });
-                  }}
-                  onCompositionStart={handleCompositionStart}
-                  onCompositionEnd={handleCompositionEnd}
-                  onKeyDown={handleTechnicalInputKeyDown}
-                />
-              </div>
             </div>
           </ModelSettingsGroup>
           <ModelSettingsGroup group="tokens">
@@ -275,7 +254,7 @@ export function ProviderModelMetadataDialog({
                       className="inline-flex shrink-0 items-center text-foreground-subtlest"
                       role="status"
                     >
-                      <Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
+                      <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
                       <span className="sr-only">
                         {intl.formatMessage({ id: "common.loading" })}
                       </span>

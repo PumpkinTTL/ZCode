@@ -20,12 +20,15 @@ import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
 import { logger } from "@/logger.js";
+import { startUserAction } from "@/lib/userActionTelemetry.js";
 import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
+import { FileTreeHtmlOpenSetting } from "@/settings/FileTreeHtmlOpenSetting.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
 import { useSkillStore } from "@/store/skillStore.js";
+import { clearBrowserRecentVisits } from "@/store/browserRecentVisitsStore.js";
 import { formatImportSummary } from "./browserImportSummary.js";
 
-const OFFICIAL_BROWSER_USE_PLUGIN_ID = "browser-use@polaris-plugins-official";
+const OFFICIAL_BROWSER_USE_PLUGIN_ID = "browser-use@zcode-plugins-official";
 
 interface BrowserSettingsSectionProps {
   isDesktop: boolean;
@@ -135,19 +138,33 @@ export function BrowserSettingsSection({
 
   const handleBrowserEnabledChange = useCallback(
     async (enabled: boolean) => {
-      await setPluginEnabled(OFFICIAL_BROWSER_USE_PLUGIN_ID, enabled, pluginManagementService);
-      const refreshedPlugin = usePluginManagementStore
-        .getState()
-        .plugins.find((plugin) => plugin.id === OFFICIAL_BROWSER_USE_PLUGIN_ID);
-      if (refreshedPlugin?.enabled === enabled) {
-        await refreshAfterPluginChange();
-        toast(
-          intl.formatMessage({
-            id: enabled
-              ? "settings.browser.control.enabledToast"
-              : "settings.browser.control.disabledToast",
-          }),
-        );
+      const trace = startUserAction({
+        featureId: "settings.browser",
+        action: "toggle_browser_use",
+        trigger: "switch",
+      });
+      try {
+        await setPluginEnabled(OFFICIAL_BROWSER_USE_PLUGIN_ID, enabled, pluginManagementService);
+        const refreshedPlugin = usePluginManagementStore
+          .getState()
+          .plugins.find((plugin) => plugin.id === OFFICIAL_BROWSER_USE_PLUGIN_ID);
+        if (refreshedPlugin?.enabled === enabled) {
+          await refreshAfterPluginChange();
+          toast(
+            intl.formatMessage({
+              id: enabled
+                ? "settings.browser.control.enabledToast"
+                : "settings.browser.control.disabledToast",
+            }),
+          );
+        }
+        trace.complete({
+          resultSource: "platform_result",
+          stateAfter: enabled ? "enabled" : "disabled",
+        });
+      } catch (error) {
+        trace.fail({ failureStage: "plugin_update" });
+        throw error;
       }
     },
     [intl, pluginManagementService, refreshAfterPluginChange, setPluginEnabled],
@@ -156,13 +173,20 @@ export function BrowserSettingsSection({
   const handleImport = useCallback(async () => {
     if (!platform.importChromeBrowserData) return;
     setPendingOperation("import");
+    const trace = startUserAction({
+      featureId: "settings.browser",
+      action: "import_browser_data",
+      trigger: "button",
+    });
     try {
       const result = await platform.importChromeBrowserData();
+      trace.complete({ resultSource: "platform_result" });
       setLastImportResult(result);
       toast(formatImportSummary(result, intl.formatMessage), {
         durationMs: 5000,
       });
     } catch (error) {
+      trace.fail({ failureStage: "browser_data_import" });
       logger.error("[browser-settings] 导入 Chrome 数据失败", {
         error: error instanceof Error ? error.message : String(error),
       });
@@ -176,8 +200,15 @@ export function BrowserSettingsSection({
     async (mode: "cache" | "all") => {
       if (!platform.clearEmbeddedBrowserData) return;
       setPendingOperation(mode === "cache" ? "clear-cache" : "clear-all");
+      const trace = startUserAction({
+        featureId: "settings.browser",
+        action: mode === "cache" ? "clear_cache" : "clear_all_data",
+        trigger: "button",
+      });
       try {
         const result = await platform.clearEmbeddedBrowserData(mode);
+        if (result.success && mode === "all") clearBrowserRecentVisits();
+        trace.complete({ resultSource: "platform_result" });
         toast(
           intl.formatMessage({
             id: result.success
@@ -188,6 +219,7 @@ export function BrowserSettingsSection({
           }),
         );
       } catch (error) {
+        trace.fail({ failureStage: "browser_data_clear" });
         logger.error("[browser-settings] 清理内置浏览器数据失败", {
           error: error instanceof Error ? error.message : String(error),
           mode,
@@ -210,6 +242,7 @@ export function BrowserSettingsSection({
       <section className="space-y-3">
         <SettingsGroupCard>
           <SettingsRow
+            searchId="settings.browser.control.title"
             label={intl.formatMessage({ id: "settings.browser.control.title" })}
             description={intl.formatMessage({
               id: "settings.browser.control.description",
@@ -235,6 +268,7 @@ export function BrowserSettingsSection({
               Windows App-Bound 导入链路暂未开放，先隐藏入口但保留底层实现和清理能力。*/}
           {!isWindowsDesktop ? (
             <SettingsRow
+              searchId="settings.browser.import.title"
               label={intl.formatMessage({ id: "settings.browser.import.title" })}
               description={intl.formatMessage({
                 id: "settings.browser.import.description",
@@ -261,6 +295,18 @@ export function BrowserSettingsSection({
         </SettingsGroupCard>
       </section>
 
+      {/* 文件树 HTML 打开方式只在桌面端有内置浏览器时有意义。 */}
+      {isDesktop ? (
+        <section className="space-y-3">
+          <div className="text-ui-base font-medium text-foreground-subtle">
+            {intl.formatMessage({ id: "settings.browser.open.section" })}
+          </div>
+          <SettingsGroupCard>
+            <FileTreeHtmlOpenSetting />
+          </SettingsGroupCard>
+        </section>
+      ) : null}
+
       {/* 证书策略只在桌面端有内置浏览器时可配；改动由 main 在启动时装到 Session，需重启生效。 */}
       {isDesktop ? (
         <section className="space-y-3">
@@ -269,6 +315,7 @@ export function BrowserSettingsSection({
           </div>
           <SettingsGroupCard>
             <SettingsRow
+              searchId="settings.embeddedBrowserAllowInsecureCertificates"
               label={intl.formatMessage({
                 id: "settings.embeddedBrowserAllowInsecureCertificates",
               })}
@@ -302,6 +349,7 @@ export function BrowserSettingsSection({
         ) : null}
         <SettingsGroupCard>
           <SettingsRow
+            searchId="settings.browser.clearCache.title"
             label={intl.formatMessage({
               id: "settings.browser.clearCache.title",
             })}
@@ -322,6 +370,7 @@ export function BrowserSettingsSection({
             }
           />
           <SettingsRow
+            searchId="settings.browser.clearAll.title"
             label={intl.formatMessage({
               id: "settings.browser.clearAll.title",
             })}

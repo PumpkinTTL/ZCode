@@ -1,28 +1,26 @@
+// Bugfix：本文件在分享只读时间线闭包里，从 `@/plugin-ui/index.js` 桶文件导入会把 plugin-ui
+// 全量组件拖进 web-share 构建，`@zcode/shared/mcp-apps` 等子路径无法解析，分享落地页镜像构建失败。
+// 所以直接引用纯函数模块。
+import { isPluginUiPinnedToolRow } from "@/plugin-ui/domain/pluginUiRowPolicy.js";
+import type {
+  ConversationTurnRenderUnit,
+  BuildConversationTurnRenderUnitsOptions,
+} from "@/v4/conversationTurnRenderUnitTypes.js";
+export type {
+  ConversationTurnRenderUnit,
+  BuildConversationTurnRenderUnitsOptions,
+} from "@/v4/conversationTurnRenderUnitTypes.js";
 import type {
   AssistantTextRow,
   ConversationRow,
+  ConversationRowsPartition,
   HookInvocationRow,
   SessionPhase,
   TimelineMarkerRow,
   TurnHeaderRow,
   UserInputRow,
-  WorkflowLaunchMeta,
 } from "@zcode/shared/zcode-protocol-v4";
-import type { BotTopicPreparation } from "@zcode/shared";
 import type { AssistantWorkRow, ConversationTurnFlowItem } from "@/v4/conversationTurnFlowItems.js";
-import type { PluginUiRowPinResolver } from "@/plugin-ui/index.js";
-import {
-  isAssistantTextRow,
-  isBrowserTurnEndRow,
-  isHookInvocationRow,
-  isLightBoundaryMarkerRow,
-  isTimelineMarkerRow,
-  isTurnHeaderRow,
-  isUserInputRow,
-  isVisibleAssistantWorkRow,
-  isVisibleConversationRow,
-  splitTurnTailRows,
-} from "@/v4/conversationTurnRowKinds.js";
 import {
   isWorkflowLaunchUserInputRow,
   resolveWorkflowLaunchMeta,
@@ -32,10 +30,7 @@ import {
   resolveConversationTurnWorkDurationMs,
   resolveConversationTurnWorkStatus,
 } from "@/v4/conversationTurnWorkSegments.js";
-import type {
-  ConversationTurnWorkSegment,
-  ConversationTurnWorkStatus,
-} from "@/v4/conversationTurnWorkSegments.js";
+import { markHighspeedOutputFooterUnits } from "@/highspeed/highspeedOutputFooter.js";
 
 export type { AssistantWorkRow, ConversationTurnFlowItem } from "@/v4/conversationTurnFlowItems.js";
 export type {
@@ -43,56 +38,7 @@ export type {
   ConversationTurnWorkStatus,
 } from "@/v4/conversationTurnWorkSegments.js";
 
-export interface ConversationTurnRenderUnit {
-  key: string;
-  turnId: string;
-  /** 未接受的 Bot 消息展示投影，不写入 CLI rows 或导航/分享索引。 */
-  topicPreparations?: readonly BotTopicPreparation[];
-  header?: TurnHeaderRow;
-  visibleUserInputs: UserInputRow[];
-  assistantWorkRows: AssistantWorkRow[];
-  /**
-   * 所有 visual work segment 的历史行聚合，仅供复制、预览和旧调用兼容。
-   * 实际折叠边界读取 workSegments，且各段内部必须保持 CLI row 全序。
-   */
-  assistantHistoryRows: AssistantWorkRow[];
-  /** 操作正文锚点之后、真正轮尾 marker 之前的 row；保持 CLI 全序原位渲染。 */
-  assistantFollowingRows: AssistantWorkRow[];
-  assistantTailRows: AssistantWorkRow[];
-  /** Browser 自动轮尾截图：完成态渲染在 file diff 摘要之后、消息操作栏之前。 */
-  browserTurnEndRows: AssistantWorkRow[];
-  /** turn-local Hook product rows；不进入 assistant work/折叠，只供轮尾详情 action。 */
-  hookInvocations: HookInvocationRow[];
-  /** 整轮全部 assistant text 段，用于复制/预览聚合，不代表渲染位置。 */
-  assistantTextRows: AssistantTextRow[];
-  /** 轻边界（modelChange）：渲染在 user 输入之前的轮顶分隔。 */
-  leadingBoundaryRows: TimelineMarkerRow[];
-  /** 完成态轮尾最终正文；fork/retry/action/preview 只挂这一段。 */
-  latestAssistantTextRow?: AssistantTextRow;
-  /** 同一 product turn 内 user/assistant 的可见交错顺序；相邻工作行保持成组。 */
-  flowItems: ConversationTurnFlowItem[];
-  /** 原始输入与每条 accepted guide 分别对应一个独立视觉工作段。 */
-  workSegments?: ConversationTurnWorkSegment[];
-  renderRows: ConversationRow[];
-  isLastTurn: boolean;
-  isRunning: boolean;
-  assistantHistoryDefaultOpen: boolean;
-  timelineOnly: boolean;
-  /** turn 级聚合工作状态，仅供旧调用兼容；新组件消费 workSegments[].workStatus。 */
-  workStatus?: ConversationTurnWorkStatus;
-  startedAt?: number;
-  /** 中枢直接启动轮的启动元数据（规则见 `workflowLaunchTurn.ts`）；在场时轮由 run 卡呈现、无用户气泡。 */
-  workflowLaunch?: WorkflowLaunchMeta;
-}
-
-export interface BuildConversationTurnRenderUnitsOptions {
-  sessionPhase?: SessionPhase;
-  /** 插件卡片折叠裁决（时间线由推导结果 + 手动状态组装）。 */
-  pluginUiPinResolver?: PluginUiRowPinResolver;
-}
-
-/** 仅供 conversationTurnRenderUnitsIncremental 消费的分组草稿。 */
-export interface DraftTurnRenderUnit {
+interface DraftTurnRenderUnit {
   key: string;
   turnId: string;
   header?: TurnHeaderRow;
@@ -100,6 +46,106 @@ export interface DraftTurnRenderUnit {
   assistantWorkRows: AssistantWorkRow[];
   hookInvocations: HookInvocationRow[];
   orderedRows: ConversationRow[];
+}
+
+function isAssistantTextRow(row: ConversationRow): row is AssistantTextRow {
+  return row.kind === "assistantText";
+}
+
+function isTurnHeaderRow(row: ConversationRow): row is TurnHeaderRow {
+  return row.kind === "turnHeader";
+}
+
+function isUserInputRow(row: ConversationRow): row is UserInputRow {
+  return row.kind === "userInput";
+}
+
+function isTimelineMarkerRow(row: ConversationRow): row is TimelineMarkerRow {
+  return row.kind === "timelineMarker";
+}
+
+function isHookInvocationRow(row: ConversationRow): row is HookInvocationRow {
+  return row.kind === "hookInvocation";
+}
+
+function isVisibleAssistantWorkRow(row: AssistantWorkRow): boolean {
+  // 包装参数未完整时没有权威目标身份，通用卡片会绕过 Todo 等隐藏规则。
+  // 仅隐藏参数生成期；目标身份到达后复用原 renderer，失败和停止仍保留反馈。
+  if (
+    row.kind === "toolCall" &&
+    row.toolName === "DeferredToolCall" &&
+    row.status === "inputStreaming"
+  ) {
+    return false;
+  }
+  if (row.kind === "reasoning" && row.text.trim().length === 0) {
+    // reasoning_start/reasoning_end 可能形成空的终态 block；只在共享
+    // render-unit 边界裁掉它，避免 completed 状态绕过 streaming renderer 的空行过滤。
+    return false;
+  }
+  // EnterPlanMode 只是内部模式切换边界，把它当普通工具放进“已工作”，
+  // 会显示一条没有用户价值的“工具调用已执行”。只在 render unit 过滤，不改写协议投影，
+  // 以保留 desktop continuous / web remote replayable 共用的运行态与恢复语义。
+  return row.kind !== "toolCall" || row.toolName !== "EnterPlanMode";
+}
+
+function isVisibleConversationRow(row: ConversationRow): boolean {
+  if (isUserInputRow(row)) return true;
+  if (isTurnHeaderRow(row)) return false;
+  if (isHookInvocationRow(row)) return false;
+  return isVisibleAssistantWorkRow(row);
+}
+
+// 落位语义（lane）由 CLI 投影裁决下发（UI 不得按 marker type 自行推断）。
+// lane 缺省（不应发生）按 assistantWork 兜底——降级进折叠组，不丢行。
+function isTurnEndingTimelineMarkerRow(row: AssistantWorkRow): row is TimelineMarkerRow {
+  return row.kind === "timelineMarker" && row.lane === "turnTailBoundary";
+}
+
+/**
+ * artifact 行是分享投影追加到轮尾的产出物（insertDiscoveredArtifacts 插在该
+ * productTurn 最后一行之后），但它同样属于 AssistantWorkRow，会成为 flow 的最后一行。
+ * 于是折叠锚点的兜底条件「最后一行是 assistantText」失效——公开投影禁止 actions，
+ * 分享页只有这条兜底——最终答复被卷进「已工作」并整轮默认展开。
+ *
+ * 它是追加的产出物、不属于对话流，按轮尾处理即可；与 browserTurnEndRows 摘轮尾截图同理。
+ * 注意不能改成「取 flow 里最后一条 assistantText」：那会把 CUA 响应中途的正文
+ * 提升成最终答复，拆散同一个 assistantResponseId 的分组。
+ */
+function isTurnTrailingArtifactRow(row: AssistantWorkRow): boolean {
+  return row.kind === "artifact";
+}
+
+function splitTurnTailRows(rows: readonly AssistantWorkRow[]): {
+  flowRows: AssistantWorkRow[];
+  tailRows: AssistantWorkRow[];
+} {
+  let tailStart = rows.length;
+  while (
+    tailStart > 0 &&
+    (isTurnEndingTimelineMarkerRow(rows[tailStart - 1]!) ||
+      isTurnTrailingArtifactRow(rows[tailStart - 1]!))
+  ) {
+    tailStart -= 1;
+  }
+  return {
+    flowRows: rows.slice(0, tailStart),
+    tailRows: rows.slice(tailStart),
+  };
+}
+
+function isBrowserTurnEndRow(row: AssistantWorkRow): boolean {
+  // 自动截图以完成态 tool row 持久化在最终正文之后，旧分组只把
+  // timeline boundary 识别为轮尾，导致截图被搬进上方“已工作”折叠区而不可见。
+  return (
+    row.kind === "toolCall" &&
+    row.display?.kind === "node_repl_images" &&
+    row.display.source === "browser_turn_end"
+  );
+}
+
+function isLightBoundaryMarkerRow(row: AssistantWorkRow): row is TimelineMarkerRow {
+  return row.kind === "timelineMarker" && row.lane === "lightBoundary";
 }
 
 function isCompletionBlockingWorkRowRunning(row: AssistantWorkRow): boolean {
@@ -156,7 +202,7 @@ function shouldForceOpenAbnormalHistory(
   return sessionPhase === "completedInterrupted" || sessionPhase === "error";
 }
 
-export function materializeDraftUnit(
+function materializeDraftUnit(
   draft: DraftTurnRenderUnit,
   index: number,
   total: number,
@@ -222,7 +268,7 @@ export function materializeDraftUnit(
   const latestAssistantTextRow =
     actionAssistantTextRow ??
     (!isRunning && lastFlowRow && isAssistantTextRow(lastFlowRow) ? lastFlowRow : undefined);
-  const workDurationMs = resolveConversationTurnWorkDurationMs(draft.header);
+  const workDurationMs = resolveConversationTurnWorkDurationMs(draft.header, options, isRunning);
   const workStatus = resolveConversationTurnWorkStatus(
     draft.header,
     bodyRows,
@@ -247,6 +293,7 @@ export function materializeDraftUnit(
     isInterrupted,
     forceOpenHistory,
     timelineOnly,
+    nowMs: options.nowMs,
     ...(options.pluginUiPinResolver ? { pluginUiPinResolver: options.pluginUiPinResolver } : {}),
   });
   const orderedAssistantHistoryRows = workSegments.flatMap(
@@ -298,7 +345,7 @@ function createDraftUnit(turnId: string): DraftTurnRenderUnit {
   };
 }
 
-export function shouldKeepRenderUnit(unit: ConversationTurnRenderUnit): boolean {
+function shouldKeepRenderUnit(unit: ConversationTurnRenderUnit): boolean {
   // 隐形行清零后（投影不再产不可渲染 marker），任何工作行都可渲染；
   // 「哪些 marker 可渲染」不再是 UI 的判断。
   return (
@@ -312,7 +359,7 @@ export function shouldKeepRenderUnit(unit: ConversationTurnRenderUnit): boolean 
   );
 }
 
-export function normalizeRenderUnitPosition(
+function normalizeRenderUnitPosition(
   unit: ConversationTurnRenderUnit,
   index: number,
   total: number,
@@ -332,28 +379,28 @@ export function normalizeRenderUnitPosition(
         (forceOpenHistory ||
           (isLastTurn && unit.workStatus?.state === "running") ||
           (unit.latestAssistantTextRow === undefined && unit.assistantWorkRows.length > 0));
-  const workSegments = unit.workSegments?.map((segment, segmentIndex, segments) =>
-    segmentIndex === segments.length - 1
-      ? {
-          ...segment,
-          assistantHistoryDefaultOpen:
-            !unit.timelineOnly &&
-            (forceOpenHistory ||
-              (isLastTurn && segment.workStatus?.state === "running") ||
-              (segments.length === 1 &&
-                unit.latestAssistantTextRow === undefined &&
-                segment.assistantWorkRows.length > 0)),
-        }
-      : segment,
-  );
+  const lastSegment = unit.workSegments?.at(-1);
+  const lastSegmentDefaultOpen = lastSegment
+    ? !unit.timelineOnly &&
+      (forceOpenHistory ||
+        (isLastTurn && lastSegment.workStatus?.state === "running") ||
+        (unit.workSegments?.length === 1 &&
+          unit.latestAssistantTextRow === undefined &&
+          lastSegment.assistantWorkRows.length > 0))
+    : undefined;
   if (
     unit.isLastTurn === isLastTurn &&
     unit.assistantHistoryDefaultOpen === assistantHistoryDefaultOpen &&
-    workSegments?.at(-1)?.assistantHistoryDefaultOpen ===
-      unit.workSegments?.at(-1)?.assistantHistoryDefaultOpen
+    lastSegmentDefaultOpen === lastSegment?.assistantHistoryDefaultOpen
   ) {
     return unit;
   }
+  // 旧实现在判定未变化之前就复制所有轮的 segment；长历史每帧会产生大量随后丢弃的对象。
+  const workSegments = unit.workSegments?.map((segment) =>
+    segment === lastSegment && segment.assistantHistoryDefaultOpen !== lastSegmentDefaultOpen
+      ? { ...segment, assistantHistoryDefaultOpen: lastSegmentDefaultOpen === true }
+      : segment,
+  );
   return {
     ...unit,
     isLastTurn,
@@ -362,55 +409,351 @@ export function normalizeRenderUnitPosition(
   };
 }
 
-export function groupRowsIntoDrafts(rows: readonly ConversationRow[]): {
-  drafts: DraftTurnRenderUnit[];
-  lastTurnId: string | undefined;
-} {
-  const drafts: DraftTurnRenderUnit[] = [];
-  const draftByTurnId = new Map<string, DraftTurnRenderUnit>();
-
-  const getOrCreateDraft = (turnId: string) => {
-    const existing = draftByTurnId.get(turnId);
-    if (existing) {
-      return existing;
-    }
-    const draft = createDraftUnit(turnId);
-    drafts.push(draft);
-    draftByTurnId.set(turnId, draft);
-    return draft;
-  };
-
-  for (const row of rows) {
-    const draft = getOrCreateDraft(row.turnId);
-    if (isTurnHeaderRow(row)) {
-      draft.header = row;
-      continue;
-    }
-    draft.orderedRows.push(row);
-    if (isUserInputRow(row)) {
-      draft.userInputs.push(row);
-      continue;
-    }
-    if (isHookInvocationRow(row)) {
-      draft.hookInvocations.push(row);
-      continue;
-    }
-    draft.assistantWorkRows.push(row);
-  }
-
-  return { drafts, lastTurnId: drafts.at(-1)?.turnId };
-}
-
 export function buildConversationTurnRenderUnits(
   rows: readonly ConversationRow[],
   options: BuildConversationTurnRenderUnitsOptions = {},
 ): ConversationTurnRenderUnit[] {
-  const { drafts } = groupRowsIntoDrafts(rows);
-  const materializedUnits = drafts.map((draft, index) =>
-    materializeDraftUnit(draft, index, drafts.length, options),
+  return buildRenderUnits(rows, options, materializeDraftUnit);
+}
+
+// Bug 根因：selector 的复用判定原先用 zustand shallow。它比较数组或对象时会为两侧各建一个 Map，
+// 而判定每帧对每个历史轮都跑一遍。长会话流式输出时这成了 renderer 主线程的头号热点
+// （约 8000 行时每帧约 1.75ms；宽屏问题目录补齐完整历史后，成本随历史长度增长）。
+// 复用只需要逐项引用比较，因此改为不分配对象的比较。
+export function sameItems<T>(a: readonly T[], b: readonly T[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let index = 0; index < a.length; index += 1) {
+    if (a[index] !== b[index]) return false;
+  }
+  return true;
+}
+
+/** 与 shallow 的对象语义一致：自有字段集合相同且逐字段 Object.is；可忽略一个字段。 */
+function sameFields(a: object | undefined, b: object | undefined, ignoredKey?: string): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  let fieldCount = 0;
+  for (const key in left) {
+    if (key === ignoredKey) continue;
+    if (!Object.hasOwn(right, key) || !Object.is(left[key], right[key])) return false;
+    fieldCount += 1;
+  }
+  for (const key in right) {
+    if (key !== ignoredKey) fieldCount -= 1;
+  }
+  return fieldCount === 0;
+}
+
+function groupDraftUnits(rows: readonly ConversationRow[]): DraftTurnRenderUnit[] {
+  const units: DraftTurnRenderUnit[] = [];
+  const unitByTurnId = new Map<string, DraftTurnRenderUnit>();
+
+  const getOrCreateUnit = (turnId: string) => {
+    const existing = unitByTurnId.get(turnId);
+    if (existing) {
+      return existing;
+    }
+    const unit = createDraftUnit(turnId);
+    units.push(unit);
+    unitByTurnId.set(turnId, unit);
+    return unit;
+  };
+
+  for (const row of rows) {
+    const unit = getOrCreateUnit(row.turnId);
+    if (isTurnHeaderRow(row)) {
+      unit.header = row;
+      continue;
+    }
+    unit.orderedRows.push(row);
+    if (isUserInputRow(row)) {
+      unit.userInputs.push(row);
+      continue;
+    }
+    if (isHookInvocationRow(row)) {
+      unit.hookInvocations.push(row);
+      continue;
+    }
+    unit.assistantWorkRows.push(row);
+  }
+  return units;
+}
+
+function buildRenderUnits(
+  rows: readonly ConversationRow[],
+  options: BuildConversationTurnRenderUnitsOptions,
+  materialize: typeof materializeDraftUnit,
+): ConversationTurnRenderUnit[] {
+  const units = groupDraftUnits(rows);
+  const materializedUnits = units.map((unit, index) =>
+    materialize(unit, index, units.length, options),
   );
   const keptUnits = materializedUnits.filter(shouldKeepRenderUnit);
-  return keptUnits.map((unit, index) =>
+  const normalizedUnits = keptUnits.map((unit, index) =>
     normalizeRenderUnitPosition(unit, index, keptUnits.length, options),
   );
+  return markHighspeedOutputFooterUnits(normalizedUnits, options.nowMs ?? Date.now());
+}
+
+function hasHighspeedCard(unit: ConversationTurnRenderUnit): boolean {
+  return unit.visibleUserInputs.some((row) => row.highspeed !== undefined);
+}
+
+/** 与 rows 分区对应的 render unit（spec：docs/ui/chat-virtual-scroll.md「每帧派生成本」）。 */
+export interface ConversationTurnRenderUnitsPartition {
+  /** 历史段的 unit；只在历史派生结果变化时更换引用。 */
+  readonly history: readonly ConversationTurnRenderUnit[];
+  /** 尾轮的 unit（通常 0–1 个）。 */
+  readonly tail: readonly ConversationTurnRenderUnit[];
+}
+
+/**
+ * 输出与对 history ++ tail 全量构建逐项相等，但每帧只 materialize 尾轮。
+ *
+ * Bug 根因：原选择器每帧都要对全部 rows 分组，并对每个历史轮逐行确认“没变”，
+ * 成本随历史长度线性增长；宽屏问题目录补齐完整历史后，长会话流式输出明显卡顿。
+ * 现在历史段结果按 history 数组引用缓存。只有历史中存在无 header 的轮次（读 phase）、
+ * 仍在运行的轮次（读时钟）或可固定的插件卡片（读固定裁决）时，缓存键才额外带上对应输入。
+ * 跨轮规则在合并时处理：尾轮 unit 被过滤掉时，历史末项按最后一轮重新归一化；
+ * highspeed footer 只在含卡片的 unit 上收口，不含卡片的 unit 既不影响也不会得到 footer，
+ * 所以在“含卡片历史 unit + 尾轮 unit”子序列上收口，结果与全量收口相同。
+ */
+export function createConversationTurnRenderUnitsSelector() {
+  type Entry = {
+    draft: DraftTurnRenderUnit;
+    isLast: boolean;
+    phase: SessionPhase | undefined;
+    clock: number | undefined;
+    pinnedRows: ConversationRow[];
+    unit: ConversationTurnRenderUnit;
+  };
+  type UnitMap = Map<string, ConversationTurnRenderUnit>;
+  type HistoryCache = {
+    rows: readonly ConversationRow[];
+    draftCount: number;
+    phaseDependent: boolean;
+    phase: SessionPhase | undefined;
+    clockDependent: boolean;
+    clock: number;
+    pinDependent: boolean;
+    resolver: BuildConversationTurnRenderUnitsOptions["pluginUiPinResolver"];
+    // 已过滤并按“后面还有尾轮”归一化，尚未收口 footer。
+    units: ConversationTurnRenderUnit[];
+    cardIndexes: number[];
+    /**
+     * 尾轮 unit 全部被过滤时，历史末项按最后一轮重新归一化后的历史数组。
+     * Bug 根因：原先每次调用都新建这个数组，history 引用每次都变，下游按 history 缓存的派生全部失效。
+     * 归一化只读 unit 与 session phase，所以按 phase 缓存即可。
+     */
+    tailDropped?: { phase: SessionPhase | undefined; units: readonly ConversationTurnRenderUnit[] };
+  };
+  // materialize 复用表按 turn key 分历史段与尾段；轮次在两段之间迁移时两边都查。
+  let historyEntries = new Map<string, Entry>();
+  let tailEntries = new Map<string, Entry>();
+  // 最终 unit（footer 收口后）的复用表。
+  let historyFinalByKey: UnitMap = new Map();
+  let tailFinalByKey: UnitMap = new Map();
+  let history: HistoryCache | null = null;
+  let historyFinal: {
+    base: readonly ConversationTurnRenderUnit[];
+    units: ConversationTurnRenderUnit[];
+  } | null = null;
+
+  const materializeReusing = (
+    draft: DraftTurnRenderUnit,
+    index: number,
+    total: number,
+    options: BuildConversationTurnRenderUnitsOptions & { nowMs: number },
+    lookup: (key: string) => Entry | undefined,
+    next: Map<string, Entry>,
+  ): Entry => {
+    const old = lookup(draft.key);
+    const isLast = index === total - 1;
+    const phase = draft.header ? undefined : options.sessionPhase;
+    const clock = resolveTurnRunning(draft, options) ? options.nowMs : undefined;
+    // resolver 随插件派生重建，但普通消息不会改变插件的实际折叠裁决。
+    const pinnedRows = draft.orderedRows.filter((row) =>
+      isPluginUiPinnedToolRow(row, options.pluginUiPinResolver),
+    );
+    const unchanged =
+      old &&
+      old.draft.header === draft.header &&
+      sameItems(old.draft.orderedRows, draft.orderedRows) &&
+      old.isLast === isLast &&
+      old.phase === phase &&
+      old.clock === clock &&
+      sameItems(old.pinnedRows, pinnedRows);
+    const entry: Entry = {
+      draft,
+      isLast,
+      phase,
+      clock,
+      pinnedRows,
+      unit: unchanged ? old.unit : materializeDraftUnit(draft, index, total, options),
+    };
+    next.set(draft.key, entry);
+    return entry;
+  };
+
+  // 卡级 footer 每次重新收口；仅当数值与其他派生字段都未变时复用上一份最终 unit。
+  const reuseFinal = (
+    unit: ConversationTurnRenderUnit,
+    lookup: (key: string) => ConversationTurnRenderUnit | undefined,
+  ): ConversationTurnRenderUnit => {
+    const old = lookup(unit.key);
+    if (!old || old === unit) return unit;
+    const target = unit.highspeedOutputFooterTarget;
+    const oldTarget = old.highspeedOutputFooterTarget;
+    return sameFields(unit, old, "highspeedOutputFooterTarget") &&
+      target?.cardId === oldTarget?.cardId &&
+      sameFields(target?.metrics, oldTarget?.metrics)
+      ? old
+      : unit;
+  };
+
+  const isHistoryReusable = (
+    cache: HistoryCache | null,
+    rows: readonly ConversationRow[],
+    options: BuildConversationTurnRenderUnitsOptions & { nowMs: number },
+  ): cache is HistoryCache =>
+    cache !== null &&
+    cache.rows === rows &&
+    (!cache.phaseDependent || cache.phase === options.sessionPhase) &&
+    (!cache.clockDependent || cache.clock === options.nowMs) &&
+    (!cache.pinDependent || cache.resolver === options.pluginUiPinResolver);
+
+  return (
+    partition: ConversationRowsPartition,
+    options: BuildConversationTurnRenderUnitsOptions = {},
+  ): ConversationTurnRenderUnitsPartition => {
+    const currentOptions = { ...options, nowMs: options.nowMs ?? Date.now() };
+    const previousHistoryEntries = historyEntries;
+    const previousTailEntries = tailEntries;
+    const previousHistoryFinalByKey = historyFinalByKey;
+    const previousTailFinalByKey = tailFinalByKey;
+    const tailDrafts = groupDraftUnits(partition.tail);
+
+    if (!isHistoryReusable(history, partition.history, currentOptions)) {
+      const drafts = groupDraftUnits(partition.history);
+      // 尾轮非空时历史 draft 都不是最后一个；窗口为空时两段都为空。
+      const total = drafts.length + tailDrafts.length;
+      const next = new Map<string, Entry>();
+      let clockDependent = false;
+      const materialized = drafts.map((draft, index) => {
+        const entry = materializeReusing(
+          draft,
+          index,
+          total,
+          currentOptions,
+          (key) => previousHistoryEntries.get(key) ?? previousTailEntries.get(key),
+          next,
+        );
+        if (entry.clock !== undefined) clockDependent = true;
+        return entry.unit;
+      });
+      historyEntries = next;
+      const kept = materialized.filter(shouldKeepRenderUnit);
+      // 先按“后面还有一个尾轮 unit”归一化；尾轮被过滤掉的情况在下面合并时处理。
+      const units = kept.map((unit, index) =>
+        normalizeRenderUnitPosition(unit, index, kept.length + 1, currentOptions),
+      );
+      history = {
+        rows: partition.history,
+        draftCount: drafts.length,
+        phaseDependent: drafts.some((draft) => !draft.header),
+        phase: currentOptions.sessionPhase,
+        clockDependent,
+        clock: currentOptions.nowMs,
+        // 不传 resolver 时，isPluginUiPinnedToolRow 恰好判定“该行是否受固定裁决影响”。
+        pinDependent: drafts.some((draft) =>
+          draft.orderedRows.some((row) => isPluginUiPinnedToolRow(row)),
+        ),
+        resolver: currentOptions.pluginUiPinResolver,
+        units,
+        cardIndexes: units.flatMap((unit, index) => (hasHighspeedCard(unit) ? [index] : [])),
+      };
+    }
+
+    const historyDraftCount = history.draftCount;
+    const tailNext = new Map<string, Entry>();
+    const tailKept = tailDrafts
+      .map(
+        (draft, index) =>
+          materializeReusing(
+            draft,
+            historyDraftCount + index,
+            historyDraftCount + tailDrafts.length,
+            currentOptions,
+            (key) => previousTailEntries.get(key) ?? previousHistoryEntries.get(key),
+            tailNext,
+          ).unit,
+      )
+      .filter(shouldKeepRenderUnit);
+    tailEntries = tailNext;
+    const historyCount = history.units.length;
+    const tailUnits = tailKept.map((unit, index) =>
+      normalizeRenderUnitPosition(
+        unit,
+        historyCount + index,
+        historyCount + tailKept.length,
+        currentOptions,
+      ),
+    );
+
+    let historyUnits: readonly ConversationTurnRenderUnit[] = history.units;
+    const lastIndex = historyCount - 1;
+    if (tailUnits.length === 0 && lastIndex >= 0) {
+      if (!history.tailDropped || history.tailDropped.phase !== currentOptions.sessionPhase) {
+        // 归一化只改 isLastTurn 与默认展开，且只读其他字段，所以对已归一化的 unit 再做一次即可。
+        const last = normalizeRenderUnitPosition(
+          history.units[lastIndex]!,
+          lastIndex,
+          historyCount,
+          currentOptions,
+        );
+        history.tailDropped = {
+          phase: currentOptions.sessionPhase,
+          units:
+            last === history.units[lastIndex]
+              ? history.units
+              : [...history.units.slice(0, -1), last],
+        };
+      }
+      historyUnits = history.tailDropped.units;
+    }
+
+    const cardIndexes = history.cardIndexes;
+    const marked = markHighspeedOutputFooterUnits(
+      [...cardIndexes.map((index) => historyUnits[index]!), ...tailUnits],
+      currentOptions.nowMs,
+    );
+    const historyLookup = (key: string) =>
+      previousHistoryFinalByKey.get(key) ?? previousTailFinalByKey.get(key);
+    const markedCards = cardIndexes.map((_, index) => reuseFinal(marked[index]!, historyLookup));
+    const previousFinal = historyFinal;
+    if (
+      previousFinal?.base !== historyUnits ||
+      cardIndexes.some((unitIndex, index) => previousFinal.units[unitIndex] !== markedCards[index])
+    ) {
+      const units = historyUnits.map((unit) => reuseFinal(unit, historyLookup));
+      cardIndexes.forEach((unitIndex, index) => {
+        units[unitIndex] = markedCards[index]!;
+      });
+      historyFinal = { base: historyUnits, units };
+      historyFinalByKey = new Map(units.map((unit) => [unit.key, unit]));
+    }
+    const tailFinal = marked
+      .slice(cardIndexes.length)
+      .map((unit) =>
+        reuseFinal(
+          unit,
+          (key) => previousTailFinalByKey.get(key) ?? previousHistoryFinalByKey.get(key),
+        ),
+      );
+    tailFinalByKey = new Map(tailFinal.map((unit) => [unit.key, unit]));
+    return { history: historyFinal!.units, tail: tailFinal };
+  };
 }
