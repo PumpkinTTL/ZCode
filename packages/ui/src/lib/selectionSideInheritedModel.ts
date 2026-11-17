@@ -1,4 +1,24 @@
-/** Polaris：上游同名模块依赖的业务/遥测面已随红线砍除；此桩仅保接口形状（恒空实现/恒空数据）。 */
-export function resolveSelectionSideInheritedModel(..._args: unknown[]): unknown {
-  return undefined;
+import type { ModelSelectionView } from "@zcode/provider";
+import type { SessionConfigState } from "@zcode/shared/zcode-protocol-v4";
+import { createComposerSubmissionConfig } from "@/v4/composer/composerSubmissionConfig.js";
+
+/** 副屏继承父 runtime 的生效模型；不能把主 Composer 未提交的草稿带进新 child。 */
+export function resolveSelectionSideInheritedModel(
+  config: SessionConfigState | null | undefined,
+  view: ModelSelectionView | null,
+) {
+  if (!config) return null;
+  return (
+    createComposerSubmissionConfig(
+      {
+        mode: config.mode,
+        modelSelection: {
+          providerId: config.provider,
+          modelId: config.model,
+          options: { reasoningLevel: config.thought },
+        },
+      },
+      view,
+    )?.modelSelection ?? null
+  );
 }

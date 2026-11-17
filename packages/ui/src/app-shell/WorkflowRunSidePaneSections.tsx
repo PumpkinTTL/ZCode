@@ -122,7 +122,7 @@ export const WorkflowRunStatusHeader = memo(function WorkflowRunStatusHeader({
   title: string;
   usage: WorkflowRunUsage | undefined;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl } = useZCodeIntl();
   const saveChip = saveSlots?.leading ?? null;
   const saveVerb = saveSlots?.trailing ?? null;
   const cancelLabel = intl.formatMessage({ id: "chat.toolCall.workflow.run.cancel" });
@@ -238,7 +238,7 @@ export const WorkflowRunStatusHeader = memo(function WorkflowRunStatusHeader({
                 ? null
                 : ` · ${intl.formatMessage(
                     { id: "chat.toolCall.workflow.run.concurrency.cooldown" },
-                    { time: new Date(concurrency.cooldownUntil).toLocaleTimeString(locale) },
+                    { time: new Date(concurrency.cooldownUntil).toLocaleTimeString() },
                   )}`}
             </span>
           )}

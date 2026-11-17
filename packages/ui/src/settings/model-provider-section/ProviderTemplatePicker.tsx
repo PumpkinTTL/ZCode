@@ -1,7 +1,6 @@
 import type { ProviderSettingsView } from "@zcode/services";
 import { ArrowLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
 import { resolveProviderTemplateName } from "@zcode/provider";
-import { toZhOrEnLocale } from "@zcode/shared";
 import type { ReactNode } from "react";
 import {
   TID_MODEL_PROVIDER_TEMPLATE_BACK_BUTTON,
@@ -98,12 +97,7 @@ export function ProviderTemplatePicker({
                 />
               ) : null}
               {group.templates.map((template) => {
-                const label = resolveProviderTemplateName(
-                  template.templateId,
-                  template,
-                  // Provider 模板名只有中英两套。
-                  toZhOrEnLocale(locale),
-                );
+                const label = resolveProviderTemplateName(template.templateId, template, locale);
                 return (
                   <ProviderTemplateCard
                     key={template.templateId}

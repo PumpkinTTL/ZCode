@@ -1,4 +1,3 @@
-import { renderFileSummaryName } from "@/ToolCallBlocks/renderers.js";
 import { SearchIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import {
@@ -10,6 +9,7 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { ToolLayout } from "../ToolLayout.js";
 import { ToolSnapshotFieldNotice } from "@/ToolCallBlocks/ToolSnapshotFieldNotice.js";
 import type { ToolCallBlockRenderContext } from "../shared.js";
+import { renderFilePath } from "../shared.js";
 
 const READ_TOOL_ICON = <SearchIcon className="size-4 shrink-0 text-foreground-subtle" />;
 
@@ -223,7 +223,8 @@ export function ReadFileChip({
     return (
       <button
         type="button"
-        className="inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 text-foreground hover:underline"
+        className="inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 text-foreground-subtle hover:underline"
+        title={summary.path}
         onMouseDown={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -234,15 +235,18 @@ export function ReadFileChip({
         }}
       >
         <FileDisplayIcon src={summary.fileIconSrc} size={16} className="size-4 shrink-0" />
-        {renderFileSummaryName(summary.fileName, summary.path)}
+        <span className="min-w-0 truncate">{summary.fileName}</span>
       </button>
     );
   }
 
   return (
-    <span className="inline-flex min-w-0 text-foreground max-w-full items-center gap-1.5">
+    <span
+      className="inline-flex min-w-0 text-foreground-subtle max-w-full items-center gap-1.5"
+      title={summary.path}
+    >
       <FileDisplayIcon src={summary.fileIconSrc} size={16} className="size-4 shrink-0" />
-      {renderFileSummaryName(summary.fileName, summary.path)}
+      <span className="min-w-0 truncate">{summary.fileName}</span>
     </span>
   );
 }
@@ -282,11 +286,12 @@ export function ReadToolCallBlock(context: ToolCallBlockRenderContext) {
         showIcon={context.showIcon !== false}
         canToggle={false}
         kindLabel={intl.formatMessage({
-          id: isRunning ? "chat.toolCall.read.reading" : "chat.toolCall.read.read",
+          id: isRunning ? "chat.toolCall.read.reading" : "chat.toolCall.kind.read",
         })}
         sourceLabel={context.sourceLabel}
         primaryText={primaryText}
         prioritizePrimaryText
+        secondaryText={summary ? renderFilePath(summary.filePath) : undefined}
         statusLabel={statusLabel}
         statusTooltip={toolCall.status === "failed" ? errorText : undefined}
         showFailureStatus={toolCall.status === "failed"}

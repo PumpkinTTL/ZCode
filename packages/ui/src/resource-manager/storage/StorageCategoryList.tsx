@@ -1,4 +1,4 @@
-import { ChevronRight, LoaderCircle } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 import { type StorageCategoryId } from "@zcode/shared";
 import {
   TID_RESOURCE_MANAGER_STORAGE_CATEGORY_CLEAN,
@@ -72,9 +72,7 @@ export function StorageCategoryList({
                 disabled={disabled}
                 onClick={() => onClean(category.id)}
               >
-                {cleaning ? (
-                  <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-                ) : null}
+                {cleaning ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
                 {intl.formatMessage({
                   id: cleaning
                     ? "resourceManager.storage.cleaning"

@@ -364,14 +364,13 @@ export function findSourceServerUpgradeProfileId(
   snapshot: SourceServerManagementSnapshot,
   target: Exclude<RemoteTarget, { kind: "server" }>,
   failedProfileId?: string,
-  upgradeTarget: "controller" | "server" = "server",
 ): string | null {
   const requiredByProfileId = new Map(
     snapshot.states
       .filter(
         (state) =>
           state.state === "needs-upgrade" &&
-          state.upgradeTarget === upgradeTarget &&
+          state.upgradeTarget === "server" &&
           state.updateAvailability === "required",
       )
       .map((state) => [state.profileId, state.updatedAt]),

@@ -24,11 +24,7 @@ export function UpdateReleaseNotesTooltip({
   releaseNotesTitle: string;
 }) {
   return (
-    <TooltipProvider
-      // Bugfix：更新日志浮层需要允许鼠标从按钮移入内容；不能继承侧栏提示的不可悬停配置。
-      alwaysDelay={false}
-      disableHoverableContent={false}
-    >
+    <TooltipProvider>
       <Tooltip key={`${locale}:${releaseNotesTitle}`}>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent

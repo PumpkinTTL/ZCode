@@ -16,6 +16,7 @@ import {
   type IPluginManagementService,
   type IServiceAccessor,
 } from "@zcode/services";
+import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
 import { logger } from "@/logger.js";
 import {
   buildMarketplacePluginSyncItems,
@@ -70,7 +71,28 @@ export function createPluginSyncResultReporter(
   remoteKind: RemoteTarget["kind"] | undefined,
 ): (outcome: PluginSyncOutcome) => void {
   return ({ pluginId, marketplace, result, durationMs }) => {
-    // Polaris：遥测上报已移除——reporter 保留调用形状但不再外发数据。
+    void reportAppTelemetryEvent(
+      platform,
+      {
+        elementName: "plugin_lifecycle",
+        eventRegion: "app",
+        eventType: "result",
+        eventExtraDetail: {
+          schema_version: "1",
+          action: "sync",
+          trigger: "sync",
+          scope: USER_SCOPE,
+          plugin_id: pluginId,
+          marketplace,
+          client_kind: "desktop",
+          workspace_kind: "remote",
+          ...(remoteKind ? { remote_kind: remoteKind } : {}),
+          result: toPluginSyncTelemetryResult(result),
+          duration_ms: String(Math.max(0, Math.round(durationMs))),
+        },
+      },
+      "DataSync",
+    );
   };
 }
 

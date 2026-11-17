@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { ProviderSettingsFormModel } from "@/lib/providerSettingsFormTypes.js";
 import type { ModelConnectivityResult } from "@zcode/shared";
-import { LoaderCircle, Trash2, Unplug } from "lucide-react";
+import { Loader2Icon, Trash2, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { ModelBrandIcon } from "@/components/ModelBrandIcon.js";
 import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadge.js";
@@ -230,7 +230,7 @@ export function ModelRowInput({
   ]);
 
   const testIcon = isTesting ? (
-    <LoaderCircle className="size-3.5 text-foreground-subtle animate-spin" />
+    <Loader2Icon className="size-3.5 text-foreground-subtle animate-spin" />
   ) : (
     <Unplug className="size-3.5 text-foreground-subtle" />
   );

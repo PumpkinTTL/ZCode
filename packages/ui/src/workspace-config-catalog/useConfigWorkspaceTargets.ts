@@ -11,12 +11,7 @@ const EMPTY: ConfigCatalogSnapshot = { projects: [], directory: { hosts: [], ent
 export function useConfigWorkspaceTargets(sourceServerId?: string | null) {
   const services = useBaseWorkspaceServices();
   const tabs = useTabStore((state) => state.tabs);
-  const [loaded, setLoaded] = useState<{
-    services: typeof services;
-    snapshot: ConfigCatalogSnapshot;
-  } | null>(null);
-  const current = loaded?.services === services ? loaded : null;
-  const snapshot = current?.snapshot ?? EMPTY;
+  const [snapshot, setSnapshot] = useState(EMPTY);
   useEffect(() => {
     let serial = 0;
     const refresh = async () => {
@@ -27,10 +22,10 @@ export function useConfigWorkspaceTargets(sourceServerId?: string | null) {
           projectService: services.projectService,
           remoteProjectService: services.remoteProjectService,
         });
-        if (serial === request) setLoaded({ services, snapshot: result });
+        if (serial === request) setSnapshot(result);
       } catch (error) {
         if (serial !== request) return;
-        setLoaded({ services, snapshot: EMPTY });
+        setSnapshot(EMPTY);
         logger.error("[workspace-config-catalog] 读取配置目录失败", error);
       }
     };
@@ -43,11 +38,10 @@ export function useConfigWorkspaceTargets(sourceServerId?: string | null) {
       listener.dispose();
     };
   }, [services]);
-  const targets = useMemo(() => {
+  return useMemo(() => {
     const targets = projectConfigTargets(snapshot, tabs.filter(isWorkspaceTab));
     return sourceServerId === undefined
       ? targets
       : filterWorkspaceTabsForSettingsSource(targets, sourceServerId);
   }, [snapshot, sourceServerId, tabs]);
-  return { targets, loaded: current !== null };
 }

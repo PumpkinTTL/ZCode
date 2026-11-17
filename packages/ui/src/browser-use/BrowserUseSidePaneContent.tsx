@@ -13,7 +13,6 @@ export interface BrowserUseSidePaneContentProps {
   isCurrentTask: boolean;
   screenshotSurfaceRequest: BrowserViewScreenshotSurfacePreparePayload | null;
   initialUrl?: string;
-  automaticRestoreUrl?: string;
   workspacePath: string;
   workspaceIdentity?: string;
   residencyGeneration?: number;
@@ -30,7 +29,6 @@ export function BrowserUseSidePaneContent({
   isCurrentTask,
   screenshotSurfaceRequest,
   initialUrl,
-  automaticRestoreUrl,
   workspacePath,
   workspaceIdentity,
   residencyGeneration,
@@ -86,7 +84,6 @@ export function BrowserUseSidePaneContent({
         isCurrentTask={isCurrentTask}
         screenshotSurfaceRequest={screenshotSurfaceRequest}
         initialUrl={initialUrl}
-        automaticRestoreUrl={automaticRestoreUrl}
         faviconUrl={tab.faviconUrl}
         workspacePath={workspacePath}
         workspaceIdentity={workspaceIdentity}

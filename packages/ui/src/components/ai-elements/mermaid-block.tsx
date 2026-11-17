@@ -1,7 +1,7 @@
 "use client";
 
 import { createMermaidPlugin, type MermaidConfig } from "@streamdown/mermaid";
-import { LoaderCircle } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 import type { HTMLAttributes } from "react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { cn } from "@/components/lib/utils.js";
@@ -156,13 +156,9 @@ function createMermaidConfig(resolvedTheme: "light" | "dark"): MermaidConfig {
     "--color-border",
     resolvedTheme === "dark" ? "#3f3f46" : "#d4d4d8",
   );
-  const rootStyle =
-    typeof document === "undefined" ? null : getComputedStyle(document.documentElement);
 
   return {
-    fontFamily:
-      rootStyle?.getPropertyValue("--font-sans").trim() || "ui-sans-serif, system-ui, sans-serif",
-    htmlLabels: false,
+    fontFamily: "ui-sans-serif, system-ui, sans-serif",
     securityLevel: "strict",
     startOnLoad: false,
     suppressErrorRendering: true,
@@ -171,15 +167,10 @@ function createMermaidConfig(resolvedTheme: "light" | "dark"): MermaidConfig {
       actorBkg: background,
       actorBorder: border,
       actorTextColor: text,
-      background: "transparent",
-      clusterBkg: surface,
-      clusterBorder: border,
-      edgeLabelBackground: resolveCssColor("--color-background", background),
-      fontSize: rootStyle?.getPropertyValue("--text-ui-base").trim() || "14px",
+      background,
       lineColor: subtleText,
-      mainBkg: surface,
+      mainBkg: background,
       nodeBorder: border,
-      nodeTextColor: text,
       noteBkgColor: accent,
       noteTextColor: text,
       primaryBorderColor: border,
@@ -195,15 +186,6 @@ function createMermaidConfig(resolvedTheme: "light" | "dark"): MermaidConfig {
       tertiaryTextColor: text,
       textColor: text,
     },
-    // 默认边标签会从主色派生底色，与宿主表面不一致；只调整图表内默认样式，
-    // 不使用 !important 覆盖源码的 style / classDef，也不改写菱形、圆形等节点。
-    themeCSS: `
-      .node text, .edgeLabel text { font-weight: 500; }
-      .node rect.basic:not([rx]) { rx: var(--radius-md); ry: var(--radius-md); }
-      .edgeLabel rect { opacity: 1; rx: var(--radius-sm); ry: var(--radius-sm); }
-      .edge-thickness-normal { stroke-width: 1px; }
-      .flowchart-link { stroke-linecap: round; stroke-linejoin: round; }
-    `,
   };
 }
 
@@ -315,14 +297,14 @@ export function MermaidBlock({
 
   return (
     <div
-      className={cn("group/mermaid relative min-h-32 w-full", className)}
+      className={cn("group/mermaid relative min-h-32 w-full bg-card", className)}
       data-mermaid-block=""
       {...props}
     >
       <div className="max-h-[420px] overflow-auto p-3 text-foreground">
         {renderState.status === "loading" ? (
           <div className="flex min-h-28 items-center justify-center gap-2 text-foreground-subtle text-ui-base">
-            <LoaderCircle className="size-4 animate-spin" />
+            <Loader2Icon className="size-4 animate-spin" />
             <span>{intl.formatMessage({ id: "codeBlock.mermaid.loading" })}</span>
           </div>
         ) : null}
@@ -334,7 +316,7 @@ export function MermaidBlock({
         {renderState.status === "ready" ? (
           <div
             aria-label={intl.formatMessage({ id: "codeBlock.mermaid.ariaLabel" })}
-            className="flex min-h-28 min-w-0 items-center justify-center select-text [&_svg]:h-auto [&_svg]:max-w-full"
+            className="flex min-h-28 min-w-max items-center justify-center [&_svg]:h-auto [&_svg]:max-w-none"
             dangerouslySetInnerHTML={{ __html: renderState.svg }}
             onDoubleClick={onOpenPreview}
             role="img"

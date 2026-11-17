@@ -10,11 +10,6 @@ export interface IntlContextValue {
   intl: IntlInstance;
   locale: Locale;
   localePreference: LocalePreference;
-  /**
-   * 语言是否已确定：有 settingService 时要等持久化设置读完（或用户/其他窗口显式切换）才为 true。
-   * 之前 locale 只是占位初值，不能同步给 Main / 用作发往服务端的语言。
-   */
-  localeResolved: boolean;
   setLocale: (locale: Locale) => void;
   setLocalePreference: (localePreference: LocalePreference) => void;
 }

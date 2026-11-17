@@ -128,7 +128,7 @@ export function SkillToolCallBlock(context: ToolCallBlockRenderContext) {
   const skillNoOutputLabel = intl.formatMessage({ id: "chat.toolCall.skill.noOutput" });
   const primaryText = useMemo(
     () => (
-      <span className="truncate font-mono text-foreground-subtle">
+      <span className="truncate font-mono text-foreground-subtlest">
         {skillName ?? toolCall.title ?? skillFallbackLabel}
       </span>
     ),

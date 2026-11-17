@@ -15,10 +15,7 @@ export function reconcileProjectOrder(
         }
       })
     : saved;
-  // 手机等接收端没有创建页面的 prepend 回调；旧逻辑把新项目追加到末尾。
-  // 仅将未记录的项目按目录顺序前插，已记录项目（包括暂时离线项）保留手动位置。
-  const existing = new Set(retained);
-  return [...new Set([...current.filter((key) => !existing.has(key)), ...retained])];
+  return [...new Set([...retained, ...current])];
 }
 export function moveProjectOrder(
   saved: readonly string[],

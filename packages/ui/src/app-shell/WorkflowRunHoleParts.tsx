@@ -87,10 +87,9 @@ export function FillHeadingRow({
   fresh?: boolean;
   onSelect?: () => void;
 }) {
-  const { intl, locale } = useZCodeIntl();
-  // 时间按界面语言格式化（不传 locale 会落到系统语言，例如中文系统 + 日语界面显示「下午3:00」）
+  const { intl } = useZCodeIntl();
   const time =
-    fill.filledAt === undefined ? undefined : new Date(fill.filledAt).toLocaleTimeString(locale);
+    fill.filledAt === undefined ? undefined : new Date(fill.filledAt).toLocaleTimeString();
   const title = intl.formatMessage(
     {
       id:

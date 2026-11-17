@@ -21,7 +21,6 @@ export interface PluginUiHostAppHandlerDeps {
   /** 进行中的页面工具调用 id；controller dispose 时逐个取消到 agent。 */
   activeCalls: Set<string>;
   onBusyChange?(): void;
-  onActivity?(): void;
   onOpenExternal(url: string): void;
 }
 
@@ -35,10 +34,9 @@ export function installPluginUiHostAppHandlers(
     const context = deps.currentContext();
     const current = context.displayMode ?? "inline";
     const available = context.availableDisplayModes ?? [current];
-    const resolved = resolveRequestedDisplayMode(params.mode, current, available);
-    // 被拒绝的请求只回当前模式，不能把它当作新的打开/关闭动作再次执行。
-    if (resolved !== params.mode) return { mode: current };
-    const mode = deps.onDisplayModeRequest(resolved);
+    const mode = deps.onDisplayModeRequest(
+      resolveRequestedDisplayMode(params.mode, current, available),
+    );
     if (mode !== context.displayMode) deps.applyDisplayMode(mode);
     return { mode };
   };
@@ -61,8 +59,6 @@ export function installPluginUiHostAppHandlers(
         ...(params.arguments ? { arguments: params.arguments } : {}),
         callId,
       });
-      // 长轮询只有交付实际工作才续期；必须先标记活动再解除 busy，避免回收撞上任务交付。
-      if (result._meta?.["zcode/activity"] === true) deps.onActivity?.();
       return result as CallToolResult;
     } finally {
       signal?.removeEventListener("abort", onAbort);

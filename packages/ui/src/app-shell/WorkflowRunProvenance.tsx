@@ -30,7 +30,7 @@ export const WorkflowRunProvenance = memo(function WorkflowRunProvenance({
   /** 启动轮 / 设置轮的 startedAt；缺席即不写时刻。 */
   startedAt?: number;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl } = useZCodeIntl();
   const amend = meta.amend;
   const caption = intl.formatMessage({
     id:
@@ -41,8 +41,7 @@ export const WorkflowRunProvenance = memo(function WorkflowRunProvenance({
   const time =
     startedAt === undefined
       ? undefined
-      : // 时间按界面语言格式化，不跟系统语言
-        new Intl.DateTimeFormat(locale, {
+      : new Intl.DateTimeFormat(undefined, {
           hour: "2-digit",
           minute: "2-digit",
           hour12: false,

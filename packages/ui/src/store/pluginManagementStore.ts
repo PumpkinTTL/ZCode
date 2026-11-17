@@ -90,7 +90,7 @@ export interface PluginManagementState {
     pluginService: IPluginManagementService,
     removeCache?: boolean,
   ) => Promise<void>;
-  updatePlugin: (pluginId: string, pluginService: IPluginManagementService) => Promise<boolean>;
+  updatePlugin: (pluginId: string, pluginService: IPluginManagementService) => Promise<void>;
   restoreBuiltin: (pluginId: string, pluginService: IPluginManagementService) => Promise<boolean>;
   configurePlugin: (
     pluginId: string,
@@ -343,7 +343,7 @@ export const createPluginManagementStore = (initialService?: IPluginManagementSe
     },
 
     async updatePlugin(pluginId, pluginService) {
-      return runWorkspaceOperation(
+      await runWorkspaceOperation(
         set,
         get,
         pluginService,

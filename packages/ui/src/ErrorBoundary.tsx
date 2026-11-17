@@ -1,9 +1,10 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import type { Locale } from "@zcode/shared";
-import { DEFAULT_LOCALE, isLocale, resolveLocaleFromLanguageTag } from "@zcode/shared";
+import { DEFAULT_LOCALE } from "@zcode/shared";
 import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
-import { LOCALE_MESSAGES } from "@/i18n/localeMessages.js";
+import zhCN from "@/i18n/locales/zh-CN.js";
+import enUS from "@/i18n/locales/en-US.js";
 import { logger } from "@/logger.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
@@ -64,7 +65,7 @@ function resolveBoundaryLocale(): Locale {
   if (typeof localStorage !== "undefined" && typeof localStorage.getItem === "function") {
     try {
       const storedPreference = localStorage.getItem(LOCALE_PREFERENCE_KEY);
-      if (isLocale(storedPreference)) {
+      if (storedPreference === "zh-CN" || storedPreference === "en-US") {
         return storedPreference;
       }
     } catch {
@@ -75,7 +76,7 @@ function resolveBoundaryLocale(): Locale {
   }
 
   if (typeof navigator !== "undefined") {
-    return resolveLocaleFromLanguageTag(navigator.language);
+    return navigator.language.toLowerCase().startsWith("zh") ? "zh-CN" : "en-US";
   }
 
   return DEFAULT_LOCALE;
@@ -83,7 +84,7 @@ function resolveBoundaryLocale(): Locale {
 
 function formatBoundaryMessage(id: string): string {
   const locale = resolveBoundaryLocale();
-  const messages = LOCALE_MESSAGES[locale];
+  const messages = locale === "en-US" ? enUS : zhCN;
   return messages[id] ?? id;
 }
 

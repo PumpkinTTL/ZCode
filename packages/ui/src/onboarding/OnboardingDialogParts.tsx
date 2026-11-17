@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
+export type OnboardingView = "welcome" | "wizard";
 export type OnboardingWizardStep =
   | "session"
   | "skills-import"
@@ -121,8 +122,7 @@ export function OnboardingWizardFooter(props: {
   settingsTaskCount: number;
   finishRunning: boolean;
   finishReady: boolean;
-  /** 第一步「会话」左下角的「取消」：直接关闭弹窗（欢迎页已删除）。 */
-  onCancelFirstStep: () => void;
+  onBackToWelcome: () => void;
   onBackStep: () => void;
   onNextStep: () => void;
   onBeginMigration: () => void;
@@ -187,10 +187,9 @@ export function OnboardingWizardFooter(props: {
               variant="secondary"
               size="lg"
               className="h-10 min-w-0 px-5"
-              data-testid="onboarding-wizard-cancel"
-              onClick={props.onCancelFirstStep}
+              onClick={props.onBackToWelcome}
             >
-              {intl.formatMessage({ id: "common.cancel" })}
+              {intl.formatMessage({ id: "common.back" })}
             </Button>
             <Button
               type="button"

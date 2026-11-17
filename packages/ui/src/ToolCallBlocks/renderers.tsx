@@ -1,6 +1,8 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { FileDisplayIcon, resolveFileDisplayDescriptor } from "@/lib/fileDisplay.js";
+import {
+  FileDisplayIcon,
+  getFileDisplayPath,
+  resolveFileDisplayDescriptor,
+} from "@/lib/fileDisplay.js";
 import { FlipMetricValue } from "@/components/ui/flip-metric-value.js";
 import { getPathLeaf } from "@/lib/path.js";
 import { inferEditOperation } from "@/ToolCallBlocks/fileSummaries.js";
@@ -60,20 +62,6 @@ export function renderDiffCount(
   );
 }
 
-export function renderFileSummaryName(name: string, path: string) {
-  return (
-    <ControlHintTooltip
-      title={path}
-      triggerClassName="min-w-0 shrink"
-      className="max-w-[min(240px,calc(100vw-1rem))] text-center break-all"
-    >
-      <span data-tool-file-name className="min-w-0 truncate">
-        {name}
-      </span>
-    </ControlHintTooltip>
-  );
-}
-
 export function renderFileChip({
   summary,
   clickable = false,
@@ -90,13 +78,14 @@ export function renderFileChip({
   const descriptor = resolveFileDisplayDescriptor(summary.path, {
     basePath,
   });
-  const chipTitle = title ?? summary.path;
+  const chipTitle = title ?? getFileDisplayPath(summary.path, basePath);
 
   if (clickable) {
     return (
       <button
         type="button"
-        className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-foreground hover:underline"
+        className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-foreground-subtle hover:underline"
+        title={chipTitle}
         onMouseDown={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -107,15 +96,32 @@ export function renderFileChip({
         }}
       >
         <FileDisplayIcon src={descriptor.fileIconSrc} size={16} className="size-4 shrink-0" />
-        {renderFileSummaryName(getPathLeaf(summary.path), chipTitle)}
+        <span className="min-w-0 truncate text-foreground-subtle">{getPathLeaf(summary.path)}</span>
       </button>
     );
   }
 
   return (
-    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-foreground">
+    <span
+      className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-foreground-subtle"
+      title={chipTitle}
+    >
       <FileDisplayIcon src={descriptor.fileIconSrc} size={16} className="size-4 shrink-0" />
-      {renderFileSummaryName(getPathLeaf(summary.path), chipTitle)}
+      <span className="min-w-0 truncate">{getPathLeaf(summary.path)}</span>
+    </span>
+  );
+}
+
+export function renderFilePath(path: string | null | undefined, basePath?: string) {
+  if (!path) {
+    return null;
+  }
+
+  return (
+    <span className="min-w-0 truncate text-foreground-subtlest @max-[360px]/conversation:hidden">
+      {/* 窄会话流里父目录会与文件名争抢空间，Read/Edit 最终只剩动作标签和省略号。
+          小容器隐藏次要路径，让文件名继续承担主识别信息。 */}
+      {getFileDisplayPath(path, basePath)}
     </span>
   );
 }
@@ -128,20 +134,19 @@ export function getEditKindLabelMessageId(
 ): EditKindLabelId {
   const inferredOperation = inferEditOperation(operationKinds, actionLabels, source);
 
-  // 完成态曾回退到工具类型名，导致子项仍显示 Write / Edit；复用已有过去式文案。
   if (inferredOperation === "write") {
-    return isRunning ? "chat.toolCall.edit.writing" : "chat.toolCall.edit.wrote";
+    return isRunning ? "chat.toolCall.edit.writing" : "chat.toolCall.kind.write";
   }
 
   if (inferredOperation === "delete") {
-    return isRunning ? "chat.toolCall.edit.deleting" : "chat.toolCall.edit.deleted";
+    return isRunning ? "chat.toolCall.edit.deleting" : "chat.toolCall.kind.delete";
   }
 
   if (actionLabels.length === 0) {
-    return isRunning ? "chat.toolCall.edit.editing" : "chat.toolCall.edit.edited";
+    return isRunning ? "chat.toolCall.edit.editing" : "chat.toolCall.kind.edit";
   }
 
-  return isRunning ? "chat.toolCall.edit.editing" : "chat.toolCall.edit.edited";
+  return isRunning ? "chat.toolCall.edit.editing" : "chat.toolCall.kind.edit";
 }
 
 export function renderJoinedFileChips(
@@ -166,100 +171,5 @@ export function renderJoinedFileChips(
         </span>
       ))}
     </div>
-  );
-}
-
-/** 仅复用旧 Changes 的响应式文件展示，不持有工具运行态或分组状态。 */
-export function CollapsedChangeSummary({
-  files,
-  label,
-  basePath,
-  onOpenFile,
-}: {
-  files: readonly RawToolCallFileSummary[];
-  label: string;
-  basePath?: string;
-  onOpenFile?: (file: RawToolCallFileSummary) => void;
-}) {
-  const listRef = useRef<HTMLSpanElement>(null);
-  const chipRefs = useRef<Array<HTMLSpanElement | null>>([]);
-  const overflowRef = useRef<HTMLSpanElement>(null);
-  const [visibleCount, setVisibleCount] = useState(files.length);
-  useLayoutEffect(() => {
-    const list = listRef.current;
-    const boundary = list?.closest<HTMLElement>("[data-consecutive-summary-group]");
-    if (!list || !boundary) return;
-    const update = () => {
-      // 按整组右边界测量；按收缩后的列表宽度计算会越藏越窄。预留箭头及间距 24px。
-      const available = Math.max(
-        0,
-        boundary.getBoundingClientRect().right - list.getBoundingClientRect().left - 24,
-      );
-      const widths = files.map((_, index) => chipRefs.current[index]?.offsetWidth ?? 0);
-      const total =
-        widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.length - 1) * 8;
-      let count = files.length;
-      if (total > available) {
-        count = 0;
-        let width = 0;
-        for (const chipWidth of widths) {
-          const next = width + chipWidth;
-          if (next + (count + 1) * 8 + (overflowRef.current?.offsetWidth ?? 0) > available) break;
-          width = next;
-          count++;
-        }
-      }
-      setVisibleCount((previous) => (previous === count ? previous : count));
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(boundary);
-    window.addEventListener("resize", update);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [files]);
-  const visible = Math.min(visibleCount, files.length);
-  return (
-    <span className="flex min-w-0 max-w-full items-center gap-2" data-change-summary-files>
-      <span className="min-w-0">{label}</span>
-      <span ref={listRef} className="relative inline-flex min-w-0 items-center gap-2">
-        {files.map((file, index) => (
-          <span
-            key={file.path}
-            ref={(element) => {
-              chipRefs.current[index] = element;
-            }}
-            aria-hidden={index >= visible ? true : undefined}
-            onKeyDown={onOpenFile ? (event) => event.stopPropagation() : undefined}
-            className={
-              index < visible
-                ? "inline-flex shrink-0"
-                : "pointer-events-none invisible absolute inline-flex shrink-0"
-            }
-          >
-            {renderFileChip({
-              summary: file,
-              basePath,
-              clickable: index < visible && Boolean(onOpenFile),
-              onClick: () => onOpenFile?.(file),
-            })}
-          </span>
-        ))}
-        {visible < files.length ? (
-          <span className="shrink-0" data-change-summary-overflow>
-            +{files.length - visible}
-          </span>
-        ) : null}
-        <span
-          ref={overflowRef}
-          aria-hidden
-          className="pointer-events-none invisible absolute shrink-0"
-        >
-          +{files.length}
-        </span>
-      </span>
-    </span>
   );
 }

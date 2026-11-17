@@ -1,5 +1,4 @@
 import { useTabStore } from "@/store/TabStoreProvider.js";
-import { useShallow } from "zustand/react/shallow";
 import { isWorkspaceTab, type WorkspaceTabState } from "@/store/tabStore.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import {
@@ -12,10 +11,7 @@ export function resolveRemoteWorkspaceSessionIdForTarget<TServices>(params: {
   preferredRemoteSessionId?: string | null;
   workspaceIdentity?: string | null;
   remoteTarget?: unknown;
-  activeTab?: Pick<
-    WorkspaceTabState,
-    "workspacePath" | "workspaceIdentity" | "remoteSessionId" | "remoteTarget"
-  > | null;
+  activeTab?: WorkspaceTabState | null;
   state: WorkspaceServiceResolverState<TServices>;
 }): string | null {
   if (!params.workspacePath) {
@@ -60,31 +56,22 @@ export function useResolvedRemoteWorkspaceSessionId(
   workspaceIdentity?: string | null,
   remoteTarget?: unknown,
 ): string | null {
-  const activeWorkspaceTab = useTabStore(
-    useShallow((state) => {
-      if (!workspacePath || !state.activeTabId) {
-        return null;
-      }
+  const activeWorkspaceTab = useTabStore((state) => {
+    if (!workspacePath || !state.activeTabId) {
+      return null;
+    }
 
-      const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
-      if (!activeTab || !isWorkspaceTab(activeTab)) {
-        return null;
-      }
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+    if (!activeTab || !isWorkspaceTab(activeTab)) {
+      return null;
+    }
 
-      const matches = workspaceIdentity
-        ? activeTab.workspaceIdentity?.trim() === workspaceIdentity.trim()
-        : activeTab.workspacePath === workspacePath;
-      // 首次新建补全 tab 分类曾让同工作区所有会话行更新；只订阅连接解析真正消费的字段。
-      return matches
-        ? {
-            workspacePath: activeTab.workspacePath,
-            workspaceIdentity: activeTab.workspaceIdentity,
-            remoteSessionId: activeTab.remoteSessionId,
-            remoteTarget: activeTab.remoteTarget,
-          }
-        : null;
-    }),
-  );
+    if (workspaceIdentity) {
+      return activeTab.workspaceIdentity?.trim() === workspaceIdentity.trim() ? activeTab : null;
+    }
+
+    return activeTab.workspacePath === workspacePath ? activeTab : null;
+  });
 
   return useRemoteWorkspaceSessionStore((state) =>
     resolveRemoteWorkspaceSessionIdForTarget({

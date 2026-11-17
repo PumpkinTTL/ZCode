@@ -6,7 +6,7 @@ import {
   CheckCircle2Icon,
   CircleAlertIcon,
   CircleDashedIcon,
-  LoaderCircle,
+  LoaderCircleIcon,
   PauseCircleIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
@@ -19,7 +19,10 @@ import type {
 import { formatTaskRelativeTime } from "@/lib/taskListItemPresentation.js";
 import type { PaneWorkspaceScope } from "@/v4/paneLayoutStore.js";
 import type { SessionLease } from "@/v4/sessionDataLayer.js";
-import { V4PaneConversationProvider, useV4Conversation } from "@/v4/V4ConversationContext.js";
+import {
+  V4PaneConversationProvider,
+  useV4Conversation,
+} from "@/v4/V4ConversationContext.js";
 import { useConversationProjection } from "@/v4/useConversationProjection.js";
 
 type DirectoryItem = RunningSubagentSummary | ZCodeSessionEndedSubagent;
@@ -46,7 +49,7 @@ function StatusIcon({ status }: { status: DirectoryItem["status"] }) {
   const className = "size-4 shrink-0";
   switch (status) {
     case "running":
-      return <LoaderCircle aria-hidden className={`${className} animate-spin`} />;
+      return <LoaderCircleIcon aria-hidden className={`${className} animate-spin`} />;
     case "waiting":
     case "blocked":
       return <PauseCircleIcon aria-hidden className={className} />;
@@ -118,7 +121,10 @@ export const SubagentDirectorySidePane = memo(function SubagentDirectorySidePane
   );
   return (
     <V4PaneConversationProvider scope={scope}>
-      <SubagentDirectoryContents tab={tab} onOpenSubagentSession={onOpenSubagentSession} />
+      <SubagentDirectoryContents
+        tab={tab}
+        onOpenSubagentSession={onOpenSubagentSession}
+      />
     </V4PaneConversationProvider>
   );
 });

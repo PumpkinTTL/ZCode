@@ -40,7 +40,7 @@ import {
   AlertCircle,
   CheckIcon,
   ChevronDownIcon,
-  LoaderCircle,
+  LoaderIcon,
   PackageIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -394,8 +394,6 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
       // React 的 key 不能跟随 props spread 传入，否则开发环境会在 CDP console 报警。
       const itemKey = item.key;
       const commonProps = {
-        // 保留面板时必须禁用选项，避免 ACK 在途的点击被上层屏障静默丢弃。
-        disabled: Boolean(pending),
         "data-model-option-locked": itemLocked ? "true" : undefined,
         "data-model-option-selected": itemSelected ? "true" : undefined,
         "data-testid": testId(TID_CHAT_MODEL_SELECT_ITEM, item.value),
@@ -515,7 +513,6 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
       isItemLocked,
       lockReasonMessage,
       normalizedValue,
-      pending,
     ],
   );
 
@@ -693,7 +690,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
       ) : null}
       {triggerBadge}
       {pending ? (
-        <LoaderCircle className="pointer-events-none size-3.5 animate-spin text-foreground" />
+        <LoaderIcon className="pointer-events-none size-3.5 animate-spin text-foreground" />
       ) : null}
       {!pending && (
         <ChevronDownIcon

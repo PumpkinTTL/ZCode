@@ -13,7 +13,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   FileDownIcon,
-  LoaderCircle,
+  Loader2Icon,
   MousePointer2Icon,
   ZoomInIcon,
   ZoomOutIcon,
@@ -945,7 +945,7 @@ export function PptxPreviewViewer({
                 disabled={exportingPdf}
                 onClick={() => void handleExportPdf()}
               >
-                {exportingPdf ? <LoaderCircle className="animate-spin" /> : <FileDownIcon />}
+                {exportingPdf ? <Loader2Icon className="animate-spin" /> : <FileDownIcon />}
               </Button>
             </>
           ) : null}

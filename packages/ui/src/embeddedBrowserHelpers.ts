@@ -1,5 +1,3 @@
-import { BROWSER_LOCAL_PREVIEW_SCHEME, browserPreviewSourceUrl } from "@zcode/shared";
-
 export const DEFAULT_BROWSER_URL = "about:blank";
 
 const RECOVERABLE_BROWSER_GUEST_EXIT_REASONS = new Set([
@@ -30,7 +28,8 @@ const WEBVIEW_DETACHED_ERROR_FRAGMENTS = [
 ] as const;
 
 export function isWebviewDetachedError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const message =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "";
   if (!message) {
     return false;
   }
@@ -64,7 +63,6 @@ const ALLOWED_BROWSER_PROTOCOLS = new Set([
   "about:",
   "data:",
   "file:",
-  `${BROWSER_LOCAL_PREVIEW_SCHEME}:`,
   "http:",
   "https:",
 ]);
@@ -139,7 +137,7 @@ export function isAllowedBrowserUrl(url: string): boolean {
 /** 系统默认浏览器入口接受 Web URL 和 file URL，不能复用内置浏览器更宽的本地/内联协议白名单。 */
 export function isDefaultBrowserOpenableUrl(url: string): boolean {
   try {
-    const protocol = new URL(browserPreviewSourceUrl(url)).protocol;
+    const protocol = new URL(url).protocol;
     return protocol === "http:" || protocol === "https:" || protocol === "file:";
   } catch {
     return false;
@@ -169,7 +167,9 @@ function parseSchemeLessUrl(input: string): URL | null {
   try {
     const normalizedInput = normalizeBareIpv6LoopbackInput(input);
     return new URL(
-      normalizedInput.startsWith("//") ? `http:${normalizedInput}` : `http://${normalizedInput}`,
+      normalizedInput.startsWith("//")
+        ? `http:${normalizedInput}`
+        : `http://${normalizedInput}`,
     );
   } catch {
     return null;
@@ -223,7 +223,11 @@ function parseIpv4Address(host: string): [number, number, number, number] | null
 }
 
 function isLocalhostName(host: string): boolean {
-  return host === "localhost" || host === "localhost.localdomain" || host.endsWith(".localhost");
+  return (
+    host === "localhost" ||
+    host === "localhost.localdomain" ||
+    host.endsWith(".localhost")
+  );
 }
 
 export function isLocalDevelopmentHost(host: string): boolean {
@@ -287,7 +291,9 @@ export function resolveMessageLinkOpenTarget(input: {
     return "app-browser";
   }
 
-  return isLocalDevelopmentBrowserUrl(input.href) ? "app-browser" : "external-browser";
+  return isLocalDevelopmentBrowserUrl(input.href)
+    ? "app-browser"
+    : "external-browser";
 }
 
 function shouldPreferHttpForSchemeLessUrl(parsed: URL, explicitPort: string | null): boolean {
@@ -306,7 +312,8 @@ function inferBrowserUrl(input: string): string {
   const normalizedInput = normalizeBareIpv6LoopbackInput(input);
   const parsed = parseSchemeLessUrl(normalizedInput);
   const protocol =
-    parsed && shouldPreferHttpForSchemeLessUrl(parsed, getSchemeLessExplicitPort(normalizedInput))
+    parsed &&
+    shouldPreferHttpForSchemeLessUrl(parsed, getSchemeLessExplicitPort(normalizedInput))
       ? "http"
       : "https";
   return normalizedInput.startsWith("//")
@@ -332,5 +339,5 @@ export function normalizeBrowserUrl(input: string): string | null {
 }
 
 export function displayBrowserUrl(url: string): string {
-  return url === DEFAULT_BROWSER_URL ? "" : browserPreviewSourceUrl(url);
+  return url === DEFAULT_BROWSER_URL ? "" : url;
 }

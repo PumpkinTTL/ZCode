@@ -1,4 +1,3 @@
-import { clearV4ComposerDraft } from "@/v4/composer/composerDraftStore.js";
 /* oxlint-disable eslint(max-lines) -- 当前文件承接 task 级状态切片，先保持最小改动修复草稿逻辑，后续再统一拆分 */
 import {
   normalizeAgentProviderToZCodeAgent,
@@ -844,7 +843,6 @@ export function createTaskSlice(set: SetFn) {
       // task 删除会清内存 task state，但 composer 草稿还有桌面端 localStorage 桶。
       // 如果不在统一删除 action 里同步清理，重启后已删除 task 的草稿会继续残留。
       clearPersistedComposerDraft(workspacePath, taskId, workspaceIdentity);
-      clearV4ComposerDraft(workspacePath, workspaceIdentity, taskId);
       set((state) => {
         const workspaceUpdate = updateWorkspaceState(
           state,

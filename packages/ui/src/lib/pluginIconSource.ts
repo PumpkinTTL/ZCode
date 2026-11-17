@@ -1,22 +1,18 @@
-import designIconUrl from "@/assets/plugin-icons/design.png";
 import documentsIconUrl from "@/assets/plugin-icons/documents.png";
 import imageSearchIconUrl from "@/assets/plugin-icons/image-search.png";
 import pdfIconUrl from "@/assets/plugin-icons/pdf.png";
 import pluginCreatorIconUrl from "@/assets/plugin-icons/plugin-creator.png";
 import presentationsIconUrl from "@/assets/plugin-icons/presentations.png";
 import spreadsheetsIconUrl from "@/assets/plugin-icons/spreadsheets.png";
-import visualizeIconUrl from "@/assets/plugin-icons/visualize.png";
 import { isTrustedImageUrl } from "@/lib/trustedImageUrl.js";
 
 const OFFICIAL_PLUGIN_ICON_BY_ID: Readonly<Record<string, string>> = {
-  "design@polaris-plugins-official": designIconUrl,
   "documents@polaris-plugins-official": documentsIconUrl,
   "image-search@polaris-plugins-official": imageSearchIconUrl,
   "pdf@polaris-plugins-official": pdfIconUrl,
   "plugin-creator@polaris-plugins-official": pluginCreatorIconUrl,
   "presentations@polaris-plugins-official": presentationsIconUrl,
   "spreadsheets@polaris-plugins-official": spreadsheetsIconUrl,
-  "visualize@polaris-plugins-official": visualizeIconUrl,
 };
 
 const TRUSTED_BUNDLED_PLUGIN_ICONS = new Set(Object.values(OFFICIAL_PLUGIN_ICON_BY_ID));

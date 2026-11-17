@@ -7,7 +7,6 @@ import {
   type RefObject,
 } from "react";
 import {
-  zcodeProviderRuntimeHeadersErrorCode,
   type ZCodeApiRetryStatus,
   type ZCodeConfigOption,
   type ZCodeConfigSelectValue,
@@ -152,12 +151,7 @@ export function ChatApiRetryStatus({
     // 这里先收敛成稳定的重试状态文案，只展示第几次重试。
     const formatter = new Intl.NumberFormat(locale);
     return intl.formatMessage(
-      {
-        id:
-          apiRetry.error === zcodeProviderRuntimeHeadersErrorCode.configNetwork
-            ? "chat.configReadRetryStatus"
-            : "chat.apiRetryStatus",
-      },
+      { id: "chat.apiRetryStatus" },
       {
         attempt: formatter.format(apiRetry.attempt),
         maxRetries: formatter.format(apiRetry.maxRetries),

@@ -116,18 +116,13 @@ export function ToolSearchToolCallBlock(context: ToolCallBlockRenderContext) {
       {...context}
       searchPrimaryText={searchPrimaryText}
       kindLabelOverride=""
-      titleOverride="ToolSearch"
       hideSnapshotNotice
     />
   );
 }
 
 function SearchToolCallLayout(
-  context: ToolCallBlockRenderContext & {
-    searchPrimaryText: string;
-    titleOverride?: string;
-    hideSnapshotNotice?: boolean;
-  },
+  context: ToolCallBlockRenderContext & { searchPrimaryText: string; hideSnapshotNotice?: boolean },
 ) {
   const { intl } = useZCodeIntl();
   const { toolCallNode, isRunning, statusLabel, errorText } = context;
@@ -148,7 +143,7 @@ function SearchToolCallLayout(
         kindLabel={
           context.kindLabelOverride ??
           intl.formatMessage({
-            id: isRunning ? "chat.toolCall.search.searching" : "chat.toolCall.search.searched",
+            id: isRunning ? "chat.toolCall.search.searching" : "chat.toolCall.kind.search",
           })
         }
         sourceLabel={context.sourceLabel}
@@ -159,7 +154,7 @@ function SearchToolCallLayout(
         statusTooltip={toolCall.status === "failed" ? errorText : undefined}
         showFailureStatus={toolCall.status === "failed"}
         isRunning={isRunning}
-        title={context.titleOverride ?? toolCall.title}
+        title={toolCall.title}
         content={null}
       />
       {!context.hideSnapshotNotice && (

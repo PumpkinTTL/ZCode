@@ -1,6 +1,6 @@
 import {
   Download,
-  LoaderCircle,
+  Loader2,
   MoreHorizontal,
   Plus,
   RefreshCcw,
@@ -68,8 +68,7 @@ export function SettingsResourceHeaderActions({
   const hasOverflowActions = Boolean(onImport || onExport);
 
   return (
-    // 手机窄屏下描述文字会把操作组挤到换行错位；compact-web 下操作组保持一行且不被压缩。
-    <div className="flex flex-wrap items-center gap-2 compact-web:shrink-0 compact-web:flex-nowrap">
+    <div className="flex flex-wrap items-center gap-2">
       {hasOverflowActions ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -113,7 +112,7 @@ export function SettingsResourceHeaderActions({
             onClick={onRefresh}
           >
             {refreshing ? (
-              <LoaderCircle className="animate-spin" aria-hidden="true" />
+              <Loader2 className="animate-spin" aria-hidden="true" />
             ) : (
               <RefreshCcw aria-hidden="true" />
             )}

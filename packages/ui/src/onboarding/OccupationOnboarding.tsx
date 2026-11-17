@@ -59,8 +59,6 @@ export function OccupationOnboarding({
   const [occupation, setOccupation] = useState<OccupationValue | null>("developer");
   const savedInterfaceMode = useZCodeStore((state) => state.interfaceMode);
   const setInterfaceMode = useZCodeStore((state) => state.setInterfaceMode);
-  // Polaris：telemetry 包装 hook 已随上报链移除；直接走 store。
-  const applyInterfaceMode = setInterfaceMode;
   // mode 为 null 表示模式页被"跳过"（跳过是显式答案，记录里保留 null 而非兜底值）。
   const [mode, setMode] = useState<InterfaceMode | null>(savedInterfaceMode);
   const [step, setStep] = useState<0 | 1 | 2>(0);
@@ -209,8 +207,7 @@ export function OccupationOnboarding({
     setSaving(true);
     setError(false);
     try {
-      // 卡片是草稿；实际应用才报切换，后续偏好保存失败重试也不重报同值。
-      if (mode) applyInterfaceMode(mode);
+      if (mode) setInterfaceMode(mode);
       logger.info("[occupation-onboarding] 保存偏好", { interfaceMode: mode });
       await update({
         // settings 侧保持既有语义：跳过落保守默认值（职业 other / 偏好关），
@@ -223,7 +220,7 @@ export function OccupationOnboarding({
       setStep(0);
       setDismissed(true);
       setRequested(false);
-      if (!skip && migration) requestOnboardingDialog();
+      if (!skip && migration) requestOnboardingDialog("migration");
       logger.info("[occupation-onboarding] 偏好保存完成", { interfaceMode: mode });
       if (onboardingRecord) {
         try {

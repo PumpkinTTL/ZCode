@@ -10,7 +10,6 @@ export {
 } from "@/lib/remoteConnectionPresentationErrors.js";
 export type { RemoteConnectionErrorPresentation } from "@/lib/remoteConnectionPresentationErrors.js";
 export type { RemoteConnectionAction } from "@/lib/remoteConnectionPresentationTypes.js";
-import { SOURCE_SERVER_UPDATE_IN_PROGRESS_ERROR_CODE } from "@zcode/shared";
 import type {
   ConnectionProfile,
   RemoteTarget,
@@ -98,6 +97,7 @@ export interface RemoteConnectionPresentation {
     shortMessageId: string;
     values: { attempt: number; limit: number };
   };
+  optionalUpdate: boolean;
   updateNotice: { foreground: string; surface: string };
   description: string;
   displayName?: string;
@@ -131,13 +131,6 @@ export function resolveRemoteConnectionPresentation(
     tone = "progress";
     icon = "spinner";
     action = input.wizard ? "cancel" : "none";
-  } else if (input.errorCode === SOURCE_SERVER_UPDATE_IN_PROGRESS_ERROR_CODE) {
-    // 更新期间被拒绝的连接是等待点：设备正在更新，不计为连接失败，只提供重试（R3 §6.3）。
-    status = "pending";
-    short = "updating";
-    tone = "progress";
-    icon = "spinner";
-    action = "retry";
   } else if (
     input.state === "identity-change-pending" ||
     input.errorCode === "source-server-identity-change-pending"
@@ -216,6 +209,7 @@ export function resolveRemoteConnectionPresentation(
           },
         }
       : {}),
+    optionalUpdate: input.updateAvailability === "available",
     updateNotice: input.updateAvailability === "available" ? TONES.neutral : TONES[tone],
     description: formatRemoteConnectionDescription(input.target),
     displayName: input.displayName,
@@ -344,9 +338,21 @@ export function buildAggregatedSourceStatusMap(
   );
 }
 
-// Polaris：上游 SettingsPage 引用的导航 presentation 入口；我方导航点为纯展示，直接复用主解析。
+/** 设置导航聚合也是展示决策，界面不自行挑颜色或把失败降成警告。 */
 export function resolveRemoteConnectionNavigationPresentation(
-  ...args: Parameters<typeof resolveRemoteConnectionPresentation>
-): ReturnType<typeof resolveRemoteConnectionPresentation> {
-  return resolveRemoteConnectionPresentation(...args);
+  snapshot: SourceServerManagementSnapshot | null | undefined,
+): RemoteConnectionPresentation {
+  const devices =
+    snapshot?.servers.map((server) =>
+      resolveRemoteConnectionPresentation(
+        getRemoteDevicePresentationInput(snapshot, server.sourceServerId),
+      ),
+    ) ?? [];
+  const result =
+    devices.find((item) => item.status === "pending" || item.status === "failed") ??
+    devices.find((item) => item.optionalUpdate) ??
+    devices.find((item) => item.status === "connecting") ??
+    devices.find((item) => item.status === "online") ??
+    resolveRemoteConnectionPresentation({});
+  return result.optionalUpdate ? { ...result, dot: "bg-foreground-subtle" } : result;
 }

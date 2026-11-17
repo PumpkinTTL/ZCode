@@ -1,7 +1,7 @@
 import { SidebarNativeTooltip, ControlHintTooltip } from "@/ControlHintTooltip.js";
 /* oxlint-disable eslint(max-lines) -- footer 聚合账户、主题、模式和快捷键菜单。 */
 import type { Locale, UserInfo } from "@zcode/shared";
-import { DesktopCommandIds, LOCALE_NATIVE_NAMES, SUPPORTED_LOCALES } from "@zcode/shared";
+import { DesktopCommandIds } from "@zcode/shared";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   TID_LOGIN_MENU_ITEM,
@@ -41,7 +41,7 @@ import {
   Copy,
   PencilRuler,
   Globe,
-  LoaderCircle,
+  Loader2,
   LogInIcon,
   LogOut,
   Maximize,
@@ -263,7 +263,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               {/* Bugfix: OAuth 启动恢复未落定前，footer 之前会直接显示未登录头像，
                   用户很容易把“还在校验”误判成“已经退出”。
                   这里用 loading 图标明确表达“状态确认中”，等恢复成功或失败后再展示最终状态。 */}
-              <LoaderCircle className="size-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
               <span className="sr-only">{intl.formatMessage({ id: "common.loading" })}</span>
             </>
           ) : (
@@ -423,12 +423,16 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                       id: "sidebar.settings.systemDefault",
                     })}
                   </DropdownMenuRadioItem>
-                  {/* 语言选项显示各语言本名（LOCALE_NATIVE_NAMES），不随界面语言翻译。 */}
-                  {SUPPORTED_LOCALES.map((locale) => (
-                    <DropdownMenuRadioItem key={locale} value={locale} lang={locale}>
-                      {LOCALE_NATIVE_NAMES[locale]}
-                    </DropdownMenuRadioItem>
-                  ))}
+                  <DropdownMenuRadioItem value="en-US">
+                    {intl.formatMessage({
+                      id: "sidebar.settings.locale.en-US",
+                    })}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="zh-CN">
+                    {intl.formatMessage({
+                      id: "sidebar.settings.locale.zh-CN",
+                    })}
+                  </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
