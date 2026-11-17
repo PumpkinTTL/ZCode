@@ -2347,3 +2347,72 @@ exceptions:
     paths:
       - packages/ui/src/root/GlobalDatabaseStartupLoading.tsx
     reason: 启动失败页在现有复制诊断/重试/退出旁增加导出日志按钮（docs/desktop/database-migration-startup-gate-plan.md）。只扩展既有失败页交互，不新增文件、不改变启动状态 owner 或模块边界；接管 packages/ui/src/root 不在本次范围内。
+  - id: upstream-v3182-merge-adopted-files
+    rule: unmanaged-new-file
+    paths:
+      - apps/zcode-cli/packages/adapters/src/model/request-security-edition/index.ts
+      - apps/zcode-cli/packages/adapters/src/model/request-security-edition/recovery.ts
+      - apps/zcode-cli/packages/bootstrap/src/process-resource-sampler.ts
+      - apps/zcode-cli/packages/telemetry/src/request-security-edition/index.ts
+      - packages/services/src/highspeed/highspeedCardService.ts
+      - packages/services/src/oauth/callbackAttribution.ts
+      - packages/services/src/oauth/providers/index.ts
+      - packages/services/src/oauth/runtimeConfig.ts
+      - packages/services/src/plugin-sync/pluginSyncCandidates.ts
+      - packages/services/src/skill-sync/skillSyncCandidates.ts
+      - packages/ui/src/chat-input-toolbar/CodingPlanContextUsage.ts
+      - packages/ui/src/chat-input-toolbar/StartPlanContextBalance.ts
+      - packages/ui/src/highspeed/HighspeedActivationVisual.tsx
+      - packages/ui/src/highspeed/HighspeedModelIndicator.tsx
+      - packages/ui/src/highspeed/HighspeedShareNoticeCard.tsx
+      - packages/ui/src/highspeed/highspeedConversationRows.ts
+      - packages/ui/src/highspeed/highspeedFooterExpiryClock.ts
+      - packages/ui/src/highspeed/highspeedOutputFooter.ts
+      - packages/ui/src/highspeed/highspeedSavedTime.ts
+      - packages/ui/src/highspeed/highspeedSend.ts
+      - packages/ui/src/highspeed/highspeedShare.ts
+      - packages/ui/src/highspeed/highspeedShareDiagnostics.ts
+      - packages/ui/src/highspeed/highspeedTime.ts
+      - packages/ui/src/highspeed/highspeedToastClaims.ts
+      - packages/ui/src/highspeed/highspeedTurnStore.ts
+      - packages/ui/src/highspeed/useHighspeedComposerEntrance.ts
+      - packages/ui/src/lib/appTelemetry.ts
+      - packages/ui/src/lib/armsCustomEventObservability.ts
+      - packages/ui/src/lib/automationTelemetry.ts
+      - packages/ui/src/lib/chatErrorBannerTelemetry.ts
+      - packages/ui/src/lib/codingPlanFunnelTelemetry.ts
+      - packages/ui/src/lib/codingPlanProvider.ts
+      - packages/ui/src/lib/codingPlanQuotaPresentation.ts
+      - packages/ui/src/lib/codingPlanQuotaResetUi.ts
+      - packages/ui/src/lib/codingPlanUsageSources.ts
+      - packages/ui/src/lib/conversationTelemetryLegacyParityE2E.ts
+      - packages/ui/src/lib/conversationTelemetryParityScenarioDefinitions.ts
+      - packages/ui/src/lib/conversationTelemetryParityStateE2E.ts
+      - packages/ui/src/lib/launchToInputReport.ts
+      - packages/ui/src/lib/messageTelemetry.ts
+      - packages/ui/src/lib/offPeakTelemetry.ts
+      - packages/ui/src/lib/planUsageArmsTelemetry.ts
+      - packages/ui/src/lib/reactErrorArmsTelemetry.ts
+      - packages/ui/src/lib/sendFunnelArmsTelemetry.ts
+      - packages/ui/src/lib/sidebarCodingPlanUpgrade.ts
+      - packages/ui/src/lib/uiPerfArmsTelemetry.ts
+      - packages/ui/src/remote-connection/RemoteConnectionNavigationDot.ts
+      - packages/ui/src/request-security-edition/claim.ts
+      - packages/ui/src/request-security-edition/index.ts
+      - packages/ui/src/request-security-edition/messages.ts
+      - packages/ui/src/request-security-edition/parity.ts
+      - packages/ui/src/settings/CodingPlanEntryButton.tsx
+      - packages/ui/src/settings/CodingPlanUpgradeDialogProvider.tsx
+      - packages/ui/src/settings/SettingsMachine.ts
+      - packages/ui/src/settings/model-provider-section/useCodingPlanEntitlements.ts
+      - packages/ui/src/settings/model-provider-section/useEnterpriseCodingPlanProducts.ts
+      - packages/ui/src/sidebar-activity/SidebarBottomActivity.tsx
+      - packages/ui/src/v4/officeSuggestedPrompts.ts
+      - packages/ui/src/v4/telemetry/ConversationTelemetryAttachment.tsx
+      - packages/ui/src/v4/telemetry/conversationPromptTelemetry.ts
+      - packages/ui/src/v4/telemetry/conversationTelemetryParityE2E.ts
+      - packages/ui/src/v4/telemetry/conversationTelemetrySupervisor.ts
+      - packages/ui/src/v4/telemetry/useSessionSubscriptionErrorTelemetry.ts
+      - apps/zcode-cli/packages/core/src/system-reminder/incoming-message.ts
+      - packages/ui/src/hooks/useOffPeakEligibility.ts
+    reason: 上游 v3.17.1→v3.18.2 合并准入文件（sync/v3182-merge，31e8e18b 前后）：1) 纯 schema/类型/协议面（request-security-edition 契约、telemetry 编排、plugin/skill/mcp 同步候选嫁接）；2) Polaris 惰性桩（highspeed UI 15 模块函数体恒空、highspeedCardService 恒 fallback、coding-plan 门禁 hook 恒 ready）；3) 上游核心新文件的本地化改写（建议提示词图标改本地打包、官方市场图标富化置 no-op）。全部零官方出网、零上报实现；ARMS/支付/购买链路保持砍除态。
