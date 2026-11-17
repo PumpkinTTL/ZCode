@@ -4,13 +4,7 @@ interface TaskActionMenuItemProps {
   disabled?: boolean;
   onSelect?: () => void;
   title?: string;
-  /** 破坏性操作（删除）用仓库统一的 destructive 红；缺省 default。 */
-  variant?: "default" | "destructive";
-  /** 追加类：删除项用红字但不吃 destructive 的整块红底高亮。 */
-  className?: string;
 }
-
-import { TID_V4_TASK_OPEN_IN_SPLIT } from "@zcode/shared/test-ids";
 
 interface TaskActionMenuSeparatorProps {
   key?: string;
@@ -29,16 +23,16 @@ export function TaskActionMenuContent({
   disableTaskTargetActions = false,
   disablePinTaskAction = false,
   disabledReason,
+  archiveDisabledReason,
   hideMobileUnsupportedActions = false,
   Item,
   Separator,
   onTogglePinTask,
   onStartRenameTask,
   onArchiveTask,
-  onDeleteTask,
   onMarkTaskAsUnread,
-  onOpenInSplitPane,
-  openInSplitPaneDisabled = false,
+  onRestartTask,
+  restartPending = false,
   onOpenTaskFeedback,
   onOpenTaskPathInFileManager,
   onCopyWorkspacePath,
@@ -66,19 +60,18 @@ export function TaskActionMenuContent({
   disableTaskTargetActions?: boolean;
   disablePinTaskAction?: boolean;
   disabledReason?: string;
+  /** 归档专属的禁用原因（运行中任务）；其余操作不受影响。 */
+  archiveDisabledReason?: string;
   hideMobileUnsupportedActions?: boolean;
   Item: React.ComponentType<TaskActionMenuItemProps>;
   Separator: React.ComponentType<TaskActionMenuSeparatorProps>;
   onTogglePinTask: () => void;
   onStartRenameTask: () => void;
-  onArchiveTask: () => void;
-  /** 真删（不可恢复）；缺省不渲染删除入口。 */
-  onDeleteTask?: () => void;
+  /** 不传则不展示归档项：Header 拿不到实时运行态，归档只在侧栏提供。 */
+  onArchiveTask?: () => void;
   onMarkTaskAsUnread: () => void;
-  /** 「在分屏打开」（仅桌面 shell 传入；手机远控不显示该入口）。 */
-  onOpenInSplitPane?: () => void;
-  /** 当前 session 或 pane 数达上限且目标无已有归属时禁用（保留布局与层级）。 */
-  openInSplitPaneDisabled?: boolean;
+  onRestartTask?: () => void;
+  restartPending?: boolean;
   onOpenTaskFeedback?: () => void;
   onOpenTaskPathInFileManager: () => void;
   onCopyWorkspacePath: () => void;
@@ -114,17 +107,19 @@ export function TaskActionMenuContent({
       >
         {intl.formatMessage({ id: "taskList.rename" })}
       </Item>
-      <Item
-        disabled={taskTargetActionsDisabled}
-        title={disabledReason}
-        onSelect={() => {
-          if (!taskTargetActionsDisabled) {
-            onArchiveTask();
-          }
-        }}
-      >
-        {intl.formatMessage({ id: isArchived ? "taskList.unarchive" : "taskList.archive" })}
-      </Item>
+      {onArchiveTask ? (
+        <Item
+          disabled={taskTargetActionsDisabled || Boolean(archiveDisabledReason)}
+          title={disabledReason ?? archiveDisabledReason}
+          onSelect={() => {
+            if (!taskTargetActionsDisabled && !archiveDisabledReason) {
+              onArchiveTask();
+            }
+          }}
+        >
+          {intl.formatMessage({ id: isArchived ? "taskList.unarchive" : "taskList.archive" })}
+        </Item>
+      ) : null}
       <Item
         disabled={taskTargetActionsDisabled}
         title={disabledReason}
@@ -136,27 +131,13 @@ export function TaskActionMenuContent({
       >
         {intl.formatMessage({ id: "taskList.markAsUnread" })}
       </Item>
-      {onDeleteTask ? (
+      {onRestartTask ? (
         <Item
-          disabled={taskTargetActionsDisabled}
-          title={disabledReason}
-          className="text-destructive data-[highlighted]:text-destructive"
-          onSelect={() => {
-            if (!taskTargetActionsDisabled) {
-              onDeleteTask();
-            }
-          }}
+          data-testid="task-restart"
+          disabled={taskTargetActionsDisabled || restartPending}
+          onSelect={onRestartTask}
         >
-          {intl.formatMessage({ id: "taskList.delete" })}
-        </Item>
-      ) : null}
-      {onOpenInSplitPane ? (
-        <Item
-          data-testid={TID_V4_TASK_OPEN_IN_SPLIT}
-          disabled={taskTargetActionsDisabled || openInSplitPaneDisabled}
-          onSelect={onOpenInSplitPane}
-        >
-          {intl.formatMessage({ id: "taskList.openInSplitPane" })}
+          {intl.formatMessage({ id: restartPending ? "taskList.restarting" : "taskList.restart" })}
         </Item>
       ) : null}
       <Separator />
@@ -229,7 +210,7 @@ export function TaskActionMenuContent({
       {onViewModelTrajectory ? (
         <>
           <Separator />
-          {/* 调用轨迹查看：从 ~/.polaris/cli 的 model-io 还原该 task 的模型请求/响应/工具调用，
+          {/* 调用轨迹查看：从 ~/.zcode/cli 的 model-io 还原该 task 的模型请求/响应/工具调用，
               在右侧边栏可视化。只依赖 taskId（即 sessionId），不依赖快照文件是否落盘。 */}
           <Item
             disabled={taskTargetActionsDisabled || !activeSessionId}

@@ -19,11 +19,6 @@ import { logger } from "@/logger.js";
  * 返回 [needsOnboarding, markOnboarded]：markOnboarded 在引导保存成功后把判定置 false
  * （记录已落盘，本次会话不再触发）。
  */
-/**
- * 站长令(2026-10-10)：职业问卷暂停自动触发（代码全保留，接入时改回 true）。
- */
-const OCCUPATION_ONBOARDING_TRIGGER_ENABLED = false;
-
 export function useOnboardingTrigger(options: {
   onboardingRecord: ReturnType<typeof useOnboardingRecordService>;
   userId: string | null;
@@ -42,13 +37,6 @@ export function useOnboardingTrigger(options: {
   // 不再生效——不得把已放行的主界面或进行中的引导翻掉。
   const releaseDeadlineRef = useRef<number | null>(null);
   useEffect(() => {
-    // 站长令(2026-10-10)：职业问卷**暂停自动触发**——判定/认领/迁移/回填逻辑全部
-    // 保留，接入时把 OCCUPATION_ONBOARDING_TRIGGER_ENABLED 改回 true（或删掉本闸）
-    // 即恢复原行为。设置页手动入口与快捷键不受影响，仍可主动打开。
-    if (!OCCUPATION_ONBOARDING_TRIGGER_ENABLED) {
-      setNeedsOnboarding(false);
-      return;
-    }
     let cancelled = false;
     // 服务不可用（旧测试 double / 未注册的 host）保守判不引导：老用户一定不弹，
     // 真新用户等装配修复后下次启动补弹或走设置页手动入口。

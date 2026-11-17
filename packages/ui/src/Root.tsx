@@ -116,7 +116,9 @@ type WelcomeScreenOpenReason =
   | "startup-provider-required"
   | "manual-login"
   | "provider-request"
-  | "session-expired";
+  | "session-expired"
+  /** Polaris：登出后回到欢迎页（上游 v3.18 行为）；官方 provider 面已随红线砍除，仅保留原因枚举。 */
+  | "logout-provider-required";
 
 /**
  * Root —— 应用根组件
@@ -227,6 +229,7 @@ function RootInner({
   const {
     settings: appSettings,
     refresh: refreshAppSettings,
+    update: updateAppSettings,
   } = useSettings();
   // docs/dynamic-workflow/launch.md「The user's choice」：设置里的动态工作流选择变化后，通知本窗口
   // 的 Host 重发 CLI 策略（并转发给远程 Host），再重读灰度快照。
@@ -645,6 +648,7 @@ function RootInner({
     handleOpenFolderFromWorkspaceMenu,
     handleCreateTask,
     handleBackFromSettings,
+    handleOpenTaskFromSettings,
   } = useRootWorkspaceActions({
     intl,
     platform,
@@ -660,6 +664,15 @@ function RootInner({
     onOpenRemoteConnection: allowRemoteWorkspace ? handleOpenRemoteConnection : undefined,
     openRemoteProjectWorkspace: openPreparedRemoteProjectWorkspace,
     openMobileProjectDraft: webRemoteControlWorkspaceSwitcher?.openProjectDraft,
+    refreshProviderState,
+    updateAppSettings,
+    setOAuthError,
+    setUser,
+    onProviderFamilyDomainClearedAfterLogout: () => {
+      setWelcomeScreenOpenReason("logout-provider-required");
+    },
+    userId: user?.id,
+    isDesktop,
     workbenchGroupClientMode: isWebRemoteControlRoot
       ? "web-remote-replayable"
       : "desktop-continuous",
@@ -1536,6 +1549,7 @@ function RootInner({
               }
             >
               <RootWorkspaceContent
+                handleOpenTaskFromSettings={handleOpenTaskFromSettings}
                 workspaceScopedServices={workspaceScopedServices}
                 baseFeedbackService={services.feedbackService}
                 workspaceShellPath={workspaceShellPath}

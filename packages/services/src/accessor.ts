@@ -5,6 +5,7 @@ import type { IProjectService } from "#src/project/contract.js";
 import type { IManagedWorktreeService } from "#src/managed-worktree-tasks/contract.js";
 import type { IGenUiService } from "./gen-ui/contract.js";
 import { IOffPeakTaskService } from "./session/offPeakTask.js";
+import type { IHighspeedCardService } from "./highspeed/highspeedCardService.js";
 import type { IPluginUiBridgeService } from "./plugin-ui-bridge/contract.js";
 import type { IPluginUiSamplingService } from "./plugin-ui-bridge/samplingContract.js";
 import type { IPluginUiAppToolsService } from "./plugin-ui-bridge/appToolsContract.js";
@@ -118,6 +119,8 @@ export interface IServiceAccessor {
   readonly clientScenesService: IClientScenesService;
   /** 闲时任务管理（独立服务面）。 */
   readonly offPeakTaskService: IOffPeakTaskService;
+  /** Polaris：加速卡已砍除；恒惰性桩，见 highspeed/highspeedCardService.ts。 */
+  readonly highspeedCardService: IHighspeedCardService;
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
   readonly mcpSyncService: IMcpSyncService;

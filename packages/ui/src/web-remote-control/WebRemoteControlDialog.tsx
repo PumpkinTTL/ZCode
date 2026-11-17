@@ -10,10 +10,11 @@ import {
 } from "@/web-remote-control/domain/presentation.js";
 import { memo, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import type { BotProvider, WebRemoteControlStatus } from "@zcode/shared";
+import { DesktopCommandIds, type BotProvider, type WebRemoteControlStatus } from "@zcode/shared";
 import {
   Bot as BotIcon,
   CopyIcon,
+  FileDown,
   LoaderCircle,
   MonitorSmartphone,
   Smartphone,
@@ -33,6 +34,7 @@ import {
 import { toast } from "@/components/ui/toast.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
+import { useOAuth } from "@/hooks/useOAuth.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { getBotProviderRegionTagLabelId } from "@/botsUi.js";
@@ -50,17 +52,25 @@ const REMOTE_CONTROL_BOT_ENTRIES: Array<{
 
 function WebRemoteControlLoginButton({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
   const { intl } = useZCodeIntl();
+  const hasUser = useZCodeStore((state) => Boolean(state.user));
   const requestLoginEntry = useZCodeStore((state) => state.requestLoginEntry);
+  const { activeProvider, loadingProviders, refreshProviders } = useOAuth();
 
   return (
     <Button
       type="button"
       data-testid="web-remote-control-login"
       className="enabled:cursor-pointer"
+      disabled={loadingProviders}
       onClick={() => {
-        // Polaris：官方 OAuth provider 链路已剪除，登录入口统一走 requestLoginEntry。
+        // 远控401不清全局用户；必须指定当前渠道建立新登录尝试，避免统一入口把缓存用户当作成功。
+        if (hasUser && !activeProvider) {
+          toast(intl.formatMessage({ id: "login.oauth.loginFailure" }));
+          void refreshProviders();
+          return;
+        }
         onOpenChange(false);
-        requestLoginEntry(undefined, "app-login");
+        requestLoginEntry(activeProvider ?? undefined, "app-login");
       }}
     >
       {intl.formatMessage({ id: "webRemoteControl.authRequired.login" })}
@@ -313,6 +323,15 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
     }
   };
 
+  // 远控诊断：面板「拉取手机日志」是唯一用户入口（帮助菜单项已于 2026-10-28 移除），
+  // 结果由主进程弹框告知。
+  const handlePullMobileLogs = () => {
+    logger.info("[WebRemoteControlDialog] 拉取手机日志", {
+      sessionId: status.sessionId ?? "none",
+    });
+    void platform.executeDesktopCommand(DesktopCommandIds.PullMobileLogs);
+  };
+
   const handleDialogOpenChange = (nextOpen: boolean) => {
     logger.info("[WebRemoteControlDialog] 弹层开关状态变化", {
       workspacePath,
@@ -455,6 +474,19 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                             {statusDetail}
                           </div>
                         </div>
+                        {status.mobileConnected ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="default"
+                            data-testid="web-remote-control-pull-mobile-logs"
+                            className="shrink-0 gap-2 enabled:cursor-pointer"
+                            onClick={handlePullMobileLogs}
+                          >
+                            <FileDown className="size-3.5" />
+                            {intl.formatMessage({ id: "webRemoteControl.pullMobileLogs" })}
+                          </Button>
+                        ) : null}
                         {loading ? (
                           <LoaderCircle className="size-4 animate-spin text-foreground-subtle" />
                         ) : (

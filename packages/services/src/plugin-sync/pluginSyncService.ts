@@ -13,6 +13,7 @@ import {
   PLUGIN_SYNC_METADATA_ARCHIVE_PATH,
 } from "./pluginSyncArchive.js";
 import { normalizePluginSyncRelativePath, resolvePluginSyncPathWithin } from "./pluginSyncPath.js";
+import { createPluginSyncCandidateMethods } from "./pluginSyncCandidates.js";
 import { createInlinePluginDataSyncMethods } from "../data-sync/node.js";
 
 export interface PluginManifestInfo {
@@ -72,6 +73,7 @@ export function createPluginSyncService(options?: {
 }): IPluginSyncService {
   const maxArchiveBytes = options?.maxArchiveBytes ?? DEFAULT_MAX_ARCHIVE_BYTES;
   return {
+    ...createPluginSyncCandidateMethods({ maxArchiveBytes }),
     // 数据同步：单个 inline 插件目录上限 50MB；marketplace 来源镜像归档也用同一上限。
     ...createInlinePluginDataSyncMethods({ maxItemBytes: maxArchiveBytes }),
     async exportMarketplaceSourceArchive(params) {

@@ -109,6 +109,8 @@ export const ServiceChannels = {
   File: "file",
   MediaPreview: "media-preview",
   System: "system",
+  AppUpdate: "app-update",
+  ProviderQuota: "provider-quota",
   Terminal: "terminal",
   /** Git 服务 */
   Git: "git",

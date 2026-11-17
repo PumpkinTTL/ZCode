@@ -1,3 +1,4 @@
+import { createSkillSyncCandidateMethods } from "./skillSyncCandidates.js";
 import { DATA_ROOT_DIR_NAME } from "../paths.js";
 import { existsSync } from "node:fs";
 import { readFile, readdir, realpath, stat } from "node:fs/promises";
@@ -27,7 +28,10 @@ export interface UserSkillCandidate {
 export function createSkillSyncService(options?: { maxArchiveBytes?: number }): ISkillSyncService {
   const maxArchiveBytes = options?.maxArchiveBytes ?? DEFAULT_MAX_ARCHIVE_BYTES;
   // 数据同步：单个技能目录的大小上限，默认 20MB。
-  return createSkillDataSyncMethods({ maxItemBytes: maxArchiveBytes });
+  return {
+    ...createSkillDataSyncMethods({ maxItemBytes: maxArchiveBytes }),
+    ...createSkillSyncCandidateMethods({ maxArchiveBytes }),
+  };
 }
 
 export function resolveUserHomeDir(): string {

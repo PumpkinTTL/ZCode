@@ -18,7 +18,6 @@ export function TaskListItemContextMenu({
   onTogglePinTask,
   onStartRenameTask,
   onArchiveTask,
-  onDeleteTask,
   onMarkTaskAsUnread,
   onOpenTaskFeedback,
   onOpenTaskPathInFileManager,
@@ -30,6 +29,7 @@ export function TaskListItemContextMenu({
   onOpenProviderConfig,
   disableTaskActions = false,
   disabledReason,
+  archiveDisabledReason,
 }: {
   organizationActions?: React.ReactNode;
   intl: {
@@ -49,7 +49,6 @@ export function TaskListItemContextMenu({
   onTogglePinTask: () => void;
   onStartRenameTask: () => void;
   onArchiveTask: () => void;
-  onDeleteTask?: () => void;
   onMarkTaskAsUnread: () => void;
   onOpenTaskFeedback: () => void;
   onOpenTaskPathInFileManager: () => void;
@@ -61,6 +60,7 @@ export function TaskListItemContextMenu({
   onOpenProviderConfig: () => void;
   disableTaskActions?: boolean;
   disabledReason?: string;
+  archiveDisabledReason?: string;
 }) {
   return (
     <ContextMenuContent className="w-52">
@@ -79,7 +79,6 @@ export function TaskListItemContextMenu({
         onTogglePinTask={onTogglePinTask}
         onStartRenameTask={onStartRenameTask}
         onArchiveTask={onArchiveTask}
-        onDeleteTask={onDeleteTask}
         onMarkTaskAsUnread={onMarkTaskAsUnread}
         onOpenTaskFeedback={onOpenTaskFeedback}
         onOpenTaskPathInFileManager={onOpenTaskPathInFileManager}
@@ -91,6 +90,7 @@ export function TaskListItemContextMenu({
         onOpenProviderConfig={onOpenProviderConfig}
         disableTaskActions={disableTaskActions}
         disabledReason={disabledReason}
+        archiveDisabledReason={archiveDisabledReason}
       />
     </ContextMenuContent>
   );

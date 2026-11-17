@@ -1,49 +1,29 @@
-import type { ComponentProps } from "react";
-import { Button } from "@/components/ui/button.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { useOptionalCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
+/**
+ * Polaris：Coding Plan（官方套餐）购买入口已随红线砍除。
+ * 此桩保留 useCodingPlanEntryGate / CodingPlanEntryButton 的导入形状：
+ * 门禁恒 ready、按钮恒渲染 children 并直接透传 onClick，零出网。
+ */
+import type { ComponentProps, ReactNode } from "react";
 
-export function useCodingPlanEntryGate() {
-  const dialog = useOptionalCodingPlanUpgradeDialog();
-  const { intl } = useZCodeIntl();
-  const status = dialog?.inventory?.status ?? "ready";
-  const label =
-    status === "ready"
-      ? undefined
-      : intl.formatMessage({
-          id: status === "loading" ? "purchase.entry.loading" : "purchase.entry.retry",
-        });
-  return { status, label, retry: dialog?.inventory?.retry };
+export function useCodingPlanEntryGate(): {
+  status: "loading" | "error" | "ready";
+  label: undefined;
+  retry: undefined;
+} {
+  return { status: "ready", label: undefined, retry: undefined };
 }
 
-/** 各入口共享同一查询状态；失败时按钮只重试，不继续执行购买动作。 */
 export function CodingPlanEntryButton({
   children,
-  disabled,
   onClick,
-  bypassGate = false,
+  disabled,
+  bypassGate,
   ...props
-}: ComponentProps<typeof Button> & { bypassGate?: boolean }) {
-  const gate = useCodingPlanEntryGate();
-  const status = bypassGate ? "ready" : gate.status;
+}: ComponentProps<"button"> & { bypassGate?: boolean; children?: ReactNode }) {
+  void bypassGate;
   return (
-    <Button
-      {...props}
-      disabled={disabled || status === "loading"}
-      aria-label={status === "ready" ? props["aria-label"] : gate.label}
-      aria-busy={status === "loading"}
-      title={status === "ready" ? props.title : gate.label}
-      onClick={(event) => {
-        if (status === "error") {
-          event.preventDefault();
-          event.stopPropagation();
-          gate.retry?.();
-          return;
-        }
-        if (status === "ready") onClick?.(event);
-      }}
-    >
-      {status === "ready" ? children : gate.label}
-    </Button>
+    <button type="button" onClick={onClick} disabled={disabled} {...props}>
+      {children}
+    </button>
   );
 }

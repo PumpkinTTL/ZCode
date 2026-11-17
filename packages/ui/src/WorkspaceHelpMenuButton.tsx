@@ -8,6 +8,7 @@ import {
   ActivityIcon,
   BookOpenIcon,
   CircleHelpIcon,
+  CopyIcon,
   DownloadIcon,
   LightbulbIcon,
   InfoIcon,
@@ -32,8 +33,8 @@ import { useDesktopUpdateMenu } from "@/hooks/useDesktopUpdateMenu.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useVulnerabilityReportUrl } from "@/hooks/useVulnerabilityReportUrl.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { COMMUNITY_ENTRY_ENABLED } from "@/lib/communityEntry.js";
 import { createHelpMenuActionHandlers } from "@/lib/helpMenuActions.js";
+import { toast } from "@/components/ui/toast.js";
 
 export function WorkspaceHelpMenuButton({
   className,
@@ -71,6 +72,19 @@ export function WorkspaceHelpMenuButton({
     void platform.executeDesktopCommand(DesktopCommandIds.ShowAbout);
   };
 
+  const handleCopyDeviceMid = async () => {
+    try {
+      const deviceMid = platform.getDeviceId();
+      if (!deviceMid || typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+        throw new Error("clipboard unavailable");
+      }
+      await navigator.clipboard.writeText(deviceMid);
+      toast(intl.formatMessage({ id: "workspaceHeader.help.deviceMidCopied" }));
+    } catch {
+      toast(intl.formatMessage({ id: "workspaceHeader.help.deviceMidCopyFailed" }));
+    }
+  };
+
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <ControlHintTooltip title={helpMenuLabel} side="bottom">
@@ -100,14 +114,10 @@ export function WorkspaceHelpMenuButton({
           <BookOpenIcon className="size-4" />
           {intl.formatMessage({ id: "workspaceHeader.help.docs" })}
         </DropdownMenuItem>
-        {/* Polaris：官方社群地址不可达，总开关关闭时整项不渲染，而不是留一个点不通的入口。
-            接入自有社群后打开 COMMUNITY_ENTRY_ENABLED 即可恢复。 */}
-        {COMMUNITY_ENTRY_ENABLED ? (
-          <DropdownMenuItem onSelect={handleOpenCommunity}>
-            <UsersIcon className="size-4" />
-            {intl.formatMessage({ id: "workspaceHeader.help.community" })}
-          </DropdownMenuItem>
-        ) : null}
+        <DropdownMenuItem onSelect={handleOpenCommunity}>
+          <UsersIcon className="size-4" />
+          {intl.formatMessage({ id: "workspaceHeader.help.community" })}
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={helpMenuActions.openIssueReport}>
           <MessageSquareIcon className="size-4" />
           {intl.formatMessage({ id: "workspaceHeader.help.issueReport" })}
@@ -139,6 +149,10 @@ export function WorkspaceHelpMenuButton({
             <DropdownMenuItem onSelect={helpMenuActions.exportLogs}>
               <DownloadIcon className="size-4" />
               {intl.formatMessage({ id: "titleBar.menu.help.exportLogs" })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={handleCopyDeviceMid}>
+              <CopyIcon className="size-4" />
+              {intl.formatMessage({ id: "workspaceHeader.help.copyDeviceMid" })}
             </DropdownMenuItem>
             <DropdownMenuItem
               data-testid={TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER}

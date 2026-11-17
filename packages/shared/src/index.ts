@@ -399,6 +399,11 @@ export {
 export * from "./conversationSelection.js";
 export * from "./attachment-source.js";
 
+// Polaris：request-security 仅保留协议基础设施（恒空 stub，上游开源版即如此）；业务 claim/消息流不接。
+export * from "./request-security-edition/policy.js";
+export * from "./request-security-edition/verification-policy.js";
+export * from "./highspeed.js";
+export * from "./endpointHostname.js";
 export * from "./channel-mention.js";
 export * from "./plugin-store-visibility.js";
 

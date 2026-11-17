@@ -50,6 +50,12 @@ export type {
 // Conversation share 的具体实现依赖 Node 文件系统，只能从 @zcode/services/node 引入；
 // 根入口必须保持 browser-safe，避免 renderer 解析到 node:* 模块。
 // File service — IFileService is both a type (interface) and value (descriptor)
+export {
+  createConversationTelemetryService,
+  type ConversationTelemetryWorkspaceTarget,
+  type IConversationTelemetryService,
+} from "./conversation-telemetry/conversationTelemetry.js";
+
 export { IFileService } from "./file/file.js";
 export { IMediaPreviewService } from "./media-preview/mediaPreview.js";
 export type { MediaPreviewPreparation } from "./media-preview/mediaPreview.js";
@@ -460,3 +466,5 @@ export type {
   GroupNode,
   MoveGroupNode,
 } from "#src/task-groups/contract.js";
+export type { IHighspeedCardService } from "./highspeed/highspeedCardService.js";
+export { highspeedCardServiceStub } from "./highspeed/highspeedCardService.js";

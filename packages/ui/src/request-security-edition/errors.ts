@@ -1,9 +1,33 @@
-/** Polaris：业务模块已随红线砍除；此桩仅保导入形状（恒空实现/恒空数据），零出网。 */
-export function isRequestVerificationConfigNetworkError(..._args: unknown[]): unknown {
-  void _args;
+export const REQUEST_VERIFICATION_REJECTED_MESSAGE = "";
+export function resolveRequestVerificationBusinessCode(
+  _code: string | undefined,
+  _message: string | undefined,
+): "3007" | undefined {
   return undefined;
 }
-export function requestVerificationErrorAttribution(..._args: unknown[]): unknown {
-  void _args;
+export function isRequestVerificationTerminalError(
+  _error: { code?: string; message?: string } | null | undefined,
+): boolean {
+  return false;
+}
+export function isRequestVerificationRejectedMessage(_message: string | undefined): boolean {
+  return false;
+}
+export const requestVerificationRecoveryAction = null;
+export type RequestVerificationRecoveryAction = never;
+export const requestVerificationActionMessages = {};
+export const requestVerificationErrorAttribution = {};
+export const requestVerificationClaimFailureMessageId = "manualClaimPlan.claim.failure.generic";
+export const additionalRequestModalSelectors: readonly string[] = [];
+
+export function resolveRequestSecurityErrorMessageId(_error: {
+  code?: string;
+  message?: string;
+}): string | undefined {
   return undefined;
+}
+export function isRequestVerificationConfigNetworkError(
+  _error: { code?: string; message?: string } | null | undefined,
+): boolean {
+  return false;
 }

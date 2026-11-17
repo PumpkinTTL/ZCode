@@ -297,10 +297,11 @@ export class ProviderTemplate {
 export function resolveProviderTemplateName(
   templateId: ProviderTemplateId,
   template: Pick<ProviderTemplate, "templateNameMap">,
-  locale: ProviderTemplateLocale,
+  // Polaris：应用侧已扩展五语言；模板名映射仅含 zh/en，未覆盖语言按既有回落链取默认名。
+  locale: ProviderTemplateLocale | (string & {}),
 ): string {
   return (
-    template.templateNameMap[locale]?.trim() ||
+    template.templateNameMap[locale as ProviderTemplateLocale]?.trim() ||
     template.templateNameMap["en-US"]?.trim() ||
     templateId
   );

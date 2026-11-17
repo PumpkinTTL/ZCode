@@ -125,6 +125,16 @@ export interface V4ComposerToolbarProps {
     sourceModel: ModelSelectionSource | null,
   ) => Promise<void> | void;
   onSendCompressionCommand?: (command: string) => void;
+  /** 上游 v3.18：模型选择解析中（发送门禁展示用）。 */
+  modelSelectionPending?: boolean;
+  /** ---- Polaris：上游 v3.18 Composer 传入的连接/加速呈现位；加速卡已随红线砍除，此处接受即忽略。 ---- */
+  onConnectionPendingChange?: (pending: boolean) => void;
+  modelLocked?: boolean;
+  highspeedPresented?: boolean;
+  highspeedEntranceAnimated?: boolean;
+  highspeedSweepActive?: boolean;
+  highspeedExpiresAt?: number;
+  highspeedModel?: string;
 }
 
 /** 模型 / 思考深度 / context usage 簇（渲染在发送键左侧，与旧 UI 同位）。 */

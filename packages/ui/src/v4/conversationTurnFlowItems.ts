@@ -11,7 +11,9 @@ export type ConversationTurnFlowItem =
   | { kind: "userInput"; row: UserInputRow }
   | { kind: "assistantHistory"; rows: AssistantWorkRow[] }
   | { kind: "assistantText"; row: AssistantTextRow; latest: boolean }
-  | { kind: "assistantWork"; rows: AssistantWorkRow[] };
+  | { kind: "assistantWork"; rows: AssistantWorkRow[] }
+  /** Polaris：官方 CUA 工具调用分组（企业自有功能）。 */
+  | import("./conversationCuaGroups.js").ConversationCuaGroupRenderItem;
 
 function isUserInputRow(row: ConversationRow): row is UserInputRow {
   return row.kind === "userInput";

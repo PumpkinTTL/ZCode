@@ -1,21 +1,21 @@
-import { Suspense, lazy, useState } from "react";
+import { useState } from "react";
 import { Smartphone } from "lucide-react";
 import type { WebRemoteControlStatus } from "@zcode/shared";
+import {
+  buildWebRemoteControlEntryViewTelemetry,
+  parseRemoteWorkspaceIdentity,
+} from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useResolvedRemoteWorkspaceSessionId } from "@/hooks/useResolvedRemoteWorkspaceSessionId.js";
+import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { useWebRemoteControlStatus } from "@/hooks/useWebRemoteControlStatus.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
+import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
+import { WebRemoteControlDialog } from "@/web-remote-control/index.js";
 import { useWebRemoteControlFeatureEnabled } from "@/WebRemoteControlFeatureProvider.js";
-
-// WebRemoteControlDialog → BotsDialog 链（含 qrcode）只有点击触发时才需要；
-// 本 trigger 挂在首屏侧栏 footer 上，静态 import 会把整条链拖进首屏 preload。
-const WebRemoteControlDialog = lazy(async () => ({
-  default: (await import("@/web-remote-control/WebRemoteControlDialog.js"))
-    .WebRemoteControlDialog,
-}));
 
 type FormatMessage = ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"];
 
@@ -124,6 +124,7 @@ function WorkspaceWebRemoteControlTriggerContent({
   className?: string;
 }) {
   const { intl } = useZCodeIntl();
+  const platform = useOptionalPlatform();
   const mappedRemoteSessionId = useResolvedRemoteWorkspaceSessionId(
     workspacePath,
     remoteSessionId,
@@ -152,6 +153,19 @@ function WorkspaceWebRemoteControlTriggerContent({
         <Button
           variant="ghost"
           onClick={() => {
+            if (platform) {
+              void reportAppTelemetryEvent(
+                platform,
+                buildWebRemoteControlEntryViewTelemetry({
+                  workspaceKind:
+                    workspaceIdentity?.trim() || currentRemoteSessionId ? "remote" : "local",
+                  remoteKind: workspaceIdentity
+                    ? parseRemoteWorkspaceIdentity(workspaceIdentity)?.kind
+                    : undefined,
+                }),
+                "web-remote-control-entry",
+              );
+            }
             logger.info("[WorkspaceWebRemoteControlTrigger] 打开 Web 远程控制弹层", {
               workspacePath,
               workspaceIdentity: workspaceIdentity ?? "none",
@@ -182,16 +196,14 @@ function WorkspaceWebRemoteControlTriggerContent({
           )}
         </Button>
       </ControlHintTooltip>
-      <Suspense fallback={null}>
-        <WebRemoteControlDialog
-          open={webRemoteControlOpen}
-          onOpenChange={setWebRemoteControlOpen}
-          workspacePath={workspacePath}
-          workspaceIdentity={workspaceIdentity}
-          remoteSessionId={currentRemoteSessionId}
-          initialTaskId={initialTaskId}
-        />
-      </Suspense>
+      <WebRemoteControlDialog
+        open={webRemoteControlOpen}
+        onOpenChange={setWebRemoteControlOpen}
+        workspacePath={workspacePath}
+        workspaceIdentity={workspaceIdentity}
+        remoteSessionId={currentRemoteSessionId}
+        initialTaskId={initialTaskId}
+      />
     </>
   );
 }

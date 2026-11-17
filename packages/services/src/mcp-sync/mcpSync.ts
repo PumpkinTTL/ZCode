@@ -8,7 +8,12 @@ import type {
   ZCodeMcpListResult,
   WorkspaceMcpTrustDecision,
   ZCodeWorkspaceMcpTrustResult,
-} from "@zcode/shared";
+  McpSyncCandidateListResult,
+  McpSyncExportResult,
+  McpSyncImportResult,
+  McpSyncRemoteStatusResult,
+  RemoteSyncWriteAccessResult,
+  McpSyncExportedServer,} from "@zcode/shared";
 import { ServiceChannels } from "@zcode/shared";
 import type { IDataSyncCategoryService } from "../data-sync/contract.js";
 import { createServiceDescriptor } from "../descriptors.js";
@@ -33,6 +38,18 @@ export interface IMcpSyncService extends IDataSyncCategoryService<McpDataSyncPay
   }): Promise<ZCodeMcpListResult>;
   setWorkspaceMcpTrust?(params: WorkspaceMcpTrustDecision): Promise<ZCodeWorkspaceMcpTrustResult>;
   saveMcpToUserDirectory(payload: SaveCliMcpToUserDirectoryRequest): Promise<void>;
+  /** ---- Polaris：本地 MCP 同步（企业自有功能）方法面 ---- */
+  listLocalUserMcpCandidates(): Promise<McpSyncCandidateListResult>;
+  listRemoteUserMcpStatuses(params: { names: string[] }): Promise<McpSyncRemoteStatusResult>;
+  exportMcpServers(params: { serverIds: string[] }): Promise<McpSyncExportResult>;
+  importMcpServers(params: {
+    servers: McpSyncExportedServer[];
+    localHomeDir: string;
+    localWorkspacePath?: string;
+    remoteWorkspacePath?: string;
+    overwrite?: boolean;
+  }): Promise<McpSyncImportResult>;
+  checkRemoteUserMcpWriteAccess(): Promise<RemoteSyncWriteAccessResult>;
 }
 
 export const IMcpSyncService = createServiceDescriptor<IMcpSyncService>(ServiceChannels.McpSync);

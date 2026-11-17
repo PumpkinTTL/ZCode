@@ -513,7 +513,8 @@ export const TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER = "subagent-built-in-model-trig
 /** 设置页使用统计顶层 tab（动态后缀为 usage tab id） */
 export const TID_SETTINGS_USAGE_TAB = "settings-usage-tab";
 /** 侧边栏头像菜单使用统计入口 */
-export const TID_SIDEBAR_CODING_PLAN_USAGE_BUTTON = "sidebar-coding-plan-usage-button";
+/** Polaris：通用 provider 额度入口（企业自有）；官方套餐额度按钮已随红线砍除。 */
+export const TID_SIDEBAR_QUOTA_USAGE_BUTTON = "sidebar-quota-usage-button";
 
 // Model Provider Settings
 /** 模型供应商顶部添加按钮 */

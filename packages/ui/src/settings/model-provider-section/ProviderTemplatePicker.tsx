@@ -1,7 +1,6 @@
 import type { ProviderSettingsView } from "@zcode/services";
 import { ArrowLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
 import { resolveProviderTemplateName } from "@zcode/provider";
-import { toZhOrEnLocale } from "@zcode/shared";
 import type { ReactNode } from "react";
 import {
   TID_MODEL_PROVIDER_TEMPLATE_BACK_BUTTON,
@@ -35,19 +34,9 @@ export function ProviderTemplatePicker({
   const { intl, locale } = useZCodeIntl();
   const { dismissFeedback, showFeedback } = useProviderDetailFeedback();
   const customLabel = intl.formatMessage({ id: "settings.modelProvider.newProviderName" });
-  const zhipuIds = ["bigmodel-api", "zai-api", "bigmodel-standard-api", "zai-standard-api"];
-  const groups = [
-    {
-      id: "zhipu",
-      templates: zhipuIds.flatMap((id) =>
-        templates.filter((template) => template.templateId === id),
-      ),
-    },
-    {
-      id: "other",
-      templates: templates.filter((template) => !zhipuIds.includes(template.templateId)),
-    },
-  ] as const;
+  // Polaris：智谱系内置模板（官方计费套餐 + 自带 Key 的两条标准通道）已全部移除，
+  // 内置组只剩第三方模板；用户仍可用下方「自定义供应商」指向任意网关（含 GLM）。
+  const groups = [{ id: "other", templates }] as const;
   const createWithFeedback = async (create: () => Promise<void>) => {
     const feedbackKey = "provider-template-create";
     dismissFeedback(feedbackKey);
@@ -108,12 +97,7 @@ export function ProviderTemplatePicker({
                 />
               ) : null}
               {group.templates.map((template) => {
-                const label = resolveProviderTemplateName(
-                  template.templateId,
-                  template,
-                  // Provider 模板名只有中英两套。
-                  toZhOrEnLocale(locale),
-                );
+                const label = resolveProviderTemplateName(template.templateId, template, locale);
                 return (
                   <ProviderTemplateCard
                     key={template.templateId}

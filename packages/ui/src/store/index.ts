@@ -54,7 +54,15 @@ export interface LoginEntryAttempt {
 }
 
 const CODE_PREVIEW_SETTINGS_KEY = "zcode-code-preview-settings";
+const FONT_SMOOTHING_STORAGE_KEY = "zcode-macos-font-smoothing";
+
+function applyFontSmoothing(enabled: boolean): void {
+  // 仅设置展示标记；CSS 以本机 macOS desktop 为边界，远端设备与 Web 不受影响。
+  document.documentElement.classList.toggle("font-smoothing-enabled", enabled);
+}
+
 const PERFORMANCE_MODE_STORAGE_KEY = "zcode-performance-mode";
+const HIDE_PROJECT_DEVICE_NAMES_STORAGE_KEY = "zcode-hide-project-device-names";
 export const FILE_MANAGER_NAVIGATION_PREFERENCES_STORAGE_KEY =
   "zcode-file-manager-navigation-preferences";
 
@@ -126,13 +134,20 @@ export interface ZCodeState {
   fileManagerNavigationOpenByWorkspace: Record<string, boolean>;
   setFileManagerNavigationOpen: (workspaceKey: string, open: boolean) => void;
 
-  /** UI 根 rem 字号（px） */
+  /** 本机 macOS 灰度字体平滑偏好。 */
+  fontSmoothingEnabled: boolean;
+  setFontSmoothingEnabled: (enabled: boolean) => void;
+  /** UI 字号 token 的基准值（px），不改变根 rem。 */
   uiFontSizePx: number;
   setUiFontSizePx: (fontSizePx: number) => void;
 
   /** 是否启用性能模式 */
   performanceMode: boolean;
   setPerformanceMode: (enabled: boolean) => void;
+
+  /** 仅桌面项目行消费；设备身份和其他入口的显示不受影响。 */
+  hideProjectDeviceNames: boolean;
+  setHideProjectDeviceNames: (hidden: boolean) => void;
 
   /** 是否启用任务通知（桌面通知；提示音由子开关控制） */
   notificationEnabled: boolean;
@@ -160,6 +175,9 @@ export interface ZCodeState {
   oauthSuccessSeq: number;
   lastOAuthSuccessProvider: OAuthProviderId | null;
   markOAuthSuccess: (provider?: OAuthProviderId) => void;
+  apiKeyLoginSuccessSeq: number;
+  lastApiKeyLoginModel: string | null;
+  markApiKeyLoginSuccess: (preferredModel?: string | null) => void;
   /** 请求打开统一登录入口，可携带需要自动发起登录/连接的 provider */
   loginEntryRequest: {
     id: number;
@@ -178,8 +196,9 @@ export interface ZCodeState {
   /** 手动请求打开 onboarding 弹窗 */
   newUserOnboardingOpen: boolean;
   setNewUserOnboardingOpen: (open: boolean) => void;
-  onboardingDialogRequested: boolean | "migration";
-  requestOnboardingDialog: (entry?: "migration") => void;
+  /** 请求打开迁移向导；所有入口都直接进入第一步「会话」。 */
+  onboardingDialogRequested: boolean;
+  requestOnboardingDialog: () => void;
   clearOnboardingDialogRequest: () => void;
 }
 
@@ -191,15 +210,19 @@ const BROADCAST_FIELDS = new Set([
   "theme",
   "locale",
   "uiFontSizePx",
+  "fontSmoothingEnabled",
   "interfaceMode",
   "notificationEnabled",
+  "hideProjectDeviceNames",
 ]);
 
 type BroadcastField =
   | "theme"
   | "locale"
   | "uiFontSizePx"
+  | "fontSmoothingEnabled"
   | "interfaceMode"
+  | "hideProjectDeviceNames"
   // 任务通知开关跨窗口同步：角标是应用级表面，A 窗口关通知而 B 窗口仍上报未读时，
   // 主进程 max 聚合会让任务栏/托盘继续亮，设置与提醒状态错位。
   | "notificationEnabled";
@@ -291,6 +314,13 @@ export function createZCodeStore(
       });
     },
 
+    fontSmoothingEnabled: readSafeLocalStorage(FONT_SMOOTHING_STORAGE_KEY) !== "false",
+    setFontSmoothingEnabled: (enabled) => {
+      writeSafeLocalStorage(FONT_SMOOTHING_STORAGE_KEY, String(enabled));
+      applyFontSmoothing(enabled);
+      set({ fontSmoothingEnabled: enabled });
+    },
+
     uiFontSizePx: loadUiFontSizePx(),
     setUiFontSizePx: (fontSizePx: number) => {
       const normalizedFontSizePx = normalizeUiFontSizePx(fontSizePx);
@@ -303,6 +333,12 @@ export function createZCodeStore(
     setPerformanceMode: (enabled: boolean) => {
       writeSafeLocalStorage(PERFORMANCE_MODE_STORAGE_KEY, enabled ? "true" : "false");
       set({ performanceMode: enabled });
+    },
+
+    hideProjectDeviceNames: readSafeLocalStorage(HIDE_PROJECT_DEVICE_NAMES_STORAGE_KEY) === "true",
+    setHideProjectDeviceNames: (hidden) => {
+      writeSafeLocalStorage(HIDE_PROJECT_DEVICE_NAMES_STORAGE_KEY, String(hidden));
+      set({ hideProjectDeviceNames: hidden });
     },
 
     notificationEnabled: isTaskNotificationEnabled(),
@@ -339,6 +375,13 @@ export function createZCodeStore(
       set((state) => ({
         oauthSuccessSeq: state.oauthSuccessSeq + 1,
         lastOAuthSuccessProvider: provider ?? state.lastOAuthSuccessProvider,
+      })),
+    apiKeyLoginSuccessSeq: 0,
+    lastApiKeyLoginModel: null,
+    markApiKeyLoginSuccess: (preferredModel?: string | null) =>
+      set((state) => ({
+        apiKeyLoginSuccessSeq: state.apiKeyLoginSuccessSeq + 1,
+        lastApiKeyLoginModel: preferredModel?.trim() || null,
       })),
     loginEntryRequest: null,
     loginEntryAttempt: null,
@@ -383,7 +426,7 @@ export function createZCodeStore(
     newUserOnboardingOpen: false,
     setNewUserOnboardingOpen: (open) => set({ newUserOnboardingOpen: open }),
     onboardingDialogRequested: false,
-    requestOnboardingDialog: (entry) => set({ onboardingDialogRequested: entry ?? true }),
+    requestOnboardingDialog: () => set({ onboardingDialogRequested: true }),
     clearOnboardingDialogRequest: () => set({ onboardingDialogRequested: false }),
   }));
 
@@ -462,10 +505,14 @@ export function createZCodeStore(
         (msg.payload === "office" || msg.payload === "coding")
       ) {
         state.setInterfaceMode(normalizeInterfaceMode(msg.payload));
+      } else if (field === "fontSmoothingEnabled" && typeof msg.payload === "boolean") {
+        state.setFontSmoothingEnabled(msg.payload);
       } else if (field === "uiFontSizePx" && typeof msg.payload === "number") {
         state.setUiFontSizePx(msg.payload);
       } else if (field === "notificationEnabled" && typeof msg.payload === "boolean") {
         state.setNotificationEnabled(msg.payload);
+      } else if (field === "hideProjectDeviceNames" && typeof msg.payload === "boolean") {
+        state.setHideProjectDeviceNames(msg.payload);
       }
     } finally {
       applyingBroadcast = false;
@@ -475,6 +522,7 @@ export function createZCodeStore(
   syncSystemThemeListener(useStore.getState().theme);
   applyTheme(useStore.getState().theme);
   applyUiFontSizePx(useStore.getState().uiFontSizePx);
+  applyFontSmoothing(useStore.getState().fontSmoothingEnabled);
   document.documentElement.classList.toggle(
     "dark",
     resolveTheme(useStore.getState().theme) === "dark",

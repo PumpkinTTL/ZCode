@@ -38,7 +38,7 @@ export type {
   ConversationTurnWorkStatus,
 } from "@/v4/conversationTurnWorkSegments.js";
 
-interface DraftTurnRenderUnit {
+export interface DraftTurnRenderUnit {
   key: string;
   turnId: string;
   header?: TurnHeaderRow;
@@ -202,7 +202,7 @@ function shouldForceOpenAbnormalHistory(
   return sessionPhase === "completedInterrupted" || sessionPhase === "error";
 }
 
-function materializeDraftUnit(
+export function materializeDraftUnit(
   draft: DraftTurnRenderUnit,
   index: number,
   total: number,
@@ -345,7 +345,7 @@ function createDraftUnit(turnId: string): DraftTurnRenderUnit {
   };
 }
 
-function shouldKeepRenderUnit(unit: ConversationTurnRenderUnit): boolean {
+export function shouldKeepRenderUnit(unit: ConversationTurnRenderUnit): boolean {
   // 隐形行清零后（投影不再产不可渲染 marker），任何工作行都可渲染；
   // 「哪些 marker 可渲染」不再是 UI 的判断。
   return (
@@ -359,7 +359,7 @@ function shouldKeepRenderUnit(unit: ConversationTurnRenderUnit): boolean {
   );
 }
 
-function normalizeRenderUnitPosition(
+export function normalizeRenderUnitPosition(
   unit: ConversationTurnRenderUnit,
   index: number,
   total: number,
@@ -445,6 +445,15 @@ function sameFields(a: object | undefined, b: object | undefined, ignoredKey?: s
     if (key !== ignoredKey) fieldCount -= 1;
   }
   return fieldCount === 0;
+}
+
+/** Polaris：基线增量渲染 API 兼容包装（上游 v3.18 将该逻辑内联私有化）。 */
+export function groupRowsIntoDrafts(rows: readonly ConversationRow[]): {
+  drafts: DraftTurnRenderUnit[];
+  lastTurnId: string | undefined;
+} {
+  const drafts = groupDraftUnits(rows);
+  return { drafts, lastTurnId: drafts.at(-1)?.turnId };
 }
 
 function groupDraftUnits(rows: readonly ConversationRow[]): DraftTurnRenderUnit[] {

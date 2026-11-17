@@ -14,6 +14,13 @@ export interface ModelProviderGroupLabelOptions {
   officialBadgeLabel?: string;
   /** 官方分组标题行的同步图标动作（标题行内嵌，不占 footer）。 */
   officialHeaderAction?: ModelSelectGroupHeaderAction;
+  /** Polaris：兼容旧调用点传入的官方套餐分组文案；官方套餐分组已随红线砍除，仅保留形状。 */
+  codingPlanLabel?: string;
+  codingPlanBadgeLabel?: string;
+  startPlanLabel?: string;
+  startPlanBadgeLabel?: string;
+  teamPlanBadgeLabel?: string;
+  teamPlanFallbackLabel?: string;
 }
 
 function supportsRegistryApiFormat(

@@ -3,17 +3,22 @@ import { logger } from "@/logger.js";
 
 export type SettingsSectionId =
   | "general"
+  | "agentBehavior"
   | "appearance"
   | "migration"
   | "browser"
   | "modelProvider"
   | "remoteDevices"
+  | "dataSync"
+  | "personalization"
   | "memory"
   | "plugin"
   | "mcp"
   | "skill"
   | "plugins"
+  | "projects"
   | "archives"
+  | "shares"
   | "usage"
   | "providerQuota"
   | "subagents"
@@ -67,20 +72,24 @@ export interface SettingsModelProviderTarget {
 function isSettingsSectionId(value: string): value is SettingsSectionId {
   return (
     value === "general" ||
+    value === "agentBehavior" ||
     value === "appearance" ||
     value === "migration" ||
     value === "browser" ||
     value === "modelProvider" ||
     value === "remoteDevices" ||
+    value === "dataSync" ||
+    value === "personalization" ||
     value === "memory" ||
     value === "plugin" ||
     value === "mcp" ||
     value === "skill" ||
     value === "plugins" ||
+    value === "projects" ||
     value === "archives" ||
-    // 曾经漏掉这一行：providerQuota 在类型联合与分区表里都有，但运行时白名单没有，
-    value === "providerQuota" ||
+    value === "shares" ||
     value === "usage" ||
+    value === "providerQuota" ||
     value === "subagents" ||
     value === "commands" ||
     value === "hooks" ||
@@ -197,7 +206,7 @@ export function setPendingSettingsUsageIntent(): void {
 export function setPendingSettingsUsageCodingPlanIntent(): void {
   // 剩余额度详情入口需要直达 Coding Plan 使用统计；
   // 头像菜单入口则只打开 Usage 分区，避免覆盖用户上次查看的统计 tab。
-  setPendingSettingsSectionIntent("usage");
+  setPendingSettingsSectionIntent("usage", { usageTab: "codingPlan" });
 }
 
 export function setPendingSettingsPluginIntent(

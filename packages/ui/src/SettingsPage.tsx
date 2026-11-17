@@ -1,14 +1,14 @@
-import { SettingsMachinesProvider } from "@/settings/SettingsMachine.js";
+import { useSetInterfaceModeWithTelemetry } from "@/lib/appTelemetry.js";
+import { DataSyncSection } from "@/data-sync/index.js";
 import { getWorkspaceSourceServerId } from "@/conversation-workspace-target/sourceIdentity.js";
-import { RemoteConnectionNavigationDot } from "@/remote-connection/RemoteConnectionNavigationDot.js";
-import { resolveRemoteConnectionNavigationPresentation } from "@/lib/remoteConnectionPresentation.js";
 /* oxlint-disable eslint(max-lines) */
-import { ArrowLeft, Rocket, type LucideIcon } from "lucide-react";
+import { ArrowLeft, type LucideIcon } from "lucide-react";
 import { useStore } from "zustand";
 import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
   type ReactNode,
@@ -18,11 +18,11 @@ import type {
   DesktopCloseToTrayCapability,
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
-  Locale,
+  UsageEntitlementSnapshot,
   UserInfo,
   ZCodeInteractionBehavior,
 } from "@zcode/shared";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, isLocale } from "@zcode/shared";
 import {
   TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_PAGE,
@@ -36,6 +36,8 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 import { getPathLeaf } from "@/lib/path.js";
+import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
+import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
 import {
   addPendingSettingsSectionListener,
   clearPendingSettingsPluginOrigin,
@@ -48,24 +50,44 @@ import {
   consumePendingSettingsPluginTab,
   consumePendingSettingsModelProviderTarget,
   resolveSettingsSection,
-  writeLastSettingsSectionPreference,
   setPendingSettingsSectionIntent,
+  writeLastSettingsSectionPreference,
   type SettingsModelProviderTarget,
 } from "@/lib/settingsNavigation.js";
-import { ArchiveManagement, useOptionalProjectDirectory } from "@/project-sidebar/index.js";
+import {
+  resolveEntitledAccountProviderAccess,
+  resolveEntitledAccountProviderAccessFingerprint,
+} from "@/lib/accountProviderAccess.js";
+import { buildUsageEntitlementCacheKey } from "@/lib/usageEntitlementCache.js";
+import {
+  ArchiveManagement,
+  ProjectManagement,
+  useOptionalProjectDirectory,
+} from "@/project-sidebar/index.js";
 import { resolveRecentRemoteProjectPreference } from "@/project-sidebar/remote-project-connection.js";
+import {
+  SettingsShareManagement,
+  type SettingsShareTaskTarget,
+} from "@/conversation-share-interaction/SettingsShareManagement.js";
 import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
-import { UsageStatsSection } from "@/settings/UsageStatsSection.js";
+import { UsageStatsSection, type UsageStatsSectionTab } from "@/settings/UsageStatsSection.js";
 import { SubagentsSection } from "@/settings/SubagentsSection.js";
 import { AutomationsSection } from "@/settings/AutomationsSection.js";
 import { PluginsSection } from "@/settings/PluginsSection.js";
 import { HooksSection } from "@/settings/HooksSection.js";
 import { WorkspaceFileSearchSection } from "@/settings/WorkspaceFileSearchSection.js";
-import { ProviderQuotaSection } from "./business/quota/ProviderQuotaSection.js";
-import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
+import { MemorySettingsPage } from "@/settings/MemorySettingsSection.js";
+import { PersonalizationSection } from "@/settings/PersonalizationSection.js";
 import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
 import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
 import { ShortcutSettingsSection } from "@/settings/ShortcutSettingsSection.js";
+import {
+  SettingsSearch,
+  SettingsSearchTargetContext,
+  type SettingsSearchId,
+} from "@/settings-search/index.js";
+import { resolveComputerUseAvailability } from "@/settings/computerUseAvailability.js";
+import { MigrationSection } from "@/settings/MigrationSection.js";
 import { SETTINGS_FRAME_CONTENT_CLASSNAME } from "@/settings/SettingsPageParts.js";
 import {
   SettingsBreadcrumbProvider,
@@ -85,7 +107,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
 import { useSelectDirectory } from "@/hooks/usePlatform.js";
 import { ServiceProvider, useServices } from "@/hooks/useServices.js";
-import type { AppToolSearchMode } from "@zcode/shared";
+import { DEFAULT_APP_TOOL_SEARCH_MODE, type AppToolSearchMode } from "@zcode/shared";
 import { useSettings } from "@/hooks/useSettingService.js";
 import type { CreateTaskRequest, RemoteConnectionOpenPreference } from "@/app-shell/types.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
@@ -93,7 +115,7 @@ import { resolveModelProviderConnectivityWorkspacePath } from "@/lib/modelProvid
 import {
   createSettingsPageConfig,
   GeneralSectionContent,
-  GeneralSectionHeader,
+  AgentBehaviorSectionContent,
   TaskAutoArchiveSettings,
   isSettingsSectionAvailable,
   resolveSettingsSectionForPlatform,
@@ -104,6 +126,33 @@ import { useOptionalRemoteWorkspaceController } from "@/remote/useRemoteWorkspac
 import { AppearanceSectionContent } from "./settingsCodePreview.js";
 import type { SettingsSectionId } from "@/lib/settingsNavigation.js";
 import { requestPluginStoreOpen } from "@/lib/pluginStoreNavigation.js";
+import {
+  runUserAction,
+  runUserActionAsync,
+  type UserActionResult,
+  type UserActionTrigger,
+} from "@/lib/userActionTelemetry.js";
+import type { SettingsUserActionFeatureId } from "@/lib/userActionTraceCatalog.js";
+
+function runSettingsActionAsync<T>(options: {
+  featureId: SettingsUserActionFeatureId;
+  action: string;
+  trigger: UserActionTrigger;
+  operation: () => Promise<T>;
+  completed: UserActionResult;
+  failureStage?: string;
+}): Promise<T> {
+  return runUserActionAsync({
+    input: {
+      featureId: options.featureId,
+      action: options.action,
+      trigger: options.trigger,
+    },
+    operation: options.operation,
+    completed: options.completed,
+    failureStage: options.failureStage ?? "settings_commit",
+  });
+}
 
 function SettingsSidebarButton({
   icon: Icon,
@@ -128,6 +177,7 @@ function SettingsSidebarButton({
         className={cn(
           "flex h-8 w-full items-center gap-2 rounded-xl px-2.5 text-left transition-colors",
           "max-lg:mx-auto max-lg:size-10 max-lg:justify-center max-lg:px-0",
+          "compact-web:mx-0 compact-web:h-8 compact-web:w-auto compact-web:shrink-0 compact-web:px-2.5",
           active
             ? "bg-surface-hover text-foreground"
             : "text-remote-foreground-muted hover:bg-surface-hover hover:text-foreground",
@@ -137,7 +187,7 @@ function SettingsSidebarButton({
         <span className="flex size-4 shrink-0 items-center justify-center text-current">
           <Icon className="size-4 text-foreground" />
         </span>
-        <span className="min-w-0 flex-1 max-lg:sr-only">
+        <span className="min-w-0 flex-1 max-lg:sr-only compact-web:not-sr-only">
           {children ?? <span className="truncate text-ui-base text-foreground">{label}</span>}
         </span>
       </button>
@@ -146,7 +196,6 @@ function SettingsSidebarButton({
 }
 
 export function SettingsPage({
-  initialSectionOverride,
   isDesktop,
   isWindowsDesktop,
   isMacDesktop,
@@ -154,14 +203,15 @@ export function SettingsPage({
   windowsWindowControlsRightPaddingPx: _windowsWindowControlsRightPaddingPx,
   captionWorkspacePath,
   onBack,
+  onOpenTask,
   onCreateTask,
   onOpenWorkspace,
   onOpenRemoteWorkspace,
   allowOpenWorkspace = true,
   onLogin,
+  onLogout,
   user,
 }: {
-  initialSectionOverride?: SettingsSectionId;
   isDesktop?: boolean;
   isWindowsDesktop?: boolean;
   isMacDesktop?: boolean;
@@ -169,12 +219,15 @@ export function SettingsPage({
   windowsWindowControlsRightPaddingPx?: number;
   captionWorkspacePath?: string | null;
   onBack?: () => void;
+  /** 设置页内跳转到指定会话（分享管理「跳转对话」）；Root 注入。 */
+  onOpenTask?: (target: SettingsShareTaskTarget) => void;
   onCreateTask?: (request?: CreateTaskRequest) => void;
   onOpenWorkspace?: () => void;
   onOpenRemoteWorkspace?: (preference?: RemoteConnectionOpenPreference) => void;
   /** 远程设备卡「新任务」：激活该设备已打开的 tab 并开新草稿（Root 注入）。 */
   allowOpenWorkspace?: boolean;
   onLogin?: () => void;
+  onLogout?: () => void;
   user?: UserInfo | null;
 }) {
   const { intl, localePreference, setLocalePreference } = useZCodeIntl();
@@ -192,8 +245,7 @@ export function SettingsPage({
   const platform = usePlatform();
   const remoteWorkspaceController = useOptionalRemoteWorkspaceController();
   const [activeSection, setActiveSection] = useState<SettingsSectionId>(() => {
-    const initialSection =
-      initialSectionOverride ?? consumeInitialSettingsSection("general");
+    const initialSection = consumeInitialSettingsSection("general");
     const visibleInitialSection = resolveSettingsSectionForPlatform(
       initialSection,
       settingsSections,
@@ -206,10 +258,24 @@ export function SettingsPage({
   const [targetSourceServerId, setTargetSourceServerId] = useState(
     consumePendingSettingsSourceServerId,
   );
+  const [searchTarget, setSearchTarget] = useState<{ id: SettingsSearchId } | null>(null);
   const [targetSourceServerDetails, setTargetSourceServerDetails] = useState(
     consumePendingSettingsSourceServerDetails,
   );
   const [pluginTab, setPluginTab] = useState(() => consumePendingSettingsPluginTab());
+  const settingsNavRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = settingsNavRef.current;
+    // 只有 compact-web 横向导航会横向溢出；从其他入口直达某个分区时，把当前项滚进可见区域。
+    // 桌面竖向导航没有横向溢出，不进入该分支。
+    if (!nav || nav.scrollWidth <= nav.clientWidth) {
+      return;
+    }
+    nav
+      .querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeSection]);
+
   // Linux 关闭驻留托盘能力查询（spec：docs/desktop/linux-close-to-tray.md）：打开设置页时
   // 经 platform IPC 触发 main 侧探测（带 stale 缓存），用户装完 AppIndicator 扩展重开
   // 设置页即可解除置灰；Web/远控无桥不查询。
@@ -259,33 +325,55 @@ export function SettingsPage({
     readonly SettingsBreadcrumbItem[]
   >([]);
   const interfaceMode = useZCodeStore((state) => state.interfaceMode);
-  const setInterfaceMode = useZCodeStore((state) => state.setInterfaceMode);
+  const setInterfaceMode = useSetInterfaceModeWithTelemetry(platform, "app.setting");
   const theme = useZCodeStore((state) => state.theme);
   const setTheme = useZCodeStore((state) => state.setTheme);
   const codePreviewSettings = useZCodeStore((state) => state.codePreviewSettings);
   const setCodePreviewSettings = useZCodeStore((state) => state.setCodePreviewSettings);
+  const fontSmoothingEnabled = useZCodeStore((state) => state.fontSmoothingEnabled);
+  const setFontSmoothingEnabled = useZCodeStore((state) => state.setFontSmoothingEnabled);
   const uiFontSizePx = useZCodeStore((state) => state.uiFontSizePx);
   const setUiFontSizePx = useZCodeStore((state) => state.setUiFontSizePx);
+  const hideProjectDeviceNames = useZCodeStore((state) => state.hideProjectDeviceNames);
+  const setHideProjectDeviceNames = useZCodeStore((state) => state.setHideProjectDeviceNames);
   const notificationEnabled = useZCodeStore((state) => state.notificationEnabled);
   const setNotificationEnabled = useZCodeStore((state) => state.setNotificationEnabled);
   const notificationSoundEnabled = useZCodeStore((state) => state.notificationSoundEnabled);
   const setNotificationSoundEnabled = useZCodeStore((state) => state.setNotificationSoundEnabled);
+  const usageProviderSettingsRead = useProviderSettingsView();
+  const usageProviderSettingsView =
+    usageProviderSettingsRead.state.status === "ready"
+      ? usageProviderSettingsRead.state.view
+      : null;
+  const usageProviderSettingsLoading = usageProviderSettingsRead.state.status !== "ready";
+  // Polaris：Coding Plan usage tab 已随红线砍除；使用统计只保留 App Usage。
+  const [usageActiveTab] = useState<UsageStatsSectionTab>("app");
   const [initialModelProviderTarget] = useState(() => consumePendingSettingsModelProviderTarget());
   const [pendingModelProviderTarget, setPendingModelProviderTarget] = useState<
     SettingsModelProviderTarget | undefined
   >(() => initialModelProviderTarget);
   const setNewUserOnboardingOpen = useZCodeStore((state) => state.setNewUserOnboardingOpen);
-  const requestOnboardingDialog = () => setNewUserOnboardingOpen(true);
+  // 「通用」页「打开引导」打开职业引导；迁移向导只从数据同步页「迁移」进入。
+  const openOccupationOnboarding = () => setNewUserOnboardingOpen(true);
+  const requestMigrationDialog = useZCodeStore((state) => state.requestOnboardingDialog);
   const setActiveSettingsSection = useCallback(
     (section: SettingsSectionId, fallbackSection: SettingsSectionId = activeSection) => {
       const resolvedSection = resolveSettingsSection(section, fallbackSection);
+      setSearchTarget(null);
       setActiveSection(resolvedSection);
       writeLastSettingsSectionPreference(resolvedSection);
     },
     [activeSection],
   );
+  const navigateToSettingsSection = (section: SettingsSectionId, setting?: SettingsSearchId) => {
+    setPluginNavigationOrigin(undefined);
+    setTargetSourceServerId(undefined);
+    setSettingsSectionNavigationVersion((version) => version + 1);
+    setActiveSettingsSection(section);
+    if (setting) setSearchTarget({ id: setting });
+  };
   useEffect(() => {
-    if (!isDesktop && activeSection === "remoteDevices") {
+    if (!isSettingsSectionAvailable(activeSection, Boolean(isDesktop))) {
       setActiveSettingsSection("general");
     }
   }, [activeSection, isDesktop, setActiveSettingsSection]);
@@ -341,7 +429,6 @@ export function SettingsPage({
   );
   const selectDirectory = useSelectDirectory();
   const services = useServices();
-  const onboardingRecordService = services.onboardingRecordService;
   const localHostServices = useBaseWorkspaceServices();
   const projectDirectory = useOptionalProjectDirectory();
   // SettingsPage 可能挂在远端 workspace 的 ServiceProvider 下；共享设置属于本机 Host，
@@ -359,10 +446,6 @@ export function SettingsPage({
         }),
     },
   );
-  const remoteDevicesPresentation = useMemo(
-    () => resolveRemoteConnectionNavigationPresentation(sourceManagementSnapshot),
-    [sourceManagementSnapshot],
-  );
   const memoryWorkspaceDisplayNames = useMemo(() => {
     const names = new Set<string>();
     // Memory Scope 的项目顺序以 settings.json recentProjects 为准；打开中的
@@ -377,8 +460,7 @@ export function SettingsPage({
     }
     return [...names];
   }, [sharedSettings?.recentProjects, workspaceTabs]);
-  const memoryEnabled = sharedSettings?.memoryEnabled === true;
-  const toolSearchMode = sharedSettings?.toolSearchMode ?? "off";
+  const toolSearchMode = sharedSettings?.toolSearchMode ?? DEFAULT_APP_TOOL_SEARCH_MODE;
   const nativeSearchEnhancementsEnabled = sharedSettings?.nativeSearchEnhancementsEnabled !== false;
   const askUserQuestionAutoResolutionEnabled =
     sharedSettings?.askUserQuestionAutoResolutionEnabled !== false;
@@ -407,25 +489,11 @@ export function SettingsPage({
   const [autoDownloadAndInstallUpdates, setAutoDownloadAndInstallUpdates] = useState(false);
   const [messageStreamShowReasoning, setMessageStreamShowReasoning] = useState(true);
   const [messageStreamShowTodos, setMessageStreamShowTodos] = useState(false);
-  const [toolGroupingExploreEnabled, setToolGroupingExploreEnabled] = useState(true);
-  const [toolGroupingTerminalEnabled, setToolGroupingTerminalEnabled] = useState(true);
-  const [toolGroupingChangesEnabled, setToolGroupingChangesEnabled] = useState(false);
   const [zcodeInteractionBehavior, setZCodeInteractionBehavior] =
     useState<ZCodeInteractionBehavior>("queue");
   const [defaultHomeDir, setDefaultHomeDir] = useState("");
   const [hostPlatform, setHostPlatform] = useState("");
 
-  // Tab 直连通道：openSettingsTab(section) 写进 Tab 状态的初始分区在这里消费。
-  // 覆盖 pending/event 两条旧通道之外的第三条兜底，三通道任一可达即落位。
-  useEffect(() => {
-    if (initialSectionOverride) {
-      setActiveSection((current) =>
-        resolveSettingsSectionForPlatform(initialSectionOverride, settingsSections) === current
-          ? current
-          : initialSectionOverride,
-      );
-    }
-  }, [initialSectionOverride, settingsSections]);
 
   useEffect(
     () =>
@@ -440,10 +508,13 @@ export function SettingsPage({
         setTargetSourceServerDetails(
           section === "remoteDevices" && detail?.sourceServerDetails === true,
         );
+        if (section === "usage" && detail?.usageTab) {
+        }
+        // MCP 独立分区也接收工作区意图，否则会话内审核会误落到用户配置。
+        setPluginScopeKey(detail?.pluginScopeKey);
         if (resolveSettingsSection(section) === "plugin" && detail?.pluginTab) {
           setPluginTab(detail.pluginTab);
           setPluginNavigationOrigin(detail.pluginOrigin);
-          setPluginScopeKey(detail.pluginScopeKey);
         } else if (resolveSettingsSection(section) !== "plugin") {
           setPluginNavigationOrigin(undefined);
         }
@@ -455,12 +526,6 @@ export function SettingsPage({
       }),
     [activeSection, setActiveSettingsSection],
   );
-
-  // 「我的额度」未登录时显示极简提示，**不**自动弹统一登录。曾实现为进入分区即
-  // onLogin() 强开 WelcomeScreen——但欢迎页开着时 Root 只渲染欢迎页，设置页随之
-  // 卸载；用户点 X 关闭 → 设置页重挂载 → 本 effect 再开 → 死循环，登录页永远
-  // 关不掉（登录入口不受影响，因此只有额度路径复现）。要登录走侧栏
-  // 「登录」或分区里的提示；这里保持纯展示。
 
   useEffect(() => {
     let active = true;
@@ -533,16 +598,22 @@ export function SettingsPage({
     }
     setMessageStreamShowReasoning(sharedSettings.messageStreamShowReasoning ?? true);
     setMessageStreamShowTodos(sharedSettings.messageStreamShowTodos ?? false);
-    setToolGroupingExploreEnabled(sharedSettings.toolGroupingExploreEnabled ?? true);
-    setToolGroupingTerminalEnabled(sharedSettings.toolGroupingTerminalEnabled ?? true);
-    setToolGroupingChangesEnabled(sharedSettings.toolGroupingChangesEnabled ?? false);
     setZCodeInteractionBehavior(sharedSettings.zcodeInteractionBehavior ?? "queue");
     setReceivePreviewUpdates(sharedSettings.receivePreviewUpdates ?? false);
     setAutoDownloadAndInstallUpdates(sharedSettings.autoDownloadAndInstallUpdates ?? false);
   }, [sharedSettings]);
   const handleTerminalInheritSystemProfileChange = useCallback(
     async (enabled: boolean) => {
-      await services.settingService.update({ terminalInheritSystemProfile: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.terminal",
+        action: "toggle_system_profile",
+        trigger: "switch",
+        operation: () => services.settingService.update({ terminalInheritSystemProfile: enabled }),
+        completed: {
+          resultSource: "setting_service",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
       setTerminalInheritSystemProfile(enabled);
     },
     [services.settingService],
@@ -550,60 +621,109 @@ export function SettingsPage({
   const handleTerminalFontFamilyChange = useCallback(
     async (fontFamily: string) => {
       const normalizedFontFamily = fontFamily.trim();
-      await services.settingService.update({ terminalFontFamily: normalizedFontFamily });
+      await runSettingsActionAsync({
+        featureId: "settings.terminal",
+        action: "save_font_family",
+        trigger: "button",
+        operation: () =>
+          services.settingService.update({ terminalFontFamily: normalizedFontFamily }),
+        completed: { resultSource: "setting_service", configured: normalizedFontFamily.length > 0 },
+      });
       setTerminalFontFamily(normalizedFontFamily);
     },
     [services.settingService],
   );
   const handleIntegratedTerminalShellChange = useCallback(
     async (selection: IntegratedTerminalShellSelection) => {
-      await localHostServices.settingService.update({ integratedTerminalShell: selection });
+      await runSettingsActionAsync({
+        featureId: "settings.terminal",
+        action: "change_shell",
+        trigger: "select",
+        operation: () =>
+          localHostServices.settingService.update({ integratedTerminalShell: selection }),
+        completed: {
+          resultSource: "setting_service",
+          valueAfter: selection.mode === "auto" ? "auto" : "explicit",
+        },
+      });
       setIntegratedTerminalShell(selection);
     },
     [localHostServices.settingService],
   );
   const handleToolSearchModeChange = useCallback(
     async (mode: AppToolSearchMode) => {
-      await updateSharedSettings({ toolSearchMode: mode });
+      await runSettingsActionAsync({
+        featureId: "settings.search",
+        action: "change_tool_search_mode",
+        trigger: "select",
+        operation: () => updateSharedSettings({ toolSearchMode: mode }),
+        completed: { resultSource: "shared_settings", valueAfter: mode },
+      });
     },
     [updateSharedSettings],
   );
   const handleNativeSearchEnhancementsEnabledChange = useCallback(
     async (enabled: boolean) => {
-      await updateSharedSettings({ nativeSearchEnhancementsEnabled: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.search",
+        action: "toggle_native_search",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ nativeSearchEnhancementsEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
     },
     [updateSharedSettings],
   );
   const handleAskUserQuestionAutoResolutionEnabledChange = useCallback(
     async (enabled: boolean) => {
-      await updateSharedSettings({ askUserQuestionAutoResolutionEnabled: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.conversation",
+        action: "toggle_ask_user_auto_resolution",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ askUserQuestionAutoResolutionEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
     },
     [updateSharedSettings],
   );
   const handleModelIoFullRetentionEnabledChange = useCallback(
     async (enabled: boolean) => {
-      await updateSharedSettings({ modelIoFullRetentionEnabled: enabled });
-    },
-    [updateSharedSettings],
-  );
-  const handleMemoryEnabledChange = useCallback(
-    async (enabled: boolean) => {
-      await updateSharedSettings({ memoryEnabled: enabled });
-      // 手动修改反向回写 record，换号同步不会复活旧值；失败不阻塞开关。
-      await onboardingRecordService
-        ?.updateRecordPreferences({ memoryEnabled: enabled })
-        .catch((cause: unknown) => {
-          console.warn("[settings] 回写引导记录失败", String(cause));
-        });
+      await runSettingsActionAsync({
+        featureId: "settings.conversation",
+        action: "toggle_model_io_retention",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ modelIoFullRetentionEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
     },
     [updateSharedSettings],
   );
   const handleHttpProxyChange = useCallback(
     async (proxy: string) => {
       const normalizedProxy = proxy.trim();
-      await localHostServices.settingService.update({
-        // Bugfix: RPC 会丢弃 undefined；清空代理必须传空串，由服务层删除旧字段。
-        httpProxy: normalizedProxy,
+      await runSettingsActionAsync({
+        featureId: "settings.network",
+        action: "save_http_proxy",
+        trigger: "button",
+        operation: () =>
+          localHostServices.settingService.update({
+            // Bugfix: RPC 会丢弃 undefined；清空代理必须传空串，由服务层删除旧字段。
+            httpProxy: normalizedProxy,
+          }),
+        completed: {
+          resultSource: "setting_service",
+          configured: normalizedProxy.length > 0,
+          requiresRestart: true,
+        },
       });
       setHttpProxy(normalizedProxy);
       toast(intl.formatMessage({ id: "settings.httpProxySavedHint" }));
@@ -617,9 +737,16 @@ export function SettingsPage({
         .map((token) => token.trim())
         .filter(Boolean)
         .join(",");
-      await localHostServices.settingService.update({
-        // Bugfix: 清空 No Proxy 必须传空串，否则旧绕过规则会继续影响下次启动。
-        httpProxyNoProxy: normalizedNoProxy,
+      await runSettingsActionAsync({
+        featureId: "settings.network",
+        action: "save_no_proxy",
+        trigger: "button",
+        operation: () =>
+          localHostServices.settingService.update({
+            // Bugfix: 清空 No Proxy 必须传空串，否则旧绕过规则会继续影响下次启动。
+            httpProxyNoProxy: normalizedNoProxy,
+          }),
+        completed: { resultSource: "setting_service", configured: normalizedNoProxy.length > 0 },
       });
       setHttpProxyNoProxy(normalizedNoProxy);
       toast(intl.formatMessage({ id: "settings.httpProxySavedHint" }));
@@ -629,9 +756,20 @@ export function SettingsPage({
   const handleHttpProxyCaCertPathChange = useCallback(
     async (caCertPath: string) => {
       const normalizedCaCertPath = caCertPath.trim();
-      await localHostServices.settingService.update({
-        // Bugfix: 清空自定义 CA 必须传空串，否则旧 NODE_EXTRA_CA_CERTS 路径会残留。
-        httpProxyCaCertPath: normalizedCaCertPath,
+      await runSettingsActionAsync({
+        featureId: "settings.network",
+        action: "save_ca_certificate",
+        trigger: "button",
+        operation: () =>
+          localHostServices.settingService.update({
+            // Bugfix: 清空自定义 CA 必须传空串，否则旧 NODE_EXTRA_CA_CERTS 路径会残留。
+            httpProxyCaCertPath: normalizedCaCertPath,
+          }),
+        completed: {
+          resultSource: "setting_service",
+          configured: normalizedCaCertPath.length > 0,
+          requiresRestart: true,
+        },
       });
       setHttpProxyCaCertPath(normalizedCaCertPath);
       toast(intl.formatMessage({ id: "settings.httpProxySavedHint" }));
@@ -640,7 +778,14 @@ export function SettingsPage({
   );
   const handleDataBaseDirChange = useCallback(
     async (dir: string) => {
-      await localHostServices.settingService.updateDataBaseDir(dir || undefined);
+      await runSettingsActionAsync({
+        featureId: "settings.storage",
+        action: "change_data_directory",
+        trigger: "button",
+        operation: () => localHostServices.settingService.updateDataBaseDir(dir || undefined),
+        completed: { resultSource: "setting_service", requiresRestart: true },
+        failureStage: "data_directory_update",
+      });
       // Bugfix: 迁移失败时不能先把本地状态改成失败路径，否则设置页会误显示为已切换。
       setDataBaseDir(dir);
     },
@@ -648,21 +793,45 @@ export function SettingsPage({
   );
   const handleTaskAutoArchiveEnabledChange = useCallback(
     async (enabled: boolean) => {
-      await services.settingService.update({ taskAutoArchiveEnabled: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.task",
+        action: "toggle_auto_archive",
+        trigger: "switch",
+        operation: () => services.settingService.update({ taskAutoArchiveEnabled: enabled }),
+        completed: {
+          resultSource: "setting_service",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
       setTaskAutoArchiveEnabled(enabled);
     },
     [services.settingService],
   );
   const handleTaskAutoArchiveOlderThanDaysChange = useCallback(
     async (days: number) => {
-      await services.settingService.update({ taskAutoArchiveOlderThanDays: days });
+      await runSettingsActionAsync({
+        featureId: "settings.task",
+        action: "change_auto_archive_days",
+        trigger: "select",
+        operation: () => services.settingService.update({ taskAutoArchiveOlderThanDays: days }),
+        completed: { resultSource: "setting_service", valueAfter: String(days) },
+      });
       setTaskAutoArchiveOlderThanDays(days);
     },
     [services.settingService],
   );
   const handleCloseToTrayOnWindowsChange = useCallback(
     async (enabled: boolean) => {
-      await localHostServices.settingService.update({ closeToTrayOnWindows: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.desktop",
+        action: "toggle_close_to_tray",
+        trigger: "switch",
+        operation: () => localHostServices.settingService.update({ closeToTrayOnWindows: enabled }),
+        completed: {
+          resultSource: "setting_service",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
       platform.syncAppSettings?.({ closeToTrayOnWindows: enabled });
       setCloseToTrayOnWindows(enabled);
     },
@@ -671,14 +840,50 @@ export function SettingsPage({
   // keep-awake：走 useSettings 统一写盘 + syncAppSettings，和 Automations/创建页入口共享同一状态源。
   const handleKeepAwakeWhileRunningChange = useCallback(
     async (enabled: boolean) => {
-      await updateSharedSettings({ keepAwakeWhileRunning: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.desktop",
+        action: "toggle_keep_awake",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ keepAwakeWhileRunning: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
+  // 本机 offline push 开关：设置文件是唯一数据源，Main 每次上报前读取，不需要额外通知 Main。
+  const handleMobilePushEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await runSettingsActionAsync({
+        featureId: "settings.notification",
+        action: "toggle_mobile_push",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ mobilePushEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
     },
     [updateSharedSettings],
   );
   const handleDesktopChromiumHardwareAccelerationChange = useCallback(
     async (enabled: boolean) => {
-      await localHostServices.settingService.update({
-        desktopChromiumHardwareAccelerationEnabled: enabled,
+      await runSettingsActionAsync({
+        featureId: "settings.desktop",
+        action: "toggle_hardware_acceleration",
+        trigger: "switch",
+        operation: () =>
+          localHostServices.settingService.update({
+            desktopChromiumHardwareAccelerationEnabled: enabled,
+          }),
+        completed: {
+          resultSource: "setting_service",
+          stateAfter: enabled ? "enabled" : "disabled",
+          requiresRestart: true,
+        },
       });
       setDesktopChromiumHardwareAccelerationEnabled(enabled);
       toast(
@@ -691,7 +896,20 @@ export function SettingsPage({
   );
   const handleEmbeddedBrowserAllowInsecureCertificatesChange = useCallback(
     async (enabled: boolean) => {
-      await localHostServices.settingService.update({ embeddedBrowserAllowInsecureCertificates: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.browser",
+        action: "toggle_insecure_certificates",
+        trigger: "switch",
+        operation: () =>
+          localHostServices.settingService.update({
+            embeddedBrowserAllowInsecureCertificates: enabled,
+          }),
+        completed: {
+          resultSource: "setting_service",
+          stateAfter: enabled ? "enabled" : "disabled",
+          requiresRestart: true,
+        },
+      });
       setEmbeddedBrowserAllowInsecureCertificates(enabled);
       // 证书策略在 main 启动时装到 Session 上，改完必须重启才会换掉 verifyProc。
       toast(
@@ -704,56 +922,77 @@ export function SettingsPage({
   );
   const handleReceivePreviewUpdatesChange = useCallback(
     async (enabled: boolean) => {
-      await updateSharedSettings({ receivePreviewUpdates: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.update",
+        action: "toggle_preview_updates",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ receivePreviewUpdates: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
       setReceivePreviewUpdates(enabled);
     },
     [updateSharedSettings],
   );
   const handleAutoDownloadAndInstallUpdatesChange = useCallback(
     async (enabled: boolean) => {
-      await updateSharedSettings({ autoDownloadAndInstallUpdates: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.update",
+        action: "toggle_auto_update",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ autoDownloadAndInstallUpdates: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
       setAutoDownloadAndInstallUpdates(enabled);
     },
     [updateSharedSettings],
   );
   const handleMessageStreamShowReasoningChange = useCallback(
     async (enabled: boolean) => {
-      await updateSharedSettings({ messageStreamShowReasoning: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.conversation",
+        action: "toggle_show_reasoning",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ messageStreamShowReasoning: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
       setMessageStreamShowReasoning(enabled);
     },
     [updateSharedSettings],
   );
   const handleMessageStreamShowTodosChange = useCallback(
     async (enabled: boolean) => {
-      await updateSharedSettings({ messageStreamShowTodos: enabled });
+      await runSettingsActionAsync({
+        featureId: "settings.conversation",
+        action: "toggle_show_todos",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ messageStreamShowTodos: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
       setMessageStreamShowTodos(enabled);
-    },
-    [updateSharedSettings],
-  );
-  const handleToolGroupingExploreEnabledChange = useCallback(
-    async (enabled: boolean) => {
-      await updateSharedSettings({ toolGroupingExploreEnabled: enabled });
-      setToolGroupingExploreEnabled(enabled);
-    },
-    [updateSharedSettings],
-  );
-  const handleToolGroupingTerminalEnabledChange = useCallback(
-    async (enabled: boolean) => {
-      await updateSharedSettings({ toolGroupingTerminalEnabled: enabled });
-      setToolGroupingTerminalEnabled(enabled);
-    },
-    [updateSharedSettings],
-  );
-  const handleToolGroupingChangesEnabledChange = useCallback(
-    async (enabled: boolean) => {
-      await updateSharedSettings({ toolGroupingChangesEnabled: enabled });
-      setToolGroupingChangesEnabled(enabled);
     },
     [updateSharedSettings],
   );
   const handleZCodeInteractionBehaviorChange = useCallback(
     async (behavior: ZCodeInteractionBehavior) => {
-      await updateSharedSettings({ zcodeInteractionBehavior: behavior });
+      await runSettingsActionAsync({
+        featureId: "settings.conversation",
+        action: "change_interaction_behavior",
+        trigger: "select",
+        operation: () => updateSharedSettings({ zcodeInteractionBehavior: behavior }),
+        completed: { resultSource: "shared_settings", valueAfter: behavior },
+      });
       setZCodeInteractionBehavior(behavior);
     },
     [updateSharedSettings],
@@ -761,11 +1000,21 @@ export function SettingsPage({
   const handleFooterLocaleChange = useCallback(
     (value: string) => {
       if (value === "system") {
-        setLocalePreference("system");
+        runUserAction({
+          input: { featureId: "settings.locale", action: "change_locale", trigger: "select" },
+          operation: () => setLocalePreference("system"),
+          completed: { resultSource: "local_commit", valueAfter: "system" },
+          failureStage: "local_commit",
+        });
         return;
       }
-      if (value === "zh-CN" || value === "en-US") {
-        setLocalePreference(value as Locale);
+      if (isLocale(value)) {
+        runUserAction({
+          input: { featureId: "settings.locale", action: "change_locale", trigger: "select" },
+          operation: () => setLocalePreference(value),
+          completed: { resultSource: "local_commit", valueAfter: value },
+          failureStage: "local_commit",
+        });
       }
     },
     [setLocalePreference],
@@ -779,14 +1028,41 @@ export function SettingsPage({
         value === "zai-dark" ||
         value === "system"
       ) {
-        setTheme(value as Theme);
+        runUserAction({
+          input: { featureId: "settings.appearance", action: "change_theme", trigger: "select" },
+          operation: () => setTheme(value as Theme),
+          completed: { resultSource: "local_commit", valueAfter: value },
+          failureStage: "local_commit",
+        });
       }
     },
     [setTheme],
   );
   const handleCodePreviewSettingsChange = useCallback(
     (patch: Parameters<typeof setCodePreviewSettings>[0]) => {
-      return setCodePreviewSettings(patch);
+      const [key] = Object.keys(patch);
+      const action =
+        key === "lightTheme"
+          ? "change_code_light_theme"
+          : key === "darkTheme"
+            ? "change_code_dark_theme"
+            : key === "showLineNumbers"
+              ? "toggle_code_line_numbers"
+              : key === "wrapLongLines"
+                ? "toggle_code_line_wrap"
+                : "change_code_font_size";
+      const value = Object.values(patch)[0];
+      return runUserAction({
+        input: { featureId: "settings.appearance", action, trigger: "select" },
+        operation: () => setCodePreviewSettings(patch),
+        completed: {
+          resultSource: "local_commit",
+          ...(typeof value === "boolean"
+            ? { stateAfter: value ? ("enabled" as const) : ("disabled" as const) }
+            : { valueAfter: String(value) }),
+        },
+        failureStage: "local_commit",
+      });
     },
     [setCodePreviewSettings],
   );
@@ -817,7 +1093,7 @@ export function SettingsPage({
     (activeSection === "plugin" && pluginNavigationOrigin === "plugin-store");
 
   return (
-    <>
+    <SettingsSearchTargetContext.Provider value={searchTarget}>
       <DesktopWindowFrame
         title={intl.formatMessage({ id: "settings.title" })}
         isDesktop={isDesktop}
@@ -829,7 +1105,7 @@ export function SettingsPage({
           data-active-section={activeSection}
           // 隐式 auto 行会按 Memory viewer 的内容高度撑出窗口，随后被 DesktopWindowFrame 裁切且没有滚动条。
           // 固定为单个 minmax(0, 1fr) 行，让普通设置页和内部滚动 viewer 都以窗口剩余高度为边界。
-          className="relative grid h-screen min-h-full w-full grid-cols-[68px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] lg:grid-cols-[268px_minmax(0,1fr)]"
+          className="relative grid h-screen min-h-full w-full grid-cols-[68px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] lg:grid-cols-[268px_minmax(0,1fr)] compact-web:grid-cols-1 compact-web:grid-rows-[auto_minmax(0,1fr)]"
         >
           {isWindowsDesktop ? <WindowsTopLeftLogo /> : null}
 
@@ -848,10 +1124,12 @@ export function SettingsPage({
               <DesktopWindowControls />
             </div>
           ) : null}
+          {/* 手机窄屏 Web 下 68px 图标栏会挤占内容宽度，compact-web 下改成顶部横向滚动导航条。
+              spec：docs/settings-narrow-layout.md */}
           <aside className="min-w-0">
-            <div className="flex h-full flex-col">
-              <div className="h-12 [app-region:drag]"></div>
-              <div className="px-2 pb-3 pt-3">
+            <div className="flex h-full flex-col compact-web:flex-row compact-web:items-center">
+              <div className="h-12 [app-region:drag] compact-web:hidden"></div>
+              <div className="px-2 pb-3 pt-3 compact-web:shrink-0 compact-web:py-1.5 compact-web:pr-0">
                 {onBack ? (
                   <ControlHintTooltip
                     title={intl.formatMessage({
@@ -870,10 +1148,21 @@ export function SettingsPage({
                       })}
                       className="m-1 w-[calc(100%-0.5rem)] justify-start gap-2 rounded-xl bg-surface px-1.5 text-remote-foreground-muted hover:bg-surface-hover hover:text-foreground max-lg:m-1 max-lg:size-10 max-lg:justify-center max-lg:px-0"
                       onClick={() => {
-                        if (pluginNavigationOrigin === "plugin-store") {
-                          requestPluginStoreOpen("user");
-                        }
-                        onBack?.();
+                        runUserAction({
+                          input: {
+                            featureId: "settings.navigation",
+                            action: "back_to_workspace",
+                            trigger: "button",
+                          },
+                          operation: () => {
+                            if (pluginNavigationOrigin === "plugin-store") {
+                              requestPluginStoreOpen("user");
+                            }
+                            onBack?.();
+                          },
+                          completed: { resultSource: "local_commit" },
+                          failureStage: "navigation_commit",
+                        });
                       }}
                     >
                       <ArrowLeft className="size-4" />
@@ -885,14 +1174,36 @@ export function SettingsPage({
                     </Button>
                   </ControlHintTooltip>
                 ) : null}
+              </div>
 
+              <div className="px-3 pb-3 max-lg:flex max-lg:justify-center compact-web:shrink-0 compact-web:px-1 compact-web:pb-0">
+                <SettingsSearch
+                  sections={settingsSections}
+                  availability={{
+                    desktop: Boolean(isDesktop),
+                    windowsHost: hostPlatform === "win32",
+                    tray: Boolean(isWindowsDesktop || isLinuxDesktop),
+                    notWindows: !isWindowsDesktop,
+                    macDesktop: Boolean(isDesktop && isMacDesktop),
+                    computerUse: resolveComputerUseAvailability({
+                      isDesktop: Boolean(isDesktop),
+                      isMacDesktop: Boolean(isMacDesktop),
+                      isWindowsDesktop: Boolean(isWindowsDesktop),
+                      remoteSessionId: activeWorkspaceTab?.remoteSessionId,
+                      remoteTarget: activeWorkspaceTab?.remoteTarget,
+                      workspaceIdentity: activeWorkspaceIdentity,
+                    }).supported,
+                  }}
+                  onSelect={({ section, setting }) => navigateToSettingsSection(section, setting)}
+                />
               </div>
 
               <nav
+                ref={settingsNavRef}
                 aria-label={intl.formatMessage({ id: "settings.navLabel" })}
-                className="flex-1 overflow-y-auto px-2 pb-3"
+                className="flex-1 overflow-y-auto px-2 pb-3 compact-web:min-w-0 compact-web:overflow-x-auto compact-web:overflow-y-hidden compact-web:py-1.5"
               >
-                <div className="space-y-4">
+                <div className="space-y-4 compact-web:flex compact-web:items-center compact-web:gap-2 compact-web:space-y-0">
                   {settingsSectionGroups.map((group, groupIndex) => {
                     const groupLabel = intl.formatMessage({
                       id: group.titleId,
@@ -905,8 +1216,9 @@ export function SettingsPage({
                         role="group"
                         aria-labelledby={groupLabelId}
                         className={cn(
-                          "space-y-1",
-                          groupIndex > 0 && "max-lg:border-t max-lg:border-border max-lg:pt-3",
+                          "space-y-1 compact-web:flex compact-web:shrink-0 compact-web:items-center compact-web:gap-1 compact-web:space-y-0",
+                          groupIndex > 0 &&
+                            "max-lg:border-t max-lg:border-border max-lg:pt-3 compact-web:border-t-0 compact-web:border-l compact-web:pt-0 compact-web:pl-2",
                         )}
                       >
                         <div
@@ -931,21 +1243,22 @@ export function SettingsPage({
                                 data-testid={testId(TID_SETTINGS_SECTION_NAV, id)}
                                 data-settings-section-nav={id}
                                 onClick={() => {
-                                  setPluginNavigationOrigin(undefined);
-                                  setTargetSourceServerId(undefined);
-                                  setSettingsSectionNavigationVersion((version) => version + 1);
-                                  setActiveSettingsSection(id);
+                                  runUserAction({
+                                    input: {
+                                      featureId: "settings.navigation",
+                                      action: "open_section",
+                                      trigger: "button",
+                                    },
+                                    operation: () => navigateToSettingsSection(id),
+                                    completed: { resultSource: "local_commit", sectionId: id },
+                                    failureStage: "navigation_commit",
+                                  });
                                 }}
                               >
                                 <span className="flex min-w-0 flex-1 items-center gap-2">
                                   <span className="truncate text-ui-base text-foreground">
                                     {label}
                                   </span>
-                                  {id === "remoteDevices" ? (
-                                    <RemoteConnectionNavigationDot
-                                      presentation={remoteDevicesPresentation}
-                                    />
-                                  ) : null}
                                 </span>
                               </SettingsSidebarButton>
                             );
@@ -954,19 +1267,6 @@ export function SettingsPage({
                     );
                   })}
                 </div>
-
-                <SettingsSidebarButton
-                  icon={Rocket}
-                  label={intl.formatMessage({ id: "settings.onboarding" })}
-                  className="mt-4 border border-dashed border-border hover:border-border-hover"
-                  onClick={() => {
-                    requestOnboardingDialog();
-                  }}
-                >
-                  <span className="text-ui-base text-foreground">
-                    {intl.formatMessage({ id: "settings.onboarding" })}
-                  </span>
-                </SettingsSidebarButton>
               </nav>
 
               <div className="max-lg:hidden">
@@ -978,6 +1278,7 @@ export function SettingsPage({
                   onSettingsButtonClick={onBack}
                   onUsageClick={handleOpenUsageSettings}
                   onLogin={onLogin}
+                  onLogout={onLogout}
                   settingsButtonMode="back"
                   user={user}
                   // 头像菜单是 WorkspaceSidebarFooter 的共享菜单，Settings 场景不能丢失桌面平台能力。
@@ -1056,7 +1357,7 @@ export function SettingsPage({
                       />
                     </div>
                   </div>
-                  <SettingsMachinesProvider servers={sourceManagementSnapshot?.servers ?? []}>
+                  <>
                     <main className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
                       <div
                         className={cn(
@@ -1066,28 +1367,32 @@ export function SettingsPage({
                           // isWindowsDesktop && "pt-12",
                         )}
                       >
-                        {/* 归档设置迁入后也需要公共页头，不能再因列表自带标题而隐藏页面标题。 */}
-                        <div>
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex min-w-0 flex-wrap items-center gap-3">
-                              {showActiveSectionTitle ? (
-                                <h2 className="text-ui-settings-title font-semibold tracking-tight text-foreground lg:text-ui-settings-title-lg">
-                                  {activeSectionLabel}
-                                </h2>
-                              ) : null}
-                              {!hasVisibleSettingsBreadcrumb && activeSectionMeta.titleBadgeId ? (
-                                <span className="inline-flex h-6 items-center rounded-md border border-border px-2 text-ui-xs font-semibold tracking-normal text-foreground">
-                                  {intl.formatMessage({
-                                    id: activeSectionMeta.titleBadgeId,
-                                  })}
-                                </span>
-                              ) : null}
+                        {/* 数据同步自带标题与迁移入口，避免公共页头重复显示标题和间距。 */}
+                        {activeSection !== "dataSync" ? (
+                          <div>
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex min-w-0 flex-wrap items-center gap-3">
+                                {showActiveSectionTitle ? (
+                                  <h2 className="text-ui-settings-title font-semibold tracking-tight text-foreground lg:text-ui-settings-title-lg">
+                                    {activeSectionLabel}
+                                  </h2>
+                                ) : null}
+                                {!hasVisibleSettingsBreadcrumb && activeSectionMeta.titleBadgeId ? (
+                                  <span className="inline-flex h-6 items-center rounded-md border border-border px-2 text-ui-xs font-semibold tracking-normal text-foreground">
+                                    {intl.formatMessage({
+                                      id: activeSectionMeta.titleBadgeId,
+                                    })}
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
+                            {activeSection === "projects" ? (
+                              <p className="mt-2 max-w-2xl text-ui-base text-foreground-subtle">
+                                {intl.formatMessage({ id: "projectManagement.intro" })}
+                              </p>
+                            ) : null}
                           </div>
-                          {activeSection === "general" ? (
-                            <GeneralSectionHeader localePreference={localePreference} />
-                          ) : null}
-                        </div>
+                        ) : null}
                         <div className="space-y-8">
                           {activeSection === "general" ? (
                             <GeneralSectionContent
@@ -1103,6 +1408,8 @@ export function SettingsPage({
                               notificationSoundEnabled={notificationSoundEnabled}
                               closeToTrayOnWindows={closeToTrayOnWindows}
                               keepAwakeWhileRunning={sharedSettings?.keepAwakeWhileRunning ?? false}
+                              mobilePushEnabled={sharedSettings?.mobilePushEnabled ?? true}
+                              onMobilePushEnabledChange={handleMobilePushEnabledChange}
                               desktopChromiumHardwareAccelerationEnabled={
                                 desktopChromiumHardwareAccelerationEnabled
                               }
@@ -1113,9 +1420,6 @@ export function SettingsPage({
                               terminalFontFamily={terminalFontFamily}
                               integratedTerminalShell={integratedTerminalShell}
                               integratedTerminalShellOptions={integratedTerminalShellOptions}
-                              toolSearchMode={toolSearchMode}
-                              onToolSearchModeChange={handleToolSearchModeChange}
-                              nativeSearchEnhancementsEnabled={nativeSearchEnhancementsEnabled}
                               httpProxy={httpProxy}
                               httpProxyNoProxy={httpProxyNoProxy}
                               httpProxyCaCertPath={httpProxyCaCertPath}
@@ -1123,21 +1427,35 @@ export function SettingsPage({
                               showIntegratedTerminalShell={hostPlatform === "win32"}
                               setLocalePreference={handleFooterLocaleChange}
                               setNotificationEnabled={(enabled) =>
-                                setNotificationEnabled(enabled)
+                                runUserAction({
+                                  input: {
+                                    featureId: "settings.notification",
+                                    action: "toggle_notification",
+                                    trigger: "switch",
+                                  },
+                                  operation: () => setNotificationEnabled(enabled),
+                                  completed: {
+                                    resultSource: "local_commit",
+                                    stateAfter: enabled ? "enabled" : "disabled",
+                                  },
+                                  failureStage: "local_commit",
+                                })
                               }
                               setNotificationSoundEnabled={(enabled) =>
-                                setNotificationSoundEnabled(enabled)
+                                runUserAction({
+                                  input: {
+                                    featureId: "settings.notification",
+                                    action: "toggle_notification_sound",
+                                    trigger: "switch",
+                                  },
+                                  operation: () => setNotificationSoundEnabled(enabled),
+                                  completed: {
+                                    resultSource: "local_commit",
+                                    stateAfter: enabled ? "enabled" : "disabled",
+                                  },
+                                  failureStage: "local_commit",
+                                })
                               }
-                              messageStreamShowReasoning={messageStreamShowReasoning}
-                              messageStreamShowTodos={messageStreamShowTodos}
-                              toolGroupingExploreEnabled={toolGroupingExploreEnabled}
-                              toolGroupingTerminalEnabled={toolGroupingTerminalEnabled}
-                              toolGroupingChangesEnabled={toolGroupingChangesEnabled}
-                              zcodeInteractionBehavior={zcodeInteractionBehavior}
-                              askUserQuestionAutoResolutionEnabled={
-                                askUserQuestionAutoResolutionEnabled
-                              }
-                              modelIoFullRetentionEnabled={modelIoFullRetentionEnabled}
                               onDataBaseDirChange={handleDataBaseDirChange}
                               onSelectDataBaseDir={selectDirectory}
                               onTerminalInheritSystemProfileChange={
@@ -1145,12 +1463,6 @@ export function SettingsPage({
                               }
                               onTerminalFontFamilyChange={handleTerminalFontFamilyChange}
                               onIntegratedTerminalShellChange={handleIntegratedTerminalShellChange}
-                              onNativeSearchEnhancementsEnabledChange={
-                                handleNativeSearchEnhancementsEnabledChange
-                              }
-                              onModelIoFullRetentionEnabledChange={
-                                handleModelIoFullRetentionEnabledChange
-                              }
                               onHttpProxyChange={handleHttpProxyChange}
                               onHttpProxyNoProxyChange={handleHttpProxyNoProxyChange}
                               onHttpProxyCaCertPathChange={handleHttpProxyCaCertPathChange}
@@ -1163,29 +1475,57 @@ export function SettingsPage({
                               onAutoDownloadAndInstallUpdatesChange={
                                 handleAutoDownloadAndInstallUpdatesChange
                               }
+                              onOpenOnboardingDialog={() =>
+                                runUserAction({
+                                  input: {
+                                    featureId: "settings.navigation",
+                                    action: "open_onboarding",
+                                    trigger: "button",
+                                  },
+                                  operation: openOccupationOnboarding,
+                                  completed: { resultSource: "local_commit" },
+                                  failureStage: "dialog_open",
+                                })
+                              }
+                            />
+                          ) : activeSection === "agentBehavior" ? (
+                            <AgentBehaviorSectionContent
+                              toolSearchMode={toolSearchMode}
+                              onToolSearchModeChange={handleToolSearchModeChange}
+                              nativeSearchEnhancementsEnabled={nativeSearchEnhancementsEnabled}
+                              onNativeSearchEnhancementsEnabledChange={
+                                handleNativeSearchEnhancementsEnabledChange
+                              }
+                              messageStreamShowReasoning={messageStreamShowReasoning}
+                              messageStreamShowTodos={messageStreamShowTodos}
+                              zcodeInteractionBehavior={zcodeInteractionBehavior}
+                              askUserQuestionAutoResolutionEnabled={
+                                askUserQuestionAutoResolutionEnabled
+                              }
+                              modelIoFullRetentionEnabled={modelIoFullRetentionEnabled}
                               onMessageStreamShowReasoningChange={
                                 handleMessageStreamShowReasoningChange
                               }
                               onMessageStreamShowTodosChange={handleMessageStreamShowTodosChange}
-                              onToolGroupingExploreEnabledChange={
-                                handleToolGroupingExploreEnabledChange
-                              }
-                              onToolGroupingTerminalEnabledChange={
-                                handleToolGroupingTerminalEnabledChange
-                              }
-                              onToolGroupingChangesEnabledChange={
-                                handleToolGroupingChangesEnabledChange
-                              }
                               onZCodeInteractionBehaviorChange={
                                 handleZCodeInteractionBehaviorChange
                               }
                               onAskUserQuestionAutoResolutionEnabledChange={
                                 handleAskUserQuestionAutoResolutionEnabledChange
                               }
-                              onOpenOnboardingDialog={() =>
-                                requestOnboardingDialog()
+                              onModelIoFullRetentionEnabledChange={
+                                handleModelIoFullRetentionEnabledChange
                               }
                             />
+                          ) : activeSection === "dataSync" ? (
+                            isDesktop ? (
+                              <DataSyncSection
+                                snapshot={sourceManagementSnapshot}
+                                deviceSyncStateService={localHostServices.deviceSyncStateService}
+                                onOpenRemoteConnection={onOpenRemoteWorkspace}
+                                onOpenMigration={requestMigrationDialog}
+                              />
+                            ) : null
                           ) : activeSection === "remoteDevices" ? (
                             sharedSettings && isDesktop && sourceManagement ? (
                               <SourceServerManagementPanel
@@ -1293,6 +1633,8 @@ export function SettingsPage({
                                 }}
                                 settings={sharedSettings}
                                 onUpdateSettings={updateSharedSettings}
+                                hideProjectDeviceNames={hideProjectDeviceNames}
+                                onHideProjectDeviceNamesChange={setHideProjectDeviceNames}
                               />
                             ) : (
                               <p className="text-ui-sm text-remote-foreground-muted">
@@ -1303,13 +1645,28 @@ export function SettingsPage({
                             )
                           ) : activeSection === "appearance" ? (
                             <AppearanceSectionContent
+                              isMacDesktop={Boolean(isDesktop && isMacDesktop)}
+                              fontSmoothingEnabled={fontSmoothingEnabled}
+                              setFontSmoothingEnabled={setFontSmoothingEnabled}
                               codePreviewSettings={codePreviewSettings}
                               setCodePreviewSettings={handleCodePreviewSettingsChange}
                               theme={theme}
                               setTheme={(nextTheme) => handleFooterThemeChange(nextTheme)}
                               uiFontSizePx={uiFontSizePx}
                               setUiFontSizePx={(fontSizePx) =>
-                                setUiFontSizePx(fontSizePx)
+                                runUserAction({
+                                  input: {
+                                    featureId: "settings.appearance",
+                                    action: "change_ui_font_size",
+                                    trigger: "keyboard",
+                                  },
+                                  operation: () => setUiFontSizePx(fontSizePx),
+                                  completed: {
+                                    resultSource: "local_commit",
+                                    valueAfter: String(fontSizePx),
+                                  },
+                                  failureStage: "local_commit",
+                                })
                               }
                             />
                           ) : activeSection === "shortcuts" ? (
@@ -1329,17 +1686,22 @@ export function SettingsPage({
                                 }
                               />
                             </ServiceProvider>
+                          ) : activeSection === "personalization" ? (
+                            // 个性化指令编辑的是本机 ~/.zcode/AGENTS.md（Agent 实际读取的文件）。
+                            // 仅桌面本地入口可编辑：手机远控的 base services 可能归属远程
+                            // Source（remoteWorkspaceServiceCollection 注册的是远端 settingService），
+                            // 编辑会写错机器；Web 端只显示本地桌面端指引。
+                            <PersonalizationSection
+                              settingService={localHostServices.settingService}
+                              isDesktop={Boolean(isDesktop)}
+                            />
                           ) : activeSection === "memory" ? (
-                            <ServiceProvider services={localHostServices}>
-                              {/* Memory catalog 始终使用本地 Host，避免远程 workspace 误读本机数据。 */}
-                              <MemorySettingsSection
-                                memoryEnabled={memoryEnabled}
-                                memoryService={localHostServices.memoryService}
-                                onMemoryEnabledChange={handleMemoryEnabledChange}
-                                projectMemoryViewerAvailable={Boolean(isDesktop)}
-                                workspaceDisplayNames={memoryWorkspaceDisplayNames}
-                              />
-                            </ServiceProvider>
+                            <MemorySettingsPage
+                              workspacePath={activeWorkspacePath}
+                              workspaceIdentity={activeWorkspaceIdentity}
+                              isDesktop={Boolean(isDesktop)}
+                              workspaceDisplayNames={memoryWorkspaceDisplayNames}
+                            />
                           ) : activeSection === "plugin" ? (
                             <PluginsSection
                               key={`plugin:${settingsSectionNavigationVersion}`}
@@ -1363,6 +1725,7 @@ export function SettingsPage({
                             <PluginsSection
                               key={`mcp:${settingsSectionNavigationVersion}`}
                               mode="mcp"
+                              initialScopeKey={pluginScopeKey}
                               isWebRemoteControl={isWebRemoteControl}
                               workspacePath={activeWorkspacePath}
                               workspaceIdentity={activeWorkspaceIdentity}
@@ -1387,6 +1750,14 @@ export function SettingsPage({
                                 onBack?.();
                               }}
                             />
+                          ) : activeSection === "migration" ? (
+                            <MigrationSection
+                              workspacePath={activeWorkspacePath}
+                              workspaceIdentity={activeWorkspaceIdentity}
+                              isDesktop={isDesktop}
+                            />
+                          ) : activeSection === "projects" ? (
+                            <ProjectManagement />
                           ) : activeSection === "archives" ? (
                             <div className="min-w-0 space-y-6">
                               <TaskAutoArchiveSettings
@@ -1399,10 +1770,19 @@ export function SettingsPage({
                               />
                               <ArchiveManagement />
                             </div>
+                          ) : activeSection === "shares" ? (
+                            <SettingsShareManagement
+                              signedIn={Boolean(user)}
+                              onLogin={onLogin}
+                              onOpenTask={onOpenTask}
+                            />
                           ) : activeSection === "usage" ? (
-                            <UsageStatsSection />
-                          ) : activeSection === "providerQuota" ? (
-                            <ProviderQuotaSection onLogin={onLogin} />
+                            <UsageStatsSection
+                              activeTab={usageActiveTab}
+                              providerSourcesLoading={usageProviderSettingsLoading}
+                              workspaceIdentity={activeWorkspaceIdentity}
+                              workspacePath={activeWorkspacePath ?? undefined}
+                            />
                           ) : activeSection === "subagents" ? (
                             <SubagentsSection
                               onManageModels={handleOpenModelProviderSettings}
@@ -1465,13 +1845,13 @@ export function SettingsPage({
                         </div>
                       </div>
                     </main>
-                  </SettingsMachinesProvider>
+                  </>
                 </div>
               </SettingsBreadcrumbProvider>
             </div>
           </section>
         </div>
       </DesktopWindowFrame>
-    </>
+    </SettingsSearchTargetContext.Provider>
   );
 }

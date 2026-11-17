@@ -1,4 +1,4 @@
-import { DATA_ROOT_DIR_NAME } from "../paths.js";
+import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, posix, win32 } from "node:path";
@@ -12,9 +12,14 @@ import type {
   SaveCliMcpToUserDirectoryRequest,
   SettingsDirectoryLocation,
   SettingsDirectorySource,
+  McpSyncCandidate,
+  McpSyncExportedServer,
+  McpSyncImportResult,
+  McpSyncRemoteStatus,
 } from "@zcode/shared";
 import type { IMcpSyncService } from "./mcpSync.js";
 import { createMcpDataSyncMethods } from "../data-sync/node.js";
+import { checkRemoteSyncDirectoryWriteAccess } from "../remote-sync/remoteSyncWriteAccess.js";
 import { createServiceLogger } from "../logger/serviceLogger.js";
 
 const logger = createServiceLogger("mcp-sync");
@@ -41,8 +46,7 @@ export interface UserMcpRecord {
 const ZCODE_MCP_DESCRIPTOR: DirectoryMcpDescriptor = {
   source: "zcode",
   directorySource: "zcode",
-  // 用户级跟数据根走（Polaris fork：`.polaris`）；workspace 级仍是既定的 `.zcode` 点文件契约。
-  userConfigDirSegments: [DATA_ROOT_DIR_NAME, "cli"],
+  userConfigDirSegments: [".zcode", "cli"],
   workspaceConfigDirSegments: [".zcode"],
   fileName: "config.json",
   configKeyName: "mcp.servers",
@@ -82,6 +86,7 @@ export function createMcpSyncService(
   dependencies: McpSyncServiceDependencies = {},
 ): IMcpSyncService {
   return {
+    ...createMcpSyncCandidateMethods(),
     ...createMcpDataSyncMethods(),
     async loadMcpFromUserDirectory(request) {
       return loadMcpFromUserDirectory(request);
@@ -693,4 +698,173 @@ async function writeTextAtomic(filePath: string, content: string): Promise<void>
     await rm(tempPath, { force: true });
     throw error;
   }
+}
+
+/** ---- Polaris：本地 MCP 同步（企业自有功能）——候选/导出导入/远端判重，包装回 IMcpSyncService。 ---- */
+
+function recordToCandidate(record: UserMcpRecord): McpSyncCandidate {
+  return {
+    id: createCandidateId(record),
+    name: record.name,
+    config: cloneMcpConfig(record.config),
+    enabled: record.enabled,
+    source: record.source,
+    path: record.path,
+  };
+}
+
+function createCandidateId(record: UserMcpRecord): string {
+  return createHash("sha256")
+    .update(`${record.source}:${record.path}:${record.name}`)
+    .digest("hex");
+}
+
+function collectEffectiveUserMcpRecordByName(): Promise<Map<string, UserMcpRecord>> {
+  return (async () => {
+    const result = new Map<string, UserMcpRecord>();
+    for (const record of await collectEffectiveUserMcpRecords()) {
+      const nameKey = normalizeMcpNameKey(record.name);
+      if (!result.has(nameKey)) {
+        result.set(nameKey, record);
+      }
+    }
+    return result;
+  })();
+}
+
+async function importMcpServers(params: {
+  servers: McpSyncExportedServer[];
+  localHomeDir: string;
+  localWorkspacePath?: string;
+  remoteWorkspacePath?: string;
+}): Promise<McpSyncImportResult> {
+  const targetPath = getUserZcodeMcpConfigPath();
+  const current = (await readJsonObject(targetPath)) ?? {};
+  const targetServers = readServerMapFromJson(
+    current,
+    ZCODE_MCP_DESCRIPTOR.configKeyName,
+  );
+  const existingByName = await collectEffectiveUserMcpRecordByName();
+  const results: McpSyncImportResult["results"] = [];
+  let changed = false;
+
+  for (const server of params.servers) {
+    const nameKey = normalizeMcpNameKey(server.name);
+    const existingTarget = targetServers[server.name];
+    if (existingTarget) {
+      results.push({ name: server.name, status: "skipped", path: targetPath });
+      continue;
+    }
+
+    const existing = existingByName.get(nameKey);
+    if (existing) {
+      results.push({
+        name: server.name,
+        status: "skipped",
+        path: existing.path,
+      });
+      continue;
+    }
+
+    try {
+      const rewrittenConfig = rewriteFilesystemMcpConfig(
+        server.name,
+        setServerEnabled(cloneMcpConfig(server.config), server.enabled),
+        {
+          sourceHomeDir: params.localHomeDir,
+          sourceWorkspacePath: params.localWorkspacePath,
+          targetHomeDir: resolveUserHomeDir(),
+          targetWorkspacePath: params.remoteWorkspacePath,
+        },
+      );
+      targetServers[server.name] = rewrittenConfig as Record<string, unknown>;
+      existingByName.set(nameKey, {
+        name: server.name,
+        config: rewrittenConfig,
+        enabled: server.enabled,
+        source: "zcode",
+        path: targetPath,
+      });
+      results.push({ name: server.name, status: "synced", path: targetPath });
+      changed = true;
+    } catch (error) {
+      results.push({
+        name: server.name,
+        status: "failed",
+        path: targetPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  if (changed) {
+    await writeTextAtomic(
+      targetPath,
+      `${JSON.stringify(writeServerMapToJson(current, ZCODE_MCP_DESCRIPTOR.configKeyName, targetServers), null, 2)}\n`,
+    );
+  }
+
+  return { results };
+}
+
+export function createMcpSyncCandidateMethods(): Pick<
+  IMcpSyncService,
+  | "listLocalUserMcpCandidates"
+  | "listRemoteUserMcpStatuses"
+  | "exportMcpServers"
+  | "importMcpServers"
+  | "checkRemoteUserMcpWriteAccess"
+> {
+  return {
+    async listLocalUserMcpCandidates() {
+      const localHomeDir = resolveUserHomeDir();
+      return {
+        candidates: (await collectEffectiveUserMcpRecords()).map(recordToCandidate),
+        localHomeDir,
+      };
+    },
+    async listRemoteUserMcpStatuses(params) {
+      const remoteHomeDir = resolveUserHomeDir();
+      const existingByName = await collectEffectiveUserMcpRecordByName();
+      return {
+        remoteHomeDir,
+        statuses: params.names.map((name): McpSyncRemoteStatus => {
+          const existing = existingByName.get(normalizeMcpNameKey(name));
+          return existing
+            ? { name, exists: true, path: existing.path }
+            : { name, exists: false };
+        }),
+      };
+    },
+    async exportMcpServers(params) {
+      const candidates = (await collectEffectiveUserMcpRecords()).map(recordToCandidate);
+      const candidateById = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+      return {
+        localHomeDir: resolveUserHomeDir(),
+        servers: params.serverIds.map((id): McpSyncExportedServer => {
+          const candidate = candidateById.get(id);
+          if (!candidate) {
+            throw new Error(`mcp sync candidate not found: ${id}`);
+          }
+          return {
+            id: candidate.id,
+            name: candidate.name,
+            config: cloneMcpConfig(candidate.config),
+            enabled: candidate.enabled,
+            source: candidate.source,
+            path: candidate.path,
+          };
+        }),
+      };
+    },
+    async checkRemoteUserMcpWriteAccess() {
+      return checkRemoteSyncDirectoryWriteAccess(dirname(getUserZcodeMcpConfigPath()));
+    },
+    async importMcpServers(params) {
+      if (params.overwrite) {
+        throw new Error("mcp sync overwrite is not supported");
+      }
+      return await importMcpServers(params);
+    },
+  };
 }

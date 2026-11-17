@@ -32,7 +32,7 @@ export interface SettingsTabState {
   kind: "settings";
   label: "settings";
   /**
-   * 打开/聚焦设置 Tab 时希望落在的分区（一次性意图）。
+   * Polaris：打开/聚焦设置 Tab 时希望落在的分区（一次性意图）。
    * SettingsPage 挂载或本值变化时消费；消费后保留无害（同分区重复跳转无副作用）。
    */
   initialSection?: string;
@@ -597,12 +597,10 @@ export function createTabStore(storage: StorageLike | null | undefined = undefin
     openSettingsTab: (initialSection?: string) => {
       const existing = get().tabs.find(isSettingsTab);
       if (existing) {
-        // 已开的设置 Tab 也要更新初始分区意图：聚焦后 SettingsPage 依赖本值落到目标分区。
+        // Polaris：已开的设置 Tab 也要更新初始分区意图：聚焦后 SettingsPage 依赖本值落到目标分区。
         set({
           activeTabId: existing.id,
-          tabs: get().tabs.map((tab) =>
-            isSettingsTab(tab) ? { ...tab, initialSection } : tab,
-          ),
+          tabs: get().tabs.map((tab) => (isSettingsTab(tab) ? { ...tab, initialSection } : tab)),
         });
         return;
       }
@@ -654,17 +652,13 @@ export function createTabStore(storage: StorageLike | null | undefined = undefin
 
     activateTabByPath: (path: string, options) => {
       const stateBefore = get();
-      const tab = stateBefore.tabs.find((currentTab): currentTab is WorkspaceTabState => {
-        if (!isWorkspaceTab(currentTab) || currentTab.workspacePath !== path) {
-          return false;
-        }
-
-        if (options?.workspaceIdentity) {
-          return currentTab.workspaceIdentity === options.workspaceIdentity;
-        }
-
-        return true;
-      });
+      // Bug 原因：未传 identity 时这里只按路径取第一个 tab；本地项目与远程项目同路径且远程 tab
+      // 在前时，点击本地任务会激活远程 tab，主区继续显示远程任务。与 addTab 共用匹配规则：
+      // 未传 identity 只命中本地 tab。
+      const tab = stateBefore.tabs.find(
+        (currentTab): currentTab is WorkspaceTabState =>
+          isWorkspaceTab(currentTab) && isSameWorkspaceTab(currentTab, path, options),
+      );
       if (!tab) {
         return false;
       }

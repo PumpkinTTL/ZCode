@@ -14,7 +14,6 @@ interface DesktopTopOverlayActionButtonProps {
   side?: ComponentProps<typeof ControlHintTooltip>["side"];
   buttonClassName?: string;
   testId?: string;
-  size?: "icon-xs" | "icon-sm" | "icon-md" | "icon-lg";
 }
 
 export function DesktopTopOverlayActionButton({
@@ -28,14 +27,13 @@ export function DesktopTopOverlayActionButton({
   side = "bottom",
   buttonClassName,
   testId,
-  size = "icon-md",
 }: DesktopTopOverlayActionButtonProps) {
   return (
     <ControlHintTooltip title={title} shortcut={shortcut} side={side}>
       <Button
         type="button"
         variant="ghost"
-        size={size}
+        size="icon-md"
         // 基础 Button 默认 transition-all，缩放窗口时会把标题栏按钮的尺寸/位置变化也动画化，
         // Windows 连续缩放下会像按钮先复位再跟随；这里的浮层按钮只需要 hover 色彩过渡。
         className={cn("[app-region:no-drag] transition-colors", buttonClassName)}

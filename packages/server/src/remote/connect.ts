@@ -50,6 +50,7 @@ export interface RemoteRuntimeNetworkOptions {
 }
 
 export interface RemoteConnection {
+  userConfigSyncService: import("@zcode/services").IUserConfigSyncService;
   services: IServiceAccessor;
   client: ChannelClient;
   dispose(): void;

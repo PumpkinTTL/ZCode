@@ -6,6 +6,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { WINDOWS_CAPTION_CONTROL_CLASS } from "@/windowCaptionControls.js";
+import { runUserAction } from "@/lib/userActionTelemetry.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 
 export function WorkspaceTerminalToggleButton({
@@ -45,7 +46,18 @@ export function WorkspaceTerminalToggleButton({
         )}
         aria-label={label}
         disabled={Boolean(disabledReason)}
-        onClick={onToggleTerminal}
+        onClick={() =>
+          runUserAction({
+            input: {
+              featureId: "workbench.terminal",
+              action: isTerminalOpen ? "close" : "open",
+              trigger: "button",
+            },
+            operation: onToggleTerminal,
+            completed: { resultSource: "local_commit" },
+            failureStage: "terminal_toggle",
+          })
+        }
       >
         <SquareTerminalIcon className="size-4" />
       </Button>

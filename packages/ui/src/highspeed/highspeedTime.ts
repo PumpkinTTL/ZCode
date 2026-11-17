@@ -1,5 +1,4 @@
-/** Polaris：业务模块已随红线砍除；此桩仅保导入形状（恒空实现/恒空数据），零出网。 */
-export function formatHighspeedRemainingTime(..._args: unknown[]): unknown {
-  void _args;
-  return undefined;
+/** Polaris：业务模块已随红线砍除；此桩保类型与导入形状，函数体恒空、零出网、零业务行为。 */
+export function formatHighspeedRemainingTime(expiresAt: number, now: number): string  {
+  return null as unknown as never;
 }

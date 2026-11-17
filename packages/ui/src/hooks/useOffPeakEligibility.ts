@@ -6,7 +6,7 @@ import { useOffPeakTaskStore } from "@/store/offPeakTaskStore.js";
 /** 两个闲时入口共享初始化/连接/Registry 通知边界，不在组件中另存资格。 */
 export function useOffPeakEligibility(
   settings: AppSettings | null | undefined,
-  registryRevision: number | undefined,
+  registryRevision?: number,
 ): void {
   const { offPeakTaskService, codingPlanSubscriptionService } = useServices();
   const initialize = useOffPeakTaskStore((state) => state.initialize);

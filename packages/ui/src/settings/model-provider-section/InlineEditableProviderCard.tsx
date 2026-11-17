@@ -14,6 +14,7 @@ import {
 } from "@zcode/provider";
 import { logger } from "@/logger.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { toast } from "@/components/ui/toast.js";
 import { Switch } from "@/components/ui/switch.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { isImeComposingKeyEvent } from "@/lib/imeComposition.js";
@@ -204,6 +205,7 @@ export function InlineEditableProviderCard({
   );
   const reorderModelIdsTargetRef = useRef(onReorderModelIds);
   reorderModelIdsTargetRef.current = onReorderModelIds;
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
   const nameCompositionActiveRef = useRef(false);
   const nameEditProviderIdRef = useRef<string | null>(null);
   const technicalInputCompositionActiveRef = useRef(false);
@@ -567,6 +569,7 @@ export function InlineEditableProviderCard({
     nameEditProviderIdRef.current = provider.providerId;
     nameCompositionActiveRef.current = false;
     setEditingName(true);
+    requestAnimationFrame(() => nameInputRef.current?.focus());
   }, [provider.providerId]);
 
   const saveConnection = useCallback(
@@ -672,6 +675,14 @@ export function InlineEditableProviderCard({
       if (!model) {
         return;
       }
+      // 官方（Nimbus）供应商的模型目录来自远端 /v1/models 自动同步，不允许本地删除：
+      // 删了也会在下次同步回来，这里直接拦截并 toast 说明。
+      if (provider.config.group === "nimbus") {
+        toast(intl.formatMessage({ id: "settings.modelProvider.officialModelDeleteBlocked" }), {
+          variant: "warning",
+        });
+        return;
+      }
       if (!model.builtin) {
         void runSaveOperation(
           async () => {
@@ -690,7 +701,7 @@ export function InlineEditableProviderCard({
         return;
       }
     },
-    [models, onDeletePersonalModel, provider.providerId, runSaveOperation],
+    [intl, models, onDeletePersonalModel, provider.providerId, runSaveOperation],
   );
 
   const handleModelEnabledChange = useCallback(
@@ -708,6 +719,14 @@ export function InlineEditableProviderCard({
   const handleAddModel = useCallback(
     async (model: ProviderSettingsFormModel) => {
       if (!onAddPersonalModel) throw new Error("当前设置入口未装配 Personal Model 添加能力");
+      // 官方（Nimbus）供应商的模型目录只从远端 /v1/models 动态同步，不开放手动添加。
+      if (provider.config.group === "nimbus") {
+        toast(
+          intl.formatMessage({ id: "settings.modelProvider.officialModelAddBlocked" }),
+          { variant: "warning" },
+        );
+        return;
+      }
       const added = { ...model, modelId: model.modelId.trim(), hasPersonalConfig: true };
       if (!added.modelId) return;
       await runSaveOperation(
@@ -722,7 +741,7 @@ export function InlineEditableProviderCard({
         { modelId: added.modelId, draftOwnsRetry: true },
       );
     },
-    [onAddPersonalModel, provider.providerId, runSaveOperation],
+    [intl, onAddPersonalModel, provider.providerId, runSaveOperation],
   );
 
   const handleReorderModelIds = useCallback(
@@ -758,6 +777,7 @@ export function InlineEditableProviderCard({
           logo={provider.config.logo}
           editingName={editingName}
           nameValue={nameValue}
+          nameInputRef={nameInputRef}
           nameEditable={nameEditable}
           onNameChange={handleNameValueChange}
           onNameBlur={handleNameBlur}

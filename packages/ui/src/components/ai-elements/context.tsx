@@ -1,7 +1,7 @@
 /*
  * Derived from vercel/ai-elements (packages/elements/src/context.tsx).
  * Copyright 2023 Vercel, Inc. Licensed under Apache-2.0.
- * Modified by Polaris: local integration, formatting and adaptations.
+ * Modified by ZCode: local integration, formatting and adaptations.
  * See THIRD-PARTY-NOTICES.md in the repository root for license and provenance.
  */
 "use client";
@@ -11,7 +11,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "../ui/hover-card.
 import { Progress } from "../ui/progress.js";
 import { cn } from "../lib/utils.js";
 import type { LanguageModelUsage } from "ai";
-import { Loader2 } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 import { getUsage } from "tokenlens";
@@ -128,7 +128,7 @@ export const ContextTrigger = ({ children, loading = false, ...props }: ContextT
           className={cn(props.className)}
         >
           {loading ? (
-            <Loader2
+            <LoaderCircle
               className="size-3.5 animate-spin motion-reduce:animate-none"
               aria-hidden="true"
             />

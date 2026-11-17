@@ -73,6 +73,14 @@ const MODEL_CONFIG_MISSING_CODES = new Set([
   "ModelConfigMissing",
 ]);
 
+
+const MODEL_NOT_IN_REGISTRY_CODES = new Set(["provider_not_found", "model_not_found"]);
+
+/** 投影错误是否只是「会话模型不在 Registry」这一事实的 Core 侧表达。 */
+export function isModelNotInRegistryError(error: Pick<ZCodeUiError, "code">): boolean {
+  return Boolean(error.code && MODEL_NOT_IN_REGISTRY_CODES.has(error.code));
+}
+
 function isModelConfigMissingError(error: Pick<ZCodeUiError, "code" | "message">): boolean {
   // Bugfix: 桌面端发送前 registry 为空时，agent 会退回 CLI config 并抛 Model config is missing。
   // 真实原因是“当前没有可用模型”，不能把 CLI 配置路径直接暴露给桌面用户。

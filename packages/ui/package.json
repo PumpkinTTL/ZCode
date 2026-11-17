@@ -20,7 +20,9 @@
     "./e2e-store-bridge": "./src/lib/e2eStoreBridgeBootstrap.ts",
     "./remote-workspace-session-store": "./src/store/remoteWorkspaceSessionStore.ts",
     "./styles.css": "./src/styles.css",
-    "./replay": "./src/replay.ts"
+    "./replay": "./src/replay.ts",
+    "./alert-dialog": "./src/components/ui/alert-dialog.tsx",
+    "./dropdown-menu": "./src/components/ui/dropdown-menu.tsx"
   },
   "scripts": {
     "lint": "oxlint",

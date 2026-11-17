@@ -14,7 +14,6 @@ import {
   type TaskEntityKey,
   type TaskListCacheKey,
 } from "@/lib/taskQueryCache.js";
-import { notifyTaskLifecycle } from "@/lib/taskLifecycleEvents.js";
 import { uiMemoryDiagnosticsRegistry } from "@/lib/memoryDiagnostics.js";
 
 export interface TaskListMembershipState {
@@ -346,38 +345,6 @@ function preserveFreshLocalTaskKeys(params: {
   };
 }
 
-// 版本化 queryKey 会随搜索前缀只增不删（搜索框每敲一次就多一条缓存）。
-// FIFO 封顶：超限时先淘汰搜索键（价值最低、可随时重拉），不够再按插入序
-// 淘汰最旧条目；被淘汰只是缓存缺失，查询会自行重拉，不影响正确性。
-const MAX_TASK_QUERY_RESULT_ENTRIES = 400;
-// buildTaskListCacheKeyFromDescriptor 的搜索段标记。
-const TASK_SEARCH_KEY_MARKER = "search=";
-
-function evictTaskQueryResults(
-  results: Record<TaskListCacheKey, CachedTaskListResult>,
-): Record<TaskListCacheKey, CachedTaskListResult> {
-  const keys = Object.keys(results);
-  const overflow = keys.length - MAX_TASK_QUERY_RESULT_ENTRIES;
-  if (overflow <= 0) return results;
-  const next = { ...results };
-  let budget = overflow;
-  for (const key of keys) {
-    if (budget <= 0) break;
-    if (key.includes(TASK_SEARCH_KEY_MARKER)) {
-      delete next[key];
-      budget -= 1;
-    }
-  }
-  for (const key of keys) {
-    if (budget <= 0) break;
-    if (key in next) {
-      delete next[key];
-      budget -= 1;
-    }
-  }
-  return next;
-}
-
 export const useTaskQueryCacheStore = create<TaskQueryCacheState>()((set) => ({
   resultsByQueryKey: {},
   taskMetaByEntityKey: {},
@@ -492,10 +459,10 @@ export const useTaskQueryCacheStore = create<TaskQueryCacheState>()((set) => ({
       }
 
       return {
-        resultsByQueryKey: evictTaskQueryResults({
+        resultsByQueryKey: {
           ...state.resultsByQueryKey,
           [queryKey]: buildCachedTaskListResult(resultParams),
-        }),
+        },
         taskMetaByEntityKey: taskMetaChanged ? nextTaskMetaByEntityKey : state.taskMetaByEntityKey,
         taskUnreadOverlayByEntityKey: taskUnreadOverlayChanged
           ? nextTaskUnreadOverlayByEntityKey
@@ -623,9 +590,7 @@ export const useTaskQueryCacheStore = create<TaskQueryCacheState>()((set) => ({
       }
 
       return {
-        resultsByQueryKey: resultsChanged
-          ? evictTaskQueryResults(nextResultsByQueryKey)
-          : state.resultsByQueryKey,
+        resultsByQueryKey: resultsChanged ? nextResultsByQueryKey : state.resultsByQueryKey,
         taskMetaByEntityKey: taskMetaChanged ? nextTaskMetaByEntityKey : state.taskMetaByEntityKey,
         taskUnreadOverlayByEntityKey: taskUnreadOverlayChanged
           ? nextTaskUnreadOverlayByEntityKey
@@ -1005,16 +970,6 @@ export function applyTaskQueryCacheMutation(params: {
   nextState: TaskListMembershipState;
 }): void {
   useTaskQueryCacheStore.getState().applyTaskMutation(params);
-  if (!params.previousState.archived && params.nextState.archived) {
-    notifyTaskLifecycle({
-      type: "archived",
-      taskId: params.nextTask.taskId,
-      workspaceKey: buildTaskWorkspaceKey(
-        params.nextTask.workspacePath,
-        params.nextTask.workspaceIdentity,
-      ),
-    });
-  }
 }
 
 export function setTaskQueryCacheUnreadOverlay(
@@ -1041,21 +996,14 @@ export function rollbackTaskQueryCacheUnread(
 export function removeTaskFromTaskQueryCaches(
   task: Pick<ZCodeTaskMeta, "taskId" | "workspacePath" | "workspaceIdentity">,
 ): boolean {
-  const removed = useTaskQueryCacheStore.getState().removeTask(task);
-  notifyTaskLifecycle({
-    type: "deleted",
-    taskId: task.taskId,
-    workspaceKey: buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity),
-  });
-  return removed;
+  return useTaskQueryCacheStore.getState().removeTask(task);
 }
 
-// 内存诊断计数器：queryKey 已 FIFO 封顶，条数与上限一并落日志。
+// 内存诊断计数器：版本化 queryKey 只增不删，先落日志。
 uiMemoryDiagnosticsRegistry.register("taskQueryCache", () => {
   const state = useTaskQueryCacheStore.getState();
   return {
     queryKeys: Object.keys(state.resultsByQueryKey).length,
-    queryKeysCap: MAX_TASK_QUERY_RESULT_ENTRIES,
     taskMetas: Object.keys(state.taskMetaByEntityKey).length,
   };
 });

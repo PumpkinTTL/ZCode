@@ -3,6 +3,7 @@ import {
   type FeedbackTicketModule,
   type FeedbackTicketSeverity,
   type FeedbackTicketType,
+  type Locale,
 } from "@zcode/shared";
 import type { IFeedbackService } from "@zcode/services";
 import { persistFeedbackContactPreference } from "@/feedback/feedbackContactPreference.js";
@@ -19,7 +20,7 @@ import {
   type FeedbackSubmissionJob,
 } from "@/feedback/feedbackSubmissionJob.js";
 
-const FEEDBACK_AGENT_LABEL = "Polaris Agent";
+const FEEDBACK_ZCODE_AGENT_LABEL = "ZCode Agent";
 
 export const DEFAULT_FEEDBACK_TYPE: FeedbackTicketType = "bug";
 export const DEFAULT_FEEDBACK_SEVERITY: FeedbackTicketSeverity = "P2-中";
@@ -53,7 +54,7 @@ export async function startSimplifiedFeedbackSubmission({
   ticketSeverity: FeedbackTicketSeverity;
   ticketModule: FeedbackTicketModule;
   modelContext: FeedbackAgentModelContext;
-  locale: "zh-CN" | "en-US";
+  locale: Locale;
   copy: FeedbackSubmissionCopy;
   formatMessage: (descriptor: { id: string }, values?: Record<string, string>) => string;
   onTicketCreated?: (ticketId: string) => void;
@@ -94,7 +95,7 @@ export async function startSimplifiedFeedbackSubmission({
       framework,
       device: {
         ...device,
-        agentProvider: FEEDBACK_AGENT_LABEL,
+        agentProvider: FEEDBACK_ZCODE_AGENT_LABEL,
         agentFramework: framework,
         ...(modelContext.model ? { agentModel: modelContext.model } : {}),
         ...(modelContext.display ? { agentModelDisplay: modelContext.display } : {}),

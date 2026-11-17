@@ -3,6 +3,12 @@ import type {
   PluginSyncMarketplaceMirrorInspection,
   PluginSyncMarketplaceSourceArchiveExportResult,
   PluginSyncMarketplaceSourceImportResult,
+
+  PluginSyncArchiveExportResult,
+  PluginSyncCandidateListResult,
+  PluginSyncImportResult,
+  PluginSyncRemoteStatusResult,
+  RemoteSyncWriteAccessResult,
 } from "@zcode/shared";
 import { ServiceChannels } from "@zcode/shared";
 import { createServiceDescriptor } from "../descriptors.js";
@@ -31,6 +37,20 @@ export interface IPluginSyncService extends IDataSyncCategoryService<PluginDataS
     archive: Uint8Array;
     overwrite?: false;
   }): Promise<PluginSyncMarketplaceSourceImportResult>;
+  /** ---- Polaris：本地插件同步（企业自有功能）方法面 ---- */
+  listLocalUserPluginCandidates(): Promise<PluginSyncCandidateListResult>;
+  listRemoteUserPluginStatuses(params: {
+    plugins: Array<{
+      pluginId: string;
+      directoryName: string;
+    }>;
+  }): Promise<PluginSyncRemoteStatusResult>;
+  exportPluginsArchive(params: { pluginIds: string[] }): Promise<PluginSyncArchiveExportResult>;
+  importPluginsArchive(params: {
+    archive: Uint8Array;
+    overwrite?: boolean;
+  }): Promise<PluginSyncImportResult>;
+  checkRemoteUserPluginWriteAccess(): Promise<RemoteSyncWriteAccessResult>;
 }
 
 export const IPluginSyncService = createServiceDescriptor<IPluginSyncService>(

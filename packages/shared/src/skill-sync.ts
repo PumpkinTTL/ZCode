@@ -23,3 +23,53 @@ export interface SkillDataSyncPayload {
     enabled: boolean;
   }>;
 }
+
+/** ---- Polaris：本地 skill 同步（企业自有功能）契约 ---- */
+
+export type SkillSyncImportStatus = "synced" | "skipped" | "failed";
+
+export interface SkillSyncCandidateListResult {
+  candidates: SkillSyncCandidate[];
+  maxArchiveBytes: number;
+}
+
+export interface SkillSyncCandidate {
+  id: string;
+  name: string;
+  directoryName: string;
+  description: string;
+  path: string;
+  sizeBytes: number;
+}
+
+export interface SkillSyncRemoteStatus {
+  directoryName: string;
+  exists: boolean;
+  path?: string;
+}
+
+export interface SkillSyncRemoteStatusResult {
+  statuses: SkillSyncRemoteStatus[];
+}
+
+export interface SkillSyncArchiveExportResult {
+  archive: Uint8Array;
+  archiveBytes: number;
+  skills: Array<{
+    id: string;
+    name: string;
+    directoryName: string;
+  }>;
+}
+
+export interface SkillSyncImportResultItem {
+  name: string;
+  directoryName: string;
+  status: SkillSyncImportStatus;
+  path?: string;
+  error?: string;
+}
+
+export interface SkillSyncImportResult {
+  results: SkillSyncImportResultItem[];
+}

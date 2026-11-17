@@ -1,22 +1,11 @@
 /* eslint-disable max-lines -- TaskList 同时承接 workspace 列表渲染、行内操作和外部数据源兼容，先集中收口避免 UI 结构漂移。 */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
 import { Settings2 } from "lucide-react";
 import type { ZCodeTaskMeta } from "@zcode/shared";
 import { TID_TASK_LIST, TID_TASK_EMPTY, TID_TASK_SETTINGS_BUTTON } from "@zcode/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu.js";
 import { toast } from "@/components/ui/toast.js";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import { NewTaskButtonGroup } from "@/NewTaskButtonGroup.js";
@@ -24,7 +13,7 @@ import { useTabStore } from "@/store/TabStoreProvider.js";
 import { MemoTaskItem, TaskListItemContextMenuContent } from "@/TaskListItem.js";
 import { TaskListLoadingHint } from "@/TaskListLoadingHint.js";
 import { TaskRenameDialog } from "@/TaskRenameDialog.js";
-
+import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
 import { compareZCodeTaskListItems } from "@/lib/taskListOrdering.js";
 import { logger } from "@/logger.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
@@ -58,13 +47,13 @@ export const TaskList = memo(function TaskList({
   onRenameTask,
   onSetTaskPinned,
   onArchiveTask,
-  onDeleteTask,
   isArchived = false,
   onSetTaskUnread,
   mobileActiveTaskKey,
   readOnlyReason,
   onOpenFileTree,
   organizationActions,
+  renameOnDoubleClick = true,
 }: {
   organizationActions?: React.ReactNode;
   workspacePath: string;
@@ -87,13 +76,12 @@ export const TaskList = memo(function TaskList({
   onRenameTask: (taskId: string, title: string) => Promise<ZCodeTaskMeta | null>;
   onSetTaskPinned: (taskId: string, pinned: boolean) => Promise<ZCodeTaskMeta | null>;
   onArchiveTask: (taskId: string) => Promise<ZCodeTaskMeta | null>;
-  /** 真删（不可恢复）：缺省不渲染删除入口。UI 负责确认弹窗，本组件只发起。 */
-  onDeleteTask?: (taskId: string) => Promise<void>;
   isArchived?: boolean;
   onSetTaskUnread: (taskId: string, unread: boolean) => Promise<ZCodeTaskMeta | null>;
   mobileActiveTaskKey?: string | null;
   readOnlyReason?: string;
   onOpenFileTree?: () => void | Promise<void>;
+  renameOnDoubleClick?: boolean;
 }) {
   const { intl } = useZCodeIntl();
   const pinnedTaskIdSet = useMemo(
@@ -104,8 +92,6 @@ export const TaskList = memo(function TaskList({
   const startDraft = useZCodeSessionStore((state) => state.startDraft);
   const openSettingsTab = useTabStore((state) => state.openSettingsTab);
   const [pendingArchiveTaskId, setPendingArchiveTaskId] = useState<string | null>(null);
-  // 待确认的真删目标：菜单点击只进入确认态，AlertDialog 二次确认后才发起 purge。
-  const [pendingDeleteTask, setPendingDeleteTask] = useState<ZCodeTaskMeta | null>(null);
   const [renamingTaskId, setRenamingTaskId] = useState<string | null>(null);
   const [contextMenuTaskId, setContextMenuTaskId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
@@ -115,52 +101,21 @@ export const TaskList = memo(function TaskList({
   const onSelectTaskRef = useRef(onSelectTask);
   const onSetTaskPinnedRef = useRef(onSetTaskPinned);
   const onArchiveTaskRef = useRef(onArchiveTask);
-  const onDeleteTaskRef = useRef(onDeleteTask);
   const onSetTaskUnreadRef = useRef(onSetTaskUnread);
   pendingArchiveTaskIdRef.current = pendingArchiveTaskId;
   renamingTaskIdRef.current = renamingTaskId;
   onSelectTaskRef.current = onSelectTask;
   onSetTaskPinnedRef.current = onSetTaskPinned;
   onArchiveTaskRef.current = onArchiveTask;
-  onDeleteTaskRef.current = onDeleteTask;
   onSetTaskUnreadRef.current = onSetTaskUnread;
   const handleCancelArchiveConfirm = useCallback(() => {
     setPendingArchiveTaskId(null);
   }, []);
 
-
-
   const handleCancelRenameTask = useCallback(() => {
     setRenamingTaskId(null);
     setRenameDraft("");
   }, []);
-  const handleCancelDeleteTask = useCallback(() => {
-    setPendingDeleteTask(null);
-  }, []);
-
-  const handleDeleteTaskRequest = useCallback((taskId: string) => {
-    const task = taskLookup.find((candidate) => candidate.taskId === taskId);
-    if (!task) return;
-    handleCancelRenameTask();
-    setPendingArchiveTaskId(null);
-    setPendingDeleteTask(task);
-    // taskLookup/handleCancelRenameTask 均为稳定派生；这里刻意不进依赖数组以外的引用
-  }, [taskLookup, handleCancelRenameTask]);
-
-  const handleConfirmDeleteTask = useCallback(async () => {
-    const task = pendingDeleteTask;
-    if (!task) return;
-    setPendingDeleteTask(null);
-    try {
-      await onDeleteTaskRef.current?.(task.taskId);
-    } catch (error) {
-      logger.warn("[TaskList] 删除会话失败", {
-        taskId: task.taskId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      toast(intl.formatMessage({ id: "taskList.deleteFailed" }), { variant: "warning" });
-    }
-  }, [pendingDeleteTask, intl]);
 
   const handleSelectTaskItem = useCallback((taskId: string) => {
     onSelectTaskRef.current(taskId);
@@ -440,6 +395,7 @@ export const TaskList = memo(function TaskList({
         onOpenFileTree={onOpenFileTree}
         actionsDisabled={Boolean(readOnlyReason)}
         actionsDisabledReason={readOnlyReason}
+        renameOnDoubleClick={renameOnDoubleClick}
         intl={intl}
       />
     );
@@ -527,7 +483,6 @@ export const TaskList = memo(function TaskList({
                   onTogglePinTask={handleTogglePinTask}
                   onStartRenameTask={handleStartRenameTask}
                   onArchiveTask={handleArchiveTask}
-                  onDeleteTask={onDeleteTask ? handleDeleteTaskRequest : undefined}
                   onMarkTaskAsUnread={handleMarkTaskAsUnread}
                   disableTaskActions={Boolean(readOnlyReason)}
                   disabledReason={readOnlyReason}
@@ -536,34 +491,6 @@ export const TaskList = memo(function TaskList({
             </ContextMenu>
           )}
         </div>
-        <AlertDialog
-          open={pendingDeleteTask !== null}
-          onOpenChange={(open) => {
-            if (!open) handleCancelDeleteTask();
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {intl.formatMessage({ id: "taskList.deleteConfirmTitle" })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {intl.formatMessage(
-                  { id: "taskList.deleteConfirmBody" },
-                  { title: pendingDeleteTask?.title ?? "" },
-                )}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={handleCancelDeleteTask}>
-                {intl.formatMessage({ id: "taskList.deleteConfirmCancel" })}
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={() => void handleConfirmDeleteTask()}>
-                {intl.formatMessage({ id: "taskList.deleteConfirmOk" })}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
         {hasMore && onShowMore ? (
           <div className="pl-8.5">
             <button

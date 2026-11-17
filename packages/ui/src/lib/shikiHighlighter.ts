@@ -57,20 +57,12 @@ const highlighterCache = new Map<
   string,
   Promise<HighlighterGeneric<BundledLanguage, BundledTheme>>
 >();
-// 每个条目是一份独立的 Shiki 实例（自带编译后的 grammar 与 oniguruma wasm 上下文），
-// 不比 tokens 便宜。主题只有 4 个而语言有几百种，长会话翻遍各种代码块时无界累积。
-// 和 tokensCache 同口径 LRU 封顶：命中续期，超限淘汰最旧。
-// 淘汰只丢缓存引用，Shiki 实例随 Promise 一并被 GC，不影响已渲染结果。
-const MAX_HIGHLIGHTER_CACHE_ENTRIES = 24;
 const tokensCache = new Map<string, TokenizedCode>();
-// 单条 ThemedToken[][] 约是源码体积 5-20 倍的对象图；不淘汰的话长会话全量
-// 水合会把历史里每个代码块都永久常驻在堆里。LRU 封顶：命中续期，超限淘汰最旧。
-const MAX_TOKENS_CACHE_ENTRIES = 300;
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
-// 内存诊断计数器：tokensCache 已 LRU 封顶，条数与上限一并落日志。
+// 内存诊断计数器：tokensCache 目前无淘汰，是审计里
+// renderer 最可疑的增长点，先把条数落到日志里。
 uiMemoryDiagnosticsRegistry.register("shiki", () => ({
   tokensCache: tokensCache.size,
-  tokensCacheCap: MAX_TOKENS_CACHE_ENTRIES,
   highlighters: highlighterCache.size,
 }));
 
@@ -102,9 +94,6 @@ const getHighlighter = (
   const cacheKey = `${theme}:${language}`;
   const cached = highlighterCache.get(cacheKey);
   if (cached) {
-    // LRU 续期：Map 迭代按插入序，删了重插让命中项沉底（最旧在队首）。
-    highlighterCache.delete(cacheKey);
-    highlighterCache.set(cacheKey, cached);
     return cached;
   }
 
@@ -114,11 +103,6 @@ const getHighlighter = (
   });
 
   highlighterCache.set(cacheKey, highlighterPromise);
-  while (highlighterCache.size > MAX_HIGHLIGHTER_CACHE_ENTRIES) {
-    const oldestKey = highlighterCache.keys().next().value;
-    if (oldestKey === undefined) break;
-    highlighterCache.delete(oldestKey);
-  }
   return highlighterPromise;
 };
 
@@ -158,9 +142,6 @@ export const highlightCode = (
 
   const cached = tokensCache.get(tokensCacheKey);
   if (cached) {
-    // LRU 续期：Map 迭代按插入序，删了重插让命中项沉底（最旧在队首）。
-    tokensCache.delete(tokensCacheKey);
-    tokensCache.set(tokensCacheKey, cached);
     // 缓存命中时也需要通知 effect，但不能同步触发 setState。
     // 历史消息恢复时大量代码块会在同一次提交后挂载；同步 callback 会把 cache-hit 变成嵌套更新，
     // 和 Streamdown 的重渲染叠在一起时容易触发 React #185。推迟到微任务后再交给幂等 setter。
@@ -197,11 +178,6 @@ export const highlightCode = (
       };
 
       tokensCache.set(tokensCacheKey, tokenized);
-      while (tokensCache.size > MAX_TOKENS_CACHE_ENTRIES) {
-        const oldestKey = tokensCache.keys().next().value;
-        if (oldestKey === undefined) break;
-        tokensCache.delete(oldestKey);
-      }
 
       const subs = subscribers.get(tokensCacheKey);
       if (subs) {

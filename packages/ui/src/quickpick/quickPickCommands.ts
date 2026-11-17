@@ -1,5 +1,3 @@
-import { COMMUNITY_ENTRY_ENABLED } from "@/lib/communityEntry.js";
-
 export type QuickPickCommandIcon =
   | "book"
   | "browser"
@@ -8,8 +6,11 @@ export type QuickPickCommandIcon =
   | "feedback"
   | "folder"
   | "login"
+  | "logout"
   | "message"
   | "mcp"
+  | "reload"
+  | "logs"
   | "settings"
   | "sidebarClose"
   | "sidebarOpen"
@@ -57,12 +58,17 @@ interface QuickPickCommandHandlers {
   openCommunity: () => void | Promise<void>;
   openProductDocs: () => void | Promise<void>;
   login?: () => void | Promise<void>;
+  logout?: () => void | Promise<void>;
   toggleSidebar: () => void;
   toggleTerminal: () => void;
   togglePreview: () => void;
   openTerminalTab: () => void;
   openBrowserTab: () => void;
   openReviewTab: () => void;
+  /** 只有桌面本机 Host 提供扩展门面时才有（docs/plugins/extension-host.md §12.1）。 */
+  reloadExtensions?: () => void;
+  /** 打开扩展日志标签（§16.8）：与 reloadExtensions 同一条件。 */
+  openExtensionLogs?: () => void;
 }
 
 interface CreateQuickPickCommandsOptions {
@@ -248,10 +254,7 @@ export function createQuickPickCommands({
     run: handlers.openFeedback,
   });
 
-  // Polaris：官方社群（飞书 / Discord）对用户不可达，总开关恒为 false 时不注册该命令，
-  // 避免入口点开坏链接。canOpenCommunity 仍作为「平台是否会解析出可用社群地址」的条件保留，
-  // 将来接入自有社群时只需打开 COMMUNITY_ENTRY_ENABLED，不必恢复此处的结构。
-  if (COMMUNITY_ENTRY_ENABLED && canOpenCommunity) {
+  if (canOpenCommunity) {
     commands.push({
       id: "community",
       sectionId: "app",
@@ -259,6 +262,28 @@ export function createQuickPickCommands({
       icon: "community",
       keywords: ["community", "users", "chat", "用户社群", "社群"],
       run: handlers.openCommunity,
+    });
+  }
+
+  if (handlers.reloadExtensions) {
+    commands.push({
+      id: "reload-extensions",
+      sectionId: "app",
+      titleId: "quickPick.command.reloadExtensions",
+      icon: "reload",
+      keywords: ["extension", "extensions", "reload", "plugin", "扩展", "重新加载", "插件"],
+      run: handlers.reloadExtensions,
+    });
+  }
+
+  if (handlers.openExtensionLogs) {
+    commands.push({
+      id: "open-extension-logs",
+      sectionId: "app",
+      titleId: "quickPick.command.openExtensionLogs",
+      icon: "logs",
+      keywords: ["extension", "extensions", "logs", "console", "plugin", "扩展", "日志", "插件"],
+      run: handlers.openExtensionLogs,
     });
   }
 
@@ -271,7 +296,16 @@ export function createQuickPickCommands({
     run: handlers.openProductDocs,
   });
 
-  if (!isLoggedIn && handlers.login) {
+  if (isLoggedIn && handlers.logout) {
+    commands.push({
+      id: "logout",
+      sectionId: "app",
+      titleId: "quickPick.command.logout",
+      icon: "logout",
+      keywords: ["disconnect", "logout", "sign out", "断开连接", "登出"],
+      run: handlers.logout,
+    });
+  } else if (!isLoggedIn && handlers.login) {
     commands.push({
       id: "login",
       sectionId: "app",

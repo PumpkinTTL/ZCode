@@ -9,7 +9,6 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { NimbusUpdateBadge } from "@/business/appUpdate/NimbusUpdateBadge.js";
 import { UpdateStatusButton } from "@/UpdateStatusButton.js";
 import { DesktopTopOverlayActionButton } from "@/DesktopTopOverlayActionButton.js";
 import { ZCodeStartupLogoBadge } from "@/root/RootStartupLoading.js";
@@ -195,7 +194,8 @@ export function DesktopTopOverlay({
             <div
               aria-hidden={!isNewTaskButtonVisible}
               className={cn(
-                "inline-flex overflow-hidden transition-[opacity,width] duration-300 ease-out",
+                // 宽度动画会在侧栏已收敛后继续触发布局，完整视图也受影响；这里只淡入淡出。
+                "inline-flex overflow-hidden transition-opacity duration-300 ease-out",
                 isNewTaskButtonVisible ? "w-7 opacity-100" : "pointer-events-none w-0 opacity-0",
               )}
             >
@@ -215,9 +215,6 @@ export function DesktopTopOverlay({
                   但收起态本身已经改成把操作集中到顶部浮层里，如果这里还继续依赖侧栏宽度判断，
                   用户就会在最需要全局入口的时候反而看不到更新按钮。
                   所以展开态继续走容器查询，收起态则强制显示。 */}
-          {/* 「有新版本」徽标：走服务端更新目录（与下方 electron-updater 状态按钮
-              互补——谁先发现新版本谁先亮），发现新版本时点开即更新日志弹窗。 */}
-          <NimbusUpdateBadge />
             <UpdateStatusButton
               platform={platform}
               version={updateReadyVersion}

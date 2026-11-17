@@ -12,6 +12,11 @@ export type ProviderModelInputFormatDraft = ModelInputFormatData;
 
 export interface ProviderModelDraftValues {
   idValue: string;
+  /**
+   * 纯展示名。真实请求始终用 `idValue`，这里只影响模型菜单与触发器上的文案；
+   * 留空表示直接显示模型 ID。
+   */
+  displayNameValue: string;
   contextWindowValue: string;
   maxOutputTokensValue: string;
   inputFormatValue: ProviderModelInputFormatDraft;
@@ -49,6 +54,8 @@ export function createProviderModelDraftValues(
   const inputFormat = properties?.inputFormat;
   return {
     idValue: model.modelId,
+    // 展示名只来自个人配置：内置推荐规则不写展示名，所以这里没有可继承的基线。
+    displayNameValue: model.personalConfig.displayName ?? "",
     // 编辑器只把 Personal Overlay 当作真实输入；继承值由 UI 作为 placeholder 展示。
     contextWindowValue:
       model.personalConfig.properties?.contextWindow == null
@@ -234,6 +241,10 @@ export function resolveProviderModelDraftCommit({
   };
   if (Object.keys(personalProperties).length === 0)
     deleteMutable(sparsePersonalConfig, "properties");
+  // 展示名是单值叶子：清空输入即撤销，不能留下空串（schema 要求非空）。
+  const displayName = draft.displayNameValue.trim();
+  if (displayName) assignMutable(sparsePersonalConfig, "displayName", displayName);
+  else deleteMutable(sparsePersonalConfig, "displayName");
 
   const inheritedMaxOption = inherited?.optionSpecs?.maxOutputTokens;
   // Option Spec 不再拥有 default；该输入框唯一表达模型硬上限 max。
@@ -328,6 +339,11 @@ function preserveEnabledPersonalConfig(config: ModelConfigObject): ModelConfigOb
   return config.enabled === undefined ? {} : { enabled: config.enabled };
 }
 
+/** 展示名与 enabled 同属「不由推荐配置闸门管理」的叶子，固定模式下也要原样带过去。 */
+function preserveDisplayNamePersonalConfig(config: ModelConfigObject): ModelConfigObject {
+  return config.displayName === undefined ? {} : { displayName: config.displayName };
+}
+
 function materializeEditorManagedPersonalConfig({
   current,
   effective,
@@ -339,6 +355,7 @@ function materializeEditorManagedPersonalConfig({
   // 只提取可编辑叶子；隐藏请求映射必须来自当前身份规则，不能由旧模型草稿冻结。
   return extractManualModelConfig({
     ...preserveEnabledPersonalConfig(current),
+    ...preserveDisplayNamePersonalConfig(current),
     properties: effective.properties,
     optionSpecs: effective.optionSpecs,
   });

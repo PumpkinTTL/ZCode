@@ -808,6 +808,19 @@ export function createHomeOnlyWebRemoteControlServices(): RootServices {
       createUnsupportedHomeOnlyService<RootServices["feedbackService"]>("feedbackService"),
     settingsSyncService:
       createUnsupportedHomeOnlyService<RootServices["settingsSyncService"]>("settingsSyncService"),
+    // Polaris：加速卡服务为恒惰性桩（红线砍除）。Web 壳沿用远端不可用形状：
+    // 恒 fallback / 无卡，避免挂载时同步抛错（与 desktop remoteUnsupported 同语义）。
+    highspeedCardService: {
+      prepareTurn: async () => ({ kind: "fallback", reason: "unavailable", nextDrawAt: null }),
+      getSnapshot: async () => ({ card: null, nextDrawAt: null, drawing: false }),
+      invalidateCard: async () => false,
+      getCurrentOwnerKey: async () => null,
+      healthy: async () => {
+        throw new Error("highspeed.web-unsupported");
+      },
+    },
+    providerQuotaService:
+      createUnsupportedHomeOnlyService<RootServices["providerQuotaService"]>("providerQuotaService"),
   };
 }
 

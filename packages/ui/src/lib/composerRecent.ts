@@ -1,3 +1,4 @@
+import { isHighspeedProviderId } from "@zcode/shared";
 import { modelSelectionSchema, type ModelSelection } from "@zcode/shared/model-selection";
 import { submissionModeSchema, type SubmissionMode } from "@zcode/shared/zcode-protocol-v4";
 import type { ModelSelectionView } from "@zcode/services";
@@ -17,34 +18,50 @@ interface ComposerRecent {
   readonly mode?: SubmissionMode;
 }
 
-export interface ComposerRecentReceipt {
+interface RecentScopeReceipt {
   scope: ComposerScope;
-  selection: { modelSelection: ModelSelection; mode: SubmissionMode };
   order: number;
 }
+
+export interface FullAccessRecentReceipt extends RecentScopeReceipt {
+  mode: "yolo" | "guarded";
+}
+
+export interface ComposerRecentReceipt extends RecentScopeReceipt {
+  selection: { modelSelection: ModelSelection; mode: SubmissionMode };
+}
 let lastReceiptOrder = 0;
+export function captureRecentOrder(): number {
+  lastReceiptOrder = Math.max(Date.now() * 1000, lastReceiptOrder + 1);
+  return lastReceiptOrder;
+}
+
 export function prepareComposerRecentReceipt(
   scope: ComposerScope,
   selection: ComposerRecentReceipt["selection"],
 ): ComposerRecentReceipt {
-  lastReceiptOrder = Math.max(Date.now() * 1000, lastReceiptOrder + 1);
   return {
     scope: { ...scope },
     selection: JSON.parse(JSON.stringify(selection)),
-    order: lastReceiptOrder,
+    order: captureRecentOrder(),
   };
 }
 export function acceptComposerRecentReceipt(
-  receipt: ComposerRecentReceipt,
+  receipt: ComposerRecentReceipt | FullAccessRecentReceipt,
   storage: StorageLike | null = browserStorage(),
 ): boolean {
   if (!storage) return false;
-  const selection = modelSelectionSchema.safeParse(receipt.selection.modelSelection);
-  const mode = submissionModeSchema.safeParse(receipt.selection.mode);
-  if (!selection.success || !mode.success) return true;
+  const submission = "selection" in receipt ? receipt.selection : undefined;
+  const selection = modelSelectionSchema.safeParse(submission?.modelSelection);
+  const mode = submissionModeSchema.safeParse("mode" in receipt ? receipt.mode : submission?.mode);
+  if (
+    !mode.success ||
+    (submission && (!selection.success || isHighspeedProviderId(selection.data.providerId)))
+  )
+    return true;
   const key = resolveComposerRecentKey("", undefined, receipt.scope);
   try {
-    let previous: { order?: number } | null = null;
+    let previous: { order?: number; modeOrder?: number } | null = null;
     try {
       previous = JSON.parse(storage.getItem(key) ?? "null");
     } catch {
@@ -52,9 +69,18 @@ export function acceptComposerRecentReceipt(
     }
     // 回执/查询/快照可能重复到达；持久化顺序让刷新后的旧回执也不能回滚默认配置。
     if (typeof previous?.order === "number" && previous.order >= receipt.order) return true;
+    // 授权只推进权限顺序。较早提交的回执仍可补齐模型，但不能撤销较新的授权。
+    const updateMode = receipt.order > (previous?.modeOrder ?? previous?.order ?? -1);
+    if (!submission && !updateMode) return true;
     storage.setItem(
       key,
-      JSON.stringify({ modelSelection: selection.data, mode: mode.data, order: receipt.order }),
+      JSON.stringify({
+        ...previous,
+        ...(submission && selection.success
+          ? { modelSelection: selection.data, order: receipt.order }
+          : {}),
+        ...(updateMode ? { mode: mode.data, modeOrder: receipt.order } : {}),
+      }),
     );
     return true;
   } catch (error) {
@@ -95,8 +121,11 @@ export function readComposerRecent(
     const mode = submissionModeSchema.safeParse("mode" in record ? record.mode : undefined);
     // 自愈（spec §5.1）：存量 Recent 可能被加速轮覆盖写入隐藏加速 Provider，模型视图里它
     // 解析为 provider-not-found，会让新任务草稿的模型选择器卡在空态。按叶子丢弃模型、保留
-    // mode，新草稿回落默认选择；与 readSessionModelSelection 丢弃无效 entry 同口径。
-    const healedSelection = selection.success ? selection.data : undefined;
+    // mode，新草稿回落默认选择；与 readSessionModelSelection 丢弃加速常驻 entry 同口径。
+    const healedSelection =
+      selection.success && !isHighspeedProviderId(selection.data.providerId)
+        ? selection.data
+        : undefined;
     if (!healedSelection && !mode.success) return null;
     return {
       ...(healedSelection ? { modelSelection: healedSelection } : {}),
@@ -119,6 +148,16 @@ export function captureComposerRecentSubmission(
   const key = resolveComposerRecentKey(workspacePath, workspaceIdentity, scope);
   const mode = submissionModeSchema.safeParse(submission.mode);
   const modelSelection = normalizeSparseModelSelection(submission.modelSelection);
+  if (modelSelection && isHighspeedProviderId(modelSelection.providerId)) {
+    // 兜底（spec §5.1）：加速 Provider 是单轮执行身份，不在任何模型目录里，写进 Recent 会让
+    // 新任务草稿种子解析为空。正常链路由 SessionPane 在加速轮传入 Composer 原始选择，这里
+    // 只拦截直接拿覆盖后 payload 调用的路径；跳过不推进序号，保留上一次合法记录。
+    logger.warn("[ComposerRecent] 提交指向加速卡 Provider，跳过偏好记录", {
+      workspacePath,
+      workspaceIdentity,
+    });
+    return () => {};
+  }
   if (!mode.success || !modelSelection) {
     // Recent 是发送后的附带偏好；输入异常时只放弃记录，不能阻断权威 command。
     logger.warn("[ComposerRecent] 最近提交配置格式无效，跳过偏好记录", {

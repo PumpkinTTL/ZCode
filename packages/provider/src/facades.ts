@@ -49,7 +49,8 @@ export interface ProviderSettingsMutationTarget {
   createPersonalProvider(input?: {
     readonly templateId?: ProviderTemplateId;
     readonly providerName?: string;
-    readonly locale?: ProviderTemplateLocale;
+    /** Polaris：放宽为 string，五语言 UI 直传；模板名映射未覆盖语言走回落。 */
+    readonly locale?: ProviderTemplateLocale | (string & {});
     readonly initialConfig?: ProviderConfig;
   }): Promise<{ readonly providerId: ProviderId }>;
   savePersonalProviderOverlay(
@@ -304,7 +305,8 @@ export class ProviderSettingsFacade {
   createPersonalProvider(input?: {
     readonly templateId?: ProviderTemplateId;
     readonly providerName?: string;
-    readonly locale?: ProviderTemplateLocale;
+    /** Polaris：放宽为 string，五语言 UI 直传；模板名映射未覆盖语言走回落。 */
+    readonly locale?: ProviderTemplateLocale | (string & {});
     readonly initialConfig?: ProviderConfigObject;
   }): Promise<ProviderSettingsCreationResult> {
     return this.#mutateWithResult("create-provider", (target) =>

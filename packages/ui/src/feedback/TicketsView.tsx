@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, CopyIcon, Inbox, Loader2, MessageSquareText, PlusCircle, RefreshCcw } from "lucide-react";
+import { Check, CopyIcon, Inbox, LoaderCircle, PlusCircle, RefreshCcw } from "lucide-react";
 import type { FeedbackTicketSummary } from "@zcode/shared";
 import type { IFeedbackService } from "@zcode/services";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { FeedbackErrorTip, StatusIndicator } from "@/feedback/feedbackBadges.js";
 import { ScrollFadeViewport } from "@/components/ui/scroll-fade-viewport.js";
-import { TicketDetailDialog } from "@/feedback/TicketDetailDialog.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import { formatRelativeTime } from "@/feedback/feedbackUserView.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -28,7 +27,6 @@ export function TicketsView({
   const [loadingList, setLoadingList] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
-  const [detailTicketId, setDetailTicketId] = useState<string | null>(null);
 
   const loadList = useCallback(async () => {
     setLoadingList(true);
@@ -87,10 +85,6 @@ export function TicketsView({
     [formatMessage],
   );
 
-  // memo 化的 TicketDetailDialog 需要引用稳定的回调：inline arrow 每次渲染都会新建引用，
-  // 让 memo 完全失效（见 test/reactStableReferences.test.ts 的静态边界检查）。
-  const handleCloseTicketDetail = useCallback(() => setDetailTicketId(null), []);
-
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-popover">
       {loadingList && items.length === 0 ? (
@@ -110,11 +104,10 @@ export function TicketsView({
             selectedTicketId={selectedTicketId}
             copiedTicketId={copiedTicketId}
             onCopyTicketId={handleCopyTicketId}
-            onOpenTicket={setDetailTicketId}
           />
           {loadingList && items.length > 0 ? (
             <div className="flex items-center justify-center py-2 text-ui-xs text-foreground-subtle">
-              <Loader2 className="mr-1.5 size-3 animate-spin" />
+              <LoaderCircle className="mr-1.5 size-3 animate-spin" />
               {formatMessage({ id: "common.loading" })}
             </div>
           ) : null}
@@ -131,7 +124,7 @@ export function TicketsView({
           className="rounded-xl text-foreground-subtle hover:text-foreground"
         >
           {loadingList ? (
-            <Loader2 className="size-4 animate-spin" />
+            <LoaderCircle className="size-4 animate-spin" />
           ) : (
             <RefreshCcw className="size-4" />
           )}
@@ -141,12 +134,6 @@ export function TicketsView({
           {formatMessage({ id: "feedback.tickets.newFeedback" })}
         </Button>
       </div>
-      <TicketDetailDialog
-        feedbackService={feedbackService}
-        ticketId={detailTicketId}
-        open={detailTicketId !== null}
-        onClose={handleCloseTicketDetail}
-      />
     </div>
   );
 }
@@ -155,7 +142,7 @@ export function TicketsInitialLoadingState() {
   const { intl } = useZCodeIntl();
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-6 py-8 text-center text-ui-base text-foreground-subtle">
-      <Loader2 className="size-4 animate-spin text-primary" />
+      <LoaderCircle className="size-4 animate-spin text-primary" />
       <span>{intl.formatMessage({ id: "common.loading" })}</span>
     </div>
   );
@@ -166,13 +153,11 @@ export function FeedbackTicketList({
   selectedTicketId,
   copiedTicketId,
   onCopyTicketId,
-  onOpenTicket,
 }: {
   items: FeedbackTicketSummary[];
   selectedTicketId: string | null;
   copiedTicketId: string | null;
   onCopyTicketId: (ticketId: string) => void;
-  onOpenTicket: (ticketId: string) => void;
 }) {
   const { intl } = useZCodeIntl();
   const formatMessage = intl.formatMessage;
@@ -192,7 +177,6 @@ export function FeedbackTicketList({
           const copyLabel = formatMessage({
             id: copied ? "feedback.detail.issueCopied" : "feedback.detail.issueCopy",
           });
-          const openLabel = formatMessage({ id: "feedback.ticketDetail.open" });
           return (
             <li
               key={item.id}
@@ -222,17 +206,6 @@ export function FeedbackTicketList({
                 <span className="min-w-0 flex-1 truncate font-mono text-ui-xs text-foreground">
                   {item.id}
                 </span>
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label={openLabel}
-                  title={openLabel}
-                  onClick={() => onOpenTicket(item.id)}
-                  className="shrink-0 text-foreground-subtle hover:text-foreground"
-                >
-                  <MessageSquareText className="size-3" />
-                </Button>
                 <Button
                   type="button"
                   size="icon-sm"

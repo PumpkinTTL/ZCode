@@ -1,4 +1,4 @@
-import { IGenUiService } from "@zcode/services";
+import { IGenUiService, highspeedCardServiceStub, type IHighspeedCardService } from "@zcode/services";
 import { ProxyChannel, type IChannelClient } from "@zcode/rpc";
 import {
   IFileService,
@@ -96,6 +96,8 @@ export class RemoteServiceAccess implements IServiceAccessor {
   // 经 RPC 一定能拿到（main host 始终注册此 descriptor；非 macOS / 未启用时方法返回 available:false）。
   readonly cuaPermissionService: ICuaPermissionService;
   readonly conversationShareService: IConversationShareService;
+  /** Polaris：加速卡已砍除；本端直接使用恒惰性桩。 */
+  readonly highspeedCardService: IHighspeedCardService;
   readonly botsService: IBotsService;
   readonly providerQuotaService: IProviderQuotaService;
   readonly appUpdateService: IAppUpdateService;
@@ -233,6 +235,7 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.cuaPermissionService = ProxyChannel.toService<ICuaPermissionService>(
       channelClient.getChannel(ICuaPermissionService.channelName),
     );
+    this.highspeedCardService = highspeedCardServiceStub;
     this.conversationShareService = ProxyChannel.toService<IConversationShareService>(
       channelClient.getChannel(IConversationShareService.channelName),
     );
